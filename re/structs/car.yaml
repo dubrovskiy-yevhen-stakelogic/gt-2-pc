@@ -1,0 +1,309 @@
+# Car object of the race overlay (ovl0), US Simulation v1.2 (EXE SHA-1 3030aa27...).
+# Facts only; every entry says how it was established. Tools: gt2run car-probe / watch / calltrace.
+
+array:
+  base: 0x800A9688          # car 0; established from position hits 0x800A9EB8 - 0x830
+  stride: 0xB40             # 2880 bytes; cars 0..3 found at 0x800A9EB8, 0x800AA9F8, 0x800AB538, 0x800AC078 (attract race)
+  location: resident EXE data/bss (not inside the overlay)
+  evidence: >
+    car-probe (2026-09-18): scene-extractor world positions of 4 visible cars matched 16.16 X/Z pairs at these
+    addresses within one frame of motion; spacing between consecutive cars is constant.
+
+fields:
+  - offset: 0x688           # 1672
+    name: body_position
+    type: s32[3]
+    units: 1/4096 m, physics axes (x, y, z) -> world (x, z, -y)
+    evidence: >
+      0x8001336C(dst = car + 0x81C, src = car + 0x688) copies src[0], src[2], -src[1] shifted left by 4 into dst + 0x14
+      (the 16.16 world position), and converts the s16 3x3 matrix at src + 0x0C with the same axis swap.
+      watch: written by pc 0x80033EC0 (function 0x80033E6C, called from 0x8003437C) three times per frame.
+  - offset: 0x694           # 0x688 + 0x0C
+    name: body_rotation
+    type: s16[3][3]
+    units: 4096 = 1.0
+    evidence: watch - written by 0x80044F90..0x8004506C and helper 0x80075968 every frame.
+  - offset: 0x6AC           # 1708
+    name: second_transform_source   # converted by the same 0x8001336C into car + 0x83C; role unknown
+    type: same layout as 0x688
+  - offset: 0x81C           # 2076
+    name: render_transform
+    type: "{ s16 rotation[3][3]; s16 pad; s32 position[3] at +0x14 }"
+    units: position 16.16 m world
+  - offset: 0x830           # 2096 = 0x81C + 0x14
+    name: world_position
+    type: s32[3]
+    units: 16.16 m, world axes (same space as the course chunks)
+    evidence: car-probe hit; watch - written by 0x80013378.. (conversion) and 0x80013514.. (offset added after 0x800814B4)
+  - offset: 0x85C           # 2140
+    name: previous_world_position
+    type: s32[3]
+    evidence: 0x800133F0 copies world_position here before updating it
+
+body_fields:                  # relative to the body (car + 0x2C); see src/game/sim/car_body.h
+  - { offset: 0x000, name: frontExtent, type: s32, units: 1/4096 m }
+  - { offset: 0x004, name: rearExtent, type: s32 }
+  - { offset: 0x008, name: width, type: s16 }
+  - { offset: 0x600, name: chunkIndex, type: s32, evidence: passed to 0x80028968 as the chunk index }
+  - { offset: 0x63E, name: scrapeDirection, type: s8, range: -64..64, evidence: 0x80033D34 }
+  - { offset: 0x63F, name: hitCorner, type: u8 }
+  - { offset: 0x648, name: heading, type: s16, units: 4096/turn, wrapped to -0xFFF..0xFFF }
+  - { offset: 0x654, name: hitNormal0, type: s16 }
+  - { offset: 0x656, name: hitNormal1, type: s16 }
+  - { offset: 0x65C, name: position, type: "s32[3]", units: 1/4096 m, note: "= car + 0x688" }
+  - { offset: 0x6B3, name: footprintSet, type: u8 }
+  - { offset: 0x6B4, name: footprint, type: "s32[2][4][2]" }
+  - { offset: 0x43C, name: dragCoefficient, type: s32, evidence: 0x8003DAA8 }
+  - { offset: 0x440, name: downforce, type: "s32[2]", evidence: 0x8003DAA8 }
+  - { offset: 0x460, name: wheels, type: "Wheel[4] (0x68 bytes each)", evidence: "0x80039490 / 0x8003E0C4 loops with stride 0x68 from 0x460; +0x0C steerAngle s16" }
+  - { offset: 0x628, name: velocity, type: "s32[3]", units: 1/4096 m/s, evidence: "0x80030330: delta = Mul16(velocity, stepTime)" }
+  - { offset: 0x64C, name: yawRate, type: s32, evidence: "0x80030330: delta[3] = Mul16ShiftWide(yawRate, stepTime, 7)" }
+  - { offset: 0x6A4, name: forwardSpeed, type: s32, evidence: "0x8003DAA8 (drag from its square), 0x8003E0C4 atan2(-lateral, forward)" }
+  - { offset: 0x6A8, name: lateralSpeed, type: s32 }
+  - { offset: 0x6FD, name: inputFlag6FD, type: u8, evidence: 0x8003E020 }
+  - { offset: 0x6FE, name: stepTime, type: s16, units: "16.16 s (2184 = 1/30 s)", evidence: "0x8004232C; copied to scratchpad +0 by the tick" }
+  - { offset: 0x704, name: stepRate12, type: s32, evidence: 0x8004232C }
+  - { offset: 0x71A, name: dragForce, type: s16, evidence: 0x8003DAA8 }
+  - { offset: 0x71C, name: downforceForce, type: "s32[2]", evidence: 0x8003DAA8 }
+  - { offset: 0x766, name: timeScale, type: s16, note: "0x1000 = real time", evidence: 0x8004232C }
+  - { offset: 0x768, name: steerInput, type: s8, range: -100..100, evidence: 0x8003E020 }
+  - { offset: 0x774, name: draftInput, type: s16, evidence: 0x8003DAA8 }
+  - { offset: 0x776, name: draftBlend, type: s16, range: 0..0x1000, evidence: 0x8003DAA8 }
+
+  - { offset: 0x63D, name: contactFlags, type: u8, note: "bit0 = hit a wall this step (0x80034320), bit1 = car-car contact (0x80040924)" }
+  - { offset: 0x640, name: wallScrape, type: s16, evidence: "0x800340A4 sets min(1.0, removed/threshold) if larger; 0x80034320 decays by Mul16(frameTime, 0x555)" }
+  - { offset: 0x740, name: wallImpact, type: s16, evidence: "0x800340A4: (removedSpeed * 41|27) >> 12 when speed >= 2277; corner damage and sound in 0x80034480" }
+  - { offset: 0x785, name: wallHitMask, type: u8, evidence: 0x80034320 }
+  - { offset: 0x646, name: roll, type: s16, evidence: "0x80039A4C (camber = roll - visualRoll 0x6F6 per side)", note: "tyres port called it rollAngle" }
+  - { offset: 0x624, name: engineSpeed, type: s32, units: "rev/s * 4096", evidence: "0x80039FC8 pass H; idle = idleRpm(0x10A) * 0x1000 / 60" }
+  - { offset: 0x708, name: effectiveThrottle, type: s16, evidence: "0x80039FC8; written by the traction control 0x8003DE68 from the pedal 0x610", note: "tyres port called it throttle; the pedal is 0x610" }
+  - { offset: 0x618, name: gear, type: u8, note: "gear index into gearRatio, 0 = reverse (0x800449C8 / 0x8003991C write it); an early note called it direction" }
+  - { offset: 0x619, name: clutchState, type: u8, range: 0..3, note: "0 open, 1 engaged, 2 engaging from rest, 3 engaging between forward gears (0x8003991C); an early note called it shiftState" }
+  - { offset: 0x724, name: forwardAccel, type: s32, evidence: "0x80039FC8 pass F" }
+  - { offset: 0x728, name: lateralAccel, type: s32, evidence: "0x80039FC8 pass I" }
+  - { offset: 0x734, name: netLongitudinalForce, type: s32 }
+  - { offset: 0x668, name: courseBasisForward, type: "s16[3]", evidence: "0x80039FC8 pass J: velocity += accel * basis; rows of the attitude matrix built by 0x80044EA4" }
+  - { offset: 0x670, name: courseBasisLateral, type: "s16[3]" }
+  - { offset: 0x678, name: courseBasisUp, type: "s16[3]" }
+  - { offset: 0x00C, name: axleOffset, type: "s16[2]", evidence: "0x800319A8: [1] = wheelbase * front weight % / 100, [0] = wheelbase - [1]; both positive (distances CG -> front / rear axle)" }
+  - { offset: 0x028, name: mass, type: s16 }
+  - { offset: 0x02A, name: inverseMass, type: s16, note: "0x1000000 / mass" }
+  - { offset: 0x068, name: inverseYawInertia, type: s32, evidence: "0x80039FC8 pass H (objdump; the tyres report said 0x3C, which is the steer-limit curve object)" }
+  - { offset: 0x194, name: axleTyreParams, type: "AxleParams[2] (0xD8 bytes)", note: "curve objects at +0x00 slipAngleForce, +0x2C slipRatioForce, +0x6C second ys, +0x90 loadGrip (s32), +0xBC camberGrip" }
+  - { offset: "0x194 + axle * 0xD8 + 0x68", name: peakSlipRatioNeg, type: s16, evidence: "written by 0x800314DC (x of the largest y on the negative side of the slip-ratio curve); read by 0x800449C8 (upshift check) and 0x8003DE68 (traction control)", note: "slip ratio = (road - rim) / reference (0x80039490): negative = wheel spin, so this is the traction threshold; an earlier comment called it the brake threshold" }
+  - { offset: "0x194 + axle * 0xD8 + 0x6A", name: peakSlipRatioPos, type: s16, evidence: "written by 0x800314DC (positive side); read by 0x800449C8 (downshift check) and 0x8003DBE8 (anti-lock thresholds)", note: "locking threshold" }
+  - { offset: 0x348, name: surfaceGrip, type: "s16[8]", note: "indexed by wheel.surface" }
+
+  # drivetrain parameter block (established by src/game/sim/drive_shafts.* = wheel-rotation drivetrain, and drivetrain.*)
+  - { offset: 0x370, name: driveType, type: u8, note: "0 RWD, 1 FWD, 2/3 4WD centre diff (front/rear primary), 4/5/6 4WD coupling; jump tables 0x80046CFC/0x80046D1C/0x80046D3C" }
+  - { offset: 0x372, name: forwardGears, type: u8, evidence: "written by the setup 0x800347C4 from the parameter record's gear count (CarParams +0x2A); read as the top gear by 0x800449C8 / 0x800448C8 / 0x80030950 and as the loop bound of the ratio tables", note: "RESOLVED 2026-09-19: alias engineControlMode - 0x80045AE8 dispatches on the same byte: 1 gear = governed engine 0x8004530C, 2 gears = clutch start 0x80045138 (gearRatio[2] is then the engagement floor, downshiftRpm[0] the launch rpm; the setup makes both so for gears == 2), else the plain engine 0x800353DC. The writer's meaning (gear count) wins." }
+  - { offset: 0x373, name: primaryAxle, type: u8, note: "0 front, 1 rear (0x80076070); with 1 the fully pulled handbrake opens the clutch (0x8002F92C)" }
+  - { offset: 0x374, name: centreSplit, type: s16 }
+  - { offset: 0x376, name: centreLockTorque, type: s16 }
+  - { offset: 0x378, name: engineInertiaRef, type: s16 }
+  - { offset: 0x37A, name: axleDiffType, type: "u8[2]", note: "0 open, 1 locked, 3/4 torque sensing, 5 speed sensing, 6/7 active" }
+  - { offset: 0x37C, name: axleDiffMinTorque, type: "s32[2]" }
+  - { offset: 0x384, name: axleDiffAccelRatio, type: "s32[2]" }
+  - { offset: 0x38C, name: axleDiffDecelRatio, type: "s32[2]" }
+  - { offset: 0x394, name: downshiftFloorRpm, type: u16 }
+  - { offset: 0x396, name: upshiftRpm, type: u16 }
+  - { offset: 0x398, name: downshiftRpm, type: "u16[6]", note: "per gear from 2; 0x398 also read as launchRpm by 0x80045138" }
+  - { offset: 0x3A4, name: gearRatios, type: "s32[8]", note: "overall ratio x4096, [0] = reverse" }
+  - { offset: 0x3C4, name: revsPerSpeed, type: "s32[8]" }
+  - { offset: 0x3E4, name: wheelRadius, type: "s16[2]", units: 1/4096 m }
+  - { offset: 0x3F4, name: lockedClutchTorque, type: s16 }
+  - { offset: 0x3F6, name: overrunClutchTorque, type: s16 }
+  - { offset: 0x3F8, name: axleInvInertia, type: "s32[2]" }
+  - { offset: 0x400, name: axleInertia, type: "s32[2]" }
+  - { offset: 0x408, name: centreDiffStiffness, type: s32 }
+  - { offset: 0x40C, name: engineInvInertia, type: s32 }
+  - { offset: 0x07C, name: engineTorqueCurve, type: "table object { u16 count; s32* xs; s32* ys }", note: "engine block 0x7C..0x12B" }
+  - { offset: 0x108, name: revLimitRpm, type: u16 }
+  - { offset: 0x10A, name: idleRpm, type: u16 }
+  - { offset: 0x10C, name: engineBrakeCoefficient, type: s32 }
+  - { offset: 0x110, name: turboSpoolRpm, type: "s16[2]" }
+  - { offset: 0x114, name: turboBoost, type: "s16[2]" }
+  - { offset: 0x118, name: turboSpoolRate, type: "s32[2]" }
+  - { offset: 0x120, name: turboCoefficient, type: "s32[2]" }
+  - { offset: 0x128, name: boostCap, type: s16, note: "0 = no turbo" }
+  - { offset: 0x12A, name: turboModel, type: "u8[2]" }
+  - { offset: 0x038, name: steerLock, type: s16, evidence: "0x800319A8 writes CarParams +0x5E (degrees) << 12 / 360; no ported reader" }
+  - { offset: 0x03A, name: steerRate, type: s16, evidence: "0x800319A8 writes CarParams +0x5F << 12 / 360; 0x8002FB18 reads it as the counter-steer cap", note: "the drivetrain port called it steerLock (hard lock); the writer's name wins" }
+  - { offset: 0x03C, name: steerLimitCount, type: "table object { u16 count; s16* xs -> 0x48; s16* ys -> 0x54 }", evidence: "0x800319A8 writes count + the two tokens; 0x8002FB18 looks the speed up in it", note: "RESOLVED 2026-09-19: the tyres report's 'inverseYawInertia at 0x3C' was wrong - 0x80039FC8 pass H reads 0x68 (objdump), written by 0x800319A8 (0x28C << 19 / inertia)" }
+  - { offset: 0x060, name: peakSlipAngle, type: s16, evidence: "0x800319A8 writes 0x8003B598's result (at most 0x155)", note: "alias steerWindow: the player input (0x8002FB18) and the AI keep the steering within it" }
+  - { offset: 0x062, name: steerMaxRate, type: s16 }
+  - { offset: 0x424, name: absSlipGain, type: "s32[2]" }
+  - { offset: 0x42C, name: brakeLoadFactor, type: "s16[2]" }
+  - { offset: 0x450, name: tcsGain, type: s32 }
+  - { offset: 0x454, name: tcsFalloffGain, type: s16 }
+  - { offset: 0x456, name: tcsSteerGain, type: s16 }
+  - { offset: 0x458, name: asmYawGain, type: s16 }
+  - { offset: 0x45A, name: asmYawThreshold, type: s16 }
+  - { offset: 0x45C, name: carIndex, type: u8 }
+  # driver state
+  - { offset: 0x60A, name: clutchRequest, type: s16 }
+  - { offset: 0x60C, name: steerAngle, type: s16 }
+  - { offset: 0x60E, name: steerRate, type: s16 }
+  - { offset: 0x610, name: throttle, type: s16, range: 0..0x1000 }
+  - { offset: 0x612, name: brake, type: s16 }
+  - { offset: 0x614, name: handbrake, type: s16 }
+  - { offset: 0x61A, name: axleDiffLocked, type: "u8[2]" }
+  - { offset: 0x61C, name: shiftTimer, type: u8 }
+  - { offset: 0x61D, name: revLimiterActive, type: u8 }
+  - { offset: 0x61E, name: engineLoad, type: s16 }
+  - { offset: 0x620, name: turboSpool, type: "u16[2]" }
+  - { offset: 0x634, name: axleSpeed, type: "s32[2]", units: "rad/s * 4096" }
+  - { offset: 0x63C, name: centreLocked, type: u8 }
+  - { offset: 0x642, name: transmissionMode, type: u8, note: "0 automatic, 1 manual" }
+  - { offset: 0x6AC, name: engineRpm, type: s16 }
+  - { offset: 0x700, name: steerBlend, type: s16 }
+  - { offset: 0x70A, name: steerLimitNeg, type: s16 }
+  - { offset: 0x70C, name: steerLimitPos, type: s16 }
+  - { offset: 0x710, name: engineTorque, type: s32 }
+  - { offset: 0x714, name: engineBrakeTorque, type: s32 }
+  - { offset: 0x718, name: scriptedControl, type: u8 }
+  - { offset: 0x742, name: intakeLoad, type: s16 }
+  - { offset: 0x744, name: blowOffState, type: s16 }
+  - { offset: 0x746, name: turboSpoolMax, type: s16 }
+  - { offset: 0x759, name: exhaustFlame, type: u8, note: "also the car sound's turbo volume (0x800146D8)" }
+  - { offset: 0x78E, name: penaltyFrames, type: u16 }
+  # licence test outcome (race shell, game mode 3; src/game/sim/race_shell.*, verified by verify_shell.cpp)
+  - { offset: 0x751, name: licenseState, type: u8, evidence: "0x8003D244 writes 2 (failed), 0x8003D2A0 writes 1 (passed); 0x8003D5F8 returns early for 1 / 2; 0x8003D22C clears it at the start", note: "was byte751 (meaning not established)" }
+  - { offset: 0x756, name: licenseCode, type: u8, evidence: "0x8003D5F8 / 0x8003D314 / 0x8003D3C0 write 1 pass, 3 overshot, 4 off course, 5 wall; 0x8003D244 / 0x8003D2A0 pass it to 0x800156EC; cleared by 0x8003D22C", note: "was byte756" }
+  - { offset: 0x75C, name: licenseTime, type: s32, units: "1/1000 s", evidence: "written with the outcome (split, lap time or stop time = clock / 3 - 0x780); 0x8003D22C sets 359999999", note: "was word75C" }
+  # AI driver state (0x80037834 / 0x8003643C / 0x80035B68 / 0x80036340; src/game/sim/ai_driver.*, verified by gt2verify verify_ai.cpp)
+  - { offset: 0x01D, name: driveClass, type: u8, note: "indexes the 0x28-byte tuning records at 0x801C8690 (car_setup.h DriveClassTuning)" }
+  - { offset: 0x769, name: aiScriptThrottleOn, type: u8, note: "0x800372EC: throttle toggle while waiting for the start" }
+  - { offset: 0x784, name: aiSlowZone, type: u8, note: "1 on the grid / formation line (0x789 == 4, or line 3 past grid slot 2)" }
+  - { offset: 0x786, name: raceState, type: u8, note: "0 racing, 3 / 4 fixed lookaheads, 5 / 6 stop the car (0x800376D8), 7 finished" }
+  - { offset: 0x788, name: aiRecovery, type: u8, note: "0 normal, 3 reversing away from a wall, 4 turning back to the line" }
+  - { offset: 0x789, name: aiLine, type: u8, note: "which list of 0x801C8568 -> +8 + n*4 is followed: 6 main, 1 / 2 overtaking, 3 pit / formation, 4 grid slots" }
+  - { offset: 0x78A, name: aiSection, type: u8, note: "section index in the line, may equal the count until the course distance wraps" }
+  - { offset: 0x78B, name: aiPreviousType, type: u8, note: "type of the previous section, or 3 / 4 while braking for the current one" }
+  - { offset: 0x78C, name: aiSectionType, type: u8, note: "0 straight, 1 / 2 arc" }
+  - { offset: 0x790, name: aiPreviousTargetSpeed, type: s32, units: 1/4096 m/s }
+  - { offset: 0x794, name: aiTargetSpeed, type: s32, units: 1/4096 m/s }
+
+pad_record:                   # 12 bytes, produced by 0x8003C250 from pad/replay, consumed by 0x8003E020 / 0x8002FB18 (sim::PadRecord)
+  layout: "u16 flags (bit0 analogue steer, bit1 analogue throttle, bit2 analogue brake, bit3 stick curve); s16 steer; u16 brake; u16 throttle; s8 shift; u8 reverse; u8 handbrake; u8 reserved"
+  replay_frame: "5 bytes {flags, buttons, steer axis, throttle >> 4, brake >> 4} packed/unpacked by 0x80013C90"
+
+wheel_fields:                 # relative to a wheel (body + 0x460 + i * 0x68); established by the tyres port (src/game/sim/tyres.*)
+  - { offset: 0x08, name: load, type: s32 }
+  - { offset: 0x0C, name: steerAngle, type: s16 }
+  - { offset: 0x14, name: surface, type: u8, note: "0 tarmac, 1 kerb, 2+ dirt; indexes body+0x348 and the rolling-resistance table 0x80046E00" }
+  - { offset: 0x18, name: rimSpeed, type: s32, units: 1/4096 m/s }
+  - { offset: 0x22, name: damage, type: u8 }
+  - { offset: 0x2A, name: slipScale, type: s16 }
+  - { offset: 0x2C, name: contactForwardSpeed, type: s32 }
+  - { offset: 0x30, name: contactLateralSpeed, type: s32 }
+  - { offset: 0x34, name: gripForce, type: s32 }
+  - { offset: 0x38, name: wearGrip, type: s16, note: "grip factor left after wear (0x1000 = fresh), 0x80039A4C" }
+  - { offset: 0x3A, name: slipRatioAbs, type: s16 }
+  - { offset: 0x3C, name: lateralFactorAbs, type: s16 }
+  - { offset: 0x3E, name: wearRate, type: u8 }
+  - { offset: 0x3F, name: wearStage, type: s8 }
+  - { offset: 0x44, name: slipRatio, type: s16 }
+  - { offset: 0x46, name: slipRatioGrip, type: s16 }
+  - { offset: 0x50, name: slipAngle, type: s16 }
+  - { offset: 0x52, name: slipBlend, type: s16 }
+  - { offset: 0x54, name: lateralForce, type: s32 }
+  - { offset: 0x58, name: driveForce, type: s32 }
+  - { offset: 0x5C, name: brakeForce, type: s32 }
+  - { offset: 0x60, name: brakeInput, type: s16, note: "earlier guess suspensionLoad was wrong (0x80039FC8 pass A, 0x8003DBE8)" }
+  - { offset: 0x63, name: contactFlags, type: u8 }
+  - { offset: 0x64, name: wear, type: s32 }
+
+globals:
+  - { address: 0x800A9520, name: collision_disabled, type: u16, evidence: 0x80033E6C skips the wall check when non-zero }
+  - { address: 0x801C8570, name: step_rate, type: s32, value: 30, evidence: "used by 0x80033D34, 0x80034480, 0x8004232C (frames per second)" }
+  - { address: 0x801C856C, name: frame_time, type: s32, value: 2184, note: "16.16 s = 1/30 s", evidence: 0x8004232C }
+  - { address: 0x80046EF4, name: draft_drag_floor, type: s32, value: 1024, evidence: "0x8003DAA8: drag factor kept at full slipstream (of 0x1000)" }
+  - { address: 0x80046E00, name: tuning_block, note: "0x80046E00..0x80046F80 constants of the physics overlay (byte table at 0x80046E00, wear constants 0x80046F48..0x80046F60 = 0 in the dump)" }
+  - { address: 0x800A9500, name: track_object, note: "+0xB544 -> chunk pointer table (+0xC + index * 4)" }
+  - { address: 0x800AF231, name: car_count, type: u8, evidence: "0x8003EBF0 passes it as the count to every pass" }
+  - { address: 0x80046F64, name: race_clock, type: u32, units: "1/3000 s", evidence: "0x8003D168 adds 100 (50 when 0x801D5864 == 1) per frame while 0x800A9520 == 0; 0x80037834 skips steering on a straight while < 9000" }
+  - { address: 0x801C8568, name: race_object, note: "+4 s32 list count (7), +8 + n*4 -> line list n { s32 count; RaceSection[count] (0x28 bytes: s32 type; s32 x, y (1/4096 m); +0x12 s8 surface; +0x14 s32 distance (16.16 m); +0x18 s32 radius; +0x1C s32 gradient; +0x20 s32 bank; +0x24 s32 heading) }; lists: 1 / 2 overtaking, 3 pit / formation, 4 grid slots (= +0x18), 5 line-swap zones, 6 main line", evidence: "0x80035C48 / 0x80035D68 / 0x80036160 / 0x800360C8 / 0x8003643C (gt2verify verify_ai.cpp)" }
+  - { address: 0x80046DD4, name: race_state_table, type: "s8[7][5]", evidence: "0x800358E0: candidate lines per requested state; called with 6 by 0x800368DC (delay-slot constant)" }
+
+scratchpad:                   # 0x1F800000, work area of one physics step (0x8003EBF0 -> 0x8003E0C4 -> 0x80034480)
+  - { offset: 0x000, name: stepTime, type: s32, evidence: "0x8003E0C4 copies body+0x6FE here before each per-car routine" }
+  - { offset: 0x004, name: carWork, type: "CarWork[6] (0x90 bytes each)", note: "4 wheel records of 0x1C bytes (+0x18 sin, +0x1A cos of the wheel steer angle), then +0x78 engine speed at clutch start, +0x7C engine speed from wheels, +0x80 inverse effective mass, +0x84 rolling resistance, +0x88 clutchEngagement, +0x8C/+0x8E s16 slide measures (0x8003DBE8 reads them; tyres.h CarScratch / drive_shafts.h DriveCarWork carry these names since 2026-09-19). Phase 4 (0x80043388..) reuses the area with 0x60 per car / 0x18 per wheel contact-query records." }
+  - { offset: 0x0B4, name: displacement, type: "s32[6][4]", note: "x, y, height (1/4096 m), heading; written by 0x80030330 at the very end of 0x8003E0C4, consumed by 0x80034320", evidence: watch 2026-09-18 }
+  - { offset: 0x364, name: inputWord, type: "s32[6]", evidence: "0x8002FB18 writes, 0x8003991C reads" }
+
+tick:                          # 0x8003EBF0 (once per frame): 0x8003E0C4 (forces/velocities) -> 0x80034480 (move + collide) -> 0x80043388, 0x800434DC, 0x80043578, 0x8003E8E4, 0x8003CF94, 0x8003D168 -> render transforms
+  physics_core: 0x8003E0C4   # per car: 0x8004232C step time, 0x8003DAA8 aero, curve lookups, 0x80039A4C/0x80039DE8 tyres, input 0x8003C250 -> 0x8003E020 -> 0x8002FB18 (player) / 0x80038540 (AI), wheel angles, 0x80039778, slip work, 0x80039FC8 (tyre forces, calls 0x80046B58 suspension), engine 0x8003DE68 / 0x8003DBE8, 0x80030330 displacement
+
+course_collision:             # chunk + 0x98 -> { s32 count; { u16 vertexA, u16 vertexB, s16 n0, s16 n1 }[count] }
+  evidence: 0x80027FC4 (ported as sim::TestSegmentsAgainstChunk, verified 5040 cases)
+  chunk_pointers: "+4 = previous chunk, +8 = next chunk (verified by sim::SweepAgainstCourse, 2520 cases)"
+
+functions:
+  - address: 0x80041AE8
+    name: UpdateFootprint
+    status: ported + verified (1332 cases)
+  - address: 0x80027FC4
+    name: TestSegmentsAgainstChunk
+    status: ported + verified (5040 cases, 5003 hits)
+  - address: 0x80028968
+    name: SweepAgainstCourse
+    status: ported + verified (2520 cases)
+  - address: 0x80041CCC
+    name: CheckWalls
+    status: ported (verified through MoveBody)
+  - address: 0x80033D34
+    name: UpdateScrapeDirection
+    status: ported (verified through MoveBody; Ghidra misread the control flow - mode 0 also calls it)
+  - address: 0x80033E6C
+    name: MoveBody
+    status: ported + verified (1800 cases, 508 with wall hits)
+  - address: 0x80075EF8
+    name: Dot2Shift12
+    status: ported
+  - { address: 0x80075BF4, name: Mul12Floor, status: "ported + verified (100484 cases)" }
+  - { address: 0x80075C14, name: Mul16Floor, status: "ported + verified" }
+  - { address: 0x80075C54, name: Mul12ShiftFloor, status: "ported + verified" }
+  - { address: 0x80075B04, name: Mul12ShiftWide, status: "ported + verified" }
+  - { address: 0x80075B54, name: Mul16ShiftWide, status: "ported + verified" }
+  - { address: 0x80086084, name: Div64, status: "ported + verified (compiler runtime, 64-bit signed division)" }
+  - { address: 0x80075D2C, name: Interpolate, status: "ported + verified (60000 cases; table object { u16 count; s32* xs; s32* ys })" }
+  - { address: 0x80081AF0, name: Atan2, status: "ported + verified with the original's table (0x80082E14 core; table 0x800A4AC8 is library data, generated table differs by one unit in 133 of 4097 entries)" }
+  - { address: 0x8003C360, name: ApproxLength, status: "ported + verified" }
+  - { address: 0x8003DFDC, name: Falloff, status: "ported + verified" }
+  - { address: 0x8004232C, name: SetStepTime, status: "ported + verified (1200 cases)" }
+  - { address: 0x8003DAA8, name: UpdateAero, status: "ported + verified (2400 cases)" }
+  - { address: 0x8003E020, name: MapPadInput, status: "ported + verified (1800 cases)" }
+  - { address: 0x80030330, name: ComputeDisplacement, status: "ported + verified (1800 cases)" }
+  - { address: 0x8003E0C4, name: PhysicsCore, status: "ported + verified (sim/physics_core.*; all input modes; 0 mismatches)" }
+  - { address: 0x8003E8E4, name: GroundPass, status: "ported + verified (sim/ground.*; height query 0x80028830.. on our parsed Track, suspension 0x80043AE0, attitude 0x80044EA4, visual pose 0x8003E7EC)" }
+  - { address: 0x800319A8, name: SetupCar, status: "ported + verified (sim/car_setup.*; input = CarParams record 0x1C0 bytes at 0x801C98E0 + 0x14FDA + slot * 0x1C0)" }
+  - { address: 0x80033384, name: StartCar, status: "ported + verified (per-race driver, 13 args)" }
+  - { address: 0x800340A4, name: RespondToWall, status: "ported + verified (2400 cases; strength = min(1.0, removed/threshold) - the branch reads backwards in Ghidra/asm at first sight)" }
+  - { address: 0x80030424, name: ScaleDisplacement, status: "ported (verified through 0x800340A4)" }
+  - { address: 0x80075E90, name: Div12Shift, status: "ported + verified (sim/fixed.h; gt2verify row Div12Shift: 64-bit shift of the sign-extended a by 12 + extra, then 0x80086084)" }
+  - { address: 0x80034320, name: MovePass, status: "ported + verified (400 cases x 6 cars, 670 wall hits)" }
+  - { address: 0x80081288, name: SquareRoot, status: "ported + verified (tyres agent)" }
+  - { address: 0x8003D848, name: InterpolateS16, status: "ported + verified (sim/tyres.*; the drivetrain's former private copy LookupCurveS16 was merged into it)" }
+  - { address: 0x8003D940, name: InterpolateS16Pair, status: "ported + verified" }
+  - { address: 0x80039F4C, name: SymmetricCurve, status: "ported + verified" }
+  - { address: 0x80039490, name: UpdateWheelSlipRatios, status: "ported + verified (720 cases)" }
+  - { address: 0x80039778, name: UpdateSlipRatios, status: "ported + verified" }
+  - { address: 0x800397D0, name: EvaluateSlipCurves, status: "ported + verified" }
+  - { address: 0x80039DE8, name: UpdateSlipAngles, status: "ported + verified" }
+  - { address: 0x80039A4C, name: UpdateTyreWearAndGrip, status: "ported + verified (400 cases incl. non-zero wear constants)" }
+  - { address: 0x80039FC8, name: TyreForces, status: "documented pass by pass in the tyres port report (src/game/sim/tyres.h header comment to be written when assembled); quirk: pass F reads wheel 0's lateral force for all four wheels; block+0x8C read as one s32" }
+  - { address: 0x800400CC, name: CarProximity, status: "read: relative corner positions of other cars per car into 0x801C8740 (double-buffered by 0x801C8608)" }
+  - { address: 0x80040924, name: CarCarResolve, status: "read: pairwise impulse from 0x801C8610 fractions / 0x801C8670 side codes, then MoveBody mode 2 on both" }
+  - address: 0x80034480
+    name: SimulateCars
+    status: "ported + verified (sim/physics_core.*: 600 cases x 6 cars, 0 mismatches) with 0x8003360C, 0x80034320, 0x800400CC, 0x800407A0, 0x80040924, 0x80040F30, 0x800412D4, pairwise 0x8003373C"
+  - address: 0x8001336C
+    name: physics_to_world_transform
+    status: read from disassembly
+  - address: 0x800133F0
+    name: car_update_render_transform
+    status: read from disassembly (partial)
+  - address: 0x80033E6C
+    name: car_apply_displacement      # pos += delta[0..2]; angles += ...
+    status: read from disassembly (first block only)

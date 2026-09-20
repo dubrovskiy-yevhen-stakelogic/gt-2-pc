@@ -1,0 +1,103 @@
+# === Game data and everything derived from it: NEVER commit ===
+/work/
+/runtime/
+/dist/
+/install-location.txt
+/saves/
+*.raw2352
+*.png
+!third_party/vrhands/BigHandsAlbedo.png
+*.prims.txt
+*.gtr
+
+# Safety nets in case game data lands outside work/ by mistake
+*.bin
+*.cue
+*.iso
+*.img
+*.chd
+*.ecm
+*.raw2352
+*.mcd
+*.mcr
+*.mcs
+*.psv
+*.gme
+*.sstate
+*.sav
+*.ram
+*.vram
+*.dmp
+*.mdmp
+*.vol
+*.ovl
+*.tro
+*.trp
+*.cdo
+*.cno
+*.cdp
+*.cnp
+
+# Private decomp repo checkout (separate repository)
+/game/
+/game-decomp/
+
+# Generated / translated code
+/generated/
+**/recomp_out/
+
+# Ghidra
+*.gpr
+*.rep/
+*.lock
+*.lock~
+
+# .NET tools
+**/bin/
+**/obj/
+
+# CMake / Ninja / MSVC
+/build/
+/build_*/
+/out/
+/cmake-build-*/
+CMakeUserPresets.json
+.vs/
+*.user
+*.suo
+*.pdb
+*.ilk
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+
+# Compiled shaders (built at build time)
+*.spv
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# Local logs and agent scratch
+*.log
+/.claude/settings.local.json
+
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/.cxx/
+/android/local.properties
+
+# Private development metadata and release signing identities
+/CLAUDE.md
+/AGENTS.md
+/.codex/
+/.agents/
+*.jks
+*.keystore

@@ -1,0 +1,12 @@
+# Embed redistributable VR assets in the executable; no device-side data update is needed.
+set(hand_cpp "${CMAKE_CURRENT_BINARY_DIR}/vr_hand_assets.cpp")
+set(hand_text "#include <cstdint>\n#include <span>\nnamespace gt2view {\n")
+foreach(asset BigHandLeft.uxrh BigHandRight.uxrh BigHandsAlbedo.png)
+  string(MAKE_C_IDENTIFIER "${asset}" symbol)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vrhands/${asset}" bytes HEX)
+  string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${bytes}")
+  string(APPEND hand_text "static const uint8_t ${symbol}[] = {${bytes}};\n")
+endforeach()
+string(APPEND hand_text "std::span<const uint8_t> VrHandAsset(int index) {\nif(index==0)return BigHandLeft_uxrh;\nif(index==1)return BigHandRight_uxrh;\nreturn BigHandsAlbedo_png;\n}\n}\n")
+file(CONFIGURE OUTPUT "${hand_cpp}" CONTENT "${hand_text}" @ONLY)
+target_sources(gt2vk PRIVATE src/gt2view/vr_driving_visuals.cpp "${hand_cpp}")

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true"/>
+    <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="true"/>
+    <application android:allowBackup="false" android:label="GT2 VR" android:hasCode="true">
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest3|quest3s"/>
+        <activity android:name=".GT2Activity" android:exported="true" android:launchMode="singleTask"
+            android:screenOrientation="landscape" android:configChanges="orientation|keyboardHidden|keyboard|navigation|screenSize|screenLayout|uiMode|density"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            <meta-data android:name="android.app.lib_name" android:value="gt2game"/>
+            <meta-data android:name="com.oculus.vr.focusaware" android:value="true"/>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD"/>
+                <category android:name="com.oculus.intent.category.VR"/>
+            </intent-filter>
+        </activity>
+        <receiver android:name=".ImportAccessReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
+    </application>
+</manifest>

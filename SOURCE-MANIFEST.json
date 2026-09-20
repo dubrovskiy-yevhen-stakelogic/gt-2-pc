@@ -1,0 +1,2283 @@
+{
+  "version": "0.1.0",
+  "sourceCommit": "80eee32c0bab18e28e76e91ddb8d69e0755494c4",
+  "sourceDirty": true,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "04e12f49d9a6ef717227d78a60d588c157dcbf2c297d186785c23bbbb95c1e37"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "b1d95a2441b76b67a4337b79d476c934091a801b35c62ace71c5e714309e5187"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "faae69a58ef282c00a4bc8df835201ff6431b48621c4c70ef94eca34d6c4a06c"
+    },
+    {
+      "path": "INSTALL.bat",
+      "sha256": "8af6f9a5cd96a618531c6aa92d96c8662046bd947676ff121c6811c337f05e33"
+    },
+    {
+      "path": "README.md",
+      "sha256": "abe88b5450cdce758cd7e606c836e1230e455e270403212fb022288a6495d2fd"
+    },
+    {
+      "path": "THIRD_PARTY.md",
+      "sha256": "5434ae989446d547b5e872dc74ef1cbe65d8cf3a8eae88983cebd58f36cd1110"
+    },
+    {
+      "path": "android/app/build.gradle",
+      "sha256": "521aa2e43cc0ae287bf99ab70e0282568b3aadd34c4dd1d2932f28d4194142ad"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "sha256": "f25be812571a81485eee342a1a64c3759ab476611d97bb9f287e9c85bd0630d8"
+    },
+    {
+      "path": "android/app/src/main/cpp/android_main.cpp",
+      "sha256": "64af4db9425200da27fdcd1eb0c3d2478ecf605194ec5e16d8680416ff852913"
+    },
+    {
+      "path": "android/app/src/main/java/io/github/gt2pc/quest/GT2Activity.java",
+      "sha256": "2ac5d37f613004f369c5358415b2573b50c8a60045681b4a1339f663f48485ed"
+    },
+    {
+      "path": "android/app/src/main/java/io/github/gt2pc/quest/ImportAccessReceiver.java",
+      "sha256": "1af00391676624753002107c20727ce7ce7bf7c4ded60383cf3fa1a89d4a4586"
+    },
+    {
+      "path": "android/build.gradle",
+      "sha256": "8ebf0602839be8fd4c06f07a93e45da6b4a04444fa1b38df8b9def9c1b5c8032"
+    },
+    {
+      "path": "android/gradle.properties",
+      "sha256": "6cd623a46b872ab1384cf5297c7acf4708f470fe572b28f7ff7054b877b68076"
+    },
+    {
+      "path": "android/settings.gradle",
+      "sha256": "d9b600aa20e00adf445ddeaf4e93c88bc77ceccba7673c2e23d555bb79017def"
+    },
+    {
+      "path": "build.cmd",
+      "sha256": "d16c09f7c709a50ef1e51f82081b48c8e4a95e645258582c62cec8ef4030e90e"
+    },
+    {
+      "path": "cmake/android.cmake",
+      "sha256": "11af113ea8a6c77d8e7c9b76f91732c6b9797bccbce796d30fb95d9d78c70b1b"
+    },
+    {
+      "path": "cmake/stereo-shaders.cmake",
+      "sha256": "5c68259f113ccde0bc716d15e69c2ef4f7d2baef46d35b87ca2931073112d87f"
+    },
+    {
+      "path": "cmake/vr-hand-assets.cmake",
+      "sha256": "f4871625aa84aeea3c68926b0689f28ef4e9de048562805a854c97bb88afe9cd"
+    },
+    {
+      "path": "db/arcade_eu_symbols.yaml",
+      "sha256": "ff0ab60b0fcc1b68cc49ed854e12921b68f5985aacca467a6e8b8e273595c8f3"
+    },
+    {
+      "path": "db/arcade_eu_ui_symbols.yaml",
+      "sha256": "feff0c66eeeb40b239918337783651b7af1f47f9fd19037c63b168232bc6771b"
+    },
+    {
+      "path": "db/arcade_us11_symbols.yaml",
+      "sha256": "dc213033d1ae8da80d84a55c8c361a85dcd30dce88514f96474d6a007627bdab"
+    },
+    {
+      "path": "db/sim_eu_symbols.yaml",
+      "sha256": "e1b5e081af224952bf84b946debf3182652c4e6942a42214dba126c2ecf5704e"
+    },
+    {
+      "path": "db/sim_us12_symbols.yaml",
+      "sha256": "ee7485268c651c52daaea54f0a6960bbe51d865b09db9dcc0934f067092017b3"
+    },
+    {
+      "path": "docs/EUROPEAN-DISCS.md",
+      "sha256": "0b5889887291402f9ff20af0a62637c76224a6f088e04137489dfc83d4c14499"
+    },
+    {
+      "path": "docs/PLAYER-INSTALL.md",
+      "sha256": "13d55a5fae7f2a89973fb1004ee066050e30cb1c9d474d6d000063904c3d6f2f"
+    },
+    {
+      "path": "docs/QUEST.md",
+      "sha256": "4386c7c15cc8d82cd09095d4abe7c9dc2e44708c77ab161185aa3dd791077d04"
+    },
+    {
+      "path": "docs/RENDER_BENCHMARK.md",
+      "sha256": "2a524d88f5478a261ffb71cbed3cbca03110c546125696020a2361d33a7167b6"
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "sha256": "425c745bd34f0c1edac73113aea87d66ea2103517aa2ab7ddb9c461896dbfa20"
+    },
+    {
+      "path": "docs/formats/arcade_data.md",
+      "sha256": "205aca2eba85eb29df7936dd08741078c03f70f2b510f226560f0ee7e6b25196"
+    },
+    {
+      "path": "docs/formats/backdrop_bso.md",
+      "sha256": "1ccd8aa3154c0cd1b462a89c2ff800e4777a97d26ef8c6f9e11e2a4baed18ace"
+    },
+    {
+      "path": "docs/formats/camera.md",
+      "sha256": "d9317d3228030b379d17f0e67835425d6be7b8605f76a0ab395907687368e5b2"
+    },
+    {
+      "path": "docs/formats/car_cdo_cdp.md",
+      "sha256": "0b8fae91ee0445a2c3d7faa0eed8e9f3ebb411e404ad959fc348869ff3a3e513"
+    },
+    {
+      "path": "docs/formats/car_info.md",
+      "sha256": "6b62018df730c12e8edf58fbf6c70bd2b9cac9546c588ec6b877ec47e38ea4b2"
+    },
+    {
+      "path": "docs/formats/car_json.md",
+      "sha256": "e259a1149fea4f964687cbf0045f57c30649425b72b8c88430f84781c2f98d81"
+    },
+    {
+      "path": "docs/formats/car_params.md",
+      "sha256": "22b6da09fd9622949cf462614fe0cc55a68138396c54e1e991224357b5ffb462"
+    },
+    {
+      "path": "docs/formats/course_race_data.md",
+      "sha256": "f1bef97f7393e8d7acfd28035c3407b558e195dc08a705b794d558cabe398bc6"
+    },
+    {
+      "path": "docs/formats/gt_menu.md",
+      "sha256": "2354c69e0e01f7b3ff0839a08354e587f64966b1f91386ef3cf4f1cad1fabfbd"
+    },
+    {
+      "path": "docs/formats/gtmode_tables.md",
+      "sha256": "0b40dad9f8240a4e36e059f141117c799f5e4f91a15ffe6291ff923ff74b9e64"
+    },
+    {
+      "path": "docs/formats/hud.md",
+      "sha256": "e094848d1da4329488e3c57e30f55c21828c4965603974ecc6638c781c19b970"
+    },
+    {
+      "path": "docs/formats/license.md",
+      "sha256": "e0965d9bc5b6a33d6dcbd11f1ff77abadd6be2eae10d957e58189eaa982dd559"
+    },
+    {
+      "path": "docs/formats/modern_graphics.md",
+      "sha256": "5a93ca9ff92d2cc5f3a93774e3b3f652a8e83137668d1056f6a37aa63f9e162c"
+    },
+    {
+      "path": "docs/formats/pad_input.md",
+      "sha256": "ca427f0706ae95d9e1378097212a9fafca6803afe1060f625d8452c7e0ca3528"
+    },
+    {
+      "path": "docs/formats/particles.md",
+      "sha256": "e5989920741a9b9927d50f1bd50f81216eba627d4f48a546ee122fc5c487aacd"
+    },
+    {
+      "path": "docs/formats/race_screens.md",
+      "sha256": "1c92df9b3a3065d9e9f12ba602196a608ab955c3eb8d40366829f6de31289774"
+    },
+    {
+      "path": "docs/formats/replay.md",
+      "sha256": "3cc74881201af18fc563efeb84b3ac0b2459269f4de557ed926d22c8d4b03115"
+    },
+    {
+      "path": "docs/formats/sound.md",
+      "sha256": "4f1eb4700490f0a13cd6d22d63e96c66d4f3d37178c256d7adf0e48f7d73195a"
+    },
+    {
+      "path": "docs/formats/sponsor_boards.md",
+      "sha256": "f2918463d183439468ee83fc918a81806d68a95db8a24d3a478345d2b5fd8813"
+    },
+    {
+      "path": "docs/formats/str_video.md",
+      "sha256": "66b1dff73578aabede205bd399eb2f7e0763bf95daea30b3e7c4cb86629bf690"
+    },
+    {
+      "path": "docs/formats/title.md",
+      "sha256": "33e6796a5aa16e3cb27824d7145fbcecb19e7ab527781cc7d7d19685c9edb58d"
+    },
+    {
+      "path": "docs/formats/track_json.md",
+      "sha256": "a6ca8b1a002f098ae64c78db04cd93a57f0853644b003f858f80b5a1ac9544a9"
+    },
+    {
+      "path": "docs/formats/track_tro.md",
+      "sha256": "9c8ecababb897f4da591baf529bb08ee16221e755b9eef8f6744f4d9c2c8b9ba"
+    },
+    {
+      "path": "docs/hardware_boundary.md",
+      "sha256": "f12891859cd2f6e53867360eebb58f2ce634535ebf89f8a437a8c880f3609f01"
+    },
+    {
+      "path": "docs/research/arcade_disc.md",
+      "sha256": "3d869515cbf92f4e7995576615f88b218b5605a9e74d8fe4149c9842fb7b098f"
+    },
+    {
+      "path": "docs/research/audio_video.md",
+      "sha256": "c0189c55ee230b021e0050cb964da3e03056868f6b9b6a10bb32007894e8684c"
+    },
+    {
+      "path": "docs/research/engine_tech.md",
+      "sha256": "0726bb1602193b75dca397e69c2e5aa07d0cb43b326194ff466d592700ec558c"
+    },
+    {
+      "path": "docs/research/formats.md",
+      "sha256": "8164b864b2d4160061f632859fc919fc9481940b00d8de6374aafa9fe51d6b2a"
+    },
+    {
+      "path": "docs/research/menus_gtmode.md",
+      "sha256": "46b76cbdc6012ac94e10efc684170d41a0d32a41a7b31f6d6fad433ffedab924"
+    },
+    {
+      "path": "docs/research/quest_ports.md",
+      "sha256": "0c3fecb3ec7b5fc5b8023cbd1b2b5261fb4946a0c576ab092a1213ab1763e298"
+    },
+    {
+      "path": "docs/research/re_state.md",
+      "sha256": "f0a2a142919666cb2ff76d6dd7a40121cb0d25e8d56ad0a37d0ba443fa1d3c9c"
+    },
+    {
+      "path": "docs/research/scout_disc.md",
+      "sha256": "ae61616e13f5d8301171b9e4900914033e9acd449039de21c9ea8267075c6ea5"
+    },
+    {
+      "path": "docs/research/scout_exe.md",
+      "sha256": "d7130a31c2d2ff25fdb2acc7cfd4b00e8e3b8460d8ea45823628fa5bc5cc5c2b"
+    },
+    {
+      "path": "docs/research/scout_vol.md",
+      "sha256": "746a0accd680f87d2961cb7ad253ae36f1361d0a5a4fae7380a76032dc02b048"
+    },
+    {
+      "path": "docs/research/vr_modern.md",
+      "sha256": "199cae61effae6790d1e957efd55215f0b6a1632c42b4dd1a11afb78314f4e8b"
+    },
+    {
+      "path": "docs/research/vr_port_plan.md",
+      "sha256": "dd88deb4fa2c147a7c176b4dda900cdc9489c14240d846b127528bd9dd8512cf"
+    },
+    {
+      "path": "docs/research/xrsim.md",
+      "sha256": "bc147837bf9c60217d09133c3621f02d495e238779974bc59d5a8c8f0c181c44"
+    },
+    {
+      "path": "gt2_arcade.bat",
+      "sha256": "023493b9da17fc592ea08ca7e90784f7c2edf219113908ebfb87f2e784295ae2"
+    },
+    {
+      "path": "gt2_race.bat",
+      "sha256": "385c2456534455e6c6f328c0fccbce60441946d6b74630eb45c40001760f2348"
+    },
+    {
+      "path": "gt2_sim.bat",
+      "sha256": "5c2aa219c4f0a48732864197ee49a1332df6946aae6dcc5ca56113e5e790bcdf"
+    },
+    {
+      "path": "re/ghidra/DecompileSeeds.java",
+      "sha256": "a7a786f4741ca9dc774b13b88b42783db23cb96729cb95f07969d6fb1c98693f"
+    },
+    {
+      "path": "re/ghidra/SeedFunctions.java",
+      "sha256": "c661ab5e633321c8b7a5d2b0e9d031b7f8aa7dfb77002873e4ab88754d770cf4"
+    },
+    {
+      "path": "re/scripts/tro_probe.py",
+      "sha256": "051103e03b2d983cdf72baa603d93b4f9c0be1ea45b6a404be392cf1da399a73"
+    },
+    {
+      "path": "re/structs/car.yaml",
+      "sha256": "2a2d54f1de2893e839248afe27be56f904285552655b05b2615af5f3adcd01ea"
+    },
+    {
+      "path": "run_race.bat",
+      "sha256": "385c2456534455e6c6f328c0fccbce60441946d6b74630eb45c40001760f2348"
+    },
+    {
+      "path": "scripts/audit-source.ps1",
+      "sha256": "7dbc3c7758da512e21bcf06ef669380aea39c9e9e1cf86696a8067d8ff745ff1"
+    },
+    {
+      "path": "scripts/build-quest-release.ps1",
+      "sha256": "fa2ad9a4eb0775f5a7c6873505143a60f94a6fdd7fd5f14dd78f7f7fef94f25f"
+    },
+    {
+      "path": "scripts/build-quest.ps1",
+      "sha256": "177ebce3d47923e87c3d05c55313a4a89998da39b2680349f52a70727981ef27"
+    },
+    {
+      "path": "scripts/install-player.ps1",
+      "sha256": "f5d67e93bfe39be20ec37787af67cfb9c9f3d872c125969cbb91e4c012ff2005"
+    },
+    {
+      "path": "scripts/install-quest.ps1",
+      "sha256": "32042876d77d59fc8f6f8d29d69da08bc8d45063d019c4d8af639f932aee3d1b"
+    },
+    {
+      "path": "scripts/install.ps1",
+      "sha256": "a65058d93ef63f2422e8e754c9a7e99d18319e85ca5eb115ea3b6cd394c22839"
+    },
+    {
+      "path": "scripts/package-player.ps1",
+      "sha256": "6f21ee9599d6a8b901c170abb623b05cee1948e99fbe2617cf92b6e928f5d657"
+    },
+    {
+      "path": "scripts/package-source.ps1",
+      "sha256": "f47b9bec96279ee0226a9178373ab550400c6a358bcde040d12bf8ecadd8227d"
+    },
+    {
+      "path": "scripts/play.ps1",
+      "sha256": "faf445a85163930e36c0d5c93dcdbfeb2924607bd0e2128fbb61243cb3eb3109"
+    },
+    {
+      "path": "src/game/arcade/arcade_battle.cpp",
+      "sha256": "b48ab8fc2bbb10f7bd4341499cb7a2478e129c08f01cf22fd2d21bb0693f5027"
+    },
+    {
+      "path": "src/game/arcade/arcade_battle.h",
+      "sha256": "e704ab81ed6c8bef464b8f68e0aeb33f4df683bda821f5978ded21954ec62a6f"
+    },
+    {
+      "path": "src/game/arcade/arcade_bonus.cpp",
+      "sha256": "dfab8026f84eea1f94deb38cd6aa930cf42a4e6a4d21a9d09dcaef6d4cc1fed7"
+    },
+    {
+      "path": "src/game/arcade/arcade_bonus.h",
+      "sha256": "62ffed868f599f403034880488e46bff02d768f3301ed1af46d4eed88215cd07"
+    },
+    {
+      "path": "src/game/arcade/arcade_car_page.cpp",
+      "sha256": "d38e3e20d10764d07e3402d2b1094812416de11cd97cf0dc6aa4b6a32fa78424"
+    },
+    {
+      "path": "src/game/arcade/arcade_car_page.h",
+      "sha256": "d571bca958d8ac4775ed7f64d98d27a34641dc4e67160d619604d1881f1be2a2"
+    },
+    {
+      "path": "src/game/arcade/arcade_card.cpp",
+      "sha256": "a2795a1b54c78e6eda2411c94977c4477c026193ecc76b3bc02570cec6aec278"
+    },
+    {
+      "path": "src/game/arcade/arcade_card.h",
+      "sha256": "19aba83daaeed955526e346f8ffa7cba77551f45ef0a621095fcc70831ff1938"
+    },
+    {
+      "path": "src/game/arcade/arcade_course_page.cpp",
+      "sha256": "85af9b203885ea78c87222c7cecf8d1b1c89b4c75dfe3620aba02df0a2d106d6"
+    },
+    {
+      "path": "src/game/arcade/arcade_course_page.h",
+      "sha256": "1ee6b5566307d0ab65756d71b253ab6840690ee76758bbd5a63cd06f84eae8cc"
+    },
+    {
+      "path": "src/game/arcade/arcade_menus.cpp",
+      "sha256": "87d9c6f5b2c69acd8d739f0ca09f90c8886bfec1e712d09f7385bf1ee717cc94"
+    },
+    {
+      "path": "src/game/arcade/arcade_menus.h",
+      "sha256": "43d5d7e93c5e5581ab1ea29fb330d17575986be3577723b479019f978bc1097e"
+    },
+    {
+      "path": "src/game/arcade/arcade_results.cpp",
+      "sha256": "952bb9355a07e91f88f93158775fd30545712b4dca21d6d1f0162a27e878d901"
+    },
+    {
+      "path": "src/game/arcade/arcade_results.h",
+      "sha256": "e85d29204cf94bfe28a4b0f7347ee31e9acf0af90937378e747549d864da3cab"
+    },
+    {
+      "path": "src/game/arcade/arcade_setup.cpp",
+      "sha256": "7114893b8f072c4a860417e343643b99111f78d90895aa1735ca0c5642c775ac"
+    },
+    {
+      "path": "src/game/arcade/arcade_setup.h",
+      "sha256": "484de7d411c0276afbb255e070ed453fc622d1301aba27d692697f6a9c2c93a1"
+    },
+    {
+      "path": "src/game/arcade/arcade_widgets.cpp",
+      "sha256": "2b03b8ea776867e32fe46946ebf68de3ae7d07bd0a7edc5c3c09e65af2b121c8"
+    },
+    {
+      "path": "src/game/arcade/arcade_widgets.h",
+      "sha256": "1472c5ca13fe56cac8b6d996e92c451c69a4d96ae245da78f48e26ed12431b9e"
+    },
+    {
+      "path": "src/game/audio/audio_device.h",
+      "sha256": "8c4390b492676d6140637c41abcb33f64c77ad501e2880eeebaed1620ff390e5"
+    },
+    {
+      "path": "src/game/audio/audio_device_aaudio.cpp",
+      "sha256": "7cbe21671983a8edcd11fc6bc837b98ffbd583cbadf8f2572d2855ca84cc8942"
+    },
+    {
+      "path": "src/game/audio/audio_device_win32.cpp",
+      "sha256": "c4ffae227a20c69f221e1a3e20f43b75a98a81444f52d7f673422775fed7abc3"
+    },
+    {
+      "path": "src/game/audio/audio_resampler.h",
+      "sha256": "3c212e0ddf1c10f6ae3d525a8eb53678bf1e7be22f786bc61069e8264cc5b3c4"
+    },
+    {
+      "path": "src/game/audio/car_sound.cpp",
+      "sha256": "98e81c46b225f5ca9b6533ab203354b873ccd61deecae4193908c59316b4f7ad"
+    },
+    {
+      "path": "src/game/audio/car_sound.h",
+      "sha256": "64e0560191b4551fdde5e26f9bd5a0cde542b8740237048935765b8d6ed0f72e"
+    },
+    {
+      "path": "src/game/audio/menu_audio.cpp",
+      "sha256": "84ed0fe2a985dbf6ae2e5ed52d87dfd8402995c41d61824ef4a39cc188cefa92"
+    },
+    {
+      "path": "src/game/audio/menu_audio.h",
+      "sha256": "8a3eb00807361d77fc72838e181f24b81cb594c08765d6766f02e9daa67aff31"
+    },
+    {
+      "path": "src/game/audio/menu_music.cpp",
+      "sha256": "8fb30c71817d6185e5de070a2a2072e0ecc8c1d6e92fa900bf048416ec43e6b8"
+    },
+    {
+      "path": "src/game/audio/menu_music.h",
+      "sha256": "aa386dfbd0fdb5fc8a5b8a695fec6e598092b54d2492eabcc17f298b3b0f758b"
+    },
+    {
+      "path": "src/game/audio/mixer.cpp",
+      "sha256": "18f0cc434b9b8a1bd6dacfdbf21325e0bf3ebfc362e9fd547362815437556731"
+    },
+    {
+      "path": "src/game/audio/mixer.h",
+      "sha256": "7dd79de9ed8ce638f9d5f38cba15db1cb468410b2105c425cedf31161507fa59"
+    },
+    {
+      "path": "src/game/audio/music_player.cpp",
+      "sha256": "859a3d159557c2ca0f8b17e9894efaf4b3f780574d932f11f3ecd16a4cf36ebd"
+    },
+    {
+      "path": "src/game/audio/music_player.h",
+      "sha256": "202a0668558f94590db4d7232e0bff91126f80fd3045d214a536024dc6055611"
+    },
+    {
+      "path": "src/game/audio/pause.h",
+      "sha256": "ece8d1d59dfc353bc9ae9fe30fef919626b7a5df5721753a6b5d06c1605f0019"
+    },
+    {
+      "path": "src/game/audio/race_audio.cpp",
+      "sha256": "49a2e8b39be8c4cfb3c9c6d7d19d2c1443aa4716636643760fca73207d3eb3e5"
+    },
+    {
+      "path": "src/game/audio/race_audio.h",
+      "sha256": "e16db89bd2109deaccb4f1732a43c7250a5ee16efbf3ea9c6763aa0fad81faed"
+    },
+    {
+      "path": "src/game/audio/race_music.cpp",
+      "sha256": "19a33fac95bc0e05b5c7ea6da9069a6913481f01908af22b7198b70672c74de7"
+    },
+    {
+      "path": "src/game/audio/race_music.h",
+      "sha256": "864045e1a99218ed91ef48a4ee026ec285d3a6ef3e8013993eb6d20f516a2e53"
+    },
+    {
+      "path": "src/game/audio/sequencer.cpp",
+      "sha256": "05b8a7e60fb819f4cc8bd4c4799aae8e9c2013787068cba9e190fc5056353583"
+    },
+    {
+      "path": "src/game/audio/sequencer.h",
+      "sha256": "2830c6747662184c255447e3bb0b73f6889195dd5e20f7790175121831dadc12"
+    },
+    {
+      "path": "src/game/camera/game_camera.cpp",
+      "sha256": "7d07aebce1436b8a13bcdc36ac011ed00bc8ec5c3a6de4b3aac3b29f021c6f35"
+    },
+    {
+      "path": "src/game/camera/game_camera.h",
+      "sha256": "9b11e5b7a760a0536fa8b71bf94a5c6252023cf2d5a7f0b2939c5ca11fb21098"
+    },
+    {
+      "path": "src/game/camera/race_camera.cpp",
+      "sha256": "a46fda16de47119f2cd4771039c04d246ea477329927283b4c79c4f910480ac3"
+    },
+    {
+      "path": "src/game/camera/race_camera.h",
+      "sha256": "6c3da7b92c20af406cacdc75fff58fae6a4bb51e33b8c0ced71f8f084c5aff48"
+    },
+    {
+      "path": "src/game/career/career_state.cpp",
+      "sha256": "9420a0986c9cb20f113a976996ea00afb7e964b4c09a31f0b8afcf6b8c894292"
+    },
+    {
+      "path": "src/game/career/career_state.h",
+      "sha256": "15e540c0aa8b2230382084ed437703ad18e1f50ae368b1f40bc5c8abbc15e2ef"
+    },
+    {
+      "path": "src/game/career/championship.cpp",
+      "sha256": "7fed272d881b6ca25f9177504980e50308aea2d3eceb32bf6b304705b3d3e530"
+    },
+    {
+      "path": "src/game/career/championship.h",
+      "sha256": "fdc8c33c0289603cd6d21bcdc9da490f44f03ede2070a92b59b6b5462e7b1265"
+    },
+    {
+      "path": "src/game/career/cheats.cpp",
+      "sha256": "de871fbccc741e3848088c0dffd2bf1afc00c655034703d899db1439f8176e4d"
+    },
+    {
+      "path": "src/game/career/cheats.h",
+      "sha256": "6aa7de130c644a223cccd57fb33ef7ffdfbffab0fe514b5a9c9c9c4fed96a459"
+    },
+    {
+      "path": "src/game/career/events.cpp",
+      "sha256": "11499936559780e5dbf4cb058d737930debfbe12be22e7e07f9780be1349ee9a"
+    },
+    {
+      "path": "src/game/career/events.h",
+      "sha256": "425f50857eabf08906252e26337c43dc5c824cf803a87f6e86f80e8deb6d3bde"
+    },
+    {
+      "path": "src/game/career/garage.cpp",
+      "sha256": "2cd5e39ca9e64a7608b2bdf1afe6ff8e241866b222089035ca82d969f0033a5d"
+    },
+    {
+      "path": "src/game/career/garage.h",
+      "sha256": "6d4a6bf43c53f71dc4eff9caaea10a325f4ce545e2c9675d4b77cb88c365362d"
+    },
+    {
+      "path": "src/game/career/machine_test.cpp",
+      "sha256": "db4e363631583ec855e945e1bf8db94e94308988671c35f8d2f6940cf6a07ff8"
+    },
+    {
+      "path": "src/game/career/machine_test.h",
+      "sha256": "534cf1f6904f3d2da367c1c1c1b6829be7023e0c163f6a8e71023eb5d77ad138"
+    },
+    {
+      "path": "src/game/career/results.cpp",
+      "sha256": "52fa5615535330f9e13b31614847dd6189a5b61441f3d8c5641e07ea9b9c23f0"
+    },
+    {
+      "path": "src/game/career/results.h",
+      "sha256": "4f29e4810171b7478abb2b41840fd14c15bd0cb3d335601a8759932585b51af7"
+    },
+    {
+      "path": "src/game/career/tuning.cpp",
+      "sha256": "5b6fe492ed316893c4748308f8f26eb6a1b5ec5d0506719467c8745a1a1074bb"
+    },
+    {
+      "path": "src/game/career/tuning.h",
+      "sha256": "9c8350f3f86da88619d9a6c8a8a1e0689d3efb12850b63802e39d02cae862877"
+    },
+    {
+      "path": "src/game/menu/menu_car.cpp",
+      "sha256": "63547d07e6da728d98ecd714eb153bfbd7942beaf40d1cb0f866c60de207725f"
+    },
+    {
+      "path": "src/game/menu/menu_car.h",
+      "sha256": "6709c9288440f9e44f49c8fb6eee8ed3b9eb82bf6dc683282086f6ec1987ed72"
+    },
+    {
+      "path": "src/game/menu/menu_nav.cpp",
+      "sha256": "e84756c3aaae5bb3860415a4a0aa87f9c61699af710755f68a04992b7cf4eb6c"
+    },
+    {
+      "path": "src/game/menu/menu_nav.h",
+      "sha256": "0e441ce1c1b70906045032b81a18db8008d3d11dfc63716e720b988ef1bfbd56"
+    },
+    {
+      "path": "src/game/menu/menu_runtime.cpp",
+      "sha256": "63d6059519399b1f1156983581ebee9fd0ff731782f2c08c17f464c516ef5549"
+    },
+    {
+      "path": "src/game/menu/menu_runtime.h",
+      "sha256": "3b1be34a0cf88e05bd2c5b6f9eb308790ccc67fcdda7da05e5526ce90ec368d7"
+    },
+    {
+      "path": "src/game/pc_features.h",
+      "sha256": "2abd3ea571109ba3426b198b1ba02776ceedf73821f80886dbdae5471130a6bf"
+    },
+    {
+      "path": "src/game/shell/analog_config.cpp",
+      "sha256": "2d4626ebe3524680128001ea60f020064ba741b8ee92a67188de74aa3f7c9d88"
+    },
+    {
+      "path": "src/game/shell/analog_config.h",
+      "sha256": "0733fa3cf239c252629f59a133c0165f9b9025aa145606d4e0d55b8e890fb285"
+    },
+    {
+      "path": "src/game/shell/arcade_title.cpp",
+      "sha256": "e69e93176491d3bef0448644dcd5af8f4d3c0fb281955c68fbba2632ef4c3bdd"
+    },
+    {
+      "path": "src/game/shell/arcade_title.h",
+      "sha256": "3fc7b1e72e0fe177672f908a56dc31e5451acc4e5c7252b57481950b743e2509"
+    },
+    {
+      "path": "src/game/shell/key_config.cpp",
+      "sha256": "8a285d41ae3242a80288bf4f96a9f3e022dc6fa3cf6ba6c2fad5c31dfd409e64"
+    },
+    {
+      "path": "src/game/shell/key_config.h",
+      "sha256": "f082102232ff136d0fb2fc50cef8a02e4b3481c985f28ac190daa55d174b24f9"
+    },
+    {
+      "path": "src/game/shell/title_attract.cpp",
+      "sha256": "de307a3d768d5e50517e5246499c49773b8c946d363ce91d07deaccbbcfdfdc0"
+    },
+    {
+      "path": "src/game/shell/title_attract.h",
+      "sha256": "d0a1a189325094f0bea5005da7caaccb3769209c08e8ccf736c3f89d88ac7821"
+    },
+    {
+      "path": "src/game/shell/title_copy.cpp",
+      "sha256": "fb75f738abb7bd4fb250fd4cb5145ec4517fb9ce9fc5e121e8a445c89bf687d8"
+    },
+    {
+      "path": "src/game/shell/title_copy.h",
+      "sha256": "67a209556eb985350f13dde303bc67d869a1bbd668136e193184446a3a366476"
+    },
+    {
+      "path": "src/game/shell/title_draw.cpp",
+      "sha256": "58ec302d27ee935cc5ce1832069d62ba38ca435cc17a8ee03696575d70540ce0"
+    },
+    {
+      "path": "src/game/shell/title_draw.h",
+      "sha256": "6e4c6b00f8e2d3b9e6e6aafdd0cdf2a4a98919a23fe48dcd2a454e4f42929486"
+    },
+    {
+      "path": "src/game/shell/title_menu.cpp",
+      "sha256": "7ddd4dc8d4a4e7882d8f86b6ce099ac71a5118b200e45ff99d8c1f4b77c34d86"
+    },
+    {
+      "path": "src/game/shell/title_menu.h",
+      "sha256": "f28b751d8cca71c8da0648ad76a14e76c275040863710bf00c1008b68b1b7d85"
+    },
+    {
+      "path": "src/game/shell/title_options.cpp",
+      "sha256": "dc96f383f5c3b0563f12f39b1349b95730bc83ee9a290cf225f56861520ac6b4"
+    },
+    {
+      "path": "src/game/shell/title_options.h",
+      "sha256": "b2700c3ae1941d6ff9a3b4fdb63ad887cc904bdd0a20f0c5c89ee30ba3824b39"
+    },
+    {
+      "path": "src/game/shell/title_replay.cpp",
+      "sha256": "9eef57a6a56a0c2bdc135e025bd908c0150e4594a9e607f64b5a32c18646e47d"
+    },
+    {
+      "path": "src/game/shell/title_replay.h",
+      "sha256": "ef54fbc9b66b97e63137c3763f968b636b6734784e6716bb18a49c69909cde0b"
+    },
+    {
+      "path": "src/game/shell/title_screens.cpp",
+      "sha256": "711e7005322e4345746671db39dd205872dfa9cbd767c19371ace7262305e7ab"
+    },
+    {
+      "path": "src/game/shell/title_screens.h",
+      "sha256": "2ee80143bb130f7cc81bcea3a28bdcbfade8aea8e35fbd749ba97ea12b40e0be"
+    },
+    {
+      "path": "src/game/shell/title_transfer.cpp",
+      "sha256": "c3d79e0709905a221af8423bae23f5832115c44afb9dbab826b82f393b5805ab"
+    },
+    {
+      "path": "src/game/shell/title_transfer.h",
+      "sha256": "f9ca5f4eff6a3e2989bc22c49dd4f338a728f0206a9ef92fee014465e2f98e0a"
+    },
+    {
+      "path": "src/game/sim/ai_driver.cpp",
+      "sha256": "8aa201f477fc8b11d80fa22d32dfc064c4578111c65c75b6ec88765446a5b872"
+    },
+    {
+      "path": "src/game/sim/ai_driver.h",
+      "sha256": "d5bf799923c6949ac9caa2031f248cdc1282d381a8fec64f58d06ff88096fa6f"
+    },
+    {
+      "path": "src/game/sim/car_body.cpp",
+      "sha256": "00858f7564be600996037e0e9f0bca51d47f9612f808c0daa342e9fdfcaeee5e"
+    },
+    {
+      "path": "src/game/sim/car_body.h",
+      "sha256": "2a45651d5bfd9f663ee57825b90b7d4395d895f668e204ae1473b9f1c1136bc4"
+    },
+    {
+      "path": "src/game/sim/car_contact.cpp",
+      "sha256": "4b8b5d0afe8ad50e3d7e1510567c034fbb1bc1df53d1f8e52ea319a28100d8f1"
+    },
+    {
+      "path": "src/game/sim/car_contact.h",
+      "sha256": "9c12259bcb203d00cce01124ffa1ad6c5890088955a0174a52703dbae3f261e0"
+    },
+    {
+      "path": "src/game/sim/car_setup.cpp",
+      "sha256": "f5f4b5d963f23a3c235403d5b31c2b819cb30c72a9036ebf66b0fa968b754220"
+    },
+    {
+      "path": "src/game/sim/car_setup.h",
+      "sha256": "fc8c428dc1c87b19911a14b1ee58bd499b5ddec7e6cc55af928f222cd90b6e0f"
+    },
+    {
+      "path": "src/game/sim/dev_dump_constants.cpp",
+      "sha256": "8dc3ce38c8f4eae108068518f2f8b16b0f45a4b855e21bac1ea8fb8afad9dbbb"
+    },
+    {
+      "path": "src/game/sim/dev_dump_constants.h",
+      "sha256": "fad07066d409302f23190abb8305e9877bd1dec4eb1cd50e87a0d46059e85880"
+    },
+    {
+      "path": "src/game/sim/disc_data.cpp",
+      "sha256": "4d283e85c6261d75c1692b110380c5bc123f04fed9fa92fe9fc1a8933c2c1835"
+    },
+    {
+      "path": "src/game/sim/disc_data.h",
+      "sha256": "9d271ad3062ad4ffcca22f594b65a0ccda014616f39f855ffacfb8063615bdbc"
+    },
+    {
+      "path": "src/game/sim/drive_shafts.cpp",
+      "sha256": "d25ed74673b3e87e9578eff6e6cd76dcaa16e3001bbc2b0494c35a47f2b23071"
+    },
+    {
+      "path": "src/game/sim/drive_shafts.h",
+      "sha256": "591b5901dd4d1c81547e6f4708555a86b7f998ea9de4a06e15c449468c9df274"
+    },
+    {
+      "path": "src/game/sim/drivetrain.cpp",
+      "sha256": "06dd254af0e62ca4165daf2f62fd1544b57eeaa422663c3ae127e055ca6bde3b"
+    },
+    {
+      "path": "src/game/sim/drivetrain.h",
+      "sha256": "12848936ab1e1d551e6ede66a7db55e881ea7777b2c29c83419df5eb83094324"
+    },
+    {
+      "path": "src/game/sim/field.h",
+      "sha256": "bb11743d832244d779a3ffeb0a49f9b0c9024cfbdc358920da7ead327025b1e5"
+    },
+    {
+      "path": "src/game/sim/fixed.h",
+      "sha256": "b50c448f77868ff9b32db338717ba5c630277e8b6038560cde14d0e4b631eb17"
+    },
+    {
+      "path": "src/game/sim/ground.cpp",
+      "sha256": "262f0cfd3fce90124b99e6292ff4aa94e831588c9cae2d275cae7167f62b513f"
+    },
+    {
+      "path": "src/game/sim/ground.h",
+      "sha256": "c56b5a1c2b13fc21596f1b59471ffee95e539892cc2cf706514e73c6cb694f42"
+    },
+    {
+      "path": "src/game/sim/physics_core.cpp",
+      "sha256": "4c9ede768654743485bea1addb921e5266708475bff1a71d99cb982121ae92aa"
+    },
+    {
+      "path": "src/game/sim/physics_core.h",
+      "sha256": "175fd7c968e5c4515eea3772ff388251973a6fcd21fff88ac6552da1958ab38f"
+    },
+    {
+      "path": "src/game/sim/race_shell.cpp",
+      "sha256": "cbc4825db2ba971f9106128911d273b66ab0280b198f1637ecdee8a21f497ed3"
+    },
+    {
+      "path": "src/game/sim/race_shell.h",
+      "sha256": "0c566c87dc142547a86f109e60641a7d228180ca8ff38f6e1056ae39f41f2eb0"
+    },
+    {
+      "path": "src/game/sim/race_sim.cpp",
+      "sha256": "9ee28916fb533c7cebeec2ebe82b032a967bdeaccdfc08699e6598308673261b"
+    },
+    {
+      "path": "src/game/sim/race_sim.h",
+      "sha256": "5c2b5804698ecc67036e157408e2c39d9cb437fc869f9fd932951db1fe46b387"
+    },
+    {
+      "path": "src/game/sim/track_collision.cpp",
+      "sha256": "5c2a8364ddde2187139cee1e64d766fe2ade98a53cf7ad28863dde83d82d42be"
+    },
+    {
+      "path": "src/game/sim/track_collision.h",
+      "sha256": "55f48a71aecf2fba248c8778e4dfcad1133e2c43d202c8939a3628aa0235cc39"
+    },
+    {
+      "path": "src/game/sim/trig.h",
+      "sha256": "3c11e6740251205f42c60a7de717185c25337707270ffa8bf9a3ba45d313e638"
+    },
+    {
+      "path": "src/game/sim/tyres.cpp",
+      "sha256": "cd96f9d4f4af038db2d49fe66604094b5d35e01d77f59bc39975666a3d22ad51"
+    },
+    {
+      "path": "src/game/sim/tyres.h",
+      "sha256": "55175a26becee210218b1fe40fc64cd232b83f998e66a9926a92a600ccd86db1"
+    },
+    {
+      "path": "src/gt2export/car_gltf.cpp",
+      "sha256": "7f33493898cab41a4ccc5017b6dcbc743fea1df4c4a5f413388386cc0b1d9210"
+    },
+    {
+      "path": "src/gt2export/car_gltf.h",
+      "sha256": "775b36413b1a752edcfd307fca1e5c41898e41b5cb8095c385893314c3a97fbc"
+    },
+    {
+      "path": "src/gt2export/car_mesh.cpp",
+      "sha256": "dfb671721ad4695dfcd219bda0b00b2d78f08bad0e28a57d5d2aee6ceca90bb4"
+    },
+    {
+      "path": "src/gt2export/car_mesh.h",
+      "sha256": "4e0840749122c733da4b0d0542a9b8d5232db62628412977791a976a0a0dd4e1"
+    },
+    {
+      "path": "src/gt2export/car_preview.cpp",
+      "sha256": "1a532616be7b5fd5e91c05790620a431cdfb63bd86c727466651222dfb1f4881"
+    },
+    {
+      "path": "src/gt2export/car_preview.h",
+      "sha256": "4e089c622725105dd77475fa71e2b40a2064fd5925c4996b9b44e6dd7dd09931"
+    },
+    {
+      "path": "src/gt2export/png_deflate.cpp",
+      "sha256": "2dc21b258635962fc6f26527bd13102dffff1b024461d7dbde08d300d698d318"
+    },
+    {
+      "path": "src/gt2export/png_deflate.h",
+      "sha256": "f8f6db4d94461779030cc1b3cbce0fd36fb61d518a64a24023722aeb875abc6f"
+    },
+    {
+      "path": "src/gt2export/png_writer.cpp",
+      "sha256": "c8fb6000ca5eafaead6c74d0712e3b9ec6b37e0d283e35ab5ec68316b630365a"
+    },
+    {
+      "path": "src/gt2export/png_writer.h",
+      "sha256": "fad7affbb79ddd1353f751122054d2e7c61d97bc73584560a9ed706904301822"
+    },
+    {
+      "path": "src/gt2export/track_gltf.cpp",
+      "sha256": "f950eb573c116110b8b68a5a280ddd8a6d4de452de822b1c4b2e196ce69c7d5b"
+    },
+    {
+      "path": "src/gt2export/track_gltf.h",
+      "sha256": "31d944bd44360c8e2110c24845bf71d13c89e0f2c7cdcdb7352b0ede0065e9c2"
+    },
+    {
+      "path": "src/gt2export/track_preview.cpp",
+      "sha256": "3a9764d653d1074fb96a799b4bc8a9fe66c640337ea84e22337054524f998a90"
+    },
+    {
+      "path": "src/gt2export/track_preview.h",
+      "sha256": "11b6e4def5330ad0c10b335c80ffbdc7966ec7153ec6383b8e1e376db50b0028"
+    },
+    {
+      "path": "src/gt2formats/arcade_data.cpp",
+      "sha256": "9521f5fa399fc1fab970de200bca7538dee36975b0c5d404ba7eb6c4f875a81d"
+    },
+    {
+      "path": "src/gt2formats/arcade_data.h",
+      "sha256": "a5040c1eba92cc7665ae469934f9cab93d48f65e3e28cbc43cc2bea159bc331e"
+    },
+    {
+      "path": "src/gt2formats/arcade_eu_text.inc",
+      "sha256": "b496d4cd3aab187ce825421c70e98bd43cb96e693469a0ed3028378004f5a6bb"
+    },
+    {
+      "path": "src/gt2formats/arcade_eu_ui.inc",
+      "sha256": "681064802822bd5d37cc752ad48a4d02d7bb6dc24292c697aa65ae543329550e"
+    },
+    {
+      "path": "src/gt2formats/arcade_menu_data.cpp",
+      "sha256": "c86a8882d59b958510ccef7975219c323422ad18b13b255c12944aaec6dd80d3"
+    },
+    {
+      "path": "src/gt2formats/arcade_menu_data.h",
+      "sha256": "f6f8c74c384f0a5cf719c84704ba5ee441199bec842bef8c9c1551e546180991"
+    },
+    {
+      "path": "src/gt2formats/backdrop.cpp",
+      "sha256": "166370f0ccad72debf9a959fbc289c3a5932b5783279e5f7ecca18c95e32e274"
+    },
+    {
+      "path": "src/gt2formats/backdrop.h",
+      "sha256": "2b8f89f5499429b1494b90d10abe1c08fcb5110f0e7a9681384396d44155b210"
+    },
+    {
+      "path": "src/gt2formats/boot_images.cpp",
+      "sha256": "ba4d9d75e83ca056f34edd5ca1b30c81b8d29577f8f034b1a6951ec98dd419aa"
+    },
+    {
+      "path": "src/gt2formats/boot_images.h",
+      "sha256": "d4c26f48091d0b41fa7aa60c44ea6adcd8dce0cba41aaf7d5375a7b7d9e29943"
+    },
+    {
+      "path": "src/gt2formats/car_info.cpp",
+      "sha256": "760a634e5ea1cfc0c87c05950504b5dab34c6aa7d4f189676423347171cfcd44"
+    },
+    {
+      "path": "src/gt2formats/car_info.h",
+      "sha256": "fd86a70d03170dbe750c49a0cd2502770266a4fc70a17c7ab74c42da05fd2a3e"
+    },
+    {
+      "path": "src/gt2formats/car_json.cpp",
+      "sha256": "c89e8ba8cadee2c8b777272e72c992b50e5c64239092e83b25f5b5cedcfb9645"
+    },
+    {
+      "path": "src/gt2formats/car_json.h",
+      "sha256": "224d1449b88650a465f29fc5b8d5550ba062c19264867745f2f664094df5e352"
+    },
+    {
+      "path": "src/gt2formats/car_model.cpp",
+      "sha256": "40f179f7bd82767d43149de1e9303f0b6c05cb46a16ce6cd9c3159bb1fb513de"
+    },
+    {
+      "path": "src/gt2formats/car_model.h",
+      "sha256": "8401a25bd0b4009da07f4fba334a24b9f6f843c33ba050b1919eda0df3f81bc9"
+    },
+    {
+      "path": "src/gt2formats/car_params.cpp",
+      "sha256": "ea17c1f99e59176b5da467c44b463707e6dc8d54d0cb0989ffa8ec3a7b5a32bb"
+    },
+    {
+      "path": "src/gt2formats/car_params.h",
+      "sha256": "3d12c5f5b59e2390e4a14bcc178ebab727b0320639b6eaa107aa0de06cce653f"
+    },
+    {
+      "path": "src/gt2formats/car_texture.cpp",
+      "sha256": "3e092b749c1b4269a02b57b1eb17674cc1be79851fa202de24c8ef2eb5750e32"
+    },
+    {
+      "path": "src/gt2formats/car_texture.h",
+      "sha256": "e1b2904a684ce1716e4d7da6221c951346591e592edf4e06cc7594ea8996c37d"
+    },
+    {
+      "path": "src/gt2formats/course_data.cpp",
+      "sha256": "3d1afc9254129f76faf4ca08b35f222fb366e32410f87d86a4e701d75fef1498"
+    },
+    {
+      "path": "src/gt2formats/course_data.h",
+      "sha256": "9006bb8245a570b9c2c8772b7aa845cecfb71252d469d4840183af4f6f3add4b"
+    },
+    {
+      "path": "src/gt2formats/course_map.cpp",
+      "sha256": "039ec4292f0d94e1883d1413de1309a2496836fa301c41f77a386045e456ec56"
+    },
+    {
+      "path": "src/gt2formats/course_map.h",
+      "sha256": "c968919d8b08b45ebbf491c20a6310a041c25138da3c284faafa6169bfd43825"
+    },
+    {
+      "path": "src/gt2formats/exe_map.cpp",
+      "sha256": "f601c7cd948372a3b8c3f48e24abbb00332a13a8571ef6b0553d6695c9a6c516"
+    },
+    {
+      "path": "src/gt2formats/exe_map.h",
+      "sha256": "610446ce005abdceb6e3ac95c50b5db0fff884edb77460017cc40a47bb219c38"
+    },
+    {
+      "path": "src/gt2formats/exe_profile.cpp",
+      "sha256": "0ebff7647983b42298a3cb303fea62cace842103cc4dd413ae82f92ffde9358d"
+    },
+    {
+      "path": "src/gt2formats/exe_profile.h",
+      "sha256": "d636399f2a4a67e842cd5eae7d586b81450fcf54a9873b91e347ee8f855f03cc"
+    },
+    {
+      "path": "src/gt2formats/exe_profiles.inc",
+      "sha256": "625be5d312a4182e89245e63bf094acd5f5a899554b3b19be2e7b802396c672e"
+    },
+    {
+      "path": "src/gt2formats/gltf_reader.cpp",
+      "sha256": "8ed77ea2505b2f64eee9e1882103bbdd650b281137086ae68e270156cfbc6d03"
+    },
+    {
+      "path": "src/gt2formats/gltf_reader.h",
+      "sha256": "5dcbaac543affe2bd9533e8e97cb0fdd7586d149fb5d966d54ed6172ae386f3c"
+    },
+    {
+      "path": "src/gt2formats/gt_menu.cpp",
+      "sha256": "0378cc96254c8d8252cd85f857b194ada8e8fb1bf5bebca799a7734b273bf28c"
+    },
+    {
+      "path": "src/gt2formats/gt_menu.h",
+      "sha256": "c4460a7e88d367727f91d55f55e09104ffd9e09eb5b838bbc2e3152cfee58b39"
+    },
+    {
+      "path": "src/gt2formats/gt_menu_images.cpp",
+      "sha256": "ae7185dcd047caff4131abbe563c4626757bf5395d965c4dc84bfb965706dc06"
+    },
+    {
+      "path": "src/gt2formats/gt_menu_images.h",
+      "sha256": "e3ec8258ca3bc417b3d723357c877d4575d98b4be60d247e55038028716332a0"
+    },
+    {
+      "path": "src/gt2formats/gt_menu_list.cpp",
+      "sha256": "152937d95f4c06fbb3755f52249313a8985df55445610c17a6a5dae59d51949c"
+    },
+    {
+      "path": "src/gt2formats/gt_menu_list.h",
+      "sha256": "0ca0823c318081642484a1e38ebfc5bcae68ba4f86e70f13b53bdc7cc734972e"
+    },
+    {
+      "path": "src/gt2formats/gtmode_tables.cpp",
+      "sha256": "d4603725496bdbcc11abc4e75412aa53326f05e762fb4a0aa096675f581b4b86"
+    },
+    {
+      "path": "src/gt2formats/gtmode_tables.h",
+      "sha256": "4002c005fc4e89fcca94d7cd13b73fd1e7355ff2e7c13c04510175db1ff462f4"
+    },
+    {
+      "path": "src/gt2formats/hud_assets.cpp",
+      "sha256": "8adf2f857135cfcff7480afce30a432eee2fe3ffa6304882374f7a4b30e02730"
+    },
+    {
+      "path": "src/gt2formats/hud_assets.h",
+      "sha256": "f36360b2e68305433a1f40fe84fce8fd4341a2b04379c73cecee19ff7ed76a4f"
+    },
+    {
+      "path": "src/gt2formats/json.cpp",
+      "sha256": "5680b459b2bed8c4feac0b9e717f9d51b938adb6e8608e6c9b063873002f0a13"
+    },
+    {
+      "path": "src/gt2formats/json.h",
+      "sha256": "81ee6cebf73e491be4433de1c86c0b28a7bd3d35d396d3ff9c0934976958c8b6"
+    },
+    {
+      "path": "src/gt2formats/license_data.cpp",
+      "sha256": "c37887aa77b8fc9512c1267cb95ff86b1ab43f8e81ce6e115b5d80b1b3e6018b"
+    },
+    {
+      "path": "src/gt2formats/license_data.h",
+      "sha256": "a5ab54d46f3afe3f0e6350bbb61966d8e76967230e14941c51fd95f15626063b"
+    },
+    {
+      "path": "src/gt2formats/overlay_data.cpp",
+      "sha256": "5ff81c841e80f2d42483e2f28d4769dda5648c13b3aa19de3cf79d15630ab318"
+    },
+    {
+      "path": "src/gt2formats/overlay_data.h",
+      "sha256": "69f8c9fd13dd2097b33957da2419439dbbe7ef9d87c2c881e4ea27f62fba381c"
+    },
+    {
+      "path": "src/gt2formats/png_reader.cpp",
+      "sha256": "43b2fc482bc9f4f671b49c77606fcca4e8fe963a6f9021e84bc89e29ad90cce1"
+    },
+    {
+      "path": "src/gt2formats/png_reader.h",
+      "sha256": "1af823a0caab2f6ebedb3a2bcfa75963c7349e590d24b4c1785bdd6b32be750d"
+    },
+    {
+      "path": "src/gt2formats/psx_vram.cpp",
+      "sha256": "cdbfeee65c78a9ed5367b17995af3064292ac92bbcfd3532f76bb05f06206606"
+    },
+    {
+      "path": "src/gt2formats/psx_vram.h",
+      "sha256": "d8ec83e31cdfe37465e38bbc4460611066d19aa83b0f0fc2367f52373bae2362"
+    },
+    {
+      "path": "src/gt2formats/race_capture.h",
+      "sha256": "2a49cc3e55102e469ba79ca7bd1b06f168a5370f3c6d24671c8f22b906f5b762"
+    },
+    {
+      "path": "src/gt2formats/race_menu_assets.cpp",
+      "sha256": "977bdfb7fbe7bc14b3f04154a2dc199e5b6de4eb8fd45d75a22e6855b62443e8"
+    },
+    {
+      "path": "src/gt2formats/race_menu_assets.h",
+      "sha256": "6d277aa495e1efab7a8e93b9f71739fd598a3d4ace12c9bb3884cb33d1633c7b"
+    },
+    {
+      "path": "src/gt2formats/replay.cpp",
+      "sha256": "94dcb4be0f12a3c1c0ac86b4f786a8cdcd5aceb3855929a9b5fc4b4fea47c532"
+    },
+    {
+      "path": "src/gt2formats/replay.h",
+      "sha256": "ea11971c80b1711af32d05d0d05e89de272ee79e84c4123499c3b66c1576cf17"
+    },
+    {
+      "path": "src/gt2formats/replay_card.cpp",
+      "sha256": "169865e4895ab8d4562bf370d2803933ddff7e9f11d48c1a55b60077f81c1a8d"
+    },
+    {
+      "path": "src/gt2formats/replay_card.h",
+      "sha256": "9a7ef85aab86b66219bf37ece602b46bd5ca8e06164d17da0c9050ab33307b35"
+    },
+    {
+      "path": "src/gt2formats/save_data.cpp",
+      "sha256": "4e70f6415ea81c460aeb0c065405c35f9ff425f9312931d199f37a77740455c6"
+    },
+    {
+      "path": "src/gt2formats/save_data.h",
+      "sha256": "74c2a4c7f335b0bb8d34df8e8aa786a1cf09b5e4bc21d0d4c48d07d2c5b7bccf"
+    },
+    {
+      "path": "src/gt2formats/seqg.cpp",
+      "sha256": "44a5abe517aac815dd682fac812a0e552d820b1d9ab45f1d0a300d3974b56cf1"
+    },
+    {
+      "path": "src/gt2formats/seqg.h",
+      "sha256": "73ced800745fee4cf7e9ba905ab2c14beec7e39316faa346b1d3f2cf9e1734fe"
+    },
+    {
+      "path": "src/gt2formats/sha1.cpp",
+      "sha256": "6af382bd0f39dd424c4f1dde1ce2096050791158b560244fdc8175e2417b265a"
+    },
+    {
+      "path": "src/gt2formats/sha1.h",
+      "sha256": "1191884fe327a6ace4af15d316c1662553fffd50c30660d049202269f622464b"
+    },
+    {
+      "path": "src/gt2formats/sound_bank.cpp",
+      "sha256": "75d6f015de506d7c538f3ce1f995e91ece9641db23b25baef3f8a42b74da3061"
+    },
+    {
+      "path": "src/gt2formats/sound_bank.h",
+      "sha256": "8e3d507a034f908fca69c00decae32e957c0923918cba64ba59bd07fc3381699"
+    },
+    {
+      "path": "src/gt2formats/sponsor_boards.cpp",
+      "sha256": "727758135e2587b82bdf252243680057382381ec96cf0ccad9ad2f11d8a7efab"
+    },
+    {
+      "path": "src/gt2formats/sponsor_boards.h",
+      "sha256": "46ca5e478db3bdb4c41138712d30bfcdb51cffa4e269405b8b8f18a6adf9d131"
+    },
+    {
+      "path": "src/gt2formats/str_video.cpp",
+      "sha256": "4f215b3e7559c1e27f4ea3e861e669e163bdc57cafeea7be6a5b8d981562a172"
+    },
+    {
+      "path": "src/gt2formats/str_video.h",
+      "sha256": "8722277cf9a41943d3e19e5c977722c865a9b4bbd6057b9d6334b82da1c64765"
+    },
+    {
+      "path": "src/gt2formats/title_assets.cpp",
+      "sha256": "95126cc3a54a2db0192907effd869f06d8ed6d8b44a28cd3b9336f642e31b9a8"
+    },
+    {
+      "path": "src/gt2formats/title_assets.h",
+      "sha256": "4c82ebbddc8bcf84210987a58c2923a807e015147f71dc1c59bc6e932423a817"
+    },
+    {
+      "path": "src/gt2formats/track.cpp",
+      "sha256": "88c261fb105c67b4ff7d629d84adc25c89c3230d4563cb5b9aa567b6cab579aa"
+    },
+    {
+      "path": "src/gt2formats/track.h",
+      "sha256": "243a5e53c73e773d7123fb9db98e0a0ba77e5f31965204c4ea2dfd5e6f3eac95"
+    },
+    {
+      "path": "src/gt2formats/track_json.cpp",
+      "sha256": "1fa7ba4209921939a92d423a469278b070d0594f977ddb2851d2699676f60562"
+    },
+    {
+      "path": "src/gt2formats/track_json.h",
+      "sha256": "24db6ff1ca4f22d803cf8197a378a2bafa325ab339249ac632475d1804a9f9ad"
+    },
+    {
+      "path": "src/gt2formats/xa_audio.cpp",
+      "sha256": "65c7670b3732ec075df7a991db6d62eaf3444bf858395bda2742179e61167be1"
+    },
+    {
+      "path": "src/gt2formats/xa_audio.h",
+      "sha256": "e94eefc58b43a2cb53a432f061653eacdc4d07e32547535bdba418555e2cd9e7"
+    },
+    {
+      "path": "src/gt2vfs/disc_image.cpp",
+      "sha256": "78b6b14028e237e191bb11f977cd81f884f9c7588724f249247c70d47d19f745"
+    },
+    {
+      "path": "src/gt2vfs/disc_image.h",
+      "sha256": "da88ff018249bfaddbeb803caf78c726f56b58202e30b91b7c7f53ca663207c4"
+    },
+    {
+      "path": "src/gt2vfs/gtfs.cpp",
+      "sha256": "05c561642ffa0692f426bbd11d024838661512a373d898aa0b8534553a80a139"
+    },
+    {
+      "path": "src/gt2vfs/gtfs.h",
+      "sha256": "291dae4274641902c94f33c369898789b233988c61fd52c007d7dc8d1ec8ae54"
+    },
+    {
+      "path": "src/gt2vfs/inflate.cpp",
+      "sha256": "a678600b12a959601bf6575f1ddd932ad5aa9085168ab7146faed2271d3a1ae5"
+    },
+    {
+      "path": "src/gt2vfs/inflate.h",
+      "sha256": "127bb8e0c9877ba90d3ee7d202818635b51ff2709b690a77ac1fb345e2f6ccfb"
+    },
+    {
+      "path": "src/gt2view/billboard.h",
+      "sha256": "2a4ec5f0753ecb9799d954de1d18417ec250a18f7941d17af7e94eb5691a15b9"
+    },
+    {
+      "path": "src/gt2view/change_parts.cpp",
+      "sha256": "c7c329c77a9403fc3c9ce9b4c0912401141ad37ee2a686069dbc64faf035d48d"
+    },
+    {
+      "path": "src/gt2view/change_parts.h",
+      "sha256": "6ebd7e7868ce981ee3977fefd177ea341cec7e74b9f5175b18e5bad4f78ab041"
+    },
+    {
+      "path": "src/gt2view/decoded_texture_cache.h",
+      "sha256": "8e53af7c4e75a70d18e18ce2405dd90468828007790335b5b0d55b6594ed4374"
+    },
+    {
+      "path": "src/gt2view/decoded_textures.cpp",
+      "sha256": "4d4f843ec573eb280be591a46ba22fcafeb59d0acab1481764938c4428de6f7f"
+    },
+    {
+      "path": "src/gt2view/draw_culling.h",
+      "sha256": "f398ab7ad56ad4e0b32d7f289b9c9202d08885e89f9b78be59a84e04f23f1b5d"
+    },
+    {
+      "path": "src/gt2view/foveation.h",
+      "sha256": "d9a624aed9a44528b2d21dae26d78881c60bd70e0ab8d3171754a2339fc4c2a2"
+    },
+    {
+      "path": "src/gt2view/glow.cpp",
+      "sha256": "3a61ab46931f4bcc3baed9bf74de306ece4cfeaefe38f0b2b18d4eac3ba8859c"
+    },
+    {
+      "path": "src/gt2view/glow.h",
+      "sha256": "e80689b9f47619bab375a739d6c94a844a3d107eeba8c337e8027d9979480330"
+    },
+    {
+      "path": "src/gt2view/hud.cpp",
+      "sha256": "ae7a9ee03618e2569a12b0ea7c06f7113f70561da97d7b8e5b5c1af900ba1541"
+    },
+    {
+      "path": "src/gt2view/hud.h",
+      "sha256": "1c7aa080f545f60b4f271fdefc6ade4c79f032156d4c487f1b442d51a1be43a5"
+    },
+    {
+      "path": "src/gt2view/hud_visibility.h",
+      "sha256": "b00102dabbec51ed29eeb07d13ecd95314eb047ff1952937b4dfaa2d85998778"
+    },
+    {
+      "path": "src/gt2view/machine_test_views.cpp",
+      "sha256": "fb5a91fdf582201c04865b78759904a4346db50ed87cff752797525f53ff3bad"
+    },
+    {
+      "path": "src/gt2view/machine_test_views.h",
+      "sha256": "58d890a7a7699d7e3bd4baf5274660eda852d2bf8dd3df0383ed4e2a0da6637a"
+    },
+    {
+      "path": "src/gt2view/main.cpp",
+      "sha256": "d8eb5a08760761cb60e60c72cb64a9c97fd0b35de2751fc2ef2b4b7d00a10c66"
+    },
+    {
+      "path": "src/gt2view/menu_view.cpp",
+      "sha256": "be36d03f5fa0e8b09eba4735c22a861f82710e1d1f152ff3c351e259272206a5"
+    },
+    {
+      "path": "src/gt2view/menu_view.h",
+      "sha256": "b9f85a9308c7d058dc80244bd63cb60bc0608a00fc71efdc656733bbdc37fd5e"
+    },
+    {
+      "path": "src/gt2view/movie_view.cpp",
+      "sha256": "ab03c2c615e59ca5265c51432fd73806c5241cfbf29e8f9fa0c231b321f12608"
+    },
+    {
+      "path": "src/gt2view/movie_view.h",
+      "sha256": "a7138816ee1af2aab44528c1b006050a15a39af65a64d2d8a73d3a95543c74bc"
+    },
+    {
+      "path": "src/gt2view/panel_view.cpp",
+      "sha256": "004f034d0aa5cf54c805a69af0640fec40ae056ecb47b828d77942f787af2d78"
+    },
+    {
+      "path": "src/gt2view/panel_view.h",
+      "sha256": "ce4c06e7c880b53db9e6abb9ee90104c8eb376d4998de385d1b7aae49afafc49"
+    },
+    {
+      "path": "src/gt2view/particles.cpp",
+      "sha256": "57996bcf4f2137b6ccd6d5fcc0864519bf98b0dc69c8cc880dc5330d46440766"
+    },
+    {
+      "path": "src/gt2view/particles.h",
+      "sha256": "6031a0d6995479e74a436cd5f84892b19fefb7363aa3dc5ce9dd69e09785e0bc"
+    },
+    {
+      "path": "src/gt2view/power_graph.cpp",
+      "sha256": "5f5ed5693e360b8203596321c061bc6e092438f3a61237792700a9e7307346f8"
+    },
+    {
+      "path": "src/gt2view/power_graph.h",
+      "sha256": "dc26029d764793e10a6740a33f362c0bfb8ddec110599c0591bd4018e664adde"
+    },
+    {
+      "path": "src/gt2view/psx_gte.h",
+      "sha256": "7979937a5258aecf3f19c60dd42aa1e61df7c764ac829241c8dd1d36f6ec82b2"
+    },
+    {
+      "path": "src/gt2view/race_card_screens.cpp",
+      "sha256": "bd41ebbc5142c78e14100cc653676e650b0dcb310d70567f73d236b4b31c0ec3"
+    },
+    {
+      "path": "src/gt2view/race_card_screens.h",
+      "sha256": "20ec81c8118d2785e1412ae449387732d315376ebb13ef00fecde41a0d72a32e"
+    },
+    {
+      "path": "src/gt2view/race_menu_views.h",
+      "sha256": "974e2e5ce90febc9c8c35079f3b0dd687760c3000415421e695aa09512c7fd21"
+    },
+    {
+      "path": "src/gt2view/race_menus.cpp",
+      "sha256": "2fb6dc2fc8c0f652c8addff65d59dce4c052d6577d248d508d2a68af88351046"
+    },
+    {
+      "path": "src/gt2view/race_menus.h",
+      "sha256": "b885d008016cb1bd731a2de14613a6f684c9c8c2959838b401fb489223107571"
+    },
+    {
+      "path": "src/gt2view/race_overlay_screens.cpp",
+      "sha256": "0d39878cdc61d5b007ccc2a8c5c3b6a6597c4dbc705c662ec8222ec377868767"
+    },
+    {
+      "path": "src/gt2view/race_overlay_screens.h",
+      "sha256": "7e26195d7fcac68d41247bbfce8f9ea5b0740c83f435ec8d51da5e20b1bd9c47"
+    },
+    {
+      "path": "src/gt2view/race_record_screens.cpp",
+      "sha256": "9f2c0dc2e9b42a51e1acc8235042b50e3e5cfef9d52b44244c9c54bebb53f5a2"
+    },
+    {
+      "path": "src/gt2view/race_record_screens.h",
+      "sha256": "6fbf9538de766ad0e277660aad868f727c8ad526491609e98380c3661a495b5c"
+    },
+    {
+      "path": "src/gt2view/race_result_screens.cpp",
+      "sha256": "dceb0fc4d2e54e5fed12be20ce807fb95bc153b530bf3180004144a59af4176e"
+    },
+    {
+      "path": "src/gt2view/race_result_screens.h",
+      "sha256": "73feaea5613c7ffd8760ccd64d3454ccd5d7e9bf31b66171fb645937c1ecaba2"
+    },
+    {
+      "path": "src/gt2view/race_session_screens.cpp",
+      "sha256": "be142a772e9b650bb692aaff73091d537fd44c8a5a1923fa84fc0e345f43a3f5"
+    },
+    {
+      "path": "src/gt2view/race_session_screens.h",
+      "sha256": "42950c9b25b9f8c01f6d1d5fdb751c5d1deff85b90b39f027e1174c264ba6fc7"
+    },
+    {
+      "path": "src/gt2view/render_capture.cpp",
+      "sha256": "5a27135fea510f2057ca6dcfd5edbfca950081b9834b37bcf6323d2c111d3d14"
+    },
+    {
+      "path": "src/gt2view/scene_assets.h",
+      "sha256": "80ecc660d780990c54481a1393d5cd6542e3330f71c900b688d0227385d2d98f"
+    },
+    {
+      "path": "src/gt2view/scenery_visibility.h",
+      "sha256": "e196daa699c83421ab9bb17d12306531e26812aa14818d9ee8bc0856a7860129"
+    },
+    {
+      "path": "src/gt2view/shaders/scene.frag",
+      "sha256": "f550327d17219c624fab9e6038a9b5f594b373a848bb246b99aa0e311962b93e"
+    },
+    {
+      "path": "src/gt2view/shaders/scene.vert",
+      "sha256": "6facb8f83c370e8ad3f0d68ba689e60f376ef671e187e48bd85b7d8d32f54942"
+    },
+    {
+      "path": "src/gt2view/shaders/scene_cached.frag",
+      "sha256": "a4549514bb97d32e66a6323842eda4266d1541e02c138a7d21f2061bb1728ade"
+    },
+    {
+      "path": "src/gt2view/shaders/scene_stereo.vert",
+      "sha256": "c1141ab0de65403bef02e274d3a6c70883e43c74f2700d4f4e63e4522ecfae4c"
+    },
+    {
+      "path": "src/gt2view/shading_rate.h",
+      "sha256": "784579d22f852652e9cec5844ba62baaa33aaa9669ae986251480d047308c444"
+    },
+    {
+      "path": "src/gt2view/stereo_foveation.cpp",
+      "sha256": "3d862c68deb19c4703ba47ba8f7c618d5775a1326057d06ad69fa4671ba244c5"
+    },
+    {
+      "path": "src/gt2view/title_view.cpp",
+      "sha256": "bb1685893bec1ce4fb74249b37357da94284394341d4fb4baeba7a7df799d3ac"
+    },
+    {
+      "path": "src/gt2view/title_view.h",
+      "sha256": "b6b22f567a8ccab7690d66e1e865879d9a70fa26f81e869232241b3017d89cbe"
+    },
+    {
+      "path": "src/gt2view/vk_context.cpp",
+      "sha256": "77f8e08d808a844d8caea47f1dbd30e46ee34a0250f47d8b3ffb87cbc322767d"
+    },
+    {
+      "path": "src/gt2view/vk_context.h",
+      "sha256": "346679cde46d3cf03619d4f920eeae5c6c21da859d36f89f7c19e3814904e51f"
+    },
+    {
+      "path": "src/gt2view/vk_context_android.cpp",
+      "sha256": "f4a22359403cdd9517904e803ef5a67da194c76fa43dbd2fd9840aed7693f5c9"
+    },
+    {
+      "path": "src/gt2view/vk_scene_renderer.cpp",
+      "sha256": "7124d2f4be47111d240c18b8ab4f1346f04fe3327b5362c1916bfe7db06a5e5f"
+    },
+    {
+      "path": "src/gt2view/vk_scene_renderer.h",
+      "sha256": "53fbe1ddc5c578d5a0b21987afb7df08521e990830d90fb48a5b37f32504ec81"
+    },
+    {
+      "path": "src/gt2view/vr_driving_visuals.cpp",
+      "sha256": "ea39b6e3500d5261e3a95d684cf23c764bbb74756c3a7da826c58dbf079552c7"
+    },
+    {
+      "path": "src/gt2view/vr_driving_visuals.h",
+      "sha256": "51e339f4b071f5b400f234791965f91c0c981b4137627fb045ee766da835e576"
+    },
+    {
+      "path": "src/guest/bus.h",
+      "sha256": "9b5fc136da60d71c141e5b32de525d286a0818f0c14394e733baa9183133e864"
+    },
+    {
+      "path": "src/interp/gte.cpp",
+      "sha256": "ebe85e96dec4a6fa2459baa9b477c9a0a08dd64119eef52316d54f926cd94ed6"
+    },
+    {
+      "path": "src/interp/gte.h",
+      "sha256": "7a9fe4b45f9d5cf6a68bb54fa42835d192145fe70cb13ec40aa34ab1453cf49f"
+    },
+    {
+      "path": "src/interp/r3000.cpp",
+      "sha256": "5d24c8548b4573601994c53d60215f45859fa252c31e357e12e451a8412e243e"
+    },
+    {
+      "path": "src/interp/r3000.h",
+      "sha256": "5ab3119ca56e61e1d64f8e027213510ed67c50194a790b9b2258b771941cf835"
+    },
+    {
+      "path": "src/machine/cdrom.cpp",
+      "sha256": "b3f779ef3d7f570de6e993dbe79f86ecb2033d9b73522d1520b3447681a31f6d"
+    },
+    {
+      "path": "src/machine/cdrom.h",
+      "sha256": "fe0227934be4a2b8f748cfbdbe200ee0d7eba6d0654a1efa193c1391d43856b7"
+    },
+    {
+      "path": "src/machine/gpu.cpp",
+      "sha256": "ab153ee94e94da48ade582e1ed9aec81cbb698d650ebd1594b40f323e5e7e23b"
+    },
+    {
+      "path": "src/machine/gpu.h",
+      "sha256": "eae307f90093721d2b2acfc8b8a5b89a17a861e5340a9afdc86151ce226c6419"
+    },
+    {
+      "path": "src/machine/machine.cpp",
+      "sha256": "291ab4e66dfcd402c848e46f70322c979fc7270eca5f3b723d21788fb345ff9a"
+    },
+    {
+      "path": "src/machine/machine.h",
+      "sha256": "b41a644c103efd3c0989ed7bbc16d5d9017fe830a71da5b7cc552e9f3c5a803b"
+    },
+    {
+      "path": "src/machine/mdec.cpp",
+      "sha256": "e55fb67452c412136d4632281378ac350e3abc3563dab707c3e4b7068198b958"
+    },
+    {
+      "path": "src/machine/mdec.h",
+      "sha256": "b2634b3a019b3f5dc77c36c5ff2cb22648378c236a1449096c56502581f1f379"
+    },
+    {
+      "path": "src/machine/memcard.cpp",
+      "sha256": "32f0d026fb38b93e9ed408f220af90c8858af9878516a50730bcabc1b6ab3b23"
+    },
+    {
+      "path": "src/machine/memcard.h",
+      "sha256": "3db4f83edc203ada97e067989d0efecb1af12f1ab28061525dd5b421d53afdc3"
+    },
+    {
+      "path": "src/machine/spu.cpp",
+      "sha256": "20cfb7e7ab48a934f46c371b4b41eb2e0f56d1545a3dc78924f24df82dc21871"
+    },
+    {
+      "path": "src/machine/spu.h",
+      "sha256": "a0ae5d9e2d042f2c51c6be28fc1ecbc2c153bfa1d2cea5c018d9aceb8f58f9d3"
+    },
+    {
+      "path": "src/platform/input/android_input.h",
+      "sha256": "3de817a167ad64d4b559ba7151bdaa271dd908168f7d59c2ae6ab9b85fa8df80"
+    },
+    {
+      "path": "src/platform/input/dualsense.cpp",
+      "sha256": "0e16576b344166e6a3df7900264569452d07ffbd063dc4217c07fcd8bf4d53d0"
+    },
+    {
+      "path": "src/platform/input/dualsense.h",
+      "sha256": "68e227f8dc9fe8b997a253bf68b2d9e77e3ed6a25e1e8de5a7bd1be7b2a6fc11"
+    },
+    {
+      "path": "src/platform/input/dualsense_report.cpp",
+      "sha256": "a20f908ae877a9e4942eaabf10f22d04edcc69f84d8d73133ffb1020996fcf37"
+    },
+    {
+      "path": "src/platform/input/input_system.h",
+      "sha256": "4c82828168bc72c4c6b9f110cf85682a4f22049cd0bec56112f8aead93f1fb76"
+    },
+    {
+      "path": "src/platform/input/input_system_android.cpp",
+      "sha256": "40fd2e63240ec62ee4828c3029ef3bde64dcc41e5ed95e4f7974d6a9024dfa20"
+    },
+    {
+      "path": "src/platform/input/input_system_win32.cpp",
+      "sha256": "b0eb8a4131d247ef31964fe76f38d3ddaf30805f8a6387f7e925b3a6a4c0407c"
+    },
+    {
+      "path": "src/platform/input/ps1_pad.cpp",
+      "sha256": "bbe94491f96795dbd475d836965d263719833222fdce80834ad087ede0c8e1cf"
+    },
+    {
+      "path": "src/platform/input/ps1_pad.h",
+      "sha256": "1c977a9484345a4fd8ac500d5567b00c7a7ad052a6b1a93958bd66b9b110ed33"
+    },
+    {
+      "path": "src/platform/os/keys.h",
+      "sha256": "9e61d127764c9e6d8bbb8395c563028e3660a721e269806e3cbd700da42f872a"
+    },
+    {
+      "path": "src/platform/os/paths.h",
+      "sha256": "aba2eb407bc61bbe3548d1e97db0bd2478eee8bef1e0fa6e9ec910b57e24be3f"
+    },
+    {
+      "path": "src/platform/os/paths_android.cpp",
+      "sha256": "9ff27f41720ebddb66b476d34b19d50360d4ee3eb92cea772478412761ffb68a"
+    },
+    {
+      "path": "src/platform/os/paths_win32.cpp",
+      "sha256": "af9a809326d917fda0819ea3ed060bc8f155f1271ec3ab68d1b6f792c0be4a57"
+    },
+    {
+      "path": "src/platform/xr/vr_controls.h",
+      "sha256": "0e75bbee4b734a46e0a57c17fea4de1d6d3b7224002c78a4e5c4eb251e6960ce"
+    },
+    {
+      "path": "src/platform/xr/vr_driving.cpp",
+      "sha256": "a76f15aea8a87372a7a001b3e1d560cda7772d7112fe39ee3e6549f89d66e46c"
+    },
+    {
+      "path": "src/platform/xr/vr_driving.h",
+      "sha256": "12d55bb0fb28545ff0fd2fb9eeb3caf8cb8de84d46caa1f238114ab316725b9a"
+    },
+    {
+      "path": "src/platform/xr/vr_rig.cpp",
+      "sha256": "99cc5965853c167544d022d150ae0327131d9a3a790d2622c0c3a7a8f934a35b"
+    },
+    {
+      "path": "src/platform/xr/vr_rig.h",
+      "sha256": "6c616091fbd99b5b6c8fa5680a943c48098ebea7c87b68decf7aaa282d0d605b"
+    },
+    {
+      "path": "src/platform/xr/xr_actions.cpp",
+      "sha256": "72a52d5cfdc7e770705ae71efd17908c0eb6e1f9bddf39ac74a7f00706612870"
+    },
+    {
+      "path": "src/platform/xr/xr_actions.h",
+      "sha256": "bc00bc8f2914855a6bf5d25c0382240ac3c578ae531cf5f0f5c8eb83a2ca8166"
+    },
+    {
+      "path": "src/platform/xr/xr_session.cpp",
+      "sha256": "45d090e80e9e44cc734f5fc23658926f01e42a1878e0a176baf3f348d67e19d0"
+    },
+    {
+      "path": "src/platform/xr/xr_session.h",
+      "sha256": "642b0042cca82537971368bfec3e5439424034713c2d89e0fc79bd81bd615d4c"
+    },
+    {
+      "path": "src/scene/scene_extractor.cpp",
+      "sha256": "3c1a75ae56c15d7e566b5e5349de3d121bdd6eb5ebfe5f7daf673ea1205d9da4"
+    },
+    {
+      "path": "src/scene/scene_extractor.h",
+      "sha256": "a9e62e6f88dedea1267e695ed933e9e235797a53375e563022fab46bae154e4f"
+    },
+    {
+      "path": "tests/checks.cpp",
+      "sha256": "c469a5fc04c0f4964db8f089b96363c3aa6f19d901c8e66aacaebff653edb77e"
+    },
+    {
+      "path": "tests/driving_checks.cpp",
+      "sha256": "7fdc76247fc403c21e756b4b95ebb91c994cd83ccae1e896037186a835813eb9"
+    },
+    {
+      "path": "tests/quest_features_checks.cpp",
+      "sha256": "147011015761cad0face7d61bb790a2272e46222002780b5d147779382e2a42e"
+    },
+    {
+      "path": "tests/vr_checks.cpp",
+      "sha256": "397c67faa4eac6171ee6a94a57b20093e2f6d0623f2c6d472bf70dec0fb4647c"
+    },
+    {
+      "path": "third_party/openxr/LICENSE",
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr.h",
+      "sha256": "7ed09d375f107699fc481331a20eefab59df3143e304558eef881e4adfe89c64"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_loader_negotiation.h",
+      "sha256": "6cea662d58721ad77712bcdbc5620426d8c6e509abf92af75c9ed28b8df9dd98"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_platform.h",
+      "sha256": "150939f39aaf1159e9f59ab53b5d5863c08d5777efa13820b5cbcd3562eb068d"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_platform_defines.h",
+      "sha256": "7dc30ad27f1082a71f84f5f5adf10762558fc9fe57fdc7628d796d22be3b0dbe"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_reflection.h",
+      "sha256": "14c82ae26043f9b211462757554a2cbeb4bc966d0fca5a2a17eafc36b395b2b0"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_reflection_parent_structs.h",
+      "sha256": "6c0c2856a20e47a4edd7e1a14a099ec202c91f316bdfa53fec61294b29e70b05"
+    },
+    {
+      "path": "third_party/openxr/include/openxr/openxr_reflection_structs.h",
+      "sha256": "b453717e22cc4b0328b5355097dbc07012ddc9f3ea28b21850193596bf5cf7a8"
+    },
+    {
+      "path": "third_party/vrhands/BigHandLeft.uxrh",
+      "sha256": "6bb32e6f79ed6dba401bd36dd39d3178f8259096f889ef01c870d057134eb535"
+    },
+    {
+      "path": "third_party/vrhands/BigHandRight.uxrh",
+      "sha256": "48b14a77efea68027f5ae6723994cadc06dac58708ecb7339cc16ecb1ade2478"
+    },
+    {
+      "path": "third_party/vrhands/BigHandsAlbedo.png",
+      "sha256": "44d2df3fb67fa65aaa448f2a8847809d0a24e8400445d2720759fca4232a3d9a"
+    },
+    {
+      "path": "third_party/vrhands/MIAMIVR_LICENSE.txt",
+      "sha256": "8615858cc6cfab09464c956ae2125f134640c5f0e73dd1c8a1b15b5b94dc76fe"
+    },
+    {
+      "path": "third_party/vrhands/SOURCE.md",
+      "sha256": "b65b38b0acb3ce469c0ffe814902418bca806e8defb837d31762127c83b837fb"
+    },
+    {
+      "path": "third_party/vrhands/ULTIMATEXR_LICENSE.txt",
+      "sha256": "98d62fb83874ee4d37fe9601894adad2963ccb0fe6496af4831b883098dc6e61"
+    },
+    {
+      "path": "tools/Gt2Disc/FileReader.cs",
+      "sha256": "f980986f7c26220b01308aa6a909231f1af4fa5474d3218ca5fe390febcf0d6f"
+    },
+    {
+      "path": "tools/Gt2Disc/Gt2Disc.csproj",
+      "sha256": "d92ee85b95926886e629df2918ff54ccf99e99b54498c6aa50a94fa91f3bd9c2"
+    },
+    {
+      "path": "tools/Gt2Disc/Iso9660.cs",
+      "sha256": "71662e57bfa413e0c82a691e8954fba351144996a1d9ff0dc51c51cdf0ffa712"
+    },
+    {
+      "path": "tools/Gt2Disc/Program.cs",
+      "sha256": "c27fcf0c1c21a532202d533432666e692332efd86ccb23306e797f3c22bb0d25"
+    },
+    {
+      "path": "tools/Gt2Disc/PsxExe.cs",
+      "sha256": "9fdb18ad37cfb1dd48555ecb32f02bb4c074127a1c8c08f05abfe358b5c0a69c"
+    },
+    {
+      "path": "tools/Gt2Disc/RawDiscImage.cs",
+      "sha256": "334ef018449362770d576fc2b12ccaeb618dd8999f6b5479317d68c483eda0ba"
+    },
+    {
+      "path": "tools/Gt2Exe/CodeAnalysis.cs",
+      "sha256": "563120727453c1f572aac95c266e0318e3dcc68c104e73cfd04c6e64056bfb6c"
+    },
+    {
+      "path": "tools/Gt2Exe/Gt2Exe.csproj",
+      "sha256": "9b550f1d05b5cb007ee51bd6ed9fe9a4bd5bd0cd28423f19166170bad1c9aa0f"
+    },
+    {
+      "path": "tools/Gt2Exe/Mips.cs",
+      "sha256": "62ff734bcd5bf41c3b3f36fcf940e9e837701cc26d942aaa66f04a899a3d8de3"
+    },
+    {
+      "path": "tools/Gt2Exe/Module.cs",
+      "sha256": "8443e7282a5a79c2550ffa8e53a2a4b77c3c478599b033fe1e1e87e15bda5555"
+    },
+    {
+      "path": "tools/Gt2Exe/OvlContainer.cs",
+      "sha256": "28dc6a1ee69660a19d9a97ded1d6f4a42693f2270367c946125059f33df2e2a6"
+    },
+    {
+      "path": "tools/Gt2Exe/Program.cs",
+      "sha256": "1995e06f675c66865bbd3ede4629095571bc37a91506898127005b832ca44e4a"
+    },
+    {
+      "path": "tools/Gt2Exe/StringScanner.cs",
+      "sha256": "02d1c6cadcf4aa06e92c8beb6e2b7afc5d635e6aae6be47b996c847f9d3c45af"
+    },
+    {
+      "path": "tools/Gt2Vol/Commands.cs",
+      "sha256": "dbec4dda956c2b796f2db3cb278c2f26da8add9e418077b563fc9a4fd054c4ff"
+    },
+    {
+      "path": "tools/Gt2Vol/Gt2Vol.csproj",
+      "sha256": "4cf764c6921b02784abaa59a357bc2b9d45157ed485d24eb827867642d423bb1"
+    },
+    {
+      "path": "tools/Gt2Vol/GtfsVolume.cs",
+      "sha256": "555e8fa9b7fc89d2d4ab62b5934768c9a4c785b4edb61481e797eddaec60af37"
+    },
+    {
+      "path": "tools/Gt2Vol/IdxSplit.cs",
+      "sha256": "06e415ea68cc2d0fb12c041edc8ef526571d1dc009f0a998f5ccefe4f51a06d0"
+    },
+    {
+      "path": "tools/Gt2Vol/Inventory.cs",
+      "sha256": "9263c74af5344d8a8e083aaa7f5d850e1e81d8ae778182ce60d8c5c5a4a3ceb6"
+    },
+    {
+      "path": "tools/Gt2Vol/Program.cs",
+      "sha256": "5f05aa213cc4f3baa226a2f7f3427b32d0dad824bce00d6fdf7d9ab4d12e164b"
+    },
+    {
+      "path": "tools/Gt2Vol/VolDiff.cs",
+      "sha256": "3dc1d9460dbe2e17a8b84ed6e1f1e20521f79b9107118621d089a1272f47e5b4"
+    },
+    {
+      "path": "tools/gt2game/android_activity_state.h",
+      "sha256": "c23258c6a82cf2d9d84f16eb69cdafe3bc5aaddb783d97bc22d99ccecfe84976"
+    },
+    {
+      "path": "tools/gt2game/android_host.h",
+      "sha256": "60ca03fafdad6b0d74a82e1ebb7c8357d9c5167d08bf63184e3146dc30edbf8e"
+    },
+    {
+      "path": "tools/gt2game/arcade_menu_check.cpp",
+      "sha256": "3b5a6808011902b10edd415245618c457ae21d670bf200087a0446666d448e9e"
+    },
+    {
+      "path": "tools/gt2game/arcade_menu_check.h",
+      "sha256": "b2ca825116a38b1709b1fd9815b9943706294e580bb5d8d8332295a8a1f6fc67"
+    },
+    {
+      "path": "tools/gt2game/arcade_mode.cpp",
+      "sha256": "d73d3037dbd9e90495f18adda3ba672e4a77058d6ca64ac734aa3f825fe6e973"
+    },
+    {
+      "path": "tools/gt2game/arcade_mode.h",
+      "sha256": "a348d2c155b26cbcf216e891a5314c7fd89116d9557433371d7e8a46dcc52b6d"
+    },
+    {
+      "path": "tools/gt2game/arcade_post_race.cpp",
+      "sha256": "68b1f0b81e3ed7c2923d2dcb29e27b2cd703c8132777de16cc11b66fd3635d37"
+    },
+    {
+      "path": "tools/gt2game/arcade_post_race.h",
+      "sha256": "badabff8fe940b547ed9399a59f5b0c607c9c0ce2528438d87575f6b9b3c9594"
+    },
+    {
+      "path": "tools/gt2game/arcade_race.cpp",
+      "sha256": "c5e1e26497321c3fd5ea0acebf700143d23b685b6fb0beead635f1bd23f17ec3"
+    },
+    {
+      "path": "tools/gt2game/arcade_race.h",
+      "sha256": "415770e4959995740389a5ce64c667b72e0a215f257c1248c69f5e0522809d26"
+    },
+    {
+      "path": "tools/gt2game/arcade_title.cpp",
+      "sha256": "bc4daa2d16b123d9e5ea2171cf2bf32754a0cd83999cdefd6c3c3e8b8298d2e0"
+    },
+    {
+      "path": "tools/gt2game/arcade_title.h",
+      "sha256": "64b5d08076158ee05ca64a1e2db950a972a7f7e2c5361c08c2334596f971aede"
+    },
+    {
+      "path": "tools/gt2game/boot_screen.cpp",
+      "sha256": "a35e94d745b1d8d3f56e7d78556f77ad05a8bab5d0efad75fa180d6fcf152e90"
+    },
+    {
+      "path": "tools/gt2game/boot_screen.h",
+      "sha256": "097c10f9492fca95bc7ea97dd75d0e654842b9297d71bb5ebbe0e75181a06966"
+    },
+    {
+      "path": "tools/gt2game/career_race.cpp",
+      "sha256": "377adeb03052e29cf78d4cb23b60fc1dcaa9ce9a5bdde85b3850734d9a5ef5a8"
+    },
+    {
+      "path": "tools/gt2game/career_race.h",
+      "sha256": "95092d0f183bf6bf7322ffc65200dc12e23e532c1d9c97053c232f0fcaca03ea"
+    },
+    {
+      "path": "tools/gt2game/change_parts_check.cpp",
+      "sha256": "3c5f7497dfdcd62eb1e6015d0aebdce78c9d9e8114cae5b7a5bb272eca1e171c"
+    },
+    {
+      "path": "tools/gt2game/change_parts_check.h",
+      "sha256": "79df0bf11d5bc09da045eca96152f366484fcdbea9d755f72cee59756c3558fd"
+    },
+    {
+      "path": "tools/gt2game/frame_interp.cpp",
+      "sha256": "6b673496c921e008d0c8058627305fac200ea00ca1ee785ea6a7a4a8da481acc"
+    },
+    {
+      "path": "tools/gt2game/frame_interp.h",
+      "sha256": "b6faf9b3cad1f3bddb9f1e8894de0ea14a3c1763e494e95f627b37d4ec89bb74"
+    },
+    {
+      "path": "tools/gt2game/frame_profiler.h",
+      "sha256": "eedb28e944f21df29fb96d1ee0f395c85f8dce1aa254a58a296d0c06d973a528"
+    },
+    {
+      "path": "tools/gt2game/game_main.cpp",
+      "sha256": "ebafcc738eaffd8bff23afb38be13eaf986d663516d8fe079f647f85eac05188"
+    },
+    {
+      "path": "tools/gt2game/game_main.h",
+      "sha256": "2fea949e9d74158315b87af1bcd01528cdef878cb77670283537dea4300f1dac"
+    },
+    {
+      "path": "tools/gt2game/game_window.cpp",
+      "sha256": "9bc49e8d9496670840d6647283dbb2c901a8556afcc6a88f8b9294ad8f653cc5"
+    },
+    {
+      "path": "tools/gt2game/game_window.h",
+      "sha256": "ef91f0a7fcc4e0cb49708d5825884eea789532949fe5c5f51f09a93998f9a228"
+    },
+    {
+      "path": "tools/gt2game/game_window_android.cpp",
+      "sha256": "c0ca6987016da7f10961029ec867ae3fd5c18ca5e5a1f2405305a39aee3a8bd1"
+    },
+    {
+      "path": "tools/gt2game/game_window_win32.cpp",
+      "sha256": "c2a51faf906f8d775dd0028242ffc6c01f917faea428231cec234e044faa7f77"
+    },
+    {
+      "path": "tools/gt2game/game_window_xr.cpp",
+      "sha256": "dfecb34f929d6514380714986b9bb859fbab22d81183d39c6bb27144c4d51081"
+    },
+    {
+      "path": "tools/gt2game/ghost_replay.cpp",
+      "sha256": "24e7ba28f0642a47ca67735d64e04f66bac1418488fae3ca455ed3ccea7f9b01"
+    },
+    {
+      "path": "tools/gt2game/ghost_replay.h",
+      "sha256": "0bc8d0c7d53976c8abe0f04e76055521c1d92c93a0067d4aaf82ae7bba072f52"
+    },
+    {
+      "path": "tools/gt2game/graphics_options.cpp",
+      "sha256": "999bdde06db46ddf788064b4e461359e6e018fd70e4b698615f3935f34bf2ee3"
+    },
+    {
+      "path": "tools/gt2game/graphics_options.h",
+      "sha256": "03b5c91b9cd8b95a33153356711be1a4b69ced5243dad10ff6044d4e9c33adb5"
+    },
+    {
+      "path": "tools/gt2game/machine_test_check.cpp",
+      "sha256": "f15e068a27ed46b3bd03c52dde51e95ea1d7bd99090555c15574fd436a5585ca"
+    },
+    {
+      "path": "tools/gt2game/machine_test_check.h",
+      "sha256": "613504c108cab058b363b51b1a61c2086b842ffff5e6d2a5b6f9437ede1f591f"
+    },
+    {
+      "path": "tools/gt2game/main.cpp",
+      "sha256": "aa18933c20c7bcab245b8714af9d21bf3af30c10e81943277c39cafb8c64e0d7"
+    },
+    {
+      "path": "tools/gt2game/menu_mode.cpp",
+      "sha256": "3215787d218bc16f67f83f76924cc033fc389e2fe19eef3950e0f444e2eacb77"
+    },
+    {
+      "path": "tools/gt2game/menu_mode.h",
+      "sha256": "31823cd89cdd57ac802b03f4becafed210335f8d1062a387d7643cebb06367db"
+    },
+    {
+      "path": "tools/gt2game/mod_scene.cpp",
+      "sha256": "602ff467b773806d87c14ede859973ddf493d5637120b21f3e9dbbe74b6fadfa"
+    },
+    {
+      "path": "tools/gt2game/mod_scene.h",
+      "sha256": "3e13d5c77deea38fbc548ae8fd2002356e75ef099a8699ab78c8c2f1935d2491"
+    },
+    {
+      "path": "tools/gt2game/mods.cpp",
+      "sha256": "247e8a698ac002aa49b0ab3a069e522814359f0d70762bf379c88e69a308bb31"
+    },
+    {
+      "path": "tools/gt2game/mods.h",
+      "sha256": "ee7f28e31e006e5c481c884396bc1436c9cef5caa2b1060d5cc5bb1ae954c021"
+    },
+    {
+      "path": "tools/gt2game/movie_player.cpp",
+      "sha256": "ce99072357bc47ca4fdda0f5e340ec57ebcd09d05173efe2830ca94fc0446d37"
+    },
+    {
+      "path": "tools/gt2game/movie_player.h",
+      "sha256": "e292540bc721519ca83858721a73dd1dc5b057f696ba869b4d4ffe60efe48598"
+    },
+    {
+      "path": "tools/gt2game/panel.cpp",
+      "sha256": "9db333cb256ffbfea3b395daa45bae2d3429699c73bdb4dd831c2502b8744d11"
+    },
+    {
+      "path": "tools/gt2game/panel.h",
+      "sha256": "493e54f43f668ee4b9fb72e625aab8bfff318c03087b73ccdc59a1cb1809e5b5"
+    },
+    {
+      "path": "tools/gt2game/pc_overlay.cpp",
+      "sha256": "d3baffba7baad2dd03b8806946382d456618af803bd03836e97f9b78bcdf0478"
+    },
+    {
+      "path": "tools/gt2game/pc_overlay.h",
+      "sha256": "712591b695c8e7ace71ddca79dae8f9a2261ba182581d1485fef817d94523768"
+    },
+    {
+      "path": "tools/gt2game/race_common.cpp",
+      "sha256": "a790f931f6ebdd5bb48896ab375e6391c8563fbfad6b4ca8fcc56fd58652a29d"
+    },
+    {
+      "path": "tools/gt2game/race_common.h",
+      "sha256": "9701688c410395989bee054c7421af112ed77fd13370d023e35cd38ead1fdca2"
+    },
+    {
+      "path": "tools/gt2game/race_menu_check.cpp",
+      "sha256": "22f633691b8eaaa998602945ac8cf8307dcf269838303e64d8eda5e2a4b7e766"
+    },
+    {
+      "path": "tools/gt2game/race_menu_check.h",
+      "sha256": "5f1692db6bfe0da2025b22b56d3446b4493da49692fab23aedb812cabfc05b13"
+    },
+    {
+      "path": "tools/gt2game/race_result_check.cpp",
+      "sha256": "8f7d77d3a03e9a6dbbc9ea789bfb062fd10a20e487ee1fe1bb8b3d288a654aee"
+    },
+    {
+      "path": "tools/gt2game/race_result_check.h",
+      "sha256": "badd9422a88ed732f7125b0dc4619a9835136567aae4bbda351ef7a0cb4942b2"
+    },
+    {
+      "path": "tools/gt2game/race_view.cpp",
+      "sha256": "7bc07202500006f01d89fa7ae0c39d8f7c5e9dac430539e1979029010d8dcf17"
+    },
+    {
+      "path": "tools/gt2game/race_view.h",
+      "sha256": "e1f65712d0a9e67c3286e424382044695d8d2cb77d98359864a2620513969d63"
+    },
+    {
+      "path": "tools/gt2game/settings_screen.cpp",
+      "sha256": "560bba7818b6ee8753dc1d3fe711cd884b8ef4a355d1c79314b0a5b736638a1d"
+    },
+    {
+      "path": "tools/gt2game/settings_screen.h",
+      "sha256": "ceb41057b39c3ceb318c06ee46387c94dd9e41f0f3711f45330c016e5b595d36"
+    },
+    {
+      "path": "tools/gt2game/split_race.cpp",
+      "sha256": "d9f83fc8531c09be9ff6999a44a6cd5ea83b781d2cdd5989495649d915a27d2e"
+    },
+    {
+      "path": "tools/gt2game/split_race.h",
+      "sha256": "2e032ded35a90eeac49eb72b89b2a27d80378b2a1473542e3c3731f0503e5e45"
+    },
+    {
+      "path": "tools/gt2game/title_attract.cpp",
+      "sha256": "dfdddd6c84fefdee9e27c386a072bbf01b5cabcde705394f950a6cd074a320d4"
+    },
+    {
+      "path": "tools/gt2game/title_attract.h",
+      "sha256": "1eed245ff40e466638db7c6e5f46692eca60459406663c077c042fc779465e17"
+    },
+    {
+      "path": "tools/gt2game/title_mode.cpp",
+      "sha256": "275a020f2ac5c4d6bbe9871beb71ac605555f7f880aae626b3b20fbf3e066d42"
+    },
+    {
+      "path": "tools/gt2game/title_mode.h",
+      "sha256": "e58a6742f5c4b119b7b22fc842e476dcb93076e89a1d097018d8c08387863513"
+    },
+    {
+      "path": "tools/gt2game/xr_field_pacing.h",
+      "sha256": "a2f57588f69b9d744cd1aec7732fb76298054a5320bee0a3bc238a7897bc4b0a"
+    },
+    {
+      "path": "tools/gt2install/main.cpp",
+      "sha256": "fa70a5b9a7d093efc6836fbafdb8d30d9bb1287235e69a0b68bb35607638da67"
+    },
+    {
+      "path": "tools/gt2play/main.cpp",
+      "sha256": "3c56fe6756d8b943bbcdc7a88246252d259c48ef5d7113ddcc81e4c1c7144cd4"
+    },
+    {
+      "path": "tools/gt2renderbench/main.cpp",
+      "sha256": "b3353ac5e414136e2585b7c0c481415deb5d44b2b2f0f231d4531d0437f8249d"
+    },
+    {
+      "path": "tools/gt2run/ai_player.h",
+      "sha256": "170e3a4e4c0fffabc1354061ed612dcf8bb0dae4f8d08d618f4391bd567df512"
+    },
+    {
+      "path": "tools/gt2run/ai_player_arcade.h",
+      "sha256": "154c268d1307d0d8be8402116f37948e5ff6107d27a5bf4c8426d3bf35090327"
+    },
+    {
+      "path": "tools/gt2run/calltrace.cpp",
+      "sha256": "b00dcd355597a75fd66004293cf4b533212d10b806a4313eb2bbe8d2251ccdae"
+    },
+    {
+      "path": "tools/gt2run/car_probe.cpp",
+      "sha256": "19bf07d1e04162786f80b88ab11d6a2a373e9248276683b0fd9669abc413ba7e"
+    },
+    {
+      "path": "tools/gt2run/input_script.h",
+      "sha256": "a5105350e2df4fc57e6983b8d81b5ae848eab11397e5297742e03c0f4e08cb5d"
+    },
+    {
+      "path": "tools/gt2run/main.cpp",
+      "sha256": "f9c124604b52fdec0077b25e480119a20eec52295616523f822047fc57e6373e"
+    },
+    {
+      "path": "tools/gt2run/movie_check.cpp",
+      "sha256": "4ea967423602d2c9ee1fb30866f33218040559d3c5f4c4cdcaffcffe0715983e"
+    },
+    {
+      "path": "tools/gt2run/race_autopilot.h",
+      "sha256": "a47af4c650db74995b4cb58ff79975a124f22118933c4db1a0efeb0d3cb67bc2"
+    },
+    {
+      "path": "tools/gt2run/scene_probe.cpp",
+      "sha256": "c46c337fc2890448aca68d3ee3dc700d9b9b4dde9c2e864a17fb4883bdf305ce"
+    },
+    {
+      "path": "tools/gt2run/session.cpp",
+      "sha256": "3d58643e756e077d638c3ce16d5336b715f962408a8dbf78b86a89f744f1e09f"
+    },
+    {
+      "path": "tools/gt2run/watch.cpp",
+      "sha256": "53fccb288ed2644a3933c6fc29c2b62ec3a23afda2e561382a4c2f478917c128"
+    },
+    {
+      "path": "tools/gt2tool/arcade_cmds.cpp",
+      "sha256": "b99f90894d4ec22e0cb23fab465118ece8aedd7aecf9dc5a887534608939c03c"
+    },
+    {
+      "path": "tools/gt2tool/arcade_cmds.h",
+      "sha256": "50bb3d299fd69185e62bd6a463658199aae3eabb98efc5b318e72c20b34674b1"
+    },
+    {
+      "path": "tools/gt2tool/main.cpp",
+      "sha256": "583cf91499757ea354e7d415d5b0166b250d8d1445f53070d4056cdabc6d04b1"
+    },
+    {
+      "path": "tools/gt2tool/menu_cmds.cpp",
+      "sha256": "714cc7bfd40da644b363030f751e408685e4a5e2189d3e32db3f95c64a0ccd98"
+    },
+    {
+      "path": "tools/gt2tool/menu_cmds.h",
+      "sha256": "57959dd25da01be5527433f76cc215f39c63835a8608374b4c939669868cbcf6"
+    },
+    {
+      "path": "tools/gt2tool/movie_cmds.cpp",
+      "sha256": "5449f38fba308c88bf8c37a17bd95f122c1d33ab617cf9988481e7b6cf9997d2"
+    },
+    {
+      "path": "tools/gt2tool/movie_cmds.h",
+      "sha256": "3678066b880b776734bd945ece3f00ba201204c6b882948564f6a38185d8e81b"
+    },
+    {
+      "path": "tools/gt2tool/profile_cmds.cpp",
+      "sha256": "df8cb077b4e79d02449fe29a7bfbdf8ef0dce0963515a961a00a332fda319d8b"
+    },
+    {
+      "path": "tools/gt2tool/profile_cmds.h",
+      "sha256": "7950f25878c4244d9ae81e732e4f440d126f491a1686d7760aaa230fb814aeb3"
+    },
+    {
+      "path": "tools/gt2tool/replay_cmds.cpp",
+      "sha256": "31defbb8bc2cc504636c05229da55a60b21c49198dd83552695ed688dcfb135d"
+    },
+    {
+      "path": "tools/gt2tool/replay_cmds.h",
+      "sha256": "d366012996d20d0951cb504866b23cb4bb64241607a33aacf475996b417e6257"
+    },
+    {
+      "path": "tools/gt2tool/track_cmds.cpp",
+      "sha256": "0168829bd8f9c85e0505cbbbe90b4fffd777678a53ae81aaf7ef36ffc5ca8b72"
+    },
+    {
+      "path": "tools/gt2tool/track_cmds.h",
+      "sha256": "3ab76f20932b1694a313ea657f29138a62b8260d646ff43e967da4d91e2f9546"
+    },
+    {
+      "path": "tools/gt2verify/guest.h",
+      "sha256": "a3f9494f0c58293778964be055bdb7d1c0eee409fa301ac61e5e80dbf7b685f8"
+    },
+    {
+      "path": "tools/gt2verify/main.cpp",
+      "sha256": "2587e2edf17abc964610f30d29f4dd1a3787e342a7e6a0984f81e6951bc4d4a4"
+    },
+    {
+      "path": "tools/gt2verify/verify_ai.cpp",
+      "sha256": "ff9557994e46c71a052ce3591a22cfafb8fc7e1870614fac331f133d185b6a0c"
+    },
+    {
+      "path": "tools/gt2verify/verify_arcade_menu.cpp",
+      "sha256": "2b4c1a6cf15028f3544c5512db366397cd197426b045b49bbcff0be1d1f6012d"
+    },
+    {
+      "path": "tools/gt2verify/verify_arcade_results.cpp",
+      "sha256": "7baea2702c26092b55ce71b628b017399a5d310c9b445a2d767cb3350a67decf"
+    },
+    {
+      "path": "tools/gt2verify/verify_arcade_title.cpp",
+      "sha256": "05c9f830447e9f1ee8d551a295740c92f1804a5570f02f5290fc292b3fd90296"
+    },
+    {
+      "path": "tools/gt2verify/verify_battle.cpp",
+      "sha256": "a4ff204d4e63fa1afb9537ddfececdd5511b1220108664e67f594d67a92ee5c0"
+    },
+    {
+      "path": "tools/gt2verify/verify_camera.cpp",
+      "sha256": "a4f4e9de50e4c0ef738709e68676c74a4e8ca1a2360378bb0ba4c3b9b95d72a1"
+    },
+    {
+      "path": "tools/gt2verify/verify_career.cpp",
+      "sha256": "796368b679560ed8d50980ba388dc88301dc5e55c3c084bbc7c8ca6239c8a901"
+    },
+    {
+      "path": "tools/gt2verify/verify_contact.cpp",
+      "sha256": "afc3dd3696fe5af66e14cbaed9b39545b37f4b7515c5d3fb32c047eca5ca85fb"
+    },
+    {
+      "path": "tools/gt2verify/verify_core.cpp",
+      "sha256": "85153b67ff4ddedbd93aa02c837d67413f81bf2edef90a0eab71a55d5c1aea90"
+    },
+    {
+      "path": "tools/gt2verify/verify_data.cpp",
+      "sha256": "d13b30c6596f7c177927e4bdb49611fba8c08bc0c384864284753886def514c8"
+    },
+    {
+      "path": "tools/gt2verify/verify_drive_shafts.cpp",
+      "sha256": "82cee04d170c3b9193bb3b3a39decb51362f0b2ba56bba155f9cc1bbf9b62066"
+    },
+    {
+      "path": "tools/gt2verify/verify_drivetrain.cpp",
+      "sha256": "1b7bb5638e881ee903ccacf41468b7841436ad422a44b849dafc07fe27c26d13"
+    },
+    {
+      "path": "tools/gt2verify/verify_grid.cpp",
+      "sha256": "567d4e06defac27418fdf0a612c72896302582a40667304c0eb2f3be13938b5b"
+    },
+    {
+      "path": "tools/gt2verify/verify_ground.cpp",
+      "sha256": "dc63e03492e5a6fc9790e7f4d9db0ba0fbdfcfdcdb0d28f8fdbb5c3e81e20a41"
+    },
+    {
+      "path": "tools/gt2verify/verify_license.cpp",
+      "sha256": "3438c37cb1031df365a5fb4d4e5a265088a672b0b81318ccb9e81e14d44055c8"
+    },
+    {
+      "path": "tools/gt2verify/verify_machine_test.cpp",
+      "sha256": "5ecd3bdff7c64cff7fc6621cd375494bf43efae8f9e55d3af1d41e76aa29675e"
+    },
+    {
+      "path": "tools/gt2verify/verify_menu.cpp",
+      "sha256": "95bcd3bb83561a4c33e93394544637c39a0ece50415b481c007abe89d58667c0"
+    },
+    {
+      "path": "tools/gt2verify/verify_pad.cpp",
+      "sha256": "f3f1d3bd7445ac64f2d9ffdade6b9f59daf3becf8d5ed4d586fe2163bcffd52c"
+    },
+    {
+      "path": "tools/gt2verify/verify_params.cpp",
+      "sha256": "9b799c869c79923fcec01c58888907823ad293b1814223f549f75ae67ce26a77"
+    },
+    {
+      "path": "tools/gt2verify/verify_race.cpp",
+      "sha256": "bdbd3fb94de8cb9e72a5ef9d42a1a76f673442ed318ae16250c2b449ddd8f98f"
+    },
+    {
+      "path": "tools/gt2verify/verify_replay.cpp",
+      "sha256": "30a29251beb943e6d5f297cba05732d9de4727fe3dc34d15c5d7eb86fcf40717"
+    },
+    {
+      "path": "tools/gt2verify/verify_setup.cpp",
+      "sha256": "0929a19c0369e3cd6ab2ba0a8aad35ab353f7d88ae105942ea923c4adfa95326"
+    },
+    {
+      "path": "tools/gt2verify/verify_shell.cpp",
+      "sha256": "76609952a849e84d4c9065d947656227fefd57fc965b025bb9489aa6bae3d9b3"
+    },
+    {
+      "path": "tools/gt2verify/verify_sound.cpp",
+      "sha256": "d93bfccf73ac06a2273af2f5e91c5e373e55161513311fc0a6ce2acf4955a1c6"
+    },
+    {
+      "path": "tools/gt2verify/verify_title.cpp",
+      "sha256": "d01ce5eee855ad1457c5c78724c0651d62fc683975eb96369014e28833bd40b8"
+    },
+    {
+      "path": "tools/gt2verify/verify_title_replay.cpp",
+      "sha256": "051288c1b058395c5d937d734ae8ae5c2a09888cad6ae14d0818d4afa3e35151"
+    },
+    {
+      "path": "tools/gt2verify/verify_title_transfer.cpp",
+      "sha256": "e42c3f85204ee720b52fb787fd7be77f3235687a0ef4da7d5d9b77a0b0549e43"
+    },
+    {
+      "path": "tools/gt2verify/verify_tyres.cpp",
+      "sha256": "379079ca95dd892b560f7843e3bdb30fc77a1cac1288f7ac6bc58084ced90973"
+    },
+    {
+      "path": "tools/gt2verify/verify_wheels.cpp",
+      "sha256": "cc68103db2027299b6293917ae10a6d146fcab26d9c27638c5b011c62c0c4661"
+    },
+    {
+      "path": "tools/xrsim/CMakeLists.txt",
+      "sha256": "2cf87a83fdc619bad2fe184dfb8b0d79bfb78a620718b4c8163af682fcd7c7d6"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt.h",
+      "sha256": "2160550112f5b7e50dfd7a8d4dc07c6c3dc8d8c3c3ccff60a770ff39333fd184"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_api.h",
+      "sha256": "c52bd4d3f3f9180147b1345eebd953436e5f25b1afdd498e986f4a225219d3c3"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_input.cpp",
+      "sha256": "3588c804ed819f04bacea2344d6c4966ea49ebfc0981b3b315b0c2de1ca46b2f"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_main.cpp",
+      "sha256": "7c806dc48f44ab01c445815e05b6e3f4be4ba92cec4c9dd4c5534003426f95d2"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_output.cpp",
+      "sha256": "77e1d38eabf2d9dfe3769b92d630cebd5e0ccfa97bb609615969419b1e675acc"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_script.cpp",
+      "sha256": "9f943a7078431828170691b2f3ef8324a5d257cccf3d89bedf683fc79d1d21cd"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_session.cpp",
+      "sha256": "78a8d6442a5941a44cd6bfd954e672736babd637be4861251c2e1ecb3eb1f537"
+    },
+    {
+      "path": "tools/xrsim/runtime/rt_vulkan.cpp",
+      "sha256": "4ec915c3c7a61d32acd4e3fddbc0a7399394d81eeb040d8fc49da5c9d5726a58"
+    },
+    {
+      "path": "tools/xrsim/xrsim_test/main.cpp",
+      "sha256": "42bfbccb701434150efd0be00a894fa34674742cc23c53e237afaf8d657c31d9"
+    },
+    {
+      "path": "tools/xrsim/xrsim_test/pattern.frag",
+      "sha256": "630f9029313ca08043b980766b6bce5bd62930e8cf6f1b5b34bd5bc274a03d04"
+    },
+    {
+      "path": "tools/xrsim/xrsim_test/pattern.vert",
+      "sha256": "67a1fc8f7f5ccf2bb1ea5b4975caffb14f40d4ca0e15f59558cc9e15e39ee988"
+    }
+  ]
+}

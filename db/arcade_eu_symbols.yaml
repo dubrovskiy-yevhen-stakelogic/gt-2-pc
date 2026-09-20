@@ -1,0 +1,1866 @@
+# ---- address profile ranges (the block below is GENERATED; replace it wholesale, never edit by hand):
+#   build\gt2tool.exe exe-map "<Sim v1.2 disc>" "<this build's disc>" --ranges-yaml <file>
+# kind data-range = a run of lui-built data references of aligned code of both builds (SCUS_944.88 -> SCES_023.80) with one delta,
+# [first reference, last reference]: an address inside maps by the run's delta. Runs are dropped when a reference
+# lies inside the module image and the image's word alignment places that word at another delta (a constant that
+# looks like an address, e.g. lui 0x8009 / addiu -1), or when a run of fewer than 3 references sits between two runs
+# that share another delta (an isolated pair resolved across paths). kind aligned-range = a run of the word
+# alignment of the module image (relocation-masked words equal; code and static data), [start, start + size).
+# gen-profile (gt2tool) turns these entries and the facts of kind data into src/gt2formats/exe_profiles.inc.
+
+- address: 0x1F800000
+  name: ref_run_exe_1F800000
+  sim_address: 0x1F800000
+  size: 0x60810929
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 161 lui-built data reference(s) of aligned code, 0x1F800000..0x80010928, all at delta 0x0"
+
+- address: 0x80011D08
+  name: ref_run_exe_80011D30
+  sim_address: 0x80011D30
+  size: 0xC5
+  kind: data-range
+  delta: -0x28
+  status: mapped
+  evidence: "gt2tool exe-map: 15 lui-built data reference(s) of aligned code, 0x80011D30..0x80011DF4, all at delta -0x28"
+
+- address: 0x800321EC
+  name: ref_run_exe_80033DA0
+  sim_address: 0x80033DA0
+  size: 0x31
+  kind: data-range
+  delta: -0x1BB4
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x80033DA0..0x80033DD0, all at delta -0x1BB4"
+# dropped exe 0x8005122E..0x8005122E 0x3C (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x8005D810
+  name: ref_run_exe_8005D7D0
+  sim_address: 0x8005D7D0
+  size: 0x3D
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 2 lui-built data reference(s) of aligned code, 0x8005D7D0..0x8005D80C, all at delta 0x40"
+# dropped exe 0x80060000..0x80060020 0x0 (4 refs): 4 reference(s) where the image alignment has another delta
+
+- address: 0x800682A0
+  name: ref_run_exe_80068260
+  sim_address: 0x80068260
+  size: 0x441
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x80068260..0x800686A0, all at delta 0x40"
+
+- address: 0x8006F0B0
+  name: ref_run_exe_8006F060
+  sim_address: 0x8006F060
+  size: 0x400D
+  kind: data-range
+  delta: 0x50
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x8006F060..0x8007306C, all at delta 0x50"
+
+- address: 0x8007ABFC
+  name: ref_run_exe_8007ABB8
+  sim_address: 0x8007ABB8
+  size: 0x2381
+  kind: data-range
+  delta: 0x44
+  status: mapped
+  evidence: "gt2tool exe-map: 6 lui-built data reference(s) of aligned code, 0x8007ABB8..0x8007CF38, all at delta 0x44"
+
+- address: 0x8007D2DC
+  name: ref_run_exe_8007D294
+  sim_address: 0x8007D294
+  size: 0x48C9
+  kind: data-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: 15 lui-built data reference(s) of aligned code, 0x8007D294..0x80081B5C, all at delta 0x48"
+
+- address: 0x800825C8
+  name: ref_run_exe_80082574
+  sim_address: 0x80082574
+  size: 0xD845
+  kind: data-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: 69 lui-built data reference(s) of aligned code, 0x80082574..0x8008FDB8, all at delta 0x54"
+# dropped exe 0x8008FFFF..0x8009009B 0x0 (28 refs): 28 reference(s) where the image alignment has another delta
+
+- address: 0x8009010C
+  name: ref_run_exe_800900B8
+  sim_address: 0x800900B8
+  size: 0x479
+  kind: data-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: 13 lui-built data reference(s) of aligned code, 0x800900B8..0x80090530, all at delta 0x54"
+# dropped exe 0x8009057C..0x80090588 0x0 (4 refs): 4 reference(s) where the image alignment has another delta
+
+- address: 0x800905F4
+  name: ref_run_exe_800905A0
+  sim_address: 0x800905A0
+  size: 0x16D
+  kind: data-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: 9 lui-built data reference(s) of aligned code, 0x800905A0..0x8009070C, all at delta 0x54"
+
+- address: 0x80090891
+  name: ref_run_exe_80090891
+  sim_address: 0x80090891
+  size: 0x1
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80090891..0x80090891, all at delta 0x0"
+
+- address: 0x800908D4
+  name: ref_run_exe_80090894
+  sim_address: 0x80090894
+  size: 0x1AFD
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 126 lui-built data reference(s) of aligned code, 0x80090894..0x80092390, all at delta 0x40"
+# dropped exe 0x800923E2..0x800A8D60 0x3C (217 refs): 1 reference(s) where the image alignment has another delta
+# dropped exe 0x800A8D62..0x800A8D62 0x40 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x800A8DA0
+  name: ref_run_exe_800A8D64
+  sim_address: 0x800A8D64
+  size: 0x9
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x800A8D64..0x800A8D6C, all at delta 0x3C"
+# dropped exe 0x800A8D70..0x800A8D88 0x40 (8 refs): 8 reference(s) where the image alignment has another delta
+
+- address: 0x800A8DFC
+  name: ref_run_exe_800A8DC0
+  sim_address: 0x800A8DC0
+  size: 0x9D
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 11 lui-built data reference(s) of aligned code, 0x800A8DC0..0x800A8E5C, all at delta 0x3C"
+# dropped exe 0x800A8FD0..0x800A8FD0 0x40 (1 refs): isolated between two runs of delta 0x3C
+
+- address: 0x800A9070
+  name: ref_run_exe_800A9034
+  sim_address: 0x800A9034
+  size: 0x1
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x800A9034..0x800A9034, all at delta 0x3C"
+
+- address: 0x800A90EA
+  name: ref_run_exe_800A90B2
+  sim_address: 0x800A90B2
+  size: 0x410
+  kind: data-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: 4 lui-built data reference(s) of aligned code, 0x800A90B2..0x800A94C1, all at delta 0x38"
+
+- address: 0x800A9500
+  name: ref_run_exe_800A94D0
+  sim_address: 0x800A94D0
+  size: 0x55
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 9 lui-built data reference(s) of aligned code, 0x800A94D0..0x800A9524, all at delta 0x30"
+# dropped exe 0x800A97D0..0x800A97D0 0x40 (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x800A9E34
+  name: ref_run_exe_800A9E04
+  sim_address: 0x800A9E04
+  size: 0x3E1
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x800A9E04..0x800AA1E4, all at delta 0x30"
+# dropped exe 0x800AB860..0x800AB860 0x8C (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x800ADA38
+  name: ref_run_exe_800ADA08
+  sim_address: 0x800ADA08
+  size: 0x182B
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x800ADA08..0x800AF232, all at delta 0x30"
+
+- address: 0x800AFFDA
+  name: ref_run_exe_800AFFDA
+  sim_address: 0x800AFFDA
+  size: 0x2F
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 9 lui-built data reference(s) of aligned code, 0x800AFFDA..0x800B0008, all at delta 0x0"
+
+- address: 0x800B124C
+  name: ref_run_exe_800B1210
+  sim_address: 0x800B1210
+  size: 0x3A1
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 32 lui-built data reference(s) of aligned code, 0x800B1210..0x800B15B0, all at delta 0x3C"
+
+- address: 0x800B1600
+  name: ref_run_exe_800B15C0
+  sim_address: 0x800B15C0
+  size: 0x2F25
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 7 lui-built data reference(s) of aligned code, 0x800B15C0..0x800B44E4, all at delta 0x40"
+# dropped exe 0x800B4A34..0x800B4A34 0x30 (1 refs): isolated between two runs of delta 0x40
+
+- address: 0x800B5CA6
+  name: ref_run_exe_800B5C66
+  sim_address: 0x800B5C66
+  size: 0x479F
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 18 lui-built data reference(s) of aligned code, 0x800B5C66..0x800BA404, all at delta 0x40"
+# dropped exe 0x800BF4A8..0x800BF4A8 0x3C (1 refs): isolated between two runs of delta 0x40
+
+- address: 0x800C1C50
+  name: ref_run_exe_800C1C10
+  sim_address: 0x800C1C10
+  size: 0x2441
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x800C1C10..0x800C4050, all at delta 0x40"
+# dropped exe 0x800C74A8..0x800CF4A8 0x3C (2 refs): isolated between two runs of delta 0x40
+# dropped exe 0x800D0850..0x800DD050 0x40 (2 refs): isolated between two runs of delta 0x3C
+# dropped exe 0x800DF4A8..0x800DF4A8 0x3C (1 refs): isolated between two runs of delta 0x40
+# dropped exe 0x800E15C0..0x800E15C0 0x40 (1 refs): isolated between two runs of delta 0x3C
+
+- address: 0x800E34E4
+  name: ref_run_exe_800E34A8
+  sim_address: 0x800E34A8
+  size: 0xC919
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 7 lui-built data reference(s) of aligned code, 0x800E34A8..0x800EFDC0, all at delta 0x3C"
+# dropped exe 0x800F0000..0x800F0000 0x0 (1 refs): isolated between two runs of delta 0x3C
+
+- address: 0x800F01EC
+  name: ref_run_exe_800F01B0
+  sim_address: 0x800F01B0
+  size: 0x3B31
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 54 lui-built data reference(s) of aligned code, 0x800F01B0..0x800F3CE0, all at delta 0x3C"
+
+- address: 0x800F8520
+  name: ref_run_exe_800F84E0
+  sim_address: 0x800F84E0
+  size: 0x31381
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 28 lui-built data reference(s) of aligned code, 0x800F84E0..0x80129860, all at delta 0x40"
+# dropped exe 0x80136960..0x80156960 -0xF84 (2 refs): isolated between two runs of delta 0x40
+
+- address: 0x80169810
+  name: ref_run_exe_801697D0
+  sim_address: 0x801697D0
+  size: 0x1
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x801697D0..0x801697D0, all at delta 0x40"
+
+- address: 0x801698C7
+  name: ref_run_exe_80169897
+  sim_address: 0x80169897
+  size: 0x1
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80169897..0x80169897, all at delta 0x30"
+
+- address: 0x80171070
+  name: ref_run_exe_80171034
+  sim_address: 0x80171034
+  size: 0x1
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80171034..0x80171034, all at delta 0x3C"
+
+- address: 0x801759DC
+  name: ref_run_exe_80176960
+  sim_address: 0x80176960
+  size: 0x6001
+  kind: data-range
+  delta: -0xF84
+  status: mapped
+  evidence: "gt2tool exe-map: 2 lui-built data reference(s) of aligned code, 0x80176960..0x8017C960, all at delta -0xF84"
+
+- address: 0x8017BA50
+  name: ref_run_exe_8017C9E0
+  sim_address: 0x8017C9E0
+  size: 0x1
+  kind: data-range
+  delta: -0xF90
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x8017C9E0..0x8017C9E0, all at delta -0xF90"
+
+- address: 0x8017D8C4
+  name: ref_run_exe_8017D894
+  sim_address: 0x8017D894
+  size: 0x1136D
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x8017D894..0x8018EC00, all at delta 0x30"
+
+- address: 0x8018F8A0
+  name: ref_run_exe_8018F860
+  sim_address: 0x8018F860
+  size: 0xC981
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x8018F860..0x8019C1E0, all at delta 0x40"
+# dropped exe 0x8019EC00..0x8019EC00 0x30 (1 refs): isolated between two runs of delta 0x40
+# dropped exe 0x801A31E0..0x801A5050 0x40 (2 refs): isolated between two runs of delta 0x30
+# dropped exe 0x801A8C00..0x801A8C03 0x30 (2 refs): isolated between two runs of delta 0x40
+
+- address: 0x801A9600
+  name: ref_run_exe_801A95C0
+  sim_address: 0x801A95C0
+  size: 0x10E6D
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 65 lui-built data reference(s) of aligned code, 0x801A95C0..0x801BA42C, all at delta 0x40"
+
+- address: 0x801BAC30
+  name: ref_run_exe_801BAC00
+  sim_address: 0x801BAC00
+  size: 0x1
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x801BAC00..0x801BAC00, all at delta 0x30"
+
+- address: 0x801C0000
+  name: ref_run_exe_801C0000
+  sim_address: 0x801C0000
+  size: 0x95
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x801C0000..0x801C0094, all at delta 0x0"
+
+- address: 0x801C16B4
+  name: ref_run_exe_801C1678
+  sim_address: 0x801C1678
+  size: 0x1
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x801C1678..0x801C1678, all at delta 0x3C"
+
+- address: 0x801C3090
+  name: ref_run_exe_801C3050
+  sim_address: 0x801C3050
+  size: 0x5CD
+  kind: data-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: 30 lui-built data reference(s) of aligned code, 0x801C3050..0x801C361C, all at delta 0x40"
+
+- address: 0x801C6C40
+  name: ref_run_exe_801C6C10
+  sim_address: 0x801C6C10
+  size: 0x2EE6
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 189 lui-built data reference(s) of aligned code, 0x801C6C10..0x801C9AF5, all at delta 0x30"
+# dropped exe 0x801CB588..0x801CB588 0x48 (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x801CC6C8
+  name: ref_run_exe_801CC698
+  sim_address: 0x801CC698
+  size: 0x33E5
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 4 lui-built data reference(s) of aligned code, 0x801CC698..0x801CFA7C, all at delta 0x30"
+
+- address: 0x801CFFFF
+  name: ref_run_exe_801CFFFF
+  sim_address: 0x801CFFFF
+  size: 0x106
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 13 lui-built data reference(s) of aligned code, 0x801CFFFF..0x801D0104, all at delta 0x0"
+
+- address: 0x801D1598
+  name: ref_run_exe_801D1568
+  sim_address: 0x801D1568
+  size: 0x11B07
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 16 lui-built data reference(s) of aligned code, 0x801D1568..0x801E306E, all at delta 0x30"
+
+- address: 0x801E30E4
+  name: ref_run_exe_801E30B2
+  sim_address: 0x801E30B2
+  size: 0x1
+  kind: data-range
+  delta: 0x32
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x801E30B2..0x801E30B2, all at delta 0x32"
+
+- address: 0x801E30EC
+  name: ref_run_exe_801E30B8
+  sim_address: 0x801E30B8
+  size: 0x1
+  kind: data-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x801E30B8..0x801E30B8, all at delta 0x34"
+
+- address: 0x801E3120
+  name: ref_run_exe_801E30F0
+  sim_address: 0x801E30F0
+  size: 0x515
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 4 lui-built data reference(s) of aligned code, 0x801E30F0..0x801E3604, all at delta 0x30"
+# dropped exe 0x801E9D08..0x801E9D08 0x40 (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x801EF620
+  name: ref_run_exe_801EF5F0
+  sim_address: 0x801EF5F0
+  size: 0x879
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 65 lui-built data reference(s) of aligned code, 0x801EF5F0..0x801EFE68, all at delta 0x30"
+# dropped exe 0x801EFF84..0x801EFF84 0x0 (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x801F0260
+  name: ref_run_exe_801F0230
+  sim_address: 0x801F0230
+  size: 0x4B1
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 18 lui-built data reference(s) of aligned code, 0x801F0230..0x801F06E0, all at delta 0x30"
+# dropped exe 0x801F0892..0x801F0892 0x0 (1 refs): isolated between two runs of delta 0x30
+
+- address: 0x801F0C12
+  name: ref_run_exe_801F0BE2
+  sim_address: 0x801F0BE2
+  size: 0x18E
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 15 lui-built data reference(s) of aligned code, 0x801F0BE2..0x801F0D6F, all at delta 0x30"
+
+- address: 0x8001600C
+  name: ref_run_ovl0_80016010
+  overlay: ovl0
+  sim_address: 0x80016010
+  size: 0x2AF1
+  kind: data-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: 12 lui-built data reference(s) of aligned code, 0x80016010..0x80018B00, all at delta -0x4"
+
+- address: 0x8002EEC8
+  name: ref_run_ovl0_8002EE98
+  overlay: ovl0
+  sim_address: 0x8002EE98
+  size: 0x859
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 74 lui-built data reference(s) of aligned code, 0x8002EE98..0x8002F6F0, all at delta 0x30"
+# dropped ovl0 0x8002F700..0x8002F700 0x24 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x8002F73C
+  name: ref_run_ovl0_8002F70C
+  overlay: ovl0
+  sim_address: 0x8002F70C
+  size: 0x219
+  kind: data-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: 27 lui-built data reference(s) of aligned code, 0x8002F70C..0x8002F924, all at delta 0x30"
+# dropped ovl0 0x80030000..0x80030008 0x0 (5 refs): 5 reference(s) where the image alignment has another delta
+
+- address: 0x80046B8C
+  name: ref_run_ovl0_80046BAC
+  overlay: ovl0
+  sim_address: 0x80046BAC
+  size: 0x3FD
+  kind: data-range
+  delta: -0x20
+  status: mapped
+  evidence: "gt2tool exe-map: 61 lui-built data reference(s) of aligned code, 0x80046BAC..0x80046FA8, all at delta -0x20"
+
+- address: 0x80049A6C
+  name: ref_run_ovl0_80049A14
+  overlay: ovl0
+  sim_address: 0x80049A14
+  size: 0x3A61
+  kind: data-range
+  delta: 0x58
+  status: mapped
+  evidence: "gt2tool exe-map: 5 lui-built data reference(s) of aligned code, 0x80049A14..0x8004D474, all at delta 0x58"
+
+- address: 0x800505E0
+  name: ref_run_ovl0_800505AC
+  overlay: ovl0
+  sim_address: 0x800505AC
+  size: 0x27D9
+  kind: data-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: 2 lui-built data reference(s) of aligned code, 0x800505AC..0x80052D84, all at delta 0x34"
+
+- address: 0x80055D88
+  name: ref_run_ovl0_80055D50
+  overlay: ovl0
+  sim_address: 0x80055D50
+  size: 0x1
+  kind: data-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80055D50..0x80055D50, all at delta 0x38"
+
+- address: 0x80057AAC
+  name: ref_run_ovl0_80057A70
+  overlay: ovl0
+  sim_address: 0x80057A70
+  size: 0x1
+  kind: data-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80057A70..0x80057A70, all at delta 0x3C"
+
+- address: 0x8005A7C4
+  name: ref_run_ovl0_8005A77C
+  overlay: ovl0
+  sim_address: 0x8005A77C
+  size: 0x2E59
+  kind: data-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: 248 lui-built data reference(s) of aligned code, 0x8005A77C..0x8005D5D4, all at delta 0x48"
+
+- address: 0x80011754
+  name: ref_run_ovl1_8001172C
+  overlay: ovl1
+  sim_address: 0x8001172C
+  size: 0x1
+  kind: data-range
+  delta: 0x28
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x8001172C..0x8001172C, all at delta 0x28"
+# dropped ovl1 0x80011F64..0x80011F64 0x0 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x80012650
+  name: ref_run_ovl1_800125D0
+  overlay: ovl1
+  sim_address: 0x800125D0
+  size: 0x3531
+  kind: data-range
+  delta: 0x80
+  status: mapped
+  evidence: "gt2tool exe-map: 4 lui-built data reference(s) of aligned code, 0x800125D0..0x80015B00, all at delta 0x80"
+
+- address: 0x800172B0
+  name: ref_run_ovl1_8001721C
+  overlay: ovl1
+  sim_address: 0x8001721C
+  size: 0x1
+  kind: data-range
+  delta: 0x94
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x8001721C..0x8001721C, all at delta 0x94"
+
+- address: 0x800185F0
+  name: ref_run_ovl1_80018574
+  overlay: ovl1
+  sim_address: 0x80018574
+  size: 0x171
+  kind: data-range
+  delta: 0x7C
+  status: mapped
+  evidence: "gt2tool exe-map: 2 lui-built data reference(s) of aligned code, 0x80018574..0x800186E4, all at delta 0x7C"
+
+- address: 0x8001DCC4
+  name: ref_run_ovl1_8001DC38
+  overlay: ovl1
+  sim_address: 0x8001DC38
+  size: 0x6245
+  kind: data-range
+  delta: 0x8C
+  status: mapped
+  evidence: "gt2tool exe-map: 30 lui-built data reference(s) of aligned code, 0x8001DC38..0x80023E7C, all at delta 0x8C"
+# dropped ovl1 0x80023EA8..0x80023EA8 0x70 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x80023F50
+  name: ref_run_ovl1_80023EC4
+  overlay: ovl1
+  sim_address: 0x80023EC4
+  size: 0x289E5
+  kind: data-range
+  delta: 0x8C
+  status: mapped
+  evidence: "gt2tool exe-map: 139 lui-built data reference(s) of aligned code, 0x80023EC4..0x8004C8A8, all at delta 0x8C"
+# dropped ovl2 0x800114E0..0x800114E0 -0x8 (1 refs): 1 reference(s) where the image alignment has another delta
+# dropped ovl2 0x8001172C..0x8001172C 0x28 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x80011F64
+  name: ref_run_ovl2_80011F64
+  overlay: ovl2
+  sim_address: 0x80011F64
+  size: 0x5AB1
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 3 lui-built data reference(s) of aligned code, 0x80011F64..0x80017A14, all at delta 0x0"
+
+- address: 0x8001E5C0
+  name: ref_run_ovl2_8001E614
+  overlay: ovl2
+  sim_address: 0x8001E614
+  size: 0x319DD
+  kind: data-range
+  delta: -0x54
+  status: mapped
+  evidence: "gt2tool exe-map: 115 lui-built data reference(s) of aligned code, 0x8001E614..0x8004FFF0, all at delta -0x54"
+# dropped ovl2 0x80050000..0x80050000 0x0 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x8004FFB8
+  name: ref_run_ovl2_8005000C
+  overlay: ovl2
+  sim_address: 0x8005000C
+  size: 0x34FD
+  kind: data-range
+  delta: -0x54
+  status: mapped
+  evidence: "gt2tool exe-map: 91 lui-built data reference(s) of aligned code, 0x8005000C..0x80053508, all at delta -0x54"
+
+- address: 0x80011F64
+  name: ref_run_ovl3_80011F64
+  overlay: ovl3
+  sim_address: 0x80011F64
+  size: 0x1
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80011F64..0x80011F64, all at delta 0x0"
+# dropped ovl4 0x8001172C..0x8001172C 0x28 (1 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x80011F64
+  name: ref_run_ovl4_80011F64
+  overlay: ovl4
+  sim_address: 0x80011F64
+  size: 0x1
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80011F64..0x80011F64, all at delta 0x0"
+
+- address: 0x8002010C
+  name: ref_run_ovl4_80020198
+  overlay: ovl4
+  sim_address: 0x80020198
+  size: 0x1
+  kind: data-range
+  delta: -0x8C
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x80020198..0x80020198, all at delta -0x8C"
+
+- address: 0x80020668
+  name: ref_run_ovl4_800206F8
+  overlay: ovl4
+  sim_address: 0x800206F8
+  size: 0x1
+  kind: data-range
+  delta: -0x90
+  status: mapped
+  evidence: "gt2tool exe-map: 1 lui-built data reference(s) of aligned code, 0x800206F8..0x800206F8, all at delta -0x90"
+
+- address: 0x80021828
+  name: ref_run_ovl4_800218BC
+  overlay: ovl4
+  sim_address: 0x800218BC
+  size: 0x2B75
+  kind: data-range
+  delta: -0x94
+  status: mapped
+  evidence: "gt2tool exe-map: 46 lui-built data reference(s) of aligned code, 0x800218BC..0x80024430, all at delta -0x94"
+# dropped ovl4 0x80050000..0x80050008 0x0 (3 refs): 3 reference(s) where the image alignment has another delta
+
+- address: 0x80050870
+  name: ref_run_ovl4_80050904
+  overlay: ovl4
+  sim_address: 0x80050904
+  size: 0x214D
+  kind: data-range
+  delta: -0x94
+  status: mapped
+  evidence: "gt2tool exe-map: 59 lui-built data reference(s) of aligned code, 0x80050904..0x80052A50, all at delta -0x94"
+
+- address: 0x80010420
+  name: ref_run_ovl5_80010420
+  overlay: ovl5
+  sim_address: 0x80010420
+  size: 0xA0D
+  kind: data-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: 4 lui-built data reference(s) of aligned code, 0x80010420..0x80010E2C, all at delta 0x0"
+# dropped ovl5 0x800114CC..0x800120D4 -0x1C (5 refs): 1 reference(s) where the image alignment has another delta
+
+- address: 0x80010000
+  name: aligned_exe_80010000
+  sim_address: 0x80010000
+  size: 0xA48
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 658 words with equal relocation-masked contents"
+
+- address: 0x80010A4C
+  name: aligned_exe_80010A50
+  sim_address: 0x80010A50
+  size: 0x464
+  kind: aligned-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 281 words with equal relocation-masked contents"
+
+- address: 0x80010EB0
+  name: aligned_exe_80010EBC
+  sim_address: 0x80010EBC
+  size: 0x9DC
+  kind: aligned-range
+  delta: -0xC
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 631 words with equal relocation-masked contents"
+
+- address: 0x80011894
+  name: aligned_exe_800118BC
+  sim_address: 0x800118BC
+  size: 0x540
+  kind: aligned-range
+  delta: -0x28
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 336 words with equal relocation-masked contents"
+
+- address: 0x800321FC
+  name: aligned_exe_80033DB0
+  sim_address: 0x80033DB0
+  size: 0x29838
+  kind: aligned-range
+  delta: -0x1BB4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 42510 words with equal relocation-masked contents"
+
+- address: 0x8005D628
+  name: aligned_exe_8005D5E8
+  sim_address: 0x8005D5E8
+  size: 0xE3C4
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 14577 words with equal relocation-masked contents"
+
+- address: 0x8006BA34
+  name: aligned_exe_8006B9FC
+  sim_address: 0x8006B9FC
+  size: 0x70
+  kind: aligned-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 28 words with equal relocation-masked contents"
+
+- address: 0x8006BAEC
+  name: aligned_exe_8006BABC
+  sim_address: 0x8006BABC
+  size: 0x1A88
+  kind: aligned-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 1698 words with equal relocation-masked contents"
+
+- address: 0x8006D768
+  name: aligned_exe_8006D728
+  sim_address: 0x8006D728
+  size: 0xD0
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 52 words with equal relocation-masked contents"
+
+- address: 0x8006D87C
+  name: aligned_exe_8006D840
+  sim_address: 0x8006D840
+  size: 0x2C4
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 177 words with equal relocation-masked contents"
+
+- address: 0x8006DB98
+  name: aligned_exe_8006DB58
+  sim_address: 0x8006DB58
+  size: 0x3C
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 15 words with equal relocation-masked contents"
+
+- address: 0x8006DC54
+  name: aligned_exe_8006DC18
+  sim_address: 0x8006DC18
+  size: 0x34
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 13 words with equal relocation-masked contents"
+
+- address: 0x8006DCD8
+  name: aligned_exe_8006DC98
+  sim_address: 0x8006DC98
+  size: 0x944
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 593 words with equal relocation-masked contents"
+
+- address: 0x8006E6E8
+  name: aligned_exe_8006E69C
+  sim_address: 0x8006E69C
+  size: 0x30C
+  kind: aligned-range
+  delta: 0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 195 words with equal relocation-masked contents"
+
+- address: 0x8006E9F8
+  name: aligned_exe_8006E9A8
+  sim_address: 0x8006E9A8
+  size: 0x4918
+  kind: aligned-range
+  delta: 0x50
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 4678 words with equal relocation-masked contents"
+
+- address: 0x8007331C
+  name: aligned_exe_800732D0
+  sim_address: 0x800732D0
+  size: 0x120
+  kind: aligned-range
+  delta: 0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 72 words with equal relocation-masked contents"
+
+- address: 0x800734AC
+  name: aligned_exe_80073464
+  sim_address: 0x80073464
+  size: 0x6CC
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 435 words with equal relocation-masked contents"
+
+- address: 0x80073BC0
+  name: aligned_exe_80073B98
+  sim_address: 0x80073B98
+  size: 0x76C
+  kind: aligned-range
+  delta: 0x28
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 475 words with equal relocation-masked contents"
+
+- address: 0x80074338
+  name: aligned_exe_80074304
+  sim_address: 0x80074304
+  size: 0x16C
+  kind: aligned-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 91 words with equal relocation-masked contents"
+
+- address: 0x8007455C
+  name: aligned_exe_80074518
+  sim_address: 0x80074518
+  size: 0x8BEC
+  kind: aligned-range
+  delta: 0x44
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 8955 words with equal relocation-masked contents"
+
+- address: 0x8007D14C
+  name: aligned_exe_8007D104
+  sim_address: 0x8007D104
+  size: 0x4C98
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 4902 words with equal relocation-masked contents"
+
+- address: 0x80081EB0
+  name: aligned_exe_80081E5C
+  sim_address: 0x80081E5C
+  size: 0xE978
+  kind: aligned-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 14942 words with equal relocation-masked contents"
+
+- address: 0x800908D4
+  name: aligned_exe_80090894
+  sim_address: 0x80090894
+  size: 0x708
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 450 words with equal relocation-masked contents"
+
+- address: 0x800914E0
+  name: aligned_exe_800914AC
+  sim_address: 0x800914AC
+  size: 0x68
+  kind: aligned-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 26 words with equal relocation-masked contents"
+
+- address: 0x800915AC
+  name: aligned_exe_8009156C
+  sim_address: 0x8009156C
+  size: 0xE88
+  kind: aligned-range
+  delta: 0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 930 words with equal relocation-masked contents"
+
+- address: 0x8009243C
+  name: aligned_exe_80092400
+  sim_address: 0x80092400
+  size: 0x16BC4
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the exe image, 23281 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl0_80010000
+  overlay: ovl0
+  sim_address: 0x80010000
+  size: 0x59FC
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 5759 words with equal relocation-masked contents"
+
+- address: 0x80015A08
+  name: aligned_ovl0_80015A0C
+  overlay: ovl0
+  sim_address: 0x80015A0C
+  size: 0x140F4
+  kind: aligned-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 20541 words with equal relocation-masked contents"
+
+- address: 0x80029B24
+  name: aligned_ovl0_80029B20
+  overlay: ovl0
+  sim_address: 0x80029B20
+  size: 0x700
+  kind: aligned-range
+  delta: 0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 448 words with equal relocation-masked contents"
+
+- address: 0x8002A2A8
+  name: aligned_ovl0_8002A2A8
+  overlay: ovl0
+  sim_address: 0x8002A2A8
+  size: 0x920
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 584 words with equal relocation-masked contents"
+
+- address: 0x8002ACCC
+  name: aligned_ovl0_8002ACB8
+  overlay: ovl0
+  sim_address: 0x8002ACB8
+  size: 0x95C
+  kind: aligned-range
+  delta: 0x14
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 599 words with equal relocation-masked contents"
+
+- address: 0x8002B650
+  name: aligned_ovl0_8002B644
+  overlay: ovl0
+  sim_address: 0x8002B644
+  size: 0x4CC
+  kind: aligned-range
+  delta: 0xC
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 307 words with equal relocation-masked contents"
+
+- address: 0x8002BC9C
+  name: aligned_ovl0_8002BC60
+  overlay: ovl0
+  sim_address: 0x8002BC60
+  size: 0x1AD4
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 1717 words with equal relocation-masked contents"
+
+- address: 0x8002D7AC
+  name: aligned_ovl0_8002D774
+  overlay: ovl0
+  sim_address: 0x8002D774
+  size: 0x88
+  kind: aligned-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 34 words with equal relocation-masked contents"
+
+- address: 0x8002D8AC
+  name: aligned_ovl0_8002D878
+  overlay: ovl0
+  sim_address: 0x8002D878
+  size: 0xF0
+  kind: aligned-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 60 words with equal relocation-masked contents"
+
+- address: 0x8002DA00
+  name: aligned_ovl0_8002D9D0
+  overlay: ovl0
+  sim_address: 0x8002D9D0
+  size: 0x57CC
+  kind: aligned-range
+  delta: 0x30
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 5619 words with equal relocation-masked contents"
+
+- address: 0x800331F4
+  name: aligned_ovl0_800331E8
+  overlay: ovl0
+  sim_address: 0x800331E8
+  size: 0x495C
+  kind: aligned-range
+  delta: 0xC
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 4695 words with equal relocation-masked contents"
+
+- address: 0x80037B64
+  name: aligned_ovl0_80037B48
+  overlay: ovl0
+  sim_address: 0x80037B48
+  size: 0x4CA4
+  kind: aligned-range
+  delta: 0x1C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 4905 words with equal relocation-masked contents"
+
+- address: 0x8003C964
+  name: aligned_ovl0_8003C968
+  overlay: ovl0
+  sim_address: 0x8003C968
+  size: 0x108
+  kind: aligned-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 66 words with equal relocation-masked contents"
+
+- address: 0x8003CCD0
+  name: aligned_ovl0_8003CCE4
+  overlay: ovl0
+  sim_address: 0x8003CCE4
+  size: 0xA2C
+  kind: aligned-range
+  delta: -0x14
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 651 words with equal relocation-masked contents"
+
+- address: 0x8003D738
+  name: aligned_ovl0_8003D75C
+  overlay: ovl0
+  sim_address: 0x8003D75C
+  size: 0x5EA4
+  kind: aligned-range
+  delta: -0x24
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 6057 words with equal relocation-masked contents"
+
+- address: 0x80043614
+  name: aligned_ovl0_80043634
+  overlay: ovl0
+  sim_address: 0x80043634
+  size: 0x3CF8
+  kind: aligned-range
+  delta: -0x20
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 3902 words with equal relocation-masked contents"
+
+- address: 0x80047324
+  name: aligned_ovl0_80047334
+  overlay: ovl0
+  sim_address: 0x80047334
+  size: 0x460
+  kind: aligned-range
+  delta: -0x10
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 280 words with equal relocation-masked contents"
+
+- address: 0x800479F8
+  name: aligned_ovl0_800479AC
+  overlay: ovl0
+  sim_address: 0x800479AC
+  size: 0x34
+  kind: aligned-range
+  delta: 0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 13 words with equal relocation-masked contents"
+
+- address: 0x80047A54
+  name: aligned_ovl0_80047A00
+  overlay: ovl0
+  sim_address: 0x80047A00
+  size: 0x2B0
+  kind: aligned-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 172 words with equal relocation-masked contents"
+
+- address: 0x80047D2C
+  name: aligned_ovl0_80047CD4
+  overlay: ovl0
+  sim_address: 0x80047CD4
+  size: 0x4C
+  kind: aligned-range
+  delta: 0x58
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 19 words with equal relocation-masked contents"
+
+- address: 0x80047DEC
+  name: aligned_ovl0_80047D98
+  overlay: ovl0
+  sim_address: 0x80047D98
+  size: 0x68
+  kind: aligned-range
+  delta: 0x54
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 26 words with equal relocation-masked contents"
+
+- address: 0x80047EE8
+  name: aligned_ovl0_80047E90
+  overlay: ovl0
+  sim_address: 0x80047E90
+  size: 0x5B40
+  kind: aligned-range
+  delta: 0x58
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 5840 words with equal relocation-masked contents"
+
+- address: 0x8004DAB8
+  name: aligned_ovl0_8004DA98
+  overlay: ovl0
+  sim_address: 0x8004DA98
+  size: 0xD70
+  kind: aligned-range
+  delta: 0x20
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 860 words with equal relocation-masked contents"
+
+- address: 0x8004E86C
+  name: aligned_ovl0_8004E850
+  overlay: ovl0
+  sim_address: 0x8004E850
+  size: 0x12E4
+  kind: aligned-range
+  delta: 0x1C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 1209 words with equal relocation-masked contents"
+
+- address: 0x8004FC84
+  name: aligned_ovl0_8004FC50
+  overlay: ovl0
+  sim_address: 0x8004FC50
+  size: 0x43E0
+  kind: aligned-range
+  delta: 0x34
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 4344 words with equal relocation-masked contents"
+
+- address: 0x8005406C
+  name: aligned_ovl0_80054034
+  overlay: ovl0
+  sim_address: 0x80054034
+  size: 0x28CC
+  kind: aligned-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 2611 words with equal relocation-masked contents"
+
+- address: 0x80056940
+  name: aligned_ovl0_80056904
+  overlay: ovl0
+  sim_address: 0x80056904
+  size: 0x29F0
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 2684 words with equal relocation-masked contents"
+
+- address: 0x80059348
+  name: aligned_ovl0_80059300
+  overlay: ovl0
+  sim_address: 0x80059300
+  size: 0x30
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 12 words with equal relocation-masked contents"
+
+- address: 0x800593B4
+  name: aligned_ovl0_80059368
+  overlay: ovl0
+  sim_address: 0x80059368
+  size: 0x90
+  kind: aligned-range
+  delta: 0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 36 words with equal relocation-masked contents"
+
+- address: 0x8005948C
+  name: aligned_ovl0_80059444
+  overlay: ovl0
+  sim_address: 0x80059444
+  size: 0x3060
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl0 image, 3096 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl1_80010000
+  overlay: ovl1
+  sim_address: 0x80010000
+  size: 0x13A8
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 1258 words with equal relocation-masked contents"
+
+- address: 0x800113B4
+  name: aligned_ovl1_800113AC
+  overlay: ovl1
+  sim_address: 0x800113AC
+  size: 0x104
+  kind: aligned-range
+  delta: 0x8
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 65 words with equal relocation-masked contents"
+
+- address: 0x800114F0
+  name: aligned_ovl1_800114EC
+  overlay: ovl1
+  sim_address: 0x800114EC
+  size: 0x140
+  kind: aligned-range
+  delta: 0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 80 words with equal relocation-masked contents"
+
+- address: 0x80011670
+  name: aligned_ovl1_80011648
+  overlay: ovl1
+  sim_address: 0x80011648
+  size: 0x5C8
+  kind: aligned-range
+  delta: 0x28
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 370 words with equal relocation-masked contents"
+
+- address: 0x80011C50
+  name: aligned_ovl1_80011C18
+  overlay: ovl1
+  sim_address: 0x80011C18
+  size: 0x48C
+  kind: aligned-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 291 words with equal relocation-masked contents"
+
+- address: 0x800122C8
+  name: aligned_ovl1_80012248
+  overlay: ovl1
+  sim_address: 0x80012248
+  size: 0x4D00
+  kind: aligned-range
+  delta: 0x80
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 4928 words with equal relocation-masked contents"
+
+- address: 0x80016FE8
+  name: aligned_ovl1_80016F54
+  overlay: ovl1
+  sim_address: 0x80016F54
+  size: 0x2E8
+  kind: aligned-range
+  delta: 0x94
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 186 words with equal relocation-masked contents"
+
+- address: 0x8001736C
+  name: aligned_ovl1_800172E8
+  overlay: ovl1
+  sim_address: 0x800172E8
+  size: 0x2A4
+  kind: aligned-range
+  delta: 0x84
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 169 words with equal relocation-masked contents"
+
+- address: 0x80017644
+  name: aligned_ovl1_800175CC
+  overlay: ovl1
+  sim_address: 0x800175CC
+  size: 0x368
+  kind: aligned-range
+  delta: 0x78
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 218 words with equal relocation-masked contents"
+
+- address: 0x800179EC
+  name: aligned_ovl1_80017970
+  overlay: ovl1
+  sim_address: 0x80017970
+  size: 0x5DE4
+  kind: aligned-range
+  delta: 0x7C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 6009 words with equal relocation-masked contents"
+
+- address: 0x8001D834
+  name: aligned_ovl1_8001D7B4
+  overlay: ovl1
+  sim_address: 0x8001D7B4
+  size: 0x50
+  kind: aligned-range
+  delta: 0x80
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 20 words with equal relocation-masked contents"
+
+- address: 0x8001D8CC
+  name: aligned_ovl1_8001D840
+  overlay: ovl1
+  sim_address: 0x8001D840
+  size: 0x2EB14
+  kind: aligned-range
+  delta: 0x8C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl1 image, 47813 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl2_80010000
+  overlay: ovl2
+  sim_address: 0x80010000
+  size: 0x25F8
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 2430 words with equal relocation-masked contents"
+
+- address: 0x80012804
+  name: aligned_ovl2_80012818
+  overlay: ovl2
+  sim_address: 0x80012818
+  size: 0x3C
+  kind: aligned-range
+  delta: -0x14
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 15 words with equal relocation-masked contents"
+
+- address: 0x80012900
+  name: aligned_ovl2_80012918
+  overlay: ovl2
+  sim_address: 0x80012918
+  size: 0x13C
+  kind: aligned-range
+  delta: -0x18
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 79 words with equal relocation-masked contents"
+
+- address: 0x80012C9C
+  name: aligned_ovl2_80012CC4
+  overlay: ovl2
+  sim_address: 0x80012CC4
+  size: 0x78
+  kind: aligned-range
+  delta: -0x28
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 30 words with equal relocation-masked contents"
+
+- address: 0x80012F90
+  name: aligned_ovl2_80012FD0
+  overlay: ovl2
+  sim_address: 0x80012FD0
+  size: 0xA0
+  kind: aligned-range
+  delta: -0x40
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 40 words with equal relocation-masked contents"
+
+- address: 0x80013110
+  name: aligned_ovl2_80013178
+  overlay: ovl2
+  sim_address: 0x80013178
+  size: 0xABC
+  kind: aligned-range
+  delta: -0x68
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 687 words with equal relocation-masked contents"
+
+- address: 0x80013BEC
+  name: aligned_ovl2_80013C44
+  overlay: ovl2
+  sim_address: 0x80013C44
+  size: 0x848
+  kind: aligned-range
+  delta: -0x58
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 530 words with equal relocation-masked contents"
+
+- address: 0x800145F0
+  name: aligned_ovl2_80014600
+  overlay: ovl2
+  sim_address: 0x80014600
+  size: 0x340
+  kind: aligned-range
+  delta: -0x10
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 208 words with equal relocation-masked contents"
+
+- address: 0x80014948
+  name: aligned_ovl2_80014948
+  overlay: ovl2
+  sim_address: 0x80014948
+  size: 0x3994
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 3685 words with equal relocation-masked contents"
+
+- address: 0x80018524
+  name: aligned_ovl2_80018504
+  overlay: ovl2
+  sim_address: 0x80018504
+  size: 0x1BC
+  kind: aligned-range
+  delta: 0x20
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 111 words with equal relocation-masked contents"
+
+- address: 0x80018794
+  name: aligned_ovl2_80018748
+  overlay: ovl2
+  sim_address: 0x80018748
+  size: 0x64
+  kind: aligned-range
+  delta: 0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 25 words with equal relocation-masked contents"
+
+- address: 0x80018834
+  name: aligned_ovl2_800187F8
+  overlay: ovl2
+  sim_address: 0x800187F8
+  size: 0x40
+  kind: aligned-range
+  delta: 0x3C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 16 words with equal relocation-masked contents"
+
+- address: 0x80018904
+  name: aligned_ovl2_8001889C
+  overlay: ovl2
+  sim_address: 0x8001889C
+  size: 0x6C
+  kind: aligned-range
+  delta: 0x68
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 27 words with equal relocation-masked contents"
+
+- address: 0x8001897C
+  name: aligned_ovl2_80018918
+  overlay: ovl2
+  sim_address: 0x80018918
+  size: 0x17C
+  kind: aligned-range
+  delta: 0x64
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 95 words with equal relocation-masked contents"
+
+- address: 0x80018B0C
+  name: aligned_ovl2_80018AF0
+  overlay: ovl2
+  sim_address: 0x80018AF0
+  size: 0xE0
+  kind: aligned-range
+  delta: 0x1C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 56 words with equal relocation-masked contents"
+
+- address: 0x80018C38
+  name: aligned_ovl2_80018C50
+  overlay: ovl2
+  sim_address: 0x80018C50
+  size: 0xA58
+  kind: aligned-range
+  delta: -0x18
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 662 words with equal relocation-masked contents"
+
+- address: 0x800197AC
+  name: aligned_ovl2_80019810
+  overlay: ovl2
+  sim_address: 0x80019810
+  size: 0x3C
+  kind: aligned-range
+  delta: -0x64
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 15 words with equal relocation-masked contents"
+
+- address: 0x80019840
+  name: aligned_ovl2_800198E0
+  overlay: ovl2
+  sim_address: 0x800198E0
+  size: 0x704
+  kind: aligned-range
+  delta: -0xA0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 449 words with equal relocation-masked contents"
+
+- address: 0x80019F8C
+  name: aligned_ovl2_8001A028
+  overlay: ovl2
+  sim_address: 0x8001A028
+  size: 0xE0C
+  kind: aligned-range
+  delta: -0x9C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 899 words with equal relocation-masked contents"
+
+- address: 0x8001AE88
+  name: aligned_ovl2_8001AF0C
+  overlay: ovl2
+  sim_address: 0x8001AF0C
+  size: 0xCBC
+  kind: aligned-range
+  delta: -0x84
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 815 words with equal relocation-masked contents"
+
+- address: 0x8001BBCC
+  name: aligned_ovl2_8001BC44
+  overlay: ovl2
+  sim_address: 0x8001BC44
+  size: 0x294
+  kind: aligned-range
+  delta: -0x78
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 165 words with equal relocation-masked contents"
+
+- address: 0x8001BE90
+  name: aligned_ovl2_8001BF0C
+  overlay: ovl2
+  sim_address: 0x8001BF0C
+  size: 0xC0
+  kind: aligned-range
+  delta: -0x7C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 48 words with equal relocation-masked contents"
+
+- address: 0x8001BF9C
+  name: aligned_ovl2_8001C020
+  overlay: ovl2
+  sim_address: 0x8001C020
+  size: 0xB58
+  kind: aligned-range
+  delta: -0x84
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 726 words with equal relocation-masked contents"
+
+- address: 0x8001CB84
+  name: aligned_ovl2_8001CC04
+  overlay: ovl2
+  sim_address: 0x8001CC04
+  size: 0x38
+  kind: aligned-range
+  delta: -0x80
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 14 words with equal relocation-masked contents"
+
+- address: 0x8001CCD0
+  name: aligned_ovl2_8001CD14
+  overlay: ovl2
+  sim_address: 0x8001CD14
+  size: 0x4C
+  kind: aligned-range
+  delta: -0x44
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 19 words with equal relocation-masked contents"
+
+- address: 0x8001CDA4
+  name: aligned_ovl2_8001CDF0
+  overlay: ovl2
+  sim_address: 0x8001CDF0
+  size: 0x68
+  kind: aligned-range
+  delta: -0x4C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 26 words with equal relocation-masked contents"
+
+- address: 0x8001CE88
+  name: aligned_ovl2_8001CEDC
+  overlay: ovl2
+  sim_address: 0x8001CEDC
+  size: 0x36668
+  kind: aligned-range
+  delta: -0x54
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl2 image, 55706 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl3_80010000
+  overlay: ovl3
+  sim_address: 0x80010000
+  size: 0x2CEC
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl3 image, 2875 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl4_80010000
+  overlay: ovl4
+  sim_address: 0x80010000
+  size: 0x3BD4
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 3829 words with equal relocation-masked contents"
+
+- address: 0x80013C78
+  name: aligned_ovl4_80013C68
+  overlay: ovl4
+  sim_address: 0x80013C68
+  size: 0x4C
+  kind: aligned-range
+  delta: 0x10
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 19 words with equal relocation-masked contents"
+
+- address: 0x80013D68
+  name: aligned_ovl4_80013D3C
+  overlay: ovl4
+  sim_address: 0x80013D3C
+  size: 0x40
+  kind: aligned-range
+  delta: 0x2C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 16 words with equal relocation-masked contents"
+
+- address: 0x80013F14
+  name: aligned_ovl4_80013EEC
+  overlay: ovl4
+  sim_address: 0x80013EEC
+  size: 0x1000
+  kind: aligned-range
+  delta: 0x28
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 1024 words with equal relocation-masked contents"
+
+- address: 0x80014F34
+  name: aligned_ovl4_80014EFC
+  overlay: ovl4
+  sim_address: 0x80014EFC
+  size: 0x2A0
+  kind: aligned-range
+  delta: 0x38
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 168 words with equal relocation-masked contents"
+
+- address: 0x800151EC
+  name: aligned_ovl4_800151A4
+  overlay: ovl4
+  sim_address: 0x800151A4
+  size: 0x6A48
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 6802 words with equal relocation-masked contents"
+
+- address: 0x8001BC54
+  name: aligned_ovl4_8001BC10
+  overlay: ovl4
+  sim_address: 0x8001BC10
+  size: 0xA4
+  kind: aligned-range
+  delta: 0x44
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 41 words with equal relocation-masked contents"
+
+- address: 0x8001BD04
+  name: aligned_ovl4_8001BCBC
+  overlay: ovl4
+  sim_address: 0x8001BCBC
+  size: 0x208
+  kind: aligned-range
+  delta: 0x48
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 130 words with equal relocation-masked contents"
+
+- address: 0x8001BF48
+  name: aligned_ovl4_8001BF04
+  overlay: ovl4
+  sim_address: 0x8001BF04
+  size: 0x584
+  kind: aligned-range
+  delta: 0x44
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 353 words with equal relocation-masked contents"
+
+- address: 0x8001C594
+  name: aligned_ovl4_8001C598
+  overlay: ovl4
+  sim_address: 0x8001C598
+  size: 0x1C0
+  kind: aligned-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 112 words with equal relocation-masked contents"
+
+- address: 0x8001C7FC
+  name: aligned_ovl4_8001C840
+  overlay: ovl4
+  sim_address: 0x8001C840
+  size: 0xAC
+  kind: aligned-range
+  delta: -0x44
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 43 words with equal relocation-masked contents"
+
+- address: 0x8001C99C
+  name: aligned_ovl4_8001CA28
+  overlay: ovl4
+  sim_address: 0x8001CA28
+  size: 0x37F8
+  kind: aligned-range
+  delta: -0x8C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 3582 words with equal relocation-masked contents"
+
+- address: 0x800201F0
+  name: aligned_ovl4_80020280
+  overlay: ovl4
+  sim_address: 0x80020280
+  size: 0x4D4
+  kind: aligned-range
+  delta: -0x90
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 309 words with equal relocation-masked contents"
+
+- address: 0x80020750
+  name: aligned_ovl4_800207E4
+  overlay: ovl4
+  sim_address: 0x800207E4
+  size: 0x32290
+  kind: aligned-range
+  delta: -0x94
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl4 image, 51364 words with equal relocation-masked contents"
+
+- address: 0x80010000
+  name: aligned_ovl5_80010000
+  overlay: ovl5
+  sim_address: 0x80010000
+  size: 0x13EC
+  kind: aligned-range
+  delta: 0x0
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl5 image, 1275 words with equal relocation-masked contents"
+
+- address: 0x800113FC
+  name: aligned_ovl5_80011400
+  overlay: ovl5
+  sim_address: 0x80011400
+  size: 0x74
+  kind: aligned-range
+  delta: -0x4
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl5 image, 29 words with equal relocation-masked contents"
+
+- address: 0x80011480
+  name: aligned_ovl5_80011488
+  overlay: ovl5
+  sim_address: 0x80011488
+  size: 0x5C
+  kind: aligned-range
+  delta: -0x8
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl5 image, 23 words with equal relocation-masked contents"
+
+- address: 0x800114E0
+  name: aligned_ovl5_800114FC
+  overlay: ovl5
+  sim_address: 0x800114FC
+  size: 0xBE4
+  kind: aligned-range
+  delta: -0x1C
+  status: mapped
+  evidence: "gt2tool exe-map: word alignment of the ovl5 image, 761 words with equal relocation-masked contents"
+
+- address: 0x800959FC
+  name: music_track_table
+  sim_address: 0x800959C0
+  size: 0xFC
+  kind: data
+  status: verified
+  evidence: "Aligned music driver reference; 21 triples with increasing sector bounds followed by a zero sentinel."
