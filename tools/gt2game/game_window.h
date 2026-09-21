@@ -101,6 +101,7 @@ public:
     virtual bool KeyDown(int key) const = 0;
     // True once after the system reported a controller being plugged in or out.
     virtual bool TakeDevicesChanged() = 0;
+    virtual std::unique_ptr<gt2::input::Device> CreateInputDevice() { return {}; }
 
     // True when the frames are paced by a compositor whose display times the caller should render for (the XR
     // backend outside --xr-deterministic): the race's display-rate loop then runs one frame per display period.

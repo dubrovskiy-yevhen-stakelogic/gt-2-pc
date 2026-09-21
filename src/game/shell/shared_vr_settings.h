@@ -11,7 +11,7 @@
 namespace gt2::shell {
 inline std::string sharedVrSettingsPath;
 inline bool SharedVrKey(const std::string& key) {
-    if(key.starts_with("vr_")) return true;
+    if(key.starts_with("vr_") || key.starts_with("pc_binding_") || key=="pc_custom_bindings" || key=="pc_brake_reverse" || key=="pc_steering_stick") return true;
     for(const char* name : {"hd_assets","units","adaptive","rumble","profiler","frame_rate","frame_cap","vsync",
                            "render_scale","render_height","msaa","texture_filter","texture_mapping","scenery_detail","draw_distance"})
         if(key==name) return true;

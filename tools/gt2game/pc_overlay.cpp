@@ -26,12 +26,16 @@ gt2::shell::VrSettings baseVrSettings;
 int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
 bool profiler = true;
 bool playStationIntro = true;
+bool consoleStartupHandled = false;
+bool gameChangeAvailable = false, gameChangeRequested = false;
 int foveation = 2;
 int metricUnits = -1;
 bool baseMetricUnits = true;
 gt2view::HudVisibility hudVisibility;
 gt2::vr::DrivingSettings drivingSettings;
 gt2::vr::ControlBindings controlBindings;
+gt2::vr::ControlBindings desktopBindings = gt2::vr::DesktopBindings();
+bool desktopCustom = false;
 int introLowerCm = 200;
 struct HudSetting { const char* label; const char* key; bool gt2view::HudVisibility::*member; };
 constexpr HudSetting hudSettings[] = {
@@ -141,6 +145,9 @@ void Save() {
         out << "vr_driving_mode=" << drivingSettings.mode << "\nvr_motion_hand=" << drivingSettings.motionHand
             << "\nvr_wheel_height=" << drivingSettings.wheelHeightCm << "\nvr_wheel_distance=" << drivingSettings.wheelDistanceCm
             << "\nvr_wheel_radius=" << drivingSettings.wheelRadiusCm << "\nvr_intro_lower_cm=" << introLowerCm << '\n';
+        out << "pc_custom_bindings=" << int(desktopCustom) << "\npc_brake_reverse=" << int(desktopBindings.brakeReverse)
+            << "\npc_steering_stick=" << desktopBindings.steeringStick << '\n';
+        for (size_t i=0;i<desktopBindings.source.size();++i) out << "pc_binding_" << i << '=' << desktopBindings.source[i] << '\n';
         out << "vr_brake_reverse=" << int(controlBindings.brakeReverse) << "\nvr_steering_stick=" << controlBindings.steeringStick << '\n';
         for (size_t i=0;i<controlBindings.source.size();++i) out << "vr_binding_" << i << '=' << controlBindings.source[i] << '\n';
         for (const auto& setting : hudSettings) out << setting.key << '=' << int(hudVisibility.*setting.member) << '\n';
@@ -165,6 +172,7 @@ void Save() {
 void LoadOverlaySettings(const std::string& basePath) {
     adaptive = 60; rumble = 50; vrScale = -1; vrRefresh = 72; profiler = true; foveation = 2;
     hudVisibility = {}; drivingSettings = {}; controlBindings = {}; introLowerCm = 200;
+    desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;
     const auto base=gt2::shell::PcSettings::Load(basePath);
@@ -185,6 +193,10 @@ void LoadOverlaySettings(const std::string& basePath) {
         if (key == "hd_assets") gt2::hd::SetEnabled(value != "0");
         else if (key == "vr_ps1_intro") playStationIntro = value != "0";
         else if (key == "units" && (value == "kmh" || value == "mph")) metricUnits = value == "kmh";
+        else if (key == "pc_custom_bindings") desktopCustom = value == "1";
+        else if (key == "pc_brake_reverse") desktopBindings.brakeReverse = value == "1";
+        else if (key == "pc_steering_stick") desktopBindings.steeringStick = std::clamp(std::atoi(value.c_str()),0,1);
+        else if (key.size()==12 && key.starts_with("pc_binding_") && key[11]>='0' && key[11]<='7') desktopBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,12);
         else if (key == "vr_brake_reverse") controlBindings.brakeReverse = value == "1";
         else if (key == "vr_steering_stick") controlBindings.steeringStick = std::clamp(std::atoi(value.c_str()),0,1);
         else if (key.size()==12 && key.substr(0,11)=="vr_binding_" && key[11]>='0' && key[11]<='7') controlBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,8);
@@ -214,6 +226,8 @@ void LoadOverlaySettings(const std::string& basePath) {
     SetGraphicsFromOverlay(graphics);
     gt2::pc::SetUnlocks(courses, cars);
 }
+bool OverlayDesktopCustomBindings() { return desktopCustom; }
+const gt2::vr::ControlBindings& OverlayDesktopBindings() { return desktopBindings; }
 const gt2::vr::ControlBindings& OverlayControlBindings() { return controlBindings; }
 const gt2::vr::DrivingSettings& OverlayDrivingSettings() { return drivingSettings; }
 float OverlayIntroLowering() { return introLowerCm*.01f; }
@@ -295,20 +309,26 @@ std::string ApplySimulationCheat(int action, size_t carIndex = 0) {
     } catch (const std::exception& e) { return std::string("Cheat failed: ") + e.what(); }
 }
 
-void ShowVrMenu(GameWindow& window) {
+void ShowSettingsMenu(GameWindow& window) {
     const gt2::audio::ScopedMixPause pause;
     PrepareNativeUi(window.Renderer()); window.Input().StopFeedback();
     if (vrScale < 0) vrScale = int(VrOptionsInUse().renderScale * 100 + 0.5f);
+    const bool vr = VrMode();
     int page = 0, selected = 0, carPage = 0, hudPage = 0, controlPage = 0;
     gt2::vr::MenuTriggers triggers;
     triggers.Begin(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
     bool first = true, done = false;
+    std::printf("overlay: opened (%s) at field %d\n", vr ? "VR" : "desktop", window.Field());
     std::string status = "GAME PAUSED - settings save automatically.";
     while (!done && !window.Closed()) {
         auto graphics = CurrentGraphics();
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
-        if (page == 0) rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Original game pause / exit", "Resume game"};
+        if (page == 0) rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Resume game"};
+        if (page == 9) {
+            title = "GT2 VR / CHANGE GAME";
+            rows = {"Return to disc selection", "Back to current game"};
+        }
         if (page == 1) {
             title = "GT2 VR / GRAPHICS";
             rows = {"Eye resolution: " + std::to_string(vrScale) + "% (restart)",
@@ -320,6 +340,16 @@ void ShowVrMenu(GameWindow& window) {
                 "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
                 "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
                 "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"), "Back"};
+        }
+        if (page == 1 && !vr) {
+            rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
+            rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
+            rows[7] = "Display timing...";
+        }
+        if (page == 8) {
+            title = "GT2 / DISPLAY TIMING";
+            rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
+                    std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"), "Back"};
         }
         if (page == 2) {
             title = "GT2 VR / CHEATS";
@@ -339,9 +369,15 @@ void ShowVrMenu(GameWindow& window) {
             rows = {"Steering and wheel", "Button bindings", std::string("Brake to reverse (AT): ")+(controlBindings.brakeReverse ? "ON" : "OFF"),
                 std::string("Steering stick: ")+(controlBindings.steeringStick ? "Right" : "Left"), "Reset controls to defaults", "Back"};
         }
+        if (page == 6 && !vr) {
+            rows = {std::string("Gamepad bindings: ") + (desktopCustom ? "Custom" : "Original game"), "Button bindings",
+                std::string("Brake to reverse (AT): ") + (desktopBindings.brakeReverse ? "ON" : "OFF"),
+                std::string("Custom steering stick: ") + (desktopBindings.steeringStick ? "Right" : "Left"),
+                "Reset controls to defaults", "DualSense pedal resistance: " + std::to_string(adaptive) + "%", "Back"};
+        }
         if (page == 7) {
             title = "GT2 VR / BINDINGS / PAGE " + std::to_string(controlPage+1);
-            for (int i=controlPage*4;i<controlPage*4+4;++i) rows.push_back(std::string(gt2::vr::controlNames[i])+": "+gt2::vr::controlSources[controlBindings.source[i]]);
+            for (int i=controlPage*4;i<controlPage*4+4;++i) rows.push_back(std::string(gt2::vr::controlNames[i])+": "+(vr ? gt2::vr::controlSources[controlBindings.source[i]] : gt2::vr::desktopControlSources[desktopBindings.source[i]]));
             rows.push_back(controlPage ? "Previous bindings" : "More bindings"); rows.push_back("Back");
         }
         if (page == 5) {
@@ -365,28 +401,44 @@ void ShowVrMenu(GameWindow& window) {
             rows.push_back(hudPage == 0 ? "More HUD settings" : "Previous HUD settings");
             rows.push_back("Back");
         }
+        if (!vr && title.starts_with("GT2 VR")) title.replace(0, 6, "GT2");
         if (!first) {
             if (!window.BeginFrame()) break;
             if (window.PadPressed(gt2::input::ps1::kStart) || window.Pressed(gt2::keys::kF10)) break;
             if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape)) {
                 if (page == 0) break;
-                page = page == 3 ? 2 : (page == 5 || page == 7) ? 6 : 0; selected = 0; continue;
+                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : 0; selected = 0; continue;
             }
             const int count = int(rows.size());
-            if (window.PadPressed(gt2::input::ps1::kSquare) || window.Pressed(gt2::keys::kUp)) selected = (selected + count - 1) % count;
-            if (window.PadPressed(gt2::input::ps1::kR1) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % count;
+            if ((vr && window.PadPressed(gt2::input::ps1::kSquare)) || window.Pressed(gt2::keys::kUp)) selected = (selected + count - 1) % count;
+            if ((vr && window.PadPressed(gt2::input::ps1::kR1)) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % count;
             const bool accept = window.Pressed(gt2::keys::kReturn);
-            const int direction = triggers.Update(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
+            int direction = triggers.Update(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
+            if (!vr) {
+                if (window.Pressed(gt2::keys::kLeft)) direction = -1;
+                if (window.Pressed(gt2::keys::kRight) || accept) direction = 1;
+            }
             if (direction || accept) {
                 if (page == 0 && accept) {
-                    if (selected >= 4) { if (selected == 4) window.RequestGamePause(); done = true; }
+                    if (selected == 4) {
+                        if (gameChangeAvailable) { page = 9; selected = 1; }
+                        else status = "Launch from the disc picker with both discs installed.";
+                    }
+                    else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
+                }
+                else if (page == 9 && accept) {
+                    if (selected == 0) {
+                        std::puts("player: change game requested");
+                        gameChangeRequested = true;
+                        window.Close(); done = true;
+                    } else { page = 0; selected = 4; }
                 }
                 else if (page == 1 && (direction || selected == 10)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     status = "Saved.";
-                    if (selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
-                    if (selected == 1) {
+                    if (vr && selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
+                    if (vr && selected == 1) {
                         const auto rates = window.RefreshRates();
                         if (!rates.empty()) {
                             auto it = std::find(rates.begin(), rates.end(), vrRefresh);
@@ -395,17 +447,34 @@ void ShowVrMenu(GameWindow& window) {
                             if (window.SetRefreshRate(rate)) vrRefresh = rate; else status = "Headset refused refresh rate; unchanged.";
                         } else status = "Headset does not offer refresh-rate selection.";
                     }
+                    if (!vr && selected == 0) {
+                        const int resolutions[] = {50,75,100,125,150,175,200,-720,-1080,-1440,-2160};
+                        const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
+                        graphics.renderHeight = choice < 0 ? -choice : 0;
+                        if (choice > 0) graphics.renderScale = choice;
+                    }
+                    if (!vr && selected == 1) {
+                        const int caps[] = {0,30,60,72,80,90,120,144,165,240};
+                        graphics.frameCap = Cycle(graphics.frameCap, caps, direction);
+                    }
                     if (selected == 2) graphics.msaa = Cycle(graphics.msaa, samples, direction);
                     if (selected == 3) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
                     if (selected == 4) rumble = std::clamp(rumble + direction * 5, 0, 100);
                     if (selected == 5) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == 6) profiler = !profiler;
-                    if (selected == 7) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
+                    if (vr && selected == 7) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
                     if (selected == 8 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
                     if (selected == 9 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
-                    if (selected == 10) { page = 0; selected = 0; }
+                    if (!vr && selected == 7 && accept) { page = 8; selected = 0; }
+                    else if (selected == 10) { page = 0; selected = 0; }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
+                } else if (page == 8) {
+                    if (selected == 0) graphics.vsync = !graphics.vsync;
+                    if (selected == 1) graphics.frameRate = !graphics.frameRate;
+                    if (selected == 2) { page = 1; selected = 7; }
+                    SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
+                    status = "Saved.";
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);
@@ -427,6 +496,15 @@ void ShowVrMenu(GameWindow& window) {
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
                     else if (selected == 0 && direction) { metricUnits = !OverlayMetricUnits(baseMetricUnits); status = "Saved. Speed units apply on resume."; }
                     else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 6 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
+                } else if (page == 6 && !vr) {
+                    if (selected == 0 && direction) desktopCustom = !desktopCustom;
+                    else if (selected == 1 && accept) { page = 7; selected = controlPage = 0; }
+                    else if (selected == 2 && direction) desktopBindings.brakeReverse = !desktopBindings.brakeReverse;
+                    else if (selected == 3 && direction) desktopBindings.steeringStick = 1 - desktopBindings.steeringStick;
+                    else if (selected == 4 && accept) { desktopCustom = false; desktopBindings = gt2::vr::DesktopBindings(); }
+                    else if (selected == 5 && direction) adaptive = std::clamp(adaptive + direction * 10, 0, 100);
+                    else if (selected == 6 && accept) { page = 0; selected = 0; }
+                    status = "Saved. Original game bindings remain available.";
                 } else if (page == 6) {
                     if (selected==0 && accept) {page=5;selected=0;}
                     else if (selected==1 && accept) {page=7;selected=controlPage=0;}
@@ -436,8 +514,10 @@ void ShowVrMenu(GameWindow& window) {
                     else if (selected==5 && accept) {page=0;selected=0;}
                 } else if (page == 7) {
                     if (selected<4 && direction) {
-                        auto& binding=controlBindings.source[size_t(controlPage*4+selected)];
-                        binding=(binding+direction+int(std::size(gt2::vr::controlSources)))%int(std::size(gt2::vr::controlSources));
+                        auto& binding=(vr ? controlBindings : desktopBindings).source[size_t(controlPage*4+selected)];
+                        const int sources = vr ? int(std::size(gt2::vr::controlSources)) : int(std::size(gt2::vr::desktopControlSources));
+                        binding=(binding+direction+sources)%sources;
+                        if (!vr) desktopCustom = true;
                         status="Saved. Bindings affect driving; menu controls stay fixed.";
                     } else if (selected==4) {controlPage=1-controlPage;selected=0;}
                     else if (selected==5) {page=6;selected=0;}
@@ -460,9 +540,11 @@ void ShowVrMenu(GameWindow& window) {
         }
         first = false;
         window.Input().StopFeedback();
-        Panel(window, title, rows, selected, status, "Stick up/down: row   Triggers: value   A: open   B: back");
+        Panel(window, title, rows, selected, page == 9 ? "Unsaved progress will be lost. Save in the game first." : status,
+              vr ? "Stick up/down: row   Triggers: value   A: open   B: back" : "Up/down: row  Left/right: value  Enter: open Esc: back");
     }
     window.Input().StopFeedback(); window.ResetPacing();
+    std::printf("overlay: closed at field %d\n", window.Field());
 }
 }
 
@@ -471,7 +553,7 @@ void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career:
     if (!data) catalogueData = nullptr;
 }
 void PrepareNativeUi(gt2view::VkSceneRenderer& renderer) { UploadFont(renderer); }
-bool FrameProfilerEnabled() { return profiler && VrMode(); }
+bool FrameProfilerEnabled() { return profiler; }
 void AppendFrameProfiler(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, const FrameProfiler& stats) {
     NativeCanvas canvas;
     canvas.Quad(492, 4, 284, 101, 0x101c2a);
@@ -504,7 +586,15 @@ void AppendSkipHint(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::Dra
     NativeCanvas canvas; canvas.Quad(244, 550, 312, 34, 0x101c2a);
     canvas.Text(256, 555, VrMode() ? "A / B : SKIP MOVIE" : "START / ENTER : SKIP"); canvas.Append(renderer, items);
 }
-std::string SelectQuestDisc(const std::string& root, const std::string& preferred) {
+bool ConsoleStartupHandled() { return consoleStartupHandled; }
+bool PlayStationIntroEnabled() { return playStationIntro; }
+bool TakeGameChangeRequest() {
+    const bool requested = gameChangeRequested;
+    gameChangeRequested = false;
+    return requested;
+}
+std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vrMode,
+                          bool deterministic, const std::string& script, const std::string& shot, bool sound, bool playStartup) {
     std::vector<std::string> modes, rows;
     for (const std::string mode : {"arcade", "simulation"}) {
         if (std::filesystem::exists(std::filesystem::path(root) / mode / "disc.raw2352")) {
@@ -512,143 +602,37 @@ std::string SelectQuestDisc(const std::string& root, const std::string& preferre
         }
     }
     if (modes.empty()) throw std::runtime_error("No installed GT2 disc found");
-    SetVrMode(true, false); VrOptions vr; vr.stereo = false; SetVrOptions(vr);
-    GameWindow window("GT2 VR - Choose disc", 1280, 960); window.EnableNativeMenu(false); PrepareNativeUi(window.Renderer());
+    gameChangeAvailable = modes.size() > 1;
+    gameChangeRequested = false;
+    SetVrMode(vrMode, deterministic); VrOptions vr; vr.stereo = false; SetVrOptions(vr);
+    GameWindow window("Gran Turismo 2 - Choose disc", 1280, 960); window.EnableNativeMenu(false); PrepareNativeUi(window.Renderer());
+    if (!script.empty()) window.AddScript(script);
+    if (!shot.empty()) window.AddShot(2, shot);
+    consoleStartupHandled = true;
     auto startup = std::filesystem::path(root) / "startup-hd.gtm";
     if(!gt2::hd::Enabled() || !std::filesystem::is_regular_file(startup)) startup=std::filesystem::path(root)/"startup.gtm";
-    if (playStationIntro && std::filesystem::is_regular_file(startup)) {
+    if (playStartup && playStationIntro && std::filesystem::is_regular_file(startup)) {
         MovieSpec spec; spec.skippable = false; spec.displayWidth = 640; spec.displayHeight = 480; spec.x = spec.y = 0;
-        try { if (PlayPreparedMovie(window, startup.string(), spec, true) == MovieResult::kClosed) return {}; }
+        std::printf("player: PlayStation intro %s\n", startup.string().c_str());
+        try { if (PlayPreparedMovie(window, startup.string(), spec, sound) == MovieResult::kClosed) return {}; }
         catch (const std::exception& e) { std::printf("BIOS intro unavailable: %s\n", e.what()); }
     }
     int selected = modes.size() == 2 && preferred == modes[1] ? 1 : 0;
+    std::printf("player: disc picker (%s), %zu installed disc(s)\n", vrMode ? "VR" : "desktop", modes.size());
     while (window.BeginFrame()) {
+        if (window.Pressed(gt2::keys::kEscape) || window.Pressed(gt2::keys::kBack)) return {};
         if (window.Pressed(gt2::keys::kUp) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
-        if (window.PadPressed(gt2::input::ps1::kCross)) { window.RetainBackendForNextWindow(); return modes[size_t(selected)]; }
-        Panel(window, "GRAN TURISMO 2 / SELECT DISC", rows, selected, "Choose your disc for this session.", "Left stick: select   A: start");
+        if (window.Pressed(gt2::keys::kReturn)) {
+            std::printf("player: selected %s\n", modes[size_t(selected)].c_str());
+            window.RetainBackendForNextWindow(); return modes[size_t(selected)];
+        }
+        Panel(window, "GRAN TURISMO 2 / SELECT DISC", rows, selected, "Choose your disc for this session.",
+              vrMode ? "Left stick: select   A: start   B: exit" : "Up/down: select   Enter / A: start   Esc: exit");
     }
     return {};
 }
 
-void ShowPcOverlay(GameWindow& window, const std::vector<gt2view::DrawItem>& background, size_t sceneCount) {
-    if (VrMode()) { ShowVrMenu(window); return; }
-    using namespace gt2view;
-    const gt2::audio::ScopedMixPause audioPause;
-    auto& renderer = window.Renderer();
-    UploadFont(renderer);
-    auto graphics = CurrentGraphics();
-    if (VrMode() && vrScale < 0) vrScale = int(VrOptionsInUse().renderScale * 100.0f + 0.5f);
-    int selected = 0;
-    std::string status = "Changes apply immediately and are saved.";
-    window.Input().StopFeedback();
-    std::printf("overlay: opened at field %d\n", window.Field());
-    auto change = [&](int direction) {
-        const int resolutions[] = {50, 75, 100, 125, 150, 200, -720, -1080, -1440, -2160}, samples[] = {1, 2, 4, 8}, caps[] = {0, 30, 60, 90, 120, 144, 165, 240};
-        const int distances[] = {0, 250, 500, 1000, 2000, -1};
-        if (selected <= 6 && GraphicsPinned()) { status = "Graphics locked by command-line flags."; return; }
-        if (VrMode() && (selected == 2 || selected == 4 || selected == 8)) {
-            status = selected == 8 ? "Touch has no adaptive triggers." : "Display timing is controlled by the headset."; return;
-        }
-        switch (selected) {
-        case 0: {
-            if (VrMode()) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); break; }
-            const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
-            graphics.renderHeight = choice < 0 ? -choice : 0;
-            if (choice > 0) graphics.renderScale = choice;
-            break;
-        }
-        case 1: graphics.frameRate = graphics.frameRate == 0 ? 1 : 0; break;
-        case 2: graphics.frameCap = Cycle(graphics.frameCap, caps, direction); break;
-        case 3: graphics.msaa = Cycle(graphics.msaa, samples, direction); break;
-        case 4: graphics.vsync = !graphics.vsync; break;
-        case 5: graphics.smoothTextures = !graphics.smoothTextures; break;
-        case 6: graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction); break;
-        case 7: rumble = std::clamp(rumble + direction * 5, 0, 100); break;
-        case 8: adaptive = std::clamp(adaptive + direction * 10, 0, 100); break;
-        case 9: gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars); break;
-        case 10: gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars); break;
-        }
-        SetGraphicsFromOverlay(graphics);
-        renderer.SetOptions(RenderOptionsOf(CurrentGraphics()));
-        if (rumble >= 0) window.Input().SetRumbleScale(rumble);
-        try { Save(); status = VrMode() && selected == 0 ? "Eye resolution saved. Restart the game to apply." : "Saved. Arcade unlocks refresh the selection menu."; }
-        catch (const std::exception& e) { status = std::string("Save failed: ") + e.what(); }
-        std::printf("overlay: %s; %s\n", DescribeGraphics(CurrentGraphics()).c_str(), status.c_str());
-    };
-    // The caller is suspended here. The scene, physics, race timer and menus keep their current state.
-    bool first = true;
-    while (!window.Closed()) {
-        if (!first) {
-            if (!window.BeginFrame()) break;
-            if (window.Pressed(gt2::keys::kF10) || window.Pressed(gt2::keys::kEscape) || window.Pressed(gt2::keys::kBack) ||
-                (window.PadHeld(gt2::input::ps1::kSelect) && window.PadPressed(gt2::input::ps1::kStart))) break;
-            if (window.Pressed(gt2::keys::kUp)) selected = (selected + 10) % 11;
-            if (window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % 11;
-            if (window.Pressed(gt2::keys::kLeft)) change(-1);
-            if (window.Pressed(gt2::keys::kRight) || window.Pressed(gt2::keys::kReturn)) change(1);
-        }
-        first = false;
-        window.Input().StopFeedback();
-        std::vector<SceneVertex> vertices;
-        auto quad = [&](float x, float y, float w, float h, uint32_t color, int glyph) {
-            const int cornerX[] = {0, 1, 1, 0, 1, 0}, cornerY[] = {0, 0, 1, 0, 1, 1};
-            for (int k = 0; k < 6; ++k) {
-                SceneVertex v{};
-                v.pos[0] = (x + float(cornerX[k]) * w) / 800.0f * 2 - 1;
-                v.pos[1] = (y + float(cornerY[k]) * h) / 600.0f * 2 - 1;
-                v.pos[2] = 1;
-                v.color[0] = float((color >> 16) & 255) / 255; v.color[1] = float((color >> 8) & 255) / 255; v.color[2] = float(color & 255) / 255;
-                v.flags = 0;
-                if (glyph >= 0) {
-                    v.flags |= kTextured | (2u << 8);
-                    v.page = fontRow << 16;
-                    v.texel[0] = float((glyph % 16) * 16 + cornerX[k] * 16);
-                    v.texel[1] = float((glyph / 16) * 24 + cornerY[k] * 24);
-                }
-                vertices.push_back(v);
-            }
-        };
-        auto text = [&](float x, float y, const std::string& s, uint32_t color = 0xE2E8F0) {
-            for (unsigned char c : s) { if (c >= 32 && c < 128) quad(x, y, 16, 24, color, int(c) - 32); x += 12; }
-        };
-        quad(38, 28, 724, 548, 0x101C2A, -1);
-        quad(38, 28, 724, 5, 0x42B6F5, -1);
-        text(64, 45, VrMode() ? "GT2 / VR SETTINGS" : "GT2 / PC SETTINGS", 0xFFFFFF);
-        text(64, 74, "GAME PAUSED", 0x69CCF5);
-        const auto extent = renderer.Extent();
-        const auto scale = float(graphics.renderScale) / 100;
-        const std::string resolution = graphics.renderHeight ?
-            std::to_string(graphics.renderHeight * 16 / 9) + "x" + std::to_string(graphics.renderHeight) + (graphics.renderHeight == 2160 ? " / 4K" : " / fixed") :
-            std::to_string(int(float(extent.width) * scale)) + "x" + std::to_string(int(float(extent.height) * scale)) + " / " + std::to_string(graphics.renderScale) + "%";
-        const std::string on = "ON", off = "OFF";
-        std::vector<std::pair<std::string, std::string>> rows = {
-            {VrMode() ? "Eye scale (restart)" : "Internal resolution", VrMode() ? std::to_string(vrScale) + "%" : resolution},
-            {"Frame presentation", graphics.frameRate == 0 ? "Original 30" : "Interpolated"},
-            {"FPS limit", VrMode() ? "Headset timing" : graphics.frameCap ? std::to_string(graphics.frameCap) : "Display / uncapped"},
-            {"MSAA", std::to_string(graphics.msaa) + "x (GPU " + std::to_string(renderer.EffectiveMsaa()) + "x)"},
-            {"VSync", VrMode() ? "Headset timing" : graphics.vsync ? on : off}, {"Texture filtering", graphics.smoothTextures ? "Smooth + mipmaps" : "Original"},
-            {"Draw distance", graphics.drawDistance < 0 ? "Entire course" : graphics.drawDistance == 0 ? "Original" : std::to_string(graphics.drawDistance) + " m"},
-            {"Vibration strength", std::to_string(rumble) + "%"},
-            {"Adaptive pedals", VrMode() ? "Not available on Touch" : std::to_string(adaptive) + "%"},
-            {"Cheat: all arcade tracks", gt2::pc::unlockCourses ? on : off}, {"Cheat: all arcade cars", gt2::pc::unlockCars ? on : off}
-        };
-        for (size_t i = 0; i < rows.size(); ++i) {
-            const float y = 115 + float(i) * 29;
-            if (int(i) == selected) quad(55, y - 2, 690, 29, 0x234B68, -1);
-            text(65, y, rows[i].first); text(438, y, rows[i].second, 0x8ED8F8);
-        }
-        text(64, 449, VrMode() ? "Touch: left stick steering, triggers gas / brake" : window.Input().Port1HasTriggers() ? "DualSense HID connected" : "Adaptive pedals need a native DualSense", 0xA8B7C8);
-        text(64, 479, status.substr(0, 56), 0xA8B7C8);
-        text(64, 514, "Arrows / D-pad: change   F10 / Back: close", 0xFFFFFF);
-        text(64, 543, VrMode() ? "Hold left stick click + press Menu for settings" : "Pad shortcut: hold Create + press Options", 0xA8B7C8);
-        renderer.SetVertices(vertexBase, vertices);
-        DrawItem layer; layer.firstVertex = vertexBase; layer.vertexCount = uint32_t(vertices.size());
-        layer.mvp[0] = layer.mvp[5] = layer.mvp[10] = layer.mvp[15] = 1;
-        auto items = background; items.push_back(layer);
-        window.EndFrame(items, {}, std::chrono::nanoseconds(16'666'667), sceneCount);
-    }
-    window.Input().StopFeedback();
-    window.ResetPacing();
-    std::printf("overlay: closed at field %d\n", window.Field());
+void ShowPcOverlay(GameWindow& window, const std::vector<gt2view::DrawItem>&, size_t) {
+    ShowSettingsMenu(window);
 }
 }

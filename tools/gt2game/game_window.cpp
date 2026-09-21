@@ -94,6 +94,7 @@ GameWindow::GameWindow(const std::string& title, int clientWidth, int clientHeig
     } else backend_ = g_vr ? CreateXrWindowBackend(title, clientWidth, clientHeight) : CreateWindowBackend(title, clientWidth, clientHeight);
     PrepareNativeUi(backend_->Renderer());
     input_.AttachWindow(backend_->NativeHandle());
+    input_.AddDevice(backend_->CreateInputDevice());
     input_.SetRumbleScale(g_rumbleScale);
     if (OverlayRumbleStrength() >= 0) input_.SetRumbleScale(OverlayRumbleStrength());
     if (!g_fakePad.empty()) input_.AddFakePad(g_fakePad);

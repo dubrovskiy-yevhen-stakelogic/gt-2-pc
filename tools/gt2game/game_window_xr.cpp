@@ -1,28 +1,12 @@
-// The OpenXR backend of gt2game's window (game_window.h WindowBackend; docs/research/vr_port_plan.md, M1 and M2).
-//
-// Every 2D screen of the game - title, menus, panels, movies, race screens - is rendered by the existing 2D path into
-// one offscreen 1280 x 960 image and shown on a world-locked cinema quad 2 m ahead of the player (M1). The race
-// scene is a stereo XrCompositionLayerProjection instead (M2): the race view asks for a stereo frame between
-// BeginRenderFrame and its build, this file locates the head, runs the VR rig (src/platform/xr/vr_rig.h) on the
-// original camera it is given and hands the renderer the two eyes' matrices; the draw list is built once and
-// recorded into a two-layer target. `--vr-mono` (or vr_stereo=0) puts the race back on the cinema quad.
-//
-// What replaces what (compared with game_window_win32.cpp):
-//   renderer   VkSceneRenderer on the OpenXR session's Vulkan device, offscreen instead of a window swapchain;
-//   frame      xrWaitFrame / xrBeginFrame around the frame's recording, xrEndFrame with the quad layer after it;
-//   pacing     the compositor's frames: SleepUntil keeps submitting the last image until the field's time, and
-//              VBlankTiming reports the runtime's display time and period (so race_view.cpp's display-rate loop
-//              builds its frames for the headset's refresh instead of the desktop compositor's);
-//   window     a plain Win32 window is kept for the keyboard, the focus and the controllers (M5 adds XR actions).
-//
-// --xr-deterministic: no pacing at all and exactly one compositor frame per field, so that the runtime's capture of
-// frame N is the game's field N and a run can be compared frame by frame with the desktop one.
+// Windows OpenXR: theatre menus, stereo races and tracked driving controls.
 #include <windows.h>
 #define VK_USE_PLATFORM_WIN32_KHR // the desktop mirror's surface
 #include <vulkan/vulkan.h>
 
 #include "game_window.h"
 #include "pc_overlay.h"
+#include "game/audio/pause.h"
+#include "gt2view/vr_driving_visuals.h"
 
 #include <algorithm>
 #include <chrono>
@@ -252,6 +236,25 @@ void MirrorWindow::Show(VkImage src, VkExtent2D srcExtent) {
     }
 }
 
+struct XrPadState {
+    gt2::input::Ps1PadFrame frame;
+    float vibration = 0;
+    bool active = false;
+};
+class XrPadDevice final : public gt2::input::Device {
+public:
+    explicit XrPadDevice(std::shared_ptr<XrPadState> state) : state_(std::move(state)) {}
+    bool Poll(int, gt2::input::Ps1PadFrame& out) override { out = state_->frame; return true; }
+    void SetMotors(uint8_t small, uint8_t large, int strength) override {
+        state_->vibration = std::max(small ? 0.35f : 0.f, float(large)/255.f) * float(strength)/100.f;
+    }
+    bool HasMotors() const override { return true; }
+    void SetActive(bool active) override { state_->active = active; }
+    std::string Name() const override { return "OpenXR controllers"; }
+private:
+    std::shared_ptr<XrPadState> state_;
+};
+
 class XrWindow final : public WindowBackend {
 public:
     XrWindow(const std::string& title, int clientWidth, int clientHeight, bool deterministic);
@@ -262,6 +265,20 @@ public:
     void SetTitle(const std::string& title) override { desktop_->SetTitle(title); }
 
     void Pump() override;
+    bool TakeTimingReset() override { const bool reset = timingReset_; timingReset_ = false; return reset; }
+    void ConfigureVr() override;
+    void SetDrivingActive(bool active) override { drivingActive_ = active; if (!active) driving_.Reset(); }
+    void SetVrMenuActive(bool active) override { vrMenuActive_ = active; driving_.Reset(); steering_ = 0; }
+    bool PhysicalSteering(float& value) const override {
+        value = steering_; return pad_->active && drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
+    }
+    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items) override {
+        if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), drivingMatrix_);
+    }
+    std::unique_ptr<gt2::input::Device> CreateInputDevice() override {
+        return std::make_unique<XrPadDevice>(pad_);
+    }
+
     void BeginRenderFrame() override;
     void EndRenderFrame() override;
     bool Closed() const override { return closed_ || desktop_->Closed(); }
@@ -269,9 +286,9 @@ public:
         closed_ = true;
         desktop_->Close();
     }
-    bool Focused() const override { return desktop_->Focused(); }
-    std::vector<int> TakeKeyDowns() override { return desktop_->TakeKeyDowns(); }
-    bool KeyDown(int key) const override { return desktop_->KeyDown(key); }
+    bool Focused() const override { return session_->State() == 5; }
+    std::vector<int> TakeKeyDowns() override { auto keys = desktop_->TakeKeyDowns(); return desktop_->Focused() ? keys : std::vector<int>{}; }
+    bool KeyDown(int key) const override { return desktop_->Focused() && desktop_->KeyDown(key); }
     bool TakeDevicesChanged() override { return desktop_->TakeDevicesChanged(); }
 
     bool XrPaced() const override { return !deterministic_; }
@@ -303,6 +320,22 @@ private:
     // One compositor frame that shows the image the game drew last (while the game is between fields or loading).
     void IdleFrame();
 
+    void UpdateDriving() {
+        tracking_ = session_->ControllerTracking();
+        if (recenter_.Pending()) tracking_ = {};
+        else for (int h = 0; h < 2; ++h) {
+            tracking_.gripPose[h] = recenter_.Apply(tracking_.gripPose[h]);
+            tracking_.aimPose[h] = recenter_.Apply(tracking_.aimPose[h]);
+        }
+        steering_ = driving_.Update(tracking_,OverlayDrivingSettings(),drivingActive_ && !vrMenuActive_);
+    }
+    gt2::vr::DrivingController driving_;
+    gt2::vr::TrackedControllers tracking_;
+    std::unique_ptr<gt2view::VrDrivingVisuals> hands_;
+    bool drivingActive_ = false, vrMenuActive_ = false;
+    float steering_ = 0, drivingMatrix_[16]{};
+
+    std::shared_ptr<XrPadState> pad_ = std::make_shared<XrPadState>();
     std::unique_ptr<WindowBackend> desktop_; // the Win32 window: keyboard, focus, controllers, high-resolution sleep
     std::unique_ptr<MirrorWindow> mirror_;   // ... and the same image on the PC's screen
     std::unique_ptr<gt2::xr::Session> session_;
@@ -310,6 +343,7 @@ private:
     std::unique_ptr<gt2view::VkSceneRenderer> renderer_;
     bool deterministic_ = false;
     bool closed_ = false;
+    bool timingReset_ = false;
     bool frameOpen_ = false;  // a compositor frame is between xrBeginFrame and xrEndFrame
     bool everDrawn_ = false;  // the offscreen image holds a frame (idle frames may resubmit it)
 
@@ -325,7 +359,9 @@ private:
 
 XrWindow::XrWindow(const std::string& title, int clientWidth, int clientHeight, bool deterministic) : deterministic_(deterministic) {
     gt2::xr::SessionOptions options;
-    options.appName = "gt2game";
+    options.appName = "GT2 VR";
+    options.alternateMenuChord = true;
+    options.refreshHz = float(OverlayRefreshRate());
     options.quadWidth = uint32_t(kCinemaWidth);
     options.quadHeight = uint32_t(kCinemaHeight);
     // The desktop mirror is off unless GT2_XR_MIRROR=1 asks for it: in VR the player looks through the headset, and
@@ -346,10 +382,32 @@ XrWindow::XrWindow(const std::string& title, int clientWidth, int clientHeight, 
                                                 session_->Queue()};
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*vulkan_, VkExtent2D{uint32_t(kCinemaWidth), uint32_t(kCinemaHeight)}, session_->RenderFormat());
-    // The desktop window is the program's window on the PC: the keyboard, the focus and the controllers come from it
-    // (M5 replaces that with XR actions), and with GT2_XR_MIRROR=1 it also shows what the headset shows.
-    // The stereo projection layer of the race (M2). The eye image is the runtime's recommended size times the VR
-    // render scale, unless --vr-eye fixed it (the checks compare it with a desktop frame of the same size).
+    hands_ = std::make_unique<gt2view::VrDrivingVisuals>(*renderer_);
+    ConfigureVr();
+    const VrOptions& vr = VrOptionsInUse();
+    if (!vr.poseLog.empty()) {
+        poseLog_ = std::fopen(vr.poseLog.c_str(), "w");
+        if (poseLog_)
+            std::fprintf(poseLog_, "frame,field_alpha,cam_x,cam_y,cam_z,cam_rx,cam_ry,cam_rz,cam_ux,cam_uy,cam_uz,cam_fx,cam_fy,cam_fz,"
+                                   "head_x,head_y,head_z,head_qx,head_qy,head_qz,head_qw,ref_x,ref_y,ref_z,"
+                                   "e0_x,e0_y,e0_z,e0_qx,e0_qy,e0_qz,e0_qw,e1_x,e1_y,e1_z,e1_qx,e1_qy,e1_qz,e1_qw,ipd,"
+                                   "fov0_l,fov0_r,fov0_u,fov0_d\n");
+        else std::printf("xr: cannot write the pose log %s\n", vr.poseLog.c_str());
+    }
+
+    desktop_ = CreateInputWindowBackend(title, clientWidth, clientHeight);
+    if (options.mirrorWindow) {
+        mirror_ = std::make_unique<MirrorWindow>(*session_, desktop_->NativeHandle());
+        if (!mirror_->Active()) mirror_.reset();
+        else std::printf("xr: desktop mirror in the program's window (GT2_XR_MIRROR=1)\n");
+    }
+}
+
+void XrWindow::ConfigureVr() {
+    const auto& info = session_->Info();
+    renderer_->WaitFrame();
+    session_->SetRefreshRate(float(OverlayRefreshRate()));
+    renderer_->SetFoveation(OverlayFoveation());
     const VrOptions& vr = VrOptionsInUse();
     rig_.horizonLock = vr.horizonLock;
     rig_.worldScale = vr.worldScale;
@@ -373,25 +431,10 @@ XrWindow::XrWindow(const std::string& title, int clientWidth, int clientHeight, 
     } else {
         std::printf("xr: stereo off (vr_stereo=0 / --vr-mono): the race stays on the cinema quad\n");
     }
-    if (!vr.poseLog.empty()) {
-        poseLog_ = std::fopen(vr.poseLog.c_str(), "w");
-        if (poseLog_)
-            std::fprintf(poseLog_, "frame,field_alpha,cam_x,cam_y,cam_z,cam_rx,cam_ry,cam_rz,cam_ux,cam_uy,cam_uz,cam_fx,cam_fy,cam_fz,"
-                                   "head_x,head_y,head_z,head_qx,head_qy,head_qz,head_qw,ref_x,ref_y,ref_z,"
-                                   "e0_x,e0_y,e0_z,e0_qx,e0_qy,e0_qz,e0_qw,e1_x,e1_y,e1_z,e1_qx,e1_qy,e1_qz,e1_qw,ipd,"
-                                   "fov0_l,fov0_r,fov0_u,fov0_d\n");
-        else std::printf("xr: cannot write the pose log %s\n", vr.poseLog.c_str());
-    }
-
-    desktop_ = CreateInputWindowBackend(title, clientWidth, clientHeight);
-    if (options.mirrorWindow) {
-        mirror_ = std::make_unique<MirrorWindow>(*session_, desktop_->NativeHandle());
-        if (!mirror_->Active()) mirror_.reset();
-        else std::printf("xr: desktop mirror in the program's window (GT2_XR_MIRROR=1)\n");
-    }
 }
 
 XrWindow::~XrWindow() {
+    if (renderer_) renderer_->WaitFrame();
     // A clean exit: ask the runtime to end the session and walk its state machine down (FOCUSED -> ... -> STOPPING,
     // xrEndSession, IDLE -> EXITING) before anything Vulkan is destroyed.
     if (session_) {
@@ -410,6 +453,7 @@ XrWindow::~XrWindow() {
     if (poseLog_) std::fclose(poseLog_);
     poseLog_ = nullptr;
     mirror_.reset();
+    hands_.reset();
     renderer_.reset();
     vulkan_.reset();
     session_.reset();
@@ -419,6 +463,30 @@ XrWindow::~XrWindow() {
 void XrWindow::Pump() {
     desktop_->Pump();
     if (!session_->PollEvents()) closed_ = true;
+    if (session_->Running() && !Focused() && !Closed()) {
+        gt2::audio::ScopedMixPause pause;
+        pad_->frame = {}; pad_->vibration = 0;
+        driving_.Reset(); steering_ = 0;
+        while (!Focused() && !Closed()) {
+            desktop_->Pump();
+            if (!session_->PollEvents()) { closed_ = true; break; }
+            IdleFrame();
+            if (!session_->Running()) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        timingReset_ = true;
+    }
+    gt2::input::Ps1PadFrame pad;
+    session_->ReadController(pad, pad_->vibration);
+    UpdateDriving();
+    if (!vrMenuActive_ && drivingActive_ && OverlayControlBindings().steeringStick == 1) {
+        std::swap(pad.analog[0],pad.analog[2]); std::swap(pad.analog[1],pad.analog[3]);
+        pad.buttons &= ~(gt2::input::ps1::kLeft|gt2::input::ps1::kRight|gt2::input::ps1::kUp|gt2::input::ps1::kDown);
+    }
+    if (!vrMenuActive_ && drivingActive_ && OverlayDrivingSettings().mode != 0) {
+        pad.analog = {128,128,128,128};
+        pad.buttons &= ~(gt2::input::ps1::kLeft | gt2::input::ps1::kRight | gt2::input::ps1::kUp | gt2::input::ps1::kDown);
+    }
+    pad_->frame = pad;
 }
 
 bool XrWindow::WaitForRunning() {
@@ -455,17 +523,27 @@ bool XrWindow::BeginStereoScene(const gt2::vr::Camera& camera, gt2::vr::View& vi
     if (!session_->LocateViews(head, eyes)) return false;
     if (session_->TakeRecenter() || recenter_.Pending()) {
         recenter_.Latch(head);
+        driving_.Reset();
         std::printf("xr: recentred on the head (yaw %.1f deg)\n", double(recenter_.Yaw()) * 180.0 / 3.14159265358979323846);
     }
     gt2::vr::EyeView recentred[2] = {eyes[0], eyes[1]};
     for (int v = 0; v < 2; v++) recentred[v].pose = recenter_.Apply(eyes[v].pose);
     view = gt2::vr::Build(camera, recentred, rig_);
     if (!view.valid) return false;
+    UpdateDriving();
+    std::fill(std::begin(drivingMatrix_),std::end(drivingMatrix_),0.f); drivingMatrix_[15] = 1;
+    for (int axis = 0; axis < 3; ++axis) for (int k = 0; k < 3; ++k)
+        drivingMatrix_[axis*4+k] = view.levelled[axis*3+k]*rig_.worldScale;
+    for (int k = 0; k < 3; ++k) {
+        drivingMatrix_[12+k] = camera.eye[k]-view.refEye[k];
+        for (int axis = 0; axis < 3; ++axis) drivingMatrix_[12+k] += view.levelled[axis*3+k]*rig_.seat[axis];
+    }
     gt2view::StereoViews matrices;
     gt2::vr::HudProjection(head, eyes, matrices.hudVP);
     std::memcpy(matrices.worldVP, view.worldVP, sizeof(matrices.worldVP));
     std::memcpy(matrices.skyVP, view.skyVP, sizeof(matrices.skyVP));
     renderer_->SetStereoViews(matrices);
+    renderer_->BeginFrameUploads();
     for (int v = 0; v < 2; v++) { // submitted as the runtime reported them: the compositor reprojects on the real head
         eyes_[v].pose = eyes[v].pose;
         eyes_[v].fov = view.fov[v];

@@ -15,7 +15,9 @@ struct AudioDevice::Buffer {
 
 namespace {
 constexpr size_t kFramesPerBuffer = 441; // 10 ms
-constexpr size_t kBufferCount = 4;
+// Streaming endpoints can return completed buffers in 50 ms batches. Keep more than one such batch queued;
+// a 40 ms queue underruns between callbacks and makes audio-clocked movies run slower than real time.
+constexpr size_t kBufferCount = 8;
 } // namespace
 
 bool AudioDevice::Open(Mixer& mixer, std::string& error) {
@@ -39,6 +41,13 @@ bool AudioDevice::Open(Mixer& mixer, std::string& error) {
     }
     waveOut_ = out;
     event_ = event;
+    UINT deviceId = 0;
+    WAVEOUTCAPSA caps{};
+    const bool named = waveOutGetID(out, &deviceId) == MMSYSERR_NOERROR &&
+                       waveOutGetDevCapsA(deviceId, &caps, sizeof(caps)) == MMSYSERR_NOERROR;
+    std::printf("audio: waveOut %s, %d Hz, %zu buffers x %zu frames (%zu ms)\n",
+                named ? caps.szPname : "default device", kSampleRate, kBufferCount, kFramesPerBuffer,
+                kBufferCount * kFramesPerBuffer * 1000 / kSampleRate);
     for (size_t i = 0; i < kBufferCount; i++) {
         Buffer* b = new Buffer;
         b->samples.assign(kFramesPerBuffer * 2, 0);

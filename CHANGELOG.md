@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.3.0 - 2026-09-21
+
+### One release for PC and VR
+
+- One download, **GT2-0.3.0.zip**, includes Windows PC play on a normal monitor, Windows PCVR and Quest 3 standalone VR.
+- Added Windows PCVR through OpenXR: theatre-screen menus and movies, stereo races, head tracking, virtual hands and three driving modes: Stick, Virtual wheel and Motion.
+- Added dedicated launchers for SteamVR / Steam Link, Meta Quest Link / Air Link and Virtual Desktop (VDXR). Each selects its runtime for the game without changing the Windows OpenXR default.
+
+### Menus and controls
+
+- Added a shared startup disc picker for Arcade and Simulation on PC and Quest, with the last choice remembered.
+- Added **Change game (Arcade / Simulation)** to the settings menu. Return to disc selection without restarting the application or replaying the PlayStation startup. Save progress before confirming a disc change.
+- Added **L3 + R3** as an alternative VR menu shortcut. **Both grips + Menu** remains available; **Y** changes the camera even while both hands hold the virtual wheel.
+- Shared graphics, HUD and control preferences between discs while keeping memory cards and progression separate.
+- Expanded desktop settings with graphics, HD media and intro options, HUD visibility, profiler, gamepad bindings, DualSense pedal resistance and Arcade/Simulation cheats.
+- Added PCVR controller vibration and pause/resume handling when the headset runtime loses focus.
+
+### Fixes
+
+- Fixed crackling audio and slow startup movies through Steam Link by increasing the Windows audio queue to cover delayed streaming-device callbacks.
+- Fixed the runtime-selection conflict when SteamVR remained running while using Meta Link or Virtual Desktop.
+- Removed the conflict between the old grips + Y menu shortcut and camera switching while steering.
+
+### Saves and installation
+
+- Added USB save-transfer helpers in both directions between PC and Quest. Transfers validate memory cards, create backups and verify the copied data.
+- Added save-folder locking to prevent the game and transfer tool from writing the same card at once. Transfers copy complete cards; they do not convert saves between regions.
+- Packaged the Windows OpenXR loader and precompiled installation tools. No SDK or C++ build is needed to install the player release.
+- Existing saves and settings are retained. The standalone APK is version **0.3.0**, Android version code **15**, signed with the existing public release identity.
+
+SteamVR / Steam Link, Meta Link and Virtual Desktop were tested by the project author. The packaged VR bindings target Touch controllers; other controller layouts are not yet validated. The planned wheel/shifter/force-feedback, cockpit-view and PSVR2 Sense adaptive-trigger work is listed in the [README roadmap](README.md#committed-roadmap).
+
 ## 0.2.0
 
 ### Graphics and media

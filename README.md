@@ -1,12 +1,25 @@
-# Gran Turismo 2 PC & VR — 0.2.0
+# Gran Turismo 2 PC & VR - 0.3.0
 
-A native C++ port of Gran Turismo 2 for **Windows PC** and **Quest 3 standalone VR**, with Vulkan rendering. Quest runs the game on the headset without a streaming PC. The game uses ported simulation code; the PS1 interpreter is a separate development/reference tool.
+**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.3.0.zip`.**
 
-See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0 changes. Supply your own supported disc images. Game data, BIOS, saves and copyrighted game artwork are not included.
+| Version included | Where the game runs | Install | Launch |
+|---|---|---|---|
+| **Windows PC (flat / monitor)** | On your PC; no VR headset required | `INSTALL-PC.bat` | `PLAY.bat` |
+| **Windows PCVR (OpenXR)** | On your PC, displayed in your connected headset | `INSTALL-PCVR.bat` | `PLAY-PCVR-STEAMVR.bat`, `PLAY-PCVR-META.bat` or `PLAY-PCVR-VD.bat` |
+| **Quest 3 standalone VR** | On the headset; no streaming PC required to play | `INSTALL.bat` | **GT2 VR** under **Unknown Sources** |
+
+The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.3.0.apk`; it is only the standalone component of the complete release.
+
+This is a native C++ port with Vulkan rendering and ported game simulation. Arcade and Simulation are available in all three versions. See [CHANGELOG.md](CHANGELOG.md) for the release notes.
+
+Supply your own supported disc images. Game data, BIOS, saves and copyrighted game artwork are not included.
 
 ## Features
 
-- Arcade and Simulation discs, with a disc picker at Quest startup and shared VR preferences and separate saves for each mode.
+- Unified PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, DualSense pedals and both Arcade/Simulation cheats.
+- Windows PCVR through OpenXR, with theatre menus/movies, stereo races, tracked head movement and Touch controls. See [PCVR setup](docs/PCVR.md).
+- USB save transfer in both directions between PC and Quest, with card validation, backups and verified copying. Desktop and PCVR share PC saves. See [save transfer](docs/SAVE-TRANSFER.md).
+- Arcade and Simulation discs, with a startup disc picker on PC and Quest, shared preferences and separate saves for each mode.
 - Arcade races, rally/time trials, opponent AI, ghost/replay sessions; Simulation career, licences, dealerships, garage, tuning and events.
 - Original fixed-step vehicle simulation, animated steering/suspension/wheels, car reflections, track scenery, particles and night lighting.
 - Native audio: engine, tyres, road effects, music and movies. Race pause stops timers and the entire race audio mixer. VR/system suspension does not advance the race.
@@ -15,9 +28,9 @@ See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0 changes. Supply your own supporte
 - Original-resolution assets with higher-resolution rendering. PC supports fixed **720p, 1080p, 1440p and 4K**, or 50–200% of window size; configurable FPS cap/VSync and interpolated presentation. Physics stays at 30 Hz.
 - Keyboard, XInput controllers and **native DualSense / DualSense Edge support on PC**, over USB or Bluetooth: buttons, sticks, trigger pedals, adjustable vibration and adaptive accelerator/brake resistance. Adaptive effects do not require Steam Input. Touch controllers have vibration, not adaptive triggers.
 - Quest theatre-screen menus/movies and head-tracked stereo driving/replays. The HUD and mirror share a properly projected stereo plane.
-- Three Quest driving modes: **Stick, Virtual wheel and Motion**. One/two-handed wheel grabbing with animated hands; all fingers stay closed while holding the wheel. Motion uses wrist rotation around the forearm, with grip-held steering and independent trigger pedals.
-- Quest Controls submenu: driving bindings, selected steering stick/motion hand, wheel position/size and height-only adjustment of the original starting flythrough. Automatic brake-to-reverse is available.
-- Quest Graphics submenu: 50–200% eye resolution, available headset refresh rates, MSAA, distance, textures, foveation and vibration. Resolution changes require a restart; other supported settings apply immediately.
+- Three VR driving modes on PCVR and Quest: **Stick, Virtual wheel and Motion**. One/two-handed wheel grabbing with animated hands; all fingers stay closed while holding the wheel. Motion uses wrist rotation around the forearm, with grip-held steering and independent trigger pedals.
+- VR Controls submenu: driving bindings, selected steering stick/motion hand, wheel position/size and height-only adjustment of the original starting flythrough. Automatic brake-to-reverse is available.
+- VR Graphics submenu: 50–200% eye resolution, available headset refresh rates, MSAA, distance, textures, foveation and vibration. Resolution changes require a restart; other supported settings apply immediately.
 - Saved km/h / mph selection in the VR HUD menu, with km/h as the default on both discs. Saved HUD visibility controls for map, lap/times, records, gauges, turbo, tyres, mirror, countdown, warnings, messages and replay caption.
 - FPS profiler: application FPS, frame time, GPU time, 1% low, peak frame interval, texture-cache coverage and frustum-culling counts.
 - Arcade cheats: unlock all course selections and the car roster as reversible overrides. Simulation VR cheats: gold licences, 99,999,999 credits, event unlocks and a car catalogue for adding cars to the garage. The original 100-car garage limit remains. Career cheat writes are checked and backed up before replacing a save.
@@ -27,7 +40,9 @@ See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0 changes. Supply your own supporte
 
 ## Install the player release
 
-Extract **GT2-VR-0.2.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest or **INSTALL-PC.bat** for Windows, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+Extract **GT2-0.3.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+
+Start **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR), and **PLAY.bat** (also **gt2game.exe** directly) for desktop. All use one application: the optional PlayStation intro, then the same disc picker as Quest. **PLAY-PCVR.bat** retains automatic selection: running SteamVR, otherwise the system default. Runtime choices affect only the game process. The package includes the Khronos loader; the headset software must be installed separately. Use **TRANSFER_QUEST_SAVES_TO_PC.bat** or **TRANSFER_PC_SAVES_TO_QUEST.bat** to move saved cards after closing the game on both devices. Quest save exchange requires the 0.3.0 APK or newer.
 
 On **Linux / Steam Deck**, extract the same ZIP, open a terminal in its folder and run `bash INSTALL-LINUX.sh`. It prepares discs and installs the standalone Quest game without Wine or modifying the SteamOS system partition. See the [Steam Deck step-by-step guide](docs/LINUX-INSTALL.md).
 
@@ -50,7 +65,9 @@ European media currently use the port's English UI. Other language selections an
 
 On PC, **F10** or **Create/Select + Options/Start** opens settings. Arrows/D-pad navigate and change values; Escape/Triangle closes. DualSense R2 accelerates and L2 brakes in the pedal profile. Native HID effects require the physical controller, rather than a virtual Xbox controller exposed by a mapper.
 
-On Quest, **Menu** pauses the race. **Hold both grips + Menu** opens VR settings. Stick up/down selects rows; **left/right triggers decrease/increase values**. A confirms/opens, B goes back. Grips and horizontal stick drift cannot change menu values. See [Quest controls and settings](docs/QUEST.md).
+On PCVR and Quest, **L3 + R3** (press both sticks) or **both grips + Menu** opens VR settings. **Menu** alone pauses the race. **Y** still changes the camera while you hold the virtual wheel. Use **Change game (Arcade / Simulation)** to return to the disc picker after saving progress. Stick up/down selects rows; **left/right triggers decrease/increase values**. A confirms/opens, B goes back. Grips and horizontal stick drift cannot change menu values. See [Quest controls and settings](docs/QUEST.md).
+
+See [PCVR controls and runtime requirements](docs/PCVR.md) for SteamVR / Steam Link, Meta Quest Link / Air Link and Virtual Desktop setup.
 
 ## Performance and limits
 
@@ -84,6 +101,16 @@ HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases
 
 **VR menu → Graphics and performance → PlayStation intro** enables or disables the prepared console startup on the next launch. It defaults to ON and is shared by both discs. When enabled, the sequence plays completely before disc selection.
 
+## Committed roadmap
+
+The following features are planned for future releases and are not included in 0.3.0:
+
+- Full racing-wheel and pedal support, including external gear shifters and force feedback.
+- An interior cockpit view for driving.
+- Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
+
+The existing adaptive accelerator/brake effects for a DualSense gamepad on Windows are separate from the planned PSVR2 Sense support.
+
 ## License
 
 Project code is available under the [MIT License](LICENSE). You may use, modify
@@ -97,7 +124,7 @@ Quest, a project by the same sole author.
 
 ## Credits and third-party components
 
-- **Khronos Group** — OpenXR headers and the Android OpenXR loader, Apache-2.0.
+- **Khronos Group** — OpenXR headers and the Android/Windows OpenXR loaders, Apache-2.0. The Windows loader also includes JsonCpp under its bundled licence.
 - **VRMADA / UltimateXR** — virtual hand meshes, poses and skin texture, MIT.
 - **Sean Barrett and stb contributors** — image decoding/encoding libraries, used under MIT.
 - **Hyllian** — xBR contour algorithm adapted for offline UI processing, MIT.

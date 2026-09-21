@@ -17,6 +17,8 @@ int OverlayRefreshRate();
 int OverlayFoveation();
 const gt2::vr::DrivingSettings& OverlayDrivingSettings();
 const gt2::vr::ControlBindings& OverlayControlBindings();
+const gt2::vr::ControlBindings& OverlayDesktopBindings();
+bool OverlayDesktopCustomBindings();
 float OverlayIntroLowering();
 const gt2view::HudVisibility& OverlayHudVisibility();
 bool OverlayMetricUnits(bool fallback);
@@ -24,7 +26,12 @@ int OverlayVrScale(); // -1 unless the player saved an eye scale
 int OverlayRumbleStrength(); // 0..100 percent
 void ShowPcOverlay(GameWindow& window, const std::vector<gt2view::DrawItem>& background, size_t sceneCount);
 void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path = {});
-std::string SelectQuestDisc(const std::string& root, const std::string& preferred);
+std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vr = true,
+                           bool deterministic = false, const std::string& script = {}, const std::string& shot = {}, bool sound = true,
+                           bool playStartup = true);
+bool TakeGameChangeRequest();
+bool ConsoleStartupHandled();
+bool PlayStationIntroEnabled();
 void PrepareNativeUi(gt2view::VkSceneRenderer& renderer);
 void AppendSkipHint(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items);
 }

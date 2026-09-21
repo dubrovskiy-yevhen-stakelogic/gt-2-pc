@@ -1,4 +1,4 @@
-# Quest 3 standalone — 0.2.0
+# Quest 3 standalone — 0.3.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 
@@ -19,7 +19,7 @@ For the precompiled release, follow [PLAYER-INSTALL.md](PLAYER-INSTALL.md). Ever
 | A / B during a movie | Skip |
 | Left Menu | Original race pause / Continue |
 | Both grips + left Menu | Open VR settings; Menu closes |
-| Left stick click + Menu | Alternative VR settings shortcut |
+| L3 + R3 (both stick clicks) | Alternative VR settings shortcut, without grips |
 | Headset system recenter | Recenter the driving viewpoint |
 
 In VR settings, stick up/down or X/Y selects rows. Left/right triggers decrease/increase values; release a trigger before the next change. A opens a submenu or confirms an explicit action, B goes back. Horizontal stick motion and grips cannot activate menu entries. Opening settings pauses gameplay/audio; closing settings over an already-paused race keeps that race paused.
@@ -76,9 +76,9 @@ $env:VULKAN_SDK = 'C:\VulkanSDK\<version>'
 .\scripts\build-quest-release.ps1 -AndroidSdk 'C:\Android\Sdk' -JavaDirectory 'C:\Java\jdk-21' -Gradle 'C:\Gradle\bin\gradle.bat' -InitializeSigningKey
 ```
 
-Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.2.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
+Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.3.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
 
-The public version is 0.2.0; Android versionCode is 14 to remain above development build codes. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
+The public version is 0.3.0; Android versionCode is 15 to remain above development build codes. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs
@@ -97,3 +97,7 @@ Arcade and Simulation use one private `files/saves/vr-settings.txt` for VR graph
 On the second **HUD elements** page, **Movie skip hint** controls the A/B skip reminder. It defaults to ON, saves with the shared VR preferences, and does not change the skip buttons or the unskippable PlayStation startup.
 
 **Graphics and performance → PlayStation intro** can disable the complete console startup for subsequent launches. This defaults to ON and is saved with the shared VR preferences. Enabled startup still plays to completion before the disc selector.
+
+## Changing games
+
+Open VR settings with **L3 + R3** (both stick clicks) or **both grips + Menu**, choose **Change game (Arcade / Simulation)**, then **Return to disc selection**. Both discs must be installed. Save progress in the original game first; unsaved progress is discarded after confirmation. The application stays running and returns to the disc picker without repeating the PlayStation startup. Each disc keeps its own memory card, and shared VR preferences remain in use.

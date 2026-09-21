@@ -494,18 +494,21 @@ void InputSystem::Poll(int field, bool focused) {
         i++;
     }
     int best = active_;
+    if (best >= 0 && frames_[size_t(best)].type == kTypeNone) best = -1;
     for (size_t i = 0; i < devices_.size(); i++)
-        if (best < 0 || lastActivity_[i] > lastActivity_[size_t(best)]) best = int(i);
+        if (frames_[i].type != kTypeNone && (best < 0 || lastActivity_[i] > lastActivity_[size_t(best)])) best = int(i);
     for (size_t i = 0; i < devices_.size(); i++) // a scripted pad (--fake-pad) is port 1 whenever it exists: reproducible runs
         if (devices_[i]->Scripted() && static_cast<const FakePad*>(devices_[i].get())->Port() == 1) best = int(i);
     if (best >= 0 && devices_[size_t(best)]->Scripted() && static_cast<const FakePad*>(devices_[size_t(best)].get())->Port() != 1) best = -1;
     if (best != active_ && best >= 0) log_.push_back("port 1: " + devices_[size_t(best)]->Name());
     active_ = best;
+    for (size_t i = 0; i < devices_.size(); ++i) devices_[i]->SetActive(int(i) == active_);
     port1_ = active_ >= 0 ? frames_[size_t(active_)] : Ps1PadFrame{};
     // Port 2 (the 2 player Battle): a --fake-pad2 script, else the most recently used of the other devices (a second pad).
     int second = -1;
     for (size_t i = 0; i < devices_.size(); i++) {
         if (int(i) == active_) continue;
+        if (frames_[i].type == kTypeNone) continue;
         if (devices_[i]->Scripted()) {
             if (static_cast<const FakePad*>(devices_[i].get())->Port() == 2) { second = int(i); break; }
             continue;

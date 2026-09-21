@@ -125,20 +125,36 @@ foreach ($item in $prepared) {
     if (Test-Path $destination) { Move-Item -LiteralPath $destination -Destination (Join-Path $backup $item.Mode) }
     Move-Item -LiteralPath $item.Data -Destination $destination
 }
-foreach ($name in 'gt2game.exe','gt2install.exe') {
+foreach ($name in @('gt2game.exe','gt2install.exe') + @(if (Test-Path (Join-Path $build 'openxr_loader.dll')) { 'openxr_loader.dll' })) {
     $destination = Join-Path $InstallDir $name
     if (Test-Path $destination) { Copy-Item -LiteralPath $destination -Destination (Join-Path $backup $name) }
     Copy-Item -LiteralPath (Join-Path $build $name) -Destination $destination -Force
 }
-foreach ($mode in 'arcade','simulation') {
-    if (Test-Path (Join-Path $InstallDir $mode)) {
-        $launcher = @'
+$launcher = @'
 @echo off
 setlocal
 cd /d "%~dp0"
-"%~dp0gt2game.exe" "%~dp0MODE" --settings "%~dp0saves\MODE\settings.txt" --card "%~dp0saves\MODE\card1.mcd" %*
-'@.Replace('MODE', $mode)
-        [IO.File]::WriteAllText((Join-Path $InstallDir "PLAY-$mode.bat"), $launcher, [Text.Encoding]::ASCII)
+"%~dp0gt2game.exe" --player %*
+if errorlevel 1 pause
+'@
+[IO.File]::WriteAllText((Join-Path $InstallDir 'PLAY.bat'), $launcher, [Text.Encoding]::ASCII)
+[IO.File]::WriteAllText((Join-Path $InstallDir 'PLAY-PCVR.bat'), $launcher.Replace('--player', '--player --vr'), [Text.Encoding]::ASCII)
+foreach ($runtime in @('META','STEAMVR','VD')) {
+    $policy = if ($runtime -eq 'VD') { 'vdxr' } else { $runtime.ToLowerInvariant() }
+    $selected = $launcher.Replace('--player', '--player --vr').Replace('setlocal',
+        "setlocal`r`nset `"XR_RUNTIME_JSON=`"`r`nset `"GT2_XR_RUNTIME=$policy`"")
+    [IO.File]::WriteAllText((Join-Path $InstallDir "PLAY-PCVR-$runtime.bat"), $selected, [Text.Encoding]::ASCII)
+}
+foreach ($mode in 'arcade','simulation') {
+    foreach ($legacy in @("PLAY-$mode.bat", "PLAY-PCVR-$mode.bat")) {
+        $path = Join-Path $InstallDir $legacy
+        if (Test-Path -LiteralPath $path) {
+            Copy-Item -LiteralPath $path -Destination (Join-Path $backup $legacy)
+            $target = if ($legacy.StartsWith('PLAY-PCVR')) { 'PLAY-PCVR.bat' } else { 'PLAY.bat' }
+            [IO.File]::WriteAllText($path, "@echo off`r`ncall `"%~dp0$target`" %*`r`n", [Text.Encoding]::ASCII)
+        }
+    }
+    if (Test-Path (Join-Path $InstallDir $mode)) {
         New-Item -ItemType Directory -Force -Path (Join-Path $InstallDir "saves\$mode") | Out-Null
     }
 }
@@ -147,5 +163,5 @@ if ($HdMedia -ne 'Original' -or $Bios) {
     & (Join-Path $PSScriptRoot 'prepare-hd.ps1') -Runtime $InstallDir -BuildDir $build -HdMedia $HdMedia -Bios $Bios -CaptureCore $CaptureCore
 }
 Write-Host "Ready: $InstallDir"
-Write-Host 'Use PLAY-arcade.bat or PLAY-simulation.bat. F10 opens the in-game settings and cheat overlay.'
+Write-Host 'Use PLAY.bat for desktop, PLAY-PCVR-META.bat for Meta Link, PLAY-PCVR-STEAMVR.bat for SteamVR, or PLAY-PCVR-VD.bat for Virtual Desktop (VDXR). PLAY-PCVR.bat selects automatically.'
 Write-Host "Existing data is preserved in $backup. Installation staging is in $job."

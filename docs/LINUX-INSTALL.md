@@ -1,11 +1,11 @@
 # Install GT2 VR on Quest from Linux or Steam Deck
 
-This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-VR-0.2.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
+This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.3.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
 
 ## Steam Deck: step by step
 
 1. Switch the Deck to **Desktop Mode**.
-2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-VR-0.2.0`. Do not run a script from inside the ZIP viewer.
+2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-VR-0.3.0`. Do not run a script from inside the ZIP viewer.
 3. Extract your own GT2 disc archives with Ark too. Keep each `.cue` beside its matching `.bin`. The installer reads BIN/CUE directly; do not convert the disc to a 2048-byte ISO. That conversion loses race music and movie sectors.
 4. Enable developer mode on Quest, connect it by a USB data cable, put it on and accept **Allow USB debugging**. Leave the headset connected and awake during copying.
 5. In Dolphin, open the extracted release folder and choose **Open Terminal Here** (Konsole). Run:
@@ -40,14 +40,14 @@ Without a BIOS, both the Arcade and Simulation games work normally and start wit
 
 When a BIOS is supplied, preparation downloads a separately licensed software Beetle PSX core and, if needed, a pinned Pillow wheel into the user cache. There is no system-wide pip installation. Temporary BIOS copies are deleted after capture, and the BIOS itself is never copied to Quest. The game only receives the captured movie. A firmware/disc pairing that cannot show both complete screens is rejected. A changed upstream core download is rejected by checksum; `--capture-core /path/to/mednafen_psx_libretro.so` accepts a trusted local software core.
 
-This Linux installer prepares **original game assets** and optional original console startup. The neural HD preparation wizard remains Windows-only in 0.2.0. If you already have a matching prepared `hd` folder in the runtime, Linux installation transfers it too. This limitation does not affect original textures, texture filtering, mipmaps or standalone VR.
+This Linux installer prepares **original game assets** and optional original console startup. The neural HD preparation wizard remains Windows-only in 0.3.0. If you already have a matching prepared `hd` folder in the runtime, Linux installation transfers it too. This limitation does not affect original textures, texture filtering, mipmaps or standalone VR.
 
 ## USB access
 
 - **Unauthorized**: accept the USB debugging prompt inside Quest. Reconnect the cable if the prompt was missed.
 - **No device**: check developer mode, a data-capable cable and the Deck's USB host connection. Close other installers that may be using the headset.
 - **No permissions**: this is Linux USB device access, not the read-only system partition. The installer stops without changing OS configuration. If your existing Quest installation tool already has a working ADB connection, pass that tool's native ADB with `--adb`. On systems lacking suitable USB permissions, an administrator must grant device access; the installer does not silently run as root or alter udev rules. An already configured, authorized network ADB connection can also be selected with `--serial ADDRESS:PORT`.
-- **INSTALL_FAILED_UPDATE_INCOMPATIBLE**: the installed app uses another signing key. Do not uninstall just to bypass this error: export saves/settings before a deliberate manual migration. Public 0.1.0 and 0.2.0 share a key; development APKs do not.
+- **INSTALL_FAILED_UPDATE_INCOMPATIBLE**: the installed app uses another signing key. Do not uninstall just to bypass this error: export saves/settings before a deliberate manual migration. Public 0.1.0 and 0.3.0 share a key; development APKs do not.
 
 ## Verification status
 

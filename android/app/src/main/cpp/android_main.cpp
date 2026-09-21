@@ -149,29 +149,34 @@ void android_main(android_app* app) {
                     else if (!std::filesystem::exists(root / mode / "disc.raw2352")) mode = "simulation";
                     gt2::shell::InitializeSharedVrSettings(gt2::os::SavesDir(),kInitialSettings,kInitialOverlay);
                     gt2game::LoadOverlaySettings((gt2::os::SavesDir()/mode/"settings.txt").string());
-                    mode = gt2game::SelectQuestDisc(root.string(), mode);
-                    if (mode.empty()) { finished = true; if (attached) app->activity->vm->DetachCurrentThread(); ALooper_wake(app->looper); return; }
-                    { std::ofstream choice(root / "launch-mode.txt"); choice << mode; }
-                    const auto saves = gt2::os::SavesDir() / mode;
-                    std::filesystem::create_directories(saves);
-                    // Seed only a new disc profile; updates keep the player's saved preferences.
-                    if (!std::filesystem::exists(saves / "settings.txt") &&
-                        !std::filesystem::exists(saves / "settings.txt.overlay")) {
-                        const auto writeSettings = [&](const char* name, const char* text) {
-                            std::ofstream out(saves / name);
-                            out << text;
-                            out.flush();
-                            if (!out) throw std::runtime_error("Cannot write initial Quest settings");
-                        };
-                        writeSettings("settings.txt", kInitialSettings);
-                        writeSettings("settings.txt.overlay", kInitialOverlay);
+                    bool firstLaunch = true;
+                    for (;;) {
+                        mode = gt2game::SelectGameDisc(root.string(), mode, true, false, {}, {}, true, firstLaunch);
+                        if (mode.empty()) break;
+                        firstLaunch = false;
+                        { std::ofstream choice(root / "launch-mode.txt"); choice << mode; }
+                        const auto saves = gt2::os::SavesDir() / mode;
+                        std::filesystem::create_directories(saves);
+                        // Seed only a new disc profile; updates keep the player's saved preferences.
+                        if (!std::filesystem::exists(saves / "settings.txt") &&
+                            !std::filesystem::exists(saves / "settings.txt.overlay")) {
+                            const auto writeSettings = [&](const char* name, const char* text) {
+                                std::ofstream out(saves / name);
+                                out << text;
+                                out.flush();
+                                if (!out) throw std::runtime_error("Cannot write initial Quest settings");
+                            };
+                            writeSettings("settings.txt", kInitialSettings);
+                            writeSettings("settings.txt.overlay", kInitialOverlay);
+                        }
+                        std::vector<std::string> args = {"gt2game", (root / mode).string(), "--vr",
+                            "--settings", (saves / "settings.txt").string(), "--card", (saves / "card1.mcd").string()};
+                        std::vector<char*> argv;
+                        for (auto& arg : args) argv.push_back(arg.data());
+                        const int code = gt2game::GameMain(int(argv.size()), argv.data());
+                        __android_log_print(ANDROID_LOG_INFO, "GT2.Quest", "GameMain returned %d", code);
+                        if (code != 0 || !gt2game::TakeGameChangeRequest()) break;
                     }
-                    std::vector<std::string> args = {"gt2game", (root / mode).string(), "--vr",
-                        "--settings", (saves / "settings.txt").string(), "--card", (saves / "card1.mcd").string()};
-                    std::vector<char*> argv;
-                    for (auto& arg : args) argv.push_back(arg.data());
-                    const int code = gt2game::GameMain(int(argv.size()), argv.data());
-                    __android_log_print(ANDROID_LOG_INFO, "GT2.Quest", "GameMain returned %d", code);
                 } catch (const std::exception& e) {
                     std::fprintf(stderr, "Startup failed: %s\n", e.what());
                     __android_log_print(ANDROID_LOG_ERROR, "GT2.Quest", "Startup failed: %s", e.what());

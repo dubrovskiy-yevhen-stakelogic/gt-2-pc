@@ -36,6 +36,7 @@ struct SessionOptions {
     uint32_t quadWidth = 1280, quadHeight = 960;
     float quadMetres = 2.56f, quadDistance = 2.0f;
     float refreshHz = 0;      // > 0: ask XR_FB_display_refresh_rate for this rate
+    bool alternateMenuChord = false; // Both stick clicks (L3 + R3), alongside both grips + Menu.
     bool mirrorWindow = false; // GT2_XR_MIRROR=1: the Vulkan instance / device also carry the surface and swapchain
                                // extensions, so that the same image can be shown in a window on the PC
     bool vulkanValidation = false; // GT2_VK_VALIDATION=1: the Khronos validation layer on the runtime's instance
@@ -82,10 +83,9 @@ public:
     // Services the runtime's event queue and the session state machine (xrBeginSession on READY, xrEndSession on
     // STOPPING). False once the runtime told the app to quit (EXITING / instance loss).
     bool PollEvents();
-#ifdef __ANDROID__
     bool ReadController(input::Ps1PadFrame& pad, float vibration);
     vr::TrackedControllers ControllerTracking();
-#endif
+
     bool Running() const { return running_; }    // between xrBeginSession and xrEndSession
     bool Quit() const { return quit_; }
     void RequestExit();                          // xrRequestExitSession (the game's own quit)

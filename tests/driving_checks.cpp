@@ -72,6 +72,17 @@ int main(){try{
     bindings.source[0]=5;raw.pressureR2=255;raw.buttons=gt2::input::ps1::kSquare;
     ApplyControlBindings(mapped,held,raw,bindings);Check(mapped.throttle==255,"custom X accelerator works");
     raw.buttons=0;ApplyControlBindings(mapped,held,raw,bindings);Check(mapped.throttle==0,"old accelerator binding is inactive");
+    auto desktop = DesktopBindings();
+    raw.pressure = true; raw.pressureR2 = 143; raw.pressureL2 = 91;
+    raw.buttons = gt2::input::ps1::kR1; raw.analog[2] = 200;
+    ApplyDesktopControlBindings(mapped,held,raw,desktop);
+    Check(mapped.throttle==143 && mapped.brake==91 && mapped.steerAxis==200 && (held & gt2::kPadShiftUp),"desktop analog pedals, steering and right bumper");
+    desktop.source[0]=4; raw.buttons=gt2::input::ps1::kCircle;
+    ApplyDesktopControlBindings(mapped,held,raw,desktop);
+    Check(mapped.throttle==255,"desktop Circle binding uses Circle, not the Touch B mapping");
+    desktop.steeringStick=1; raw.analog[0]=31; raw.buttons=0;
+    ApplyDesktopControlBindings(mapped,held,raw,desktop);
+    Check(mapped.throttle==0 && mapped.steerAxis==31,"desktop custom release and right steering stick");
     BrakeReverse reverse;gt2::LogicalPad p;p.analog=12;p.brake=170;p.buttons=gt2::kPadBrake;
     reverse.Apply(p,8,true);Check(!(p.buttons & gt2::kPadReverse) && p.brake==170,"L2 brakes while moving forward");
     reverse.Apply(p,.1f,true);Check((p.buttons & gt2::kPadReverse) && !p.brake,"L2 selects reverse only after stopping");

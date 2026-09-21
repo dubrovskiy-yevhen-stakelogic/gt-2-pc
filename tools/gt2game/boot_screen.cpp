@@ -1,4 +1,5 @@
 #include "boot_screen.h"
+#include "pc_overlay.h"
 #include "movie_player.h"
 #include "gt2formats/hd_media.h"
 #include "gt2formats/png_reader.h"
@@ -12,7 +13,7 @@
 
 namespace gt2game {
 bool PlayBootScreens(GameWindow& window, const gt2::DiscImage& disc, bool sound) {
-    if (!VrMode()) {
+    if (!VrMode() && !ConsoleStartupHandled() && PlayStationIntroEnabled()) {
         const auto startup = gt2::hd::StartupMovie();
         if (!startup.empty()) {
             MovieSpec spec; spec.skippable = false; spec.displayWidth=640; spec.displayHeight=480; spec.x=spec.y=0;

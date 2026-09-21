@@ -5,12 +5,13 @@
 namespace gt2::xr {
 class ControllerActions {
 public:
-    ControllerActions(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr get);
+    ControllerActions(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr get, bool alternateMenuChord = false);
     ~ControllerActions();
     bool Poll(input::Ps1PadFrame& pad, float vibration, bool focused);
     vr::TrackedControllers Locate(XrSpace base, XrTime time);
 private:
     XrSession session_;
+    bool alternateMenuChord_ = false;
     XrActionSet set_ = XR_NULL_HANDLE;
     XrAction stick_, trigger_, accept_, back_, brake_, view_, menu_, grip_, click_, haptic_;
     XrPath hands_[2]{};

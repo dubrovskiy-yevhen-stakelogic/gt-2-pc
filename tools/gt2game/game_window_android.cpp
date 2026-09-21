@@ -255,6 +255,7 @@ private:
 AndroidWindow::AndroidWindow(const std::string& title, bool deterministic) : deterministic_(deterministic) {
     gt2::xr::SessionOptions options;
     options.appName = "gt2game";
+    options.alternateMenuChord = true;
     options.refreshHz = float(OverlayRefreshRate());
     options.quadWidth = uint32_t(kCinemaWidth);
     options.quadHeight = uint32_t(kCinemaHeight);

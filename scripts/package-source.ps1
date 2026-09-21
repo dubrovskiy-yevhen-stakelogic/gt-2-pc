@@ -1,4 +1,4 @@
-param([string]$Output = (Join-Path (Split-Path $PSScriptRoot) 'dist/GT2-source-0.2.0'), [switch]$AllowUncommitted)
+param([string]$Output = (Join-Path (Split-Path $PSScriptRoot) 'dist/GT2-source-0.3.0'), [switch]$AllowUncommitted)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot
 & (Join-Path $PSScriptRoot 'audit-source.ps1') -Repo $repo
@@ -22,7 +22,7 @@ try {
         if ($hash -ne (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash) { throw "Source copy mismatch: $file" }
         $manifest += [ordered]@{path=$file;sha256=$hash}
     }
-    [ordered]@{version='0.2.0';sourceCommit=$revision;sourceDirty=$sourceDirty;files=$manifest} | ConvertTo-Json -Depth 5 |
+    [ordered]@{version='0.3.0';sourceCommit=$revision;sourceDirty=$sourceDirty;files=$manifest} | ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath (Join-Path $Output 'SOURCE-MANIFEST.json') -Encoding UTF8
     Write-Host "Source folder ready: $Output ($($files.Count) files, revision $revision)"
 } finally { Pop-Location }

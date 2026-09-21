@@ -10,7 +10,8 @@ void Check(XrResult r, const char* where) {
     if (XR_FAILED(r)) throw std::runtime_error(std::string(where) + ": " + std::to_string(r));
 }
 }
-ControllerActions::ControllerActions(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr get) : session_(session) {
+ControllerActions::ControllerActions(XrInstance instance, XrSession session, PFN_xrGetInstanceProcAddr get, bool alternateMenuChord)
+    : session_(session), alternateMenuChord_(alternateMenuChord) {
 #define LOAD(n) Check(get(instance, #n, reinterpret_cast<PFN_xrVoidFunction*>(&n)), #n);
     GT2_ACTION_API(LOAD)
 #undef LOAD
@@ -143,13 +144,17 @@ bool ControllerActions::Poll(input::Ps1PadFrame& pad, float vibration, bool focu
     if (boolean(accept_, 1)) pad.buttons |= input::ps1::kCross;
     if (boolean(back_, 1)) pad.buttons |= input::ps1::kTriangle;
     if (boolean(brake_, 0)) pad.buttons |= input::ps1::kSquare;
-    if (boolean(view_, 0)) pad.buttons |= input::ps1::kR1;
-    if (boolean(menu_, 0)) {
+    const bool viewPressed = boolean(view_, 0);
+    const bool bothGrips = tracking_.grip[0] > 0.7f && tracking_.grip[1] > 0.7f;
+    const bool leftClick = boolean(click_, 0), rightClick = boolean(click_, 1);
+    const bool alternateMenu = alternateMenuChord_ && leftClick && rightClick;
+    if (viewPressed) pad.buttons |= input::ps1::kR1;
+    if (boolean(menu_, 0) || alternateMenu) {
         pad.buttons |= input::ps1::kStart;
-        if (tracking_.grip[0] > 0.7f && tracking_.grip[1] > 0.7f) pad.buttons |= input::ps1::kSelect;
+        if (bothGrips || alternateMenu) pad.buttons |= input::ps1::kSelect;
     }
-    if (boolean(click_, 1)) pad.buttons |= input::ps1::kCircle; // Handbrake; grips only interact with the wheel.
-    if (boolean(click_, 0)) pad.buttons |= input::ps1::kSelect;
+    if (rightClick && !alternateMenu) pad.buttons |= input::ps1::kCircle; // Handbrake; grips only interact with the wheel.
+    if (leftClick && !alternateMenu) pad.buttons |= input::ps1::kSelect;
     pad.type = available ? input::kTypeAnalog : input::kTypeNone;
     return available;
 }

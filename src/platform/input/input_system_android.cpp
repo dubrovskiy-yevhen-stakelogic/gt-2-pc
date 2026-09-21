@@ -1,13 +1,4 @@
-// The Android devices of platform/input/input_system.h (docs/research/vr_port_plan.md, M6).
-//
-// On the headset the only controller the game can read today is an Android gamepad (a Bluetooth pad, or a keyboard's
-// arrow block) whose events reach us through the NativeActivity's input queue (android_input.h). It is presented as a
-// DualShock (type 7) with the same mapping as the PC build's XInput device, so menus and the race take the original's
-// pad path unchanged. The Touch controllers are XR actions and belong to M5; until they exist the game says so
-// instead of pretending a controller is there.
-//
-// Not on Android: XInput / DirectInput (no such devices) and the scripted --fake-pad of the automated PC runs (there
-// is no command line on the headset; AddFakePad refuses instead of silently running without it).
+// Android gamepad events and OpenXR Touch actions feed the virtual PS1 controller.
 #include "platform/input/input_system.h"
 
 #include <android/log.h>

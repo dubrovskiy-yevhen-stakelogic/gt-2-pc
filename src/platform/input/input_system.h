@@ -34,6 +34,7 @@ public:
     virtual bool HasTriggers() const { return false; }
     virtual std::string Name() const = 0;
     virtual bool Scripted() const { return false; }
+    virtual void SetActive(bool) {}
 };
 
 class InputSystem {
@@ -45,6 +46,13 @@ public:
 
     // DirectInput needs the window for its cooperative level (optional: without it only XInput / fake pads).
     void AttachWindow(void* window);
+    void AddDevice(std::unique_ptr<Device> device) {
+        if (!device) return;
+        devices_.push_back(std::move(device));
+        frames_.emplace_back();
+        lastActivity_.push_back(-1);
+        rest_.emplace_back();
+    }
     // WM_DEVICECHANGE: look for new devices at the next poll.
     void DevicesChanged() { rescan_ = true; }
     // Once per presentation field. `focused`: real devices count only while the game window is in the foreground

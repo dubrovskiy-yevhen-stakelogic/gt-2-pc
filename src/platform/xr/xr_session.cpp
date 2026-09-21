@@ -7,6 +7,9 @@
 // STAGE space) is optional and only logged; XR_KHR_vulkan_enable2 is not.
 #ifdef _WIN32
 #include <windows.h>
+#include <tlhelp32.h>
+#include <filesystem>
+#include <cstdlib>
 #include <unknwn.h> // XR_USE_PLATFORM_WIN32 declares structures that name IUnknown
 #endif
 #ifdef __ANDROID__
@@ -32,9 +35,7 @@
 
 #include "platform/xr/xr_session.h"
 #include "gt2view/shading_rate.h"
-#ifdef __ANDROID__
 #include "platform/xr/xr_actions.h"
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -112,9 +113,8 @@ struct Session::Impl {
     void* loader = nullptr;
 #endif
     Api api;
-#ifdef __ANDROID__
     std::unique_ptr<ControllerActions> controls;
-#endif
+
     XrInstance instance = XR_NULL_HANDLE;
     XrSystemId system = XR_NULL_SYSTEM_ID;
     XrSession session = XR_NULL_HANDLE;
@@ -153,6 +153,60 @@ namespace {
 // The loader: the copy next to the executable first (CMake puts the build the xrsim tools use there), then whatever
 // the system has. Nothing is downloaded and nothing is searched for outside these two places.
 #ifdef _WIN32
+void SelectRunningRuntime() {
+    if (GetEnvironmentVariableW(L"XR_RUNTIME_JSON", nullptr, 0)) return;
+    const char* policy = std::getenv("GT2_XR_RUNTIME");
+    if (policy && std::strcmp(policy, "system") == 0) return;
+    const bool meta = policy && std::strcmp(policy, "meta") == 0;
+    const bool vdxr = policy && std::strcmp(policy, "vdxr") == 0;
+    if (policy && std::strcmp(policy, "auto") != 0 && std::strcmp(policy, "steamvr") != 0 && !meta && !vdxr)
+        throw std::runtime_error("GT2_XR_RUNTIME must be auto, system, steamvr, meta or vdxr");
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    std::filesystem::path manifest;
+    PROCESSENTRY32W entry{}; entry.dwSize = sizeof(entry);
+    for (BOOL found = snapshot != INVALID_HANDLE_VALUE && Process32FirstW(snapshot, &entry); found; found = Process32NextW(snapshot, &entry)) {
+        if (_wcsicmp(entry.szExeFile, meta ? L"OVRServer_x64.exe" : vdxr ? L"VirtualDesktop.Streamer.exe" : L"vrserver.exe") != 0) continue;
+        const HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, entry.th32ProcessID);
+        if (!process) continue;
+        wchar_t path[32768]; DWORD size = DWORD(std::size(path));
+        if (QueryFullProcessImageNameW(process, 0, path, &size)) {
+            const auto directory = std::filesystem::path(path).parent_path();
+            const auto candidate = meta ? directory / "oculus_openxr_64.json" :
+                                   vdxr ? directory / "OpenXR" / "virtualdesktop-openxr.json" :
+                                          directory.parent_path().parent_path() / "steamxr_win64.json";
+            if (std::filesystem::is_regular_file(candidate)) manifest = candidate;
+        }
+        CloseHandle(process);
+        if (!manifest.empty()) break;
+    }
+    if (snapshot != INVALID_HANDLE_VALUE) CloseHandle(snapshot);
+    if ((meta || vdxr) && manifest.empty()) {
+        // Standard installation paths also work when the runtime service is not running.
+        wchar_t programFiles[32768];
+        const DWORD length = GetEnvironmentVariableW(L"ProgramFiles", programFiles, DWORD(std::size(programFiles)));
+        if (length && length < std::size(programFiles)) {
+            if (vdxr) {
+                const auto candidate = std::filesystem::path(programFiles) / "Virtual Desktop Streamer" / "OpenXR" / "virtualdesktop-openxr.json";
+                if (std::filesystem::is_regular_file(candidate)) manifest = candidate;
+            } else for (const wchar_t* name : {L"Meta Horizon", L"Oculus"}) {
+                const auto candidate = std::filesystem::path(programFiles) / name / "Support" / "oculus-runtime" / "oculus_openxr_64.json";
+                if (std::filesystem::is_regular_file(candidate)) { manifest = candidate; break; }
+            }
+        }
+    }
+    if (!manifest.empty()) {
+        if (!SetEnvironmentVariableW(L"XR_RUNTIME_JSON", manifest.c_str()))
+            throw std::runtime_error("Cannot select the OpenXR runtime for this process");
+        std::printf("OpenXR: using %s (%s); system default unchanged\n", meta ? "Meta Link" : vdxr ? "Virtual Desktop (VDXR)" : "running SteamVR", manifest.string().c_str());
+    } else if (vdxr) {
+        throw std::runtime_error("VDXR runtime not found. Install/open Virtual Desktop Streamer and connect the headset before launching GT2 VR");
+    } else if (meta) {
+        throw std::runtime_error("Meta Link runtime not found. Install/open Meta Horizon Link and connect the headset before launching GT2 VR");
+    } else if (policy && std::strcmp(policy, "steamvr") == 0) {
+        throw std::runtime_error("Start SteamVR and connect your headset before launching GT2 VR");
+    }
+}
+
 HMODULE LoadLoader(std::string& tried) {
     std::vector<std::string> candidates;
     char exePath[MAX_PATH];
@@ -193,6 +247,7 @@ const char* Session::StateName() const {
 Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()), options_(options) {
     Impl& s = *impl_;
 #ifdef _WIN32
+    SelectRunningRuntime();
     std::string tried;
     s.loader = LoadLoader(tried);
     if (!s.loader) throw std::runtime_error("no OpenXR loader (tried " + tried + "): --vr needs an openxr_loader.dll next to the executable");
@@ -296,11 +351,13 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
 
     XrInstanceProperties ip{XR_TYPE_INSTANCE_PROPERTIES};
     if (s.api.xrGetInstanceProperties(s.instance, &ip) == XR_SUCCESS) info_.runtimeName = ip.runtimeName;
+    std::printf("OpenXR: runtime %s\n", info_.runtimeName.c_str());
 
     XrSystemGetInfo sgi{XR_TYPE_SYSTEM_GET_INFO};
     sgi.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
     r = s.api.xrGetSystem(s.instance, &sgi, &s.system);
-    if (XR_FAILED(r)) throw std::runtime_error("OpenXR: no head-mounted display (xrGetSystem -> " + ResultText(s.api, s.instance, r) + ")");
+    if (XR_FAILED(r)) throw std::runtime_error("OpenXR [" + info_.runtimeName + "]: headset unavailable (xrGetSystem -> " +
+        ResultText(s.api, s.instance, r) + "). Connect and wake the headset in this runtime before launching the game.");
     XrSystemProperties sp{XR_TYPE_SYSTEM_PROPERTIES};
     if (s.api.xrGetSystemProperties(s.instance, s.system, &sp) == XR_SUCCESS) info_.systemName = sp.systemName;
 
@@ -426,9 +483,8 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     sci.next = &binding;
     sci.systemId = s.system;
     s.Check(s.api.xrCreateSession(s.instance, &sci, &s.session), "xrCreateSession");
-#ifdef __ANDROID__
-    s.controls = std::make_unique<ControllerActions>(s.instance, s.session, s.api.gipa);
-#endif
+    s.controls = std::make_unique<ControllerActions>(s.instance, s.session, s.api.gipa, options.alternateMenuChord);
+
 
     // --- reference spaces: LOCAL is the app's world, VIEW the head, STAGE the floor when the runtime has one ---
     uint32_t spaceCount = 0;
@@ -524,9 +580,8 @@ Session::~Session() {
     if (s.stereoDepth && s.api.xrDestroySwapchain) s.api.xrDestroySwapchain(s.stereoDepth);
     for (XrSpace space : {s.localSpace, s.viewSpace, s.stageSpace})
         if (space && s.api.xrDestroySpace) s.api.xrDestroySpace(space);
-    #ifdef __ANDROID__
     s.controls.reset();
-    #endif
+
     if (s.session && s.api.xrDestroySession) s.api.xrDestroySession(s.session);
     if (vkDevice_) {
         if (s.fence) vkDestroyFence(vkDevice_, s.fence, nullptr);
@@ -1040,7 +1095,6 @@ bool Session::CopyToStereo(VkImage color, VkImage depth) {
 
 } // namespace gt2::xr
 
-#ifdef __ANDROID__
 bool gt2::xr::Session::ReadController(input::Ps1PadFrame& pad, float vibration) {
     return impl_->controls->Poll(pad, vibration, running_ && State() == 5);
 }
@@ -1048,4 +1102,3 @@ gt2::vr::TrackedControllers gt2::xr::Session::ControllerTracking() {
     if (!running_ || State() != 5) return {};
     return impl_->controls->Locate(impl_->localSpace, impl_->frameState.predictedDisplayTime);
 }
-#endif

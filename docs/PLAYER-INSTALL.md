@@ -1,4 +1,6 @@
-# GT2 VR 0.2.0 player installation
+# GT2 0.3.0 player installation
+
+**GT2-0.3.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
 
 ## Quest 3
 
@@ -16,9 +18,13 @@ The headset runs independently of the PC after installation. The default PC stag
 
 ## Windows PC
 
-Run **INSTALL-PC.bat** with the same images. It uses the included Windows executables and needs no build toolchain. Open the generated **PLAY-arcade.bat** or **PLAY-simulation.bat** in the install folder. Press F10 for graphics, vibration and Arcade cheats. A Vulkan 1.3 graphics driver is required. DualSense adaptive pedals and vibration are supported through the native physical USB/Bluetooth device.
+Run **INSTALL-PC.bat** with the same images. It uses the included Windows executables and needs no build toolchain. Open **PLAY.bat**, or **gt2game.exe** directly, in the install folder. After the optional PlayStation intro, choose your installed disc. Press F10 for graphics, controls, HUD, media and Arcade/Simulation cheats. A Vulkan 1.3 graphics driver is required. DualSense adaptive pedals and vibration are supported through the native physical USB/Bluetooth device.
 
 ## Existing installations and saves
+
+For Windows PCVR, run **INSTALL-PCVR.bat**, then use **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR). Start the selected headset connection first, then choose your disc in the game. **PLAY-PCVR.bat** retains automatic selection (running SteamVR, otherwise the system default). **L3 + R3** opens VR settings; **both grips + Menu** also remains available. See [PCVR setup and controls](PCVR.md).
+
+Version 0.3.0 adds **TRANSFER_QUEST_SAVES_TO_PC.bat** and **TRANSFER_PC_SAVES_TO_QUEST.bat** for USB transfers of both disc memory cards. Close the game on both devices, connect Quest, then run the desired helper. Each replacement is validated, backed up and verified. The public Quest APK must be updated to 0.3.0 first; see [save-transfer instructions](SAVE-TRANSFER.md).
 
 The installer updates a compatible APK with `adb install -r`; it never uninstalls or clears app data. If Android reports `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the installed application uses a different signing key. Stop and export its saves/settings before considering a manual migration. Development and public APKs use different keys. Save export from an old development build can use `adb shell run-as io.github.gt2pc.quest`; this is unavailable on the non-debuggable public build.
 

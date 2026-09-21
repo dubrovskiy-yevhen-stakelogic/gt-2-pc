@@ -17,5 +17,7 @@
             </intent-filter>
         </activity>
         <receiver android:name=".ImportAccessReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
+        <provider android:name=".SaveProvider" android:authorities="io.github.gt2pc.quest.saves"
+            android:process=":save_transfer" android:exported="true" android:permission="android.permission.DUMP"/>
     </application>
 </manifest>

@@ -1,4 +1,18 @@
-# Validation — public release 0.1.0
+# Validation
+
+## 0.3.0 development checks (2026-09-21)
+
+- Windows Release and signed Android ARM64 release builds passed. Android metadata is versionName 0.3.0, versionCode 15, non-debuggable, with the existing public signing identity.
+- All six CTest suites passed. The eleven Linux installer tests passed.
+- The OpenXR simulator rendered both race eyes and tracked hand/wheel visuals. Scripted input checked Y alone, Y with only one grip, both grips + Y (camera only), L3 + R3 without grips, both grips + Menu, return to the race and focus loss/resumption. These checks exercise the Windows game backend and OpenXR submissions; they do not establish SteamVR, Link or VDXR headset compatibility.
+- Save-transfer tests passed on PowerShell 7 and Windows PowerShell 5.1: malformed/empty cards, directory checksums, conflicting destinations, exclusive save-folder locking, backups, atomic replacement and binary subprocess round trips.
+- The production Android save provider was compiled into a separate temporary test app on Quest. Both card paths passed byte-exact upload/download, corrupted-card rejection, stale-destination rejection and replacement of an existing card. The temporary app was removed; the installed game, its data and saves were not modified.
+
+For additional headset/runtime combinations, check: title → race → pause → settings, both menu shortcuts, all three driving modes, vibration, taking the headset off and returning. Load a transferred saved game in both directions. Provider checks establish byte-preserving transfer, not regional save compatibility or game-load acceptance.
+
+The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.3.0.
+
+## Public release 0.1.0
 
 Checks performed on 2026-09-21. Build verification and automated PC tests are separate from headset acceptance.
 
@@ -162,3 +176,39 @@ The Linux installer uses a Python-standard-library ISO9660/GTFS reader, without 
 Eleven installer regression tests pass, covering unsafe paths, CUE handling, truncated input, profile-table parity, gzip member/CRC behavior, package corruption, save retention, publish rollback, unauthorized devices, incompatible signing and the ADB verification flow. PowerShell sources parse, and the Linux shell entry point passes Bash syntax validation. The portable ctypes capture host captured both complete BIOS screens through the Windows software core: 1,029 frames at 59.94 Hz with stereo audio, accepted by the native G2MEDIA decoder. Neither firmware nor this recording is packaged. Linux dependencies use pinned downloads; the optional software core depends only on standard glibc libraries.
 
 The game APK is unchanged by this installer update: version 0.2.0 / code 14 and the public signing identity are retained. Linux kernel execution and a physical Steam Deck USB install have not been tested on this Windows host; portable reader/capture checks and mocked ADB are not substitutes for that hardware check. Neural HD preparation remains Windows-only.
+
+## Release 0.3.0
+
+Windows Release compilation and all six host CTest suites pass. The unified-startup regression exercises both installed discs, remembered selection and cancellation, shared HUD/media settings, disc-specific cheats, a theatre disc picker and the transition to stereo driving. The PCVR regression checks L3 + R3 and both-grip Menu, confirms that Y alone and with one or both grips does not open settings, returns from settings to stereo, and checks focus loss/recovery and clean exit. Captured OpenXR submissions report success. These are local simulator checks, not headset acceptance.
+
+Save-transfer tests pass for invalid and empty cards, damaged directory data, concurrent modification, a locked destination, backups and exact binary readback. All eleven Linux installer tests pass; device operations in that suite use mocked ADB.
+
+The public ARM64 APK is version 0.3.0 / code 15, non-debuggable and signed with the existing release certificate (SHA-256 `69d9f4ddc4fa8706f6df7ab9bce2288c3c5bbc3e87ed08f1855cdcf5052ad4f9`). Its SHA-256 is `8631f1e91b68da8ec979933a2aec1cadf4ef126bc249c0cc5198ff9941e57e0b`.
+
+The project author confirmed the updated PCVR build working through SteamVR / Steam Link, Meta Link and Virtual Desktop. Other headsets/controller layouts remain unverified. A real PC-to-Quest-to-PC save-transfer round trip using the public APK also remains to be checked. The public APK is not installed over an incompatible development signature automatically.
+
+## Windows Steam Link audio (0.3.0)
+
+The original Windows output queued four 10 ms waveOut buffers. On Steam Streaming Speakers, completion callbacks arrived in approximately 50 ms batches: a ten-second device test advanced the mixer by only 8.04 seconds in 10.109 wall-clock seconds. The prepared startup movie follows the audio cursor, so its video slowed down while the rendering profiler could still show a normal frame rate.
+
+Eight 10 ms buffers cover the observed callback interval. With only that queue-depth change, the same endpoint advanced 10.11 seconds of audio in 10.140 wall-clock seconds. A repeat against the rebuilt audio library advanced 10.13 seconds in 10.155 seconds. The mixer sample rate and source audio are unchanged; the maximum queued audio increases by 40 ms.
+
+The complete 1,029-frame startup movie (17.167 seconds at 59.94 fps) took 21.547 seconds before the change and 17.266 seconds after it, measured from the movie log entry to the disc picker using the same prepared media and Steam Streaming Speakers. Windows audio opening now logs its endpoint and queue configuration. This confirms the device-side starvation and startup timing fix; listening and gameplay acceptance through the headset remain separate checks.
+
+`tests/check_startup_audio.py --game <gt2game.exe> --data-root <installed-folder> --output <new-check-folder>` repeats the audible startup check against the current Windows output, requires successful audio-device opening, checks playback duration and preserves logs. It uses isolated settings and does not load or change player saves. It requires the user's prepared startup movie and is separate from the silent startup/rendering suites.
+
+## Explicit Meta Link selection (0.3.0)
+
+A Link startup report showed SteamVR/OpenXR selected while both SteamVR and Meta were running; the Windows default was VDXR. Explicit Meta and SteamVR launchers now select their own runtime per process, independent of that default. Meta discovery checks the running OVRServer location and current/legacy standard install locations; it does not silently fall back to SteamVR.
+
+The installed Meta runtime advertises XR_KHR_vulkan_enable2. With SteamVR still running, a startup probe selected the Meta manifest and reported runtime Oculus; xrGetSystem returned XR_ERROR_FORM_FACTOR_UNAVAILABLE because that runtime did not expose an available headset during the probe. This verifies selection, not Meta headset rendering. The existing OpenXR simulator regression also passes with GT2_XR_RUNTIME=meta inherited and an explicit XR_RUNTIME_JSON override, confirming that direct runtime overrides retain priority. All six host CTest suites pass. Steam Link audio/rendering was accepted in the user's subsequent headset test after the Windows audio queue fix above.
+
+## VDXR launcher, stick-click menu and disc switching (0.3.0)
+
+The dedicated PLAY-PCVR-VD.bat selects Virtual Desktop's bundled VDXR runtime per process, clears an inherited XR_RUNTIME_JSON locally and leaves the Windows runtime default unchanged. Discovery uses the running Streamer location or its standard installation directory. The installed VDXR loader advertises XR_KHR_vulkan_enable2; the project author subsequently confirmed the VD update working.
+
+L3 + R3 replaces both grips + Y. Simulator checks cover both stick clicks without grips, Y while holding the wheel, the original grips + Menu chord, return to stereo and focus recovery. All six host CTest suites and the unified desktop/VR startup checks pass.
+
+The new check_game_switch.py regression selects Simulation, switches to Arcade, then switches back to Simulation in one process. It exercises Change game cancellation and confirmation, verifies separate memory-card hashes and cheat settings, and checks theatre/stereo submissions. A second run covers the normal game shells. Enabling the PlayStation intro during the first game does not replay it when switching. Game resources and the old XR session are released between discs; the process and save root remain the same. Unsaved in-memory progress is discarded only after the confirmation screen.
+
+Windows Release and the signed ARM64 APK were rebuilt. L3 + R3 and the disc-switch loop are included on Quest, while physical Quest disc switching still needs a separate device check.

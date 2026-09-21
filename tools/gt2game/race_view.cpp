@@ -1129,6 +1129,19 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     vrControlsHeld = padLogicalHeld;
                     vrBrakeReverse.Apply(merged,race.CarAt(0).body.forwardSpeed / 4096.f,!activeOptions.manual && bindings.brakeReverse);
                 }
+                if (!replaying && !VrMode() && window.Pad().type != input::kTypeNone) {
+                    const auto& bindings = OverlayDesktopBindings();
+                    if (OverlayDesktopCustomBindings()) {
+                        gt2::vr::ApplyDesktopControlBindings(merged,padLogicalHeld,window.Pad(),bindings);
+                        logicalPressed = padLogicalHeld & ~vrControlsHeld;
+                        vrControlsHeld = padLogicalHeld;
+                        merged.buttons |= keyboardPad.buttons;
+                        if (keyboardPad.buttons & (kPadLeft|kPadRight)) merged.analog &= ~1u;
+                        if (keyboardPad.buttons & kPadThrottle) merged.analog &= ~4u;
+                        if (keyboardPad.buttons & kPadBrake) merged.analog &= ~8u;
+                    }
+                    vrBrakeReverse.Apply(merged,race.CarAt(0).body.forwardSpeed / 4096.f,!activeOptions.manual && bindings.brakeReverse);
+                }
                 float physicalSteer = 0;
                 if (!replaying && window.PhysicalSteering(physicalSteer)) {
                     merged.analog |= 1;
@@ -1495,7 +1508,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         // HUD, in the frame's rectangle (100, 20) 120 x 32 (centred like the HUD's centre block), from the camera copy
         // camera::MirrorCamera: the backdrop's two flat colours, the course's mirror copies (chunk + 0x94) nearer than
         // 100 m (0x80020110 with param 1), the cars (0x8001545C with param 1; the followed car stays hidden), the frame.
-        if (config.mirror && (!VrMode() || OverlayHudVisibility().mirror) && !config.oldCamera && camera::MirrorShown(cam, data.constants.gameMode, data.constants.step.rate == 60 ? 1 : 2)) {
+        if (config.mirror && OverlayHudVisibility().mirror && !config.oldCamera && camera::MirrorShown(cam, data.constants.gameMode, data.constants.step.rate == 60 ? 1 : 2)) {
             const camera::RaceCamera mirrorCam = camera::MirrorCamera(cam);
             const float rect[4] = {0.5f + float(camera::kMirrorRect[0] - 160) / (240.0f * hudAspect), float(camera::kMirrorRect[1]) / 240.0f,
                                    0.5f + float(camera::kMirrorRect[0] + camera::kMirrorRect[2] - 160) / (240.0f * hudAspect),
@@ -1613,7 +1626,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.caption = hud->Strings().At(body.hudLabel);
             hf.splitA = uint32_t(body.hudCompare);
             hf.splitB = uint32_t(body.hudGap);
-            if (VrMode()) hf.visibility = OverlayHudVisibility();
+            hf.visibility = OverlayHudVisibility();
             hud->Build(hf, hudAspect, items);
         }
 

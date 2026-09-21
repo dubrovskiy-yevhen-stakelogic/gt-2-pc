@@ -61,6 +61,7 @@
 #include "game/shell/title_options.h"
 #include "game/sim/dev_dump_constants.h"
 #include "game_window.h"
+#include "save_transfer_guard.h"
 #include "gt2formats/hd_media.h"
 #include "graphics_options.h"
 #include "panel.h"
@@ -365,6 +366,7 @@ int GameMain(int argc, char** argv) {
                 SetWindowNoFocus(true);
         }
 
+        SaveTransferGuard saveGuard(titleOptions.card1Path, titleOptions.card2Path);
         if (vr) { // the OpenXR cinema quad instead of the desktop window (docs/research/vr_port_plan.md, M1)
             SetVrMode(true, vrDeterministic);
             windowWidth = kCinemaWidth; // every screen is built for the quad's 4:3 image
