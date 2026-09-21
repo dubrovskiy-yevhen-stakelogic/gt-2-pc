@@ -42,6 +42,9 @@
 #include <cstring>
 #include <limits>
 #include <stdexcept>
+#ifdef __ANDROID__
+#include <pthread.h>
+#endif
 
 namespace gt2::xr {
 namespace {
@@ -895,6 +898,22 @@ bool Session::LocateViews(vr::Pose& head, vr::EyeView eyes[2]) {
 void Session::SubmitStereoFrame(VkImage color, VkImage depth, const vr::EyeView eyes[2], float nearZ) {
     Impl& s = *impl_;
     if (!frameOpen_) return;
+#ifdef __ANDROID__
+    static thread_local bool reportedStack = false;
+    if (!reportedStack) {
+        reportedStack = true;
+        pthread_attr_t attributes;
+        if (pthread_getattr_np(pthread_self(), &attributes) == 0) {
+            void* base = nullptr;
+            size_t size = 0;
+            if (pthread_attr_getstack(&attributes, &base, &size) == 0) {
+                const auto remaining = reinterpret_cast<uintptr_t>(&attributes) - reinterpret_cast<uintptr_t>(base);
+                std::printf("xr: first stereo submit stack %zu KiB available / %zu KiB total\n", remaining / 1024, size / 1024);
+            }
+            pthread_attr_destroy(&attributes);
+        }
+    }
+#endif
     std::vector<XrCompositionLayerBaseHeader*> layers;
     XrCompositionLayerProjection projection{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     XrCompositionLayerProjectionView projectionViews[2] = {{XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW},

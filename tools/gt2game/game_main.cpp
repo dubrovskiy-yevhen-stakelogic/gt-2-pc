@@ -61,6 +61,7 @@
 #include "game/shell/title_options.h"
 #include "game/sim/dev_dump_constants.h"
 #include "game_window.h"
+#include "gt2formats/hd_media.h"
 #include "graphics_options.h"
 #include "panel.h"
 #include "change_parts_check.h"
@@ -391,6 +392,7 @@ int GameMain(int argc, char** argv) {
         // The build of the disc (gt2formats/exe_profile.h): every table / global the game reads by its US Simulation v1.2
         // address is translated to this build's address; an unknown executable stops here.
         const ExeProfile& profile = ProfileOf(disc);
+        gt2::hd::SetRoot(argv[1], profile.exeSha1);
         SetActiveProfile(profile);
         if (!profile.reference) std::printf("disc: %s (%s), address profile of that build\n", profile.name, profile.exeName);
         if (!raceScreenCheck.empty()) return RunRaceScreenCheck(disc, vol, raceScreenCheck);

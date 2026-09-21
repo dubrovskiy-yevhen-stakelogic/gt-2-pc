@@ -169,6 +169,7 @@ void PanelView::Submit(std::vector<Quad>& quads, int frameWidth, int frameHeight
             v.flags = q.flags;
             vertices.push_back(v);
         }
+    renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(base, vertices);
     const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     size_t first = 0;

@@ -360,10 +360,14 @@ float CarShadowHeight(const CarModel& model) {
     return (model.wheels[0].y - model.wheelRadiusFront) * ws + 0.04f;
 }
 
+void GroundShadowMatrix(float* ground, float meshHeight) {
+    for (int axis=0; axis<3; ++axis) ground[12+axis] += ground[4+axis]*(0.04f-meshHeight);
+}
+
 std::vector<CarMeshVertex> BuildCarShadowMesh(const CarModel& model, float groundY) {
     std::vector<CarMeshVertex> out;
     if (model.lods.empty() || model.shadow.polygons.empty()) return out;
-    const float s = static_cast<float>(CarBodyMetresPerUnit(model.lods[0]));
+    const float s = std::ldexp(1.0f, model.shadow.scale - 28);
     auto corner = [&](const CarShadowPolygon& p, size_t c) {
         const auto& v = model.shadow.vertices[p.vertex[c]];
         const float shade = (p.fullyShaded || c >= 2) ? 1.0f : 0.0f;

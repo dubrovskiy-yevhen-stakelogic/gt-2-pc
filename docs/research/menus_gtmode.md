@@ -253,7 +253,7 @@ section 3.
   already owned, prerequisites: kind 0x13 needs 0x12, 0x14 needs 0x13, 0x22 needs 0x14 (returns -5 / -6 / -7); buy:
   0x8005E8B0 sets the bit and adds the price to the slot value.
 
-### 5.3 Entry requirements (0x8001973C, per event; the other agent's table decoding in gtmode_tables.md section 5)
+### 5.3 Entry requirements (0x8001973C, per event; the table decoding in gtmode_tables.md section 5)
 Current car needed (-1); two special checks 0x800183EC / 0x8001859C (-9 / -10); dirt tyres (-2, part kind 0x2D);
 licence: requirement r (1 B .. 6 S) met when `6 - first held licence index >= r`, licence L held when all 10 of its test
 records have byte +1 != 0 (0x8001915C, 0x800191C4); then drive type, power limit, car list (-8).
@@ -304,7 +304,7 @@ runs (`gt2run session` routes above) and the saves the game writes.
 | 9 | menu graphics: decode GM pages + GTMP images (commonpic) to reuse the original layouts / art, text from unistrdb / txd | formats | render pages side by side with oracle screenshots | 5-8 days |
 | 10 | arcade mode (Arcade disc: ovl2 / ovl3) | later | | 5+ days |
 
-Total for a playable GT-mode career with native UI (steps 1-8): about 4-5 weeks of agent work; with the original page
+Total for a playable GT-mode career with native UI (steps 1-8): about 4-5 weeks of implementation work; with the original page
 graphics (9): +1-2 weeks.
 
 ## 8. Port status (2026-09-19: plan steps 1, 2, 4 without UI)

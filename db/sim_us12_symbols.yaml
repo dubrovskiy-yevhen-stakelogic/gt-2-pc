@@ -2308,7 +2308,7 @@
   name: course_record_of_race
   status: disassembled
   evidence: "career + 0x218 + 0x80060EB4(race block + 0x40) * 0x24; stored in race object + 0x24 (0x800A9524) at the race load (0x80014E4C); mode 6's lap line 0x80013824 copies a faster lap into it, 0x8004AA5C adds +0x14 car id, +0x18 name (career + 0x7C8F)."
-# ---- licence cars, fitted wheels, the licence prize block (2026-09-19, licence / career agent; our disassembly of SCUS_944.88 and GT2.OVL members 0 / 4)
+# ---- licence cars, fitted wheels, the licence prize block (2026-09-19; our disassembly of SCUS_944.88 and GT2.OVL members 0 / 4)
 - address: 0x8004C7A0
   name: licence_race_block_setup_ovl0
   overlay: ovl0
@@ -2443,7 +2443,7 @@
   overlay: ovl0
   status: disassembled
   evidence: "The ghost card manager's load (0x800728F0 / 0x80072F8C): on success 0x801D55AA = 1 and 0x8002F4B1 = 1 (the Try Again's entry 1 keeps the loaded ghost via the arcade loop's 0x80016C58)."
-# ---- mode 6 replay (2026-09-19, mode 6 agent; our disassembly of GT2.OVL member 0, capture work/re/mode6_replay on Arcade US v1.1, same addresses)
+# ---- mode 6 replay (2026-09-19; our disassembly of GT2.OVL member 0, capture work/re/mode6_replay on Arcade US v1.1, same addresses)
 - address: 0x8003F990
   name: ghost_replay_lap_start
   overlay: ovl0
@@ -2458,7 +2458,7 @@
   name: replay_over
   status: observed
   evidence: "Set by 0x80013EF0 when a mode 6 replay ran past the ring's last lap (mode6_replay capture: race 2 ends at frame 2607); 0x80015DCC ends the replay on it. RaceViewConfig::ghostReplay leaves the view on GhostSession::replayEnded."
-# ---- Replay Theater, Data Transfer, bought wheels in the race (2026-09-19, theater agent; our disassembly of SCUS_944.88 and
+# ---- Replay Theater, Data Transfer, bought wheels in the race (2026-09-19; our disassembly of SCUS_944.88 and
 # ---- GT2.OVL members 0 / 1; src/gt2formats/replay_card.*, src/game/shell/title_replay.* / title_transfer.*,
 # ---- tools/gt2verify/verify_title_replay.cpp / verify_title_transfer.cpp; docs/formats/replay.md section 9, title.md 9 / 10)
 - address: 0x800691DC
@@ -2597,7 +2597,7 @@
   overlay: ovl0
   status: verified
   evidence: "Byte 0 of the race task = the race overlay's argument (entry 0x80011F64 a0 -> s4, sb at 0x800121AC). The frame 0x80015B64: a pressed Start (generic 0x10000, 0x80015C4C) goes to 0x80015C90: argument != 0 -> the frame returns 0 (the race ends, 0x8005DA3C(1) at 0x8001222C -> member 1), else the pause (+0x2E9). Observed: attract demo 0 with Start at f3000 -> member 1 at f3146; Cross at f3000 does nothing (work/attract/sim_btn_*)."
-# ---- Memory-card replay modes, ghost files, theater records, view music, replay controls (2026-09-19, cards agent; our
+# ---- Memory-card replay modes, ghost files, theater records, view music, replay controls (2026-09-19; our
 # ---- disassembly of SCUS_944.88 / GT2.OVL members 0 / 1; src/game/shell/title_screens.* (CardManager), gt2view/race_card_screens.*,
 # ---- tools/gt2game/ghost_replay.*, verify_title_replay.cpp; docs/formats/replay.md 9.5 / 9.6, title.md 9.1, arcade_disc.md 17.11)
 - address: 0x80072E7C
@@ -2651,7 +2651,7 @@
   overlay: ovl0
   status: verified
   evidence: "0x800109FC in game mode 6 with the hold 0: pad + 0x6C & 0x1010 == 0x10 (L1) -> car[target] + 0x21 = -1, == 0x1000 (R1) -> + 1 (watch of 0x800A96A9 in the theater's Demo 02: writes at pc 0x80010BBC after L1 / R1); other modes: 1 / 2 (up / down) the followed car, triangle mode 0's split; read and cleared by 0x80013EF0. Ported race_camera.cpp ReplayCamera (verify_camera); gt2game feeds GhostSession::replayLapStep."
-# ---- The replay theater's Copy Replay (2026-09-19, misc agent; our disassembly / Ghidra pseudo-C of GT2.OVL member 1 in
+# ---- The replay theater's Copy Replay (2026-09-19; our disassembly / Ghidra pseudo-C of GT2.OVL member 1 in
 # ---- work/re/theater, gt2run / gt2play runs of the original with two cards (work/play/copy); src/game/shell/title_copy.*,
 # ---- docs/formats/replay.md 9.7, title.md 9.2)
 - address: 0x80015CF8
@@ -2749,7 +2749,7 @@
   overlay: ovl0
   status: verified
   evidence: "Rows {string, s8 enabled, s8 code} from 0x8005B364: selector -3, Replay 0, Start 1 (the AT / MT dialog first), Records ... -4 (view 0x8005B4DC), Save Replay ... -2 (view 0x8005B51C + 0x80050494), Demonstration ... -5 (view 0x8005B44C), Exit 2. Replay / Save Replay enabled by M + 0x240."
-# ---- race overlay menus: TRANSMISSION bar, licence test selector, sponsor category (2026-09-19, gtmenus agent, second pass)
+# ---- race overlay menus: TRANSMISSION bar, licence test selector, sponsor category (2026-09-19, second pass)
 - address: 0x8004EEB0
   name: licence_menu_update
   overlay: ovl0
@@ -2789,7 +2789,7 @@
   status: disassembled
   evidence: "Race block + 0x57C..: s16 result index (ovl4 0x800188B0), u8 + 0x580 GTW flag (0x8001859C), s16 + 0x582 player, s16 + 0x584 garage slot, s16 + 0x586 = event info + 0x1E power limit (0x800194FC), u32 + 0x588 flags: bit 0 = !(info + 0x1C & 1) (0x80019578), bits 1..2 = info + 0x1C bits 7..8 when 1 / 2 (0x800195BC), bit 3 the gearbox flag (0x80011F64). Licence (0x80010078): -1, 0, -1, -1, 0, flags 1. Dumps (bytes + 0x57C..+ 0x58B): LJB00 / LJB06 ffff0000 0000ffff ffff0000 01000000, CBM0001 16000000 00000000 00000000 01000000, GT30501 77000000 00000000 01005802 01000000 (garage slot 1, power limit 600)."
 
-# ---- CHANGE PARTS interactive and the executable's power / torque graph (2026-09-19, arcade agent; docs/formats/race_screens.md
+# ---- CHANGE PARTS interactive and the executable's power / torque graph (2026-09-19; docs/formats/race_screens.md
 # section 8). Evidence: our disassembly / Ghidra pseudo-C of work/re/menu_race/ram.bin (work/re/change_parts/sim_decomp,
 # sim_decomp2); gt2play captures work/play/change_parts/cap2 (Arcade) and simcap (Simulation). Port: src/gt2view/change_parts.*,
 # src/gt2view/power_graph.*; rows PartsPrev / PgCurves / PgScale (tools/gt2verify/verify_career.cpp).
@@ -2841,7 +2841,7 @@
   status: verified
   evidence: "(page, ot + 4 entries): the list band at (0, 0xD2), the list (row callback 0x80052D84: the stages with their tile / frame / names, the part picture 0x8005B8B4 + the part's +0xE, the selected stage's description at (0xB0, 0x1BC)), the entered part's name at (0xB0, 0xEC), the car's curves (alpha 0x30) and in state 2 the selected stage's curves (0x80) with '%dhp/%drpm' / '%d.%dkgm/%drpm' at (0x78, 0x186 / 0x19A), the axes 0x800747D0; then (page band open) the group icons, 'L1 - PARTS SETTING', the group name, the part rows 0x800529C0 (state 1: the part's description at (0xB0, 0x1BC); state 2: 'Power Restricted to %dhp' with a limit). Port screens::ChangePartsView::Draw."
 
-# ---- machine test (race sub-modes 7 / 8 / 9; 2026-09-20, machine-test agent; docs/formats/race_screens.md 5.7,
+# ---- machine test (race sub-modes 7 / 8 / 9; 2026-09-20; docs/formats/race_screens.md 5.7,
 #      src/game/career/machine_test.*, src/gt2view/machine_test_views.*, tools/gt2verify/verify_machine_test.cpp)
 - address: 0x80012C6C
   name: gt_machine_test_setup

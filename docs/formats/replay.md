@@ -185,7 +185,7 @@ Demonstration the demo file; the chosen replay plays in the same window (`RunRac
 it) and the theater comes back. (2026-09-19, later: Rename & Delete and game mode 6 records - section 9.5 / 9.6.) Copy Replay: section 9.7 (ported
 2026-09-19). Two-player records (a slot of kind 4, game mode 0) play in the split screen since 2026-09-19 (section 9.8).
 
-### 9.5 The card manager's replay modes 0 / 2 / 3 (2026-09-19, cards agent)
+### 9.5 The card manager's replay modes 0 / 2 / 3 (2026-09-19)
 
 Evidence: our disassembly / Ghidra pseudo-C of the EXE (work/re/theater/decomp: 0x8006F298, 0x8006F3E0, 0x8006F5DC, 0x8006F6E8,
 0x8006FF8C, 0x80070254, 0x8007031C, 0x800704C4, 0x800705D0, 0x80070798, 0x80070C14, 0x80070E38, 0x800717B8, 0x80071B30, 0x80072044,
@@ -246,7 +246,7 @@ terminators (0x80069028 / 0x800690B8 copy only the strings), so the original's e
 and in the directory CRC over them; the payload sectors' tails after the payload likewise hold the buffer's residue in the
 original (ours zero).
 
-### 9.6 Game mode 6 records in the theater; the arcade replays' car tables (2026-09-19, cards agent)
+### 9.6 Game mode 6 records in the theater; the arcade replays' car tables (2026-09-19)
 
 - The theater's "Demo 02" / "Demo 05" and any Save Replay of a Time Trial / Rally are mode 6 records (race block, results record,
   the lap ring's laps). The title's 0x80010EDC then runs the race overlay with argument 1: player 1 alone plays the ring's laps from
@@ -264,7 +264,7 @@ original (ours zero).
   block, the clock); `--replay demo#3 --frames-compare demo04.bin` 3124 frames, 0 differ (was 3124 differing); the earlier runs
   (attract 3195, card_b1_replay 1257, ours 1053) still 0.
 
-### 9.7 Copy Replay (theater row 2; 2026-09-19, misc agent)
+### 9.7 Copy Replay (theater row 2; 2026-09-19)
 
 Member 1's own card screen (GT2.OVL member 1 of US Simulation v1.2, EXE SHA-1 3030aa271c0a4022fc69ce09d76a6bc75e69a32a): view
 0x8004B470 "COPY REPLAY" (colour 0x2878F2; init 0x80012AA4, update 0x80012B00: the screen's exit plays sound 4 and goes back to
@@ -309,7 +309,7 @@ cards (work/play/copy: s1..s3, cap, capa, capb, capd). Port: `src/game/shell/tit
   (our card rate: 8 sectors per field), the bars' pulse / title shine (title.md 9). Our card transfers are faster than the
   original's in the interpreter: the list opens ~1260 fields after the run start of the capture's timeline instead of ~1180.
 
-### 9.8 Two-player records (game mode 0; 2026-09-19, 2P agent)
+### 9.8 Two-player records (game mode 0; 2026-09-19)
 
 US Arcade v1.1 records (the 2 player Battle, docs/research/arcade_disc.md 19.8), played by either disc's theater. Code:
 `gt2formats/replay.h ReplayFile::stream2`, `replay_card.* PayloadOfReplay / ToReplayFile` (player 2), `tools/gt2game/split_race.*`
@@ -333,7 +333,7 @@ load settings), `title_mode.cpp` (the theater's kind-4 records), `arcade_mode.cp
   `--fake-pad2`, `work/re/theater2p/ours_card.mcd`) 1500 frames, 0 differ; the original's record (saved by its 2PLAYER BATTLE menu,
   `orig_card.mcd`) 1290 frames, 0 differ.
 
-### 9.8 The race overlay's replays of GT mode; the licence demo runs (2026-09-19, gtmenus agent)
+### 9.8 The race overlay's replays of GT mode; the licence demo runs (2026-09-19)
 
 - After every race of the menus the overlay plays its replay at once (state 10 -> 12, race_screens.md 5.5); the menus' Replay rows
   play it again, their "Save Replay ..." rows run the card manager's mode 0 (view 0x8005B51C) on it. gt2game: RaceFlow in

@@ -34,12 +34,19 @@ void MusicPlayer::Open(const std::string& discPath, const GuestImage& exe) {
     disc_ = std::move(disc);
     tracks_ = std::move(tracks);
     musicLba_ = file->lba;
+    rawCache_.resize(32 * DiscImage::kRawSectorSize);
+    decoded_.reserve(4032);
+    source_.reserve(8064);
+    cacheSectors_ = 0;
     state_ = State::kIdle;
+    std::printf("music: %s, %zu tracks, MUSIC.DAT LBA %u\n", exe.fileName.c_str(), tracks_.size(), musicLba_);
 }
 
 void MusicPlayer::Play(int id, bool loop) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (id < 0 || size_t(id) >= tracks_.size()) return;
+    std::printf("music: play %d, XA channel %u, sectors %u..%u, gain %.4f\n", id,
+        unsigned(MusicXaChannel(id)), tracks_[size_t(id)].first, tracks_[size_t(id)].end, double(cdVolume_)/32768.0);
     request_ = {true, id, loop};
     ended_ = false;
 }
@@ -69,6 +76,7 @@ void MusicPlayer::Start(int id, bool loop) {
     endLba_ = musicLba_ + t.end;
     channel_ = MusicXaChannel(id);
     decoder_ = XaDecoderState{};
+    cacheSectors_ = 0;
     source_.clear();
     sourcePos_ = 0;
     phase_ = 0;
@@ -79,22 +87,27 @@ void MusicPlayer::Start(int id, bool loop) {
 }
 
 bool MusicPlayer::DecodeNext() {
-    uint8_t raw[DiscImage::kRawSectorSize];
-    std::vector<int16_t> decoded;
     while (lba_ < endLba_) {
-        disc_->ReadRawSector(lba_++, raw);
+        // XA channels are interleaved. Read ahead once for a block instead of
+        // seeking through every other channel on the audio callback thread.
+        if (!cacheSectors_ || lba_ < cacheLba_ || lba_ - cacheLba_ >= cacheSectors_) {
+            cacheLba_ = lba_;
+            cacheSectors_ = std::min<uint32_t>(32, endLba_ - lba_);
+            disc_->ReadRawSectors(cacheLba_, cacheSectors_, rawCache_.data());
+        }
+        const uint8_t* raw = rawCache_.data() + size_t(lba_++ - cacheLba_) * DiscImage::kRawSectorSize;
         const XaSubheader h = XaSubheaderOf(raw);
         if (!IsXaAudio(h) || h.file != kMusicXaFile || h.channel != channel_) continue; // the drive's XA filter (mode 0x08)
         const XaFormat format = XaFormatOf(h.coding);
         step_ = double(format.sampleRate) / double(kSampleRate);
-        decoded.clear();
-        DecodeXaSector(raw, decoder_, decoded);
+        decoded_.clear();
+        DecodeXaSector(raw, decoder_, decoded_);
         source_.erase(source_.begin(), source_.begin() + std::ptrdiff_t(sourcePos_ * 2));
         sourcePos_ = 0;
         if (format.stereo) {
-            source_.insert(source_.end(), decoded.begin(), decoded.end());
+            source_.insert(source_.end(), decoded_.begin(), decoded_.end());
         } else {
-            for (int16_t s : decoded) { source_.push_back(s); source_.push_back(s); }
+            for (int16_t s : decoded_) { source_.push_back(s); source_.push_back(s); }
         }
         return true;
     }

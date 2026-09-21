@@ -1,5 +1,8 @@
 #include "gt2view/vk_scene_renderer.h"
 #include "gt2view/shading_rate.h"
+#include "gt2view/title_view.h"
+#include "gt2view/hd_picture.h"
+#include <filesystem>
 #include "gt2view/vr_driving_visuals.h"
 #include <algorithm>
 #include <chrono>
@@ -64,6 +67,25 @@ struct Device {
 };
 int main(int argc, char** argv) {
     try {
+        if (argc >= 4 && std::string(argv[1]) == "--menu-upload") {
+            const std::filesystem::path root=argv[2];
+            std::string profile; std::ifstream(root/"hd/profile.txt")>>profile;
+            gt2::hd::SetRoot(root.string(),profile);
+            if(gt2::hd::Asset("images/title.png").empty()) throw std::runtime_error("menu benchmark needs HD title image");
+            const int count=std::clamp(std::atoi(argv[3]),1,300);
+            Device device; gt2view::VkContext context(device.e);
+            gt2view::VkSceneRenderer renderer(context,{1280,960},VK_FORMAT_R8G8B8A8_UNORM);
+            gt2view::TitleView view(renderer); gt2::MenuVram vram;
+            view.UploadVram(vram);
+            const auto start=std::chrono::steady_clock::now();
+            for(int i=0;i<count;++i) {
+                view.UploadVram(vram);
+                if(argc>4 && std::atoi(argv[4])) gt2view::UploadHdPicture(renderer,"title.png",352,480);
+            }
+            const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/count;
+            std::printf("Menu VRAM upload: %.3f ms/update, %d updates, repeated HD decode %s\n",ms,count,argc>4&&std::atoi(argv[4])?"on":"off");
+            return validationErrors ? 2 : 0;
+        }
         if (argc < 2) { std::puts("gt2renderbench capture [scale%=175] [MSAA=2] [frames=300] [screenshot.png] [smooth=1] [direct=0] [foveation=0]"); return 1; }
         const int scale = argc > 2 ? std::atoi(argv[2]) : 175, samples = argc > 3 ? std::atoi(argv[3]) : 2;
         const int frames = argc > 4 ? std::atoi(argv[4]) : 300;
@@ -72,6 +94,29 @@ int main(int argc, char** argv) {
         gt2view::VkSceneRenderer renderer(context, {1280, 960}, VK_FORMAT_R8G8B8A8_UNORM);
         std::vector<gt2view::DrawItem> items; size_t sceneCount = 0;
         renderer.LoadCapture(argv[1], items, sceneCount);
+        if(const char* hdRoot=std::getenv("GT2_BENCH_HD_ROOT")) {
+            std::string profile; std::ifstream(std::filesystem::path(hdRoot)/"hd/profile.txt")>>profile;
+            gt2::hd::SetRoot(hdRoot,profile); gt2::hd::SetEnabled(true);
+            std::ifstream input(argv[1],std::ios::binary);uint32_t h[7]{};
+            input.read(reinterpret_cast<char*>(h),sizeof(h));input.seekg(40);
+            std::vector<gt2view::SceneVertex> captured(h[2]),ui;
+            input.read(reinterpret_cast<char*>(captured.data()),captured.size()*sizeof(captured[0]));
+            std::vector<uint32_t> packed(h[3]);
+            input.read(reinterpret_cast<char*>(packed.data()),packed.size()*sizeof(uint32_t));
+            if(!input) throw std::runtime_error("cannot read HD UI fixture");
+            std::vector<uint16_t> words(packed.begin(),packed.end());
+            renderer.UploadVram(0,h[3]/1024,words.data());
+            for(const auto& item:items) ui.insert(ui.end(),captured.begin()+item.firstVertex,captured.begin()+item.firstVertex+item.vertexCount);
+            renderer.ApplyHdUi(ui);
+            const auto reconstructed=std::count_if(ui.begin(),ui.end(),[](const auto& v){return (v.flags&gt2view::kReconstructedUi)!=0;});
+            if(!reconstructed) throw std::runtime_error("HD UI fixture loaded no reconstructed text");
+            size_t at=0;
+            for(const auto& item:items) {
+                std::vector<gt2view::SceneVertex> range(ui.begin()+at,ui.begin()+at+item.vertexCount);
+                renderer.SetVertices(item.firstVertex,range);at+=item.vertexCount;
+            }
+            std::printf("HD UI live load: %zu reconstructed vertices\n",size_t(reconstructed));
+        }
         // Repeat the same captured camera in both eyes; this is a GPU workload replay,
         // not an OpenXR/compositor or gameplay benchmark. Keep the original clip matrices.
         gt2view::StereoViews views;
@@ -126,6 +171,8 @@ int main(int argc, char** argv) {
         renderer.EnableDecodedTextures(true);
         renderer.SetFoveation(argc > 8 ? std::atoi(argv[8]) : 0);
         gt2view::RenderOptions options; options.msaa = uint32_t(samples); options.smoothTextures = argc < 7 || std::atoi(argv[6]) != 0;
+        const char* mipOption=std::getenv("GT2_BENCH_MIPS");
+        options.mipmaps=!mipOption || std::atoi(mipOption)!=0;
         renderer.SetOptions(options);
         renderer.CreateStereoTarget({uint32_t(1680 * scale / 100), uint32_t(1760 * scale / 100)}, VK_FORMAT_R8G8B8A8_UNORM, true);
         if (argc > 7 && std::atoi(argv[7])) renderer.SetExternalStereoImage(renderer.StereoImage());
@@ -149,7 +196,8 @@ int main(int argc, char** argv) {
                 items = combined ? capturedItems : std::vector<gt2view::DrawItem>{}; handCheck->Append(items,tracking,driving,settings,handMatrix); sceneCount=combined ? capturedScene : items.size();
                 if (f>=0) handBuild += std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
             }
-            renderer.DrawStereo(items, {}, sceneCount); renderer.WaitFrame();
+            if (std::getenv("GT2_BENCH_FLAT")) renderer.Draw(items, {}, sceneCount);
+            else renderer.DrawStereo(items, {}, sceneCount); renderer.WaitFrame();
             if (f >= 0) {
                 gpu.push_back(renderer.GpuMilliseconds());
                 elapsed += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();

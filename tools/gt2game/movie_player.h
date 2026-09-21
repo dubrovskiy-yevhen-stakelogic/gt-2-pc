@@ -47,6 +47,7 @@ struct MovieSpec {
 MovieSpec MovieSpecOf(int movie);
 
 enum class MovieResult { kFinished, kSkipped, kClosed };
+MovieResult PlayPreparedMovie(GameWindow& window, const std::string& path, const MovieSpec& spec, bool sound);
 // Plays one movie full screen in `window` (its own sound device unless `sound` is false). Returns when it ends, is
 // skipped (Start / S / Esc, when the original allows it) or the window closes.
 MovieResult PlayMovie(GameWindow& window, const gt2::DiscImage& disc, const MovieLibrary& library, int movie, bool sound);

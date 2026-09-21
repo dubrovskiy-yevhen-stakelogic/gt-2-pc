@@ -57,7 +57,7 @@ struct CarWheelOffset {
 };
 
 // The ground shadow, stored after the last LOD: { u16 vertexCount, u16 triCount, u16 quadCount, u16 0;
-// 4 x { s16 v, s16 0 } bbox (xmin, zmin, xmax, zmax); u32 unknown (0x11 | n << 16); vertexCount x { s16 x, s16 z };
+// 4 x { s16 v, s16 0 } bbox (xmin, zmin, xmax, zmax); s16 scale, s16 radius; vertexCount x { s16 x, s16 z };
 // (triCount + quadCount) x u32 polygon }. Polygon word: four 6-bit vertex indices (bits 0-23), bit 31 = fully
 // shaded; otherwise corners 0 and 1 are the unshaded outer edge and 2, 3 the shaded inner edge. The original
 // draws it as subtractive (B - F) gouraud quads on the ground plane with the car's heading (Seattle attract
@@ -69,7 +69,8 @@ struct CarShadowPolygon {
 };
 
 struct CarShadow {
-    std::vector<std::array<int16_t, 2>> vertices; // x, z in LOD 0 body units (the game transforms it with the LOD 0 scale)
+    int16_t scale = 17; // independent of the body LOD, applied by 0x80068004 through 0x8007B8A0
+    std::vector<std::array<int16_t, 2>> vertices; // x, z in 2^(scale - 16) / 4096 metres
     std::vector<CarShadowPolygon> polygons;       // tris first, then quads
 };
 

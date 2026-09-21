@@ -30,6 +30,7 @@ public:
 
     // Whole raw sector (sync, header, subheader, data, EDC/ECC) at any LBA.
     void ReadRawSector(uint32_t lba, uint8_t* out2352) const;
+    void ReadRawSectors(uint32_t lba, uint32_t count, uint8_t* output) const;
 
     // Form1 user data of a byte range that starts at `lba`.
     void ReadForm1(uint32_t lba, uint64_t byteOffset, uint8_t* out, size_t size) const;

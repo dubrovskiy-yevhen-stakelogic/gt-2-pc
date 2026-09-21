@@ -73,6 +73,9 @@ private:
     gt2::MenuVram noTextures_;
     int frameWidth_ = gt2::MenuCanvas::kWidth, frameHeight_ = gt2::MenuCanvas::kHeight;
     bool interpolated_ = false;
+    int hdBackground_ = -2;
+    uint64_t hdGeneration_ = ~uint64_t(0);
+    uint32_t hdSize_ = 0;
 };
 
 class SceneAssets;

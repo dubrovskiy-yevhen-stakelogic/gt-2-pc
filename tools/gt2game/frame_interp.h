@@ -21,6 +21,7 @@ namespace gt2game {
 struct RenderSnapshot {
     bool valid = false;
     std::vector<gt2::sim::CarPose> poses;   // car + 0x81C / + 0x830 of every car
+    std::vector<gt2::sim::CarPose> groundPoses; // ground-following transform for shadows
     gt2::camera::RaceCamera camera{};       // the camera object after the step's camera update
     gt2view::SmokePool smoke;               // the sprite pool after the step's spawns
     int32_t rpm = 0, speedReadout = 0, boost = 0; // HUD gauges: body + 0x6D8 / + 0x6DA / + 0x76E of the player

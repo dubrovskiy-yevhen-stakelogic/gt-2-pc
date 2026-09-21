@@ -21,6 +21,8 @@
 #include "gt2formats/track.h"
 #include "gt2view/glow.h"
 #include "gt2view/scenery_visibility.h"
+#include "gt2view/scenery_replacements.h"
+#include "gt2view/course_texture_seams.h"
 #include "gt2view/particles.h"
 #include "gt2view/vk_scene_renderer.h"
 #include "gt2vfs/gtfs.h"
@@ -135,7 +137,7 @@ public:
         }
         renderer_.UploadVram(0, PsxVram::kHeight, words.data());
 
-        BuildCourse(track);
+        BuildCourse(track, words);
     }
 
     // What the camera sees of the course in one frame.
@@ -145,8 +147,8 @@ public:
         std::array<float, 3> right{1, 0, 0}; // camera right axis in world axes (billboards face the camera's yaw)
         std::array<float, 3> forward{0, 0, 1}; // camera forward axis in world axes (the scenery LOD's camera space)
         double projectionDistance = 256;     // the view as a PS1 projection distance on the 320 x 240 frame (scenery LOD: track.h SceneryLodK)
-        // true: every scenery instance with its most detailed model and no distance cut-off (modern high-detail
-        // rendering); false: the original's per-instance level of detail (track.h SceneryLodIndex).
+        // true: local scenery uses its most detailed model without a distance cut-off.
+        // Broad course proxies retain authored visibility (scenery_visibility.h).
         bool maxDetail = false;
         // 0x800A951C != 0 (attract race / replay): every render-list entry draws its chunk. 0 (a player's race): the
         // entries with flags 3 draw only their glow records (0x80020110: `flag800A951C == 0 && flags > 2`).
@@ -156,7 +158,7 @@ public:
         // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = plus
         // every chunk whose centre is within N m of the eye, plus scenery in that radius without PS1 masks/LOD cutoffs.
         // The added chunks draw like render-list entries.
-        // < 0 = every chunk and scenery instance, highest LOD, without visibility masks or distance cutoffs.
+        // < 0 = every chunk and authored near scenery entry, including empty distant-copy entries.
         float extendedDistance = 0;
     };
     struct TrackStats { int cameraChunk = -1; size_t chunks = 0, instances = 0, billboards = 0; uint32_t mask = 0; };
@@ -175,18 +177,7 @@ public:
         std::vector<uint16_t> entries = track.chunks[size_t(camera)].renderList;
         if (entries.empty())
             for (size_t i = 0; i < track.chunks.size(); i++) entries.push_back(uint16_t(i));
-        if (view.extendedDistance != 0) { // the extended draw distance (ours): the chunks around the eye the list does not have
-            std::vector<bool> listed(track.chunks.size(), false);
-            for (uint16_t e : entries)
-                if ((e & 0x3FFF) < track.chunks.size()) listed[e & 0x3FFF] = true;
-            for (size_t i = 0; i < track.chunks.size() && i <= 0x3FFF; i++) {
-                if (listed[i]) continue;
-                const TrackChunk& c = track.chunks[i];
-                const float dx = float(c.centre[0] / 65536.0) - view.eye[0], dy = float(c.centre[1] / 65536.0) - view.eye[1],
-                            dz = float(c.centre[2] / 65536.0) - view.eye[2];
-                if (view.extendedDistance < 0 || dx * dx + dy * dy + dz * dz <= view.extendedDistance * view.extendedDistance) entries.push_back(uint16_t(i));
-            }
-        }
+        ExtendTrackEntries(entries,track,view.eye,view.extendedDistance);
         // The camera's screen-down axis for the glow stars (glow.h): forward x right (the PS1 camera frame right, down, forward
         // is right-handed; e.g. forward +z, right -x -> down -y).
         const float down[3] = {view.forward[1] * view.right[2] - view.forward[2] * view.right[1], view.forward[2] * view.right[0] - view.forward[0] * view.right[2],
@@ -238,6 +229,7 @@ public:
         };
 
         uint32_t mask = 0;
+        std::vector<bool> detailedDrawn(track.chunks.size(),false);
         for (uint16_t e : entries) {
             const size_t index = e & 0x3FFF;
             const uint32_t flags = uint32_t(e >> 14);
@@ -246,6 +238,7 @@ public:
             mask |= chunk.sceneryMask; // before the view test, for every entry (0x80020110)
             if (view.glows) AppendChunkGlowSprites(boards[1], track, chunk, view.right.data(), down); // every drawn entry draws its glows (glow.h)
             if (view.extendedDistance >= 0 && !view.fullDetail && flags > 2) continue; // glow records only
+            detailedDrawn[index]=true;
             stats_.chunks++;
             const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
             addRanges(chunkRanges_[index], vp, distanceTo(centre));
@@ -273,28 +266,43 @@ public:
         }
         const std::array<double, 3> eye = {view.eye[0], view.eye[1], view.eye[2]};
         const int32_t projection = int32_t(std::lround(view.projectionDistance));
-        for (const TrackSceneryInstance& inst : track.sceneryInstances) {
+        for (size_t instanceIndex=0;instanceIndex<track.sceneryInstances.size();++instanceIndex) {
+            const auto& inst=track.sceneryInstances[instanceIndex];
             const std::array<double, 3> offset = {inst.position[0] / 65536.0 - view.eye[0], inst.position[1] / 65536.0 - view.eye[1],
                                                   inst.position[2] / 65536.0 - view.eye[2]};
-            const bool extended = ExtendedScenery(offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2], view.extendedDistance, view.maxDetail);
-            if (!extended && inst.list < 32 && !((mask >> inst.list) & 1u)) continue;
             // Level of detail as the original picks it (0x8001F7F8 -> 0x8007AE38 / 0x8007AEF4, track.h): the camera-space
             // translation squared in quarter metres, scaled by k(h, lodDivisor), against the list's thresholds; beyond the
             // last threshold the instance is not drawn. gt2play --prims checks this rule against the original's own calls.
             const std::vector<TrackLodEntry>& lods = track.sceneryLods[inst.lodList];
-            if (lods.empty()) continue;
-            size_t entry = 0;
-            if (!extended) {
-                const int chosen = SceneryLodIndex(lods, SceneryLodMeasure(SceneryCameraSpace(inst, eye, cameraAxes), SceneryLodK(projection, inst.lodDivisor)));
-                if (chosen < 0) continue;
-                entry = size_t(chosen);
-            }
+            const int entry = SceneryEntry(track, inst, mask,
+                SceneryLodMeasure(SceneryCameraSpace(inst, eye, cameraAxes), SceneryLodK(projection, inst.lodDivisor)),
+                offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2], view.extendedDistance, view.maxDetail);
+            if (entry < 0) continue;
             const size_t modelIndex = lods[entry].model;
             const TrackSceneryModel& model = track.sceneryModels[modelIndex];
             const std::array<float, 16> m = SceneryInstanceMatrix(inst, model);
             float mvp[16];
             MultiplyColumnMajor(vp, m.data(), mvp);
-            addRanges(modelRanges_[modelIndex], mvp, float(std::sqrt(offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2])));
+            const float instanceDistance=float(std::sqrt(offset[0]*offset[0]+offset[1]*offset[1]+offset[2]*offset[2]));
+            const auto& replacement=instanceReplacements_[instanceIndex];
+            if(replacement.model!=modelIndex || replacement.polygons.empty()) addRanges(modelRanges_[modelIndex],mvp,instanceDistance);
+            else if(replacement.hasDetailed && DetailedReplacementVisible(replacement.chunks,detailedDrawn))
+                addRanges(replacement.detailed,mvp,instanceDistance);
+            else {
+                const auto& source=replacement.source;
+                uint32_t cursor=source.opaque.first;
+                for(const auto& polygon:replacement.polygons) {
+                    if(!DetailedReplacementVisible(polygon.chunks,detailedDrawn)) continue;
+                    if(polygon.range.first>cursor) {
+                        ShapeRanges part{};part.opaque={cursor,polygon.range.first-cursor};
+                        addRanges(part,mvp,instanceDistance);
+                    }
+                    cursor=polygon.range.first+polygon.range.count;
+                }
+                ShapeRanges tail=source;
+                tail.opaque={cursor,source.opaque.first+source.opaque.count-cursor};
+                addRanges(tail,mvp,instanceDistance);
+            }
             stats_.instances++;
             if (view.glows) AppendModelGlowSprites(boards[1], model, m.data(), view.right.data(), down); // 0x8001FBA8 (glow.h)
             for (const TrackBillboard& b : model.billboards) {
@@ -487,6 +495,7 @@ public:
         renderer_.UploadVram(kOwnRowsBase, 512, ownRows_.data());
 
         slots_.push_back({key, bodyCount, uint32_t(vertices.size()) - bodyCount, 0, std::move(texture), std::move(model)});
+        slots_.back().shadowHeight = CarShadowHeight(slots_.back().model);
         if (wheelRanges[3][0] + wheelRanges[3][1] <= bodyCount && wheelRanges[0][1] != 0) {
             slots_.back().wheelRanges = wheelRanges;
             slots_.back().wheelCentres = wheelCentres;
@@ -658,6 +667,7 @@ public:
         }
         renderer_.SetVertices(kCarVertexBase + slot * kCarVertexStride, vertices);
         slots_.push_back({id, bodyCount, uint32_t(vertices.size()) - bodyCount, 0, CarTexture{}, CarModel{}, std::move(reflect), std::min(strides, kCarSlots - slot)});
+        slots_.back().shadowHeight = car.wheelFront[1] - car.wheelRadius[0] + 0.04f;
         for (uint32_t extra = 1; extra < strides && slots_.size() < kCarSlots; extra++) slots_.push_back({std::string(), 0, 0, 0, CarTexture{}, CarModel{}});
         std::printf("native scene: external car %s -> slot %u (%u body + %u shadow vertices, %zu triangles, %zu image(s), %u vertex range(s))\n", id.c_str(), slot,
                     bodyCount, uint32_t(vertices.size()) - bodyCount, mesh.TriangleCount(), mesh.images.size(), strides);
@@ -728,7 +738,7 @@ public:
     // `wheelModels` (optional, car-space column-major 4x4 per wheel, car_mesh.h WheelModelMatrix): the wheels' transforms of
     // the frame (steer, camber, rolling angle, suspension); without it each wheel stands at its rest centre, not turned.
     void AppendCarItems(std::vector<DrawItem>& items, int slot, const float* mvp, uint32_t paint, uint32_t brakeLit, bool body = true,
-                        const std::array<std::array<float, 16>, 4>* wheelModels = nullptr) const {
+                        const std::array<std::array<float, 16>, 4>* wheelModels = nullptr, const float* shadowMvp = nullptr) const {
         const Slot& s = slots_[size_t(slot)];
         const uint32_t base = kCarVertexBase + uint32_t(slot) * kCarVertexStride;
         if (s.shadowCount) {
@@ -736,7 +746,7 @@ public:
             shadow.firstVertex = base + s.vertexCount;
             shadow.vertexCount = s.shadowCount;
             shadow.blend = 2;
-            std::copy(mvp, mvp + 16, shadow.mvp);
+            std::copy(shadowMvp ? shadowMvp : mvp, (shadowMvp ? shadowMvp : mvp) + 16, shadow.mvp);
             items.push_back(shadow);
         }
         if (body) {
@@ -840,6 +850,7 @@ public:
 
     // The parsed .cdo of a slot (empty for an external mesh): its wheel entries place the smoke (particles.h).
     const CarModel& SlotModel(int slot) const { return slots_[size_t(slot)].model; }
+    float SlotShadowHeight(int slot) const { return slots_[size_t(slot)].shadowHeight; }
     // The split screen of the 2 player Battle (tools/gt2game/split_race.cpp): the frame's billboards and tyre smoke are written
     // per view, so the second view needs its own vertex ranges - the last two car slots (kCarSlotsSplit..kCarSlots) are reserved
     // for them (call before the cars are loaded; false when those slots are taken). SelectView(1) makes AppendTrackItems /
@@ -909,7 +920,8 @@ private:
     // per instance with SceneryInstanceMatrix). The chunks' "surround" shapes are the rear-view mirror's low-detail
     // copies (0x8002993C -> 0x80020110 with param_3 != 0 reads chunk + 0x94 instead of the road shape at + 0xA4) and
     // are not built: drawing them over the road was the z-fighting "second asphalt" and its large stretched quads.
-    void BuildCourse(const Track& track) {
+    void BuildCourse(const Track& track, std::span<const uint16_t> words) {
+        const auto seamUvs = CourseTextureSeams(track, words);
         track_ = std::make_unique<Track>(track);
         chunkRanges_.assign(track.chunks.size(), {});
         modelRanges_.assign(track.sceneryModels.size(), {});
@@ -949,9 +961,10 @@ private:
             auto differs = [&](float a) { return std::fabs(emitted - a) > 1e-3f * std::max(1.0f, a); };
             if (differs(expected) && differs(other)) mismatched++;
         };
-        auto emitShape = [&](const TrackChunk& chunk, const TrackShape& shape) {
-            for (const TrackPolygon& p : shape.polygons) {
-                const TrackUvSet* uv = p.IsTextured() ? &track.uvTable[p.uvIndex].nearSet : nullptr;
+        auto emitShape = [&](size_t ci, const TrackChunk& chunk, const TrackShape& shape) {
+            for (size_t pi=0; pi<shape.polygons.size(); ++pi) {
+                const TrackPolygon& p=shape.polygons[pi];
+                const TrackUvSet* uv = p.IsTextured() ? &(ci<seamUvs.size()?seamUvs[ci][pi]:track.uvTable[p.uvIndex].nearSet) : nullptr;
                 const bool semi = (p.primCode & 0x02) != 0;
                 // Word0 bits 27-28: the ordering-table offset (16 entries per step, larger = drawn earlier); bit 31:
                 // back-face culling (0x8002106C / 0x800234F8).
@@ -978,10 +991,11 @@ private:
             }
         };
         for (size_t ci = 0; ci < track.chunks.size(); ci++) {
-            emitShape(track.chunks[ci], track.chunks[ci].road);
+            emitShape(ci, track.chunks[ci], track.chunks[ci].road);
             flush(chunkRanges_[ci]);
         }
         const size_t chunkVertices = vertices.size();
+        std::vector<std::vector<Range>> polygonRanges(track.sceneryModels.size());
         for (size_t mi = 0; mi < track.sceneryModels.size(); mi++) {
             const TrackSceneryModel& model = track.sceneryModels[mi];
             for (const TrackSceneryPolygon& p : model.polygons) {
@@ -1010,13 +1024,89 @@ private:
                     out.push_back(o);
                 }
                 check(ring, out, first);
+                polygonRanges[mi].push_back({uint32_t(first),uint32_t(out.size()-first)});
             }
             flush(modelRanges_[mi]);
+            for(size_t pi=0;pi<model.polygons.size();++pi)
+                if(!(model.polygons[pi].primCode&2)) polygonRanges[mi][pi].first+=modelRanges_[mi].opaque.first;
         }
+        const SceneryDetailIndex detailIndex(track);
+        instanceReplacements_.clear();instanceReplacements_.resize(track.sceneryInstances.size());
+        size_t replacedPolygons=0;
+        for(size_t ii=0;ii<track.sceneryInstances.size();++ii) {
+            const auto& inst=track.sceneryInstances[ii];
+            const auto& lods=track.sceneryLods[inst.lodList];
+            const int lod=HighestSceneryLod(track,lods);
+            if(lod<0) continue;
+            auto& replacement=instanceReplacements_[ii];replacement.model=lods[lod].model;
+            const auto& model=track.sceneryModels[replacement.model];
+            std::vector<std::array<float,3>> joined;
+            const auto matches=detailIndex.Match(inst,model,&joined);
+            replacement.source=modelRanges_[replacement.model];
+            bool needsJoin=false;
+            for(size_t vi=0;vi<joined.size();++vi) {
+                const auto& v=model.vertices[vi];
+                needsJoin|=std::abs(joined[vi][0]-v.x)>1e-4f || std::abs(joined[vi][1]-v.y)>1e-4f || std::abs(joined[vi][2]-v.z)>1e-4f;
+            }
+            auto ranges=polygonRanges[replacement.model];
+            // Keep the boundary of surviving scenery on the detailed course's
+            // vertices. Otherwise removing a coarse face leaves quantisation-sized
+            // cracks along its neighbours, especially visible against the sky.
+            if(needsJoin) {
+                const auto original=replacement.source;
+                size_t count=original.opaque.count;
+                for(const auto& range:original.semi) count+=range.count;
+                if(vertices.size()+count<=kTrackVertexLimit) {
+                    auto copyRange=[&](Range& range) {
+                        const std::vector<SceneVertex> copy(vertices.begin()+range.first,vertices.begin()+range.first+range.count);
+                        range.first=uint32_t(vertices.size());vertices.insert(vertices.end(),copy.begin(),copy.end());
+                    };
+                    copyRange(replacement.source.opaque);
+                    for(auto& range:replacement.source.semi) copyRange(range);
+                    for(size_t pi=0;pi<model.polygons.size();++pi) {
+                        const auto& p=model.polygons[pi];
+                        const bool semi=(p.primCode&2)!=0;
+                        const size_t blend=p.IsTextured()?((p.tpage>>5)&3):0;
+                        ranges[pi].first=semi?replacement.source.semi[blend].first+ranges[pi].first:
+                            replacement.source.opaque.first+ranges[pi].first-original.opaque.first;
+                        for(size_t k=0;k<ranges[pi].count;++k) {
+                            const auto& position=joined[p.vertex[p.IsQuad()?kQuad[k]:kTri[k]]];
+                            std::copy(position.begin(),position.end(),vertices[ranges[pi].first+k].pos);
+                        }
+                    }
+                }
+            }
+            for(size_t pi=0;pi<matches.size();++pi) if(!matches[pi].empty()) {
+                const auto range=ranges[pi];
+                if(range.first+range.count<=replacement.source.opaque.first+replacement.source.opaque.count)
+                    replacement.polygons.push_back({range,matches[pi]});
+            }
+            std::sort(replacement.polygons.begin(),replacement.polygons.end(),[](const auto& a,const auto& b){return a.range.first<b.range.first;});
+            replacedPolygons+=replacement.polygons.size();
+            if(!replacement.polygons.empty()) {
+                const auto& source=replacement.source;
+                std::vector<SceneVertex> filtered;
+                uint32_t cursor=source.opaque.first;
+                for(const auto& polygon:replacement.polygons) {
+                    filtered.insert(filtered.end(),vertices.begin()+cursor,vertices.begin()+polygon.range.first);
+                    cursor=polygon.range.first+polygon.range.count;
+                    replacement.chunks.insert(replacement.chunks.end(),polygon.chunks.begin(),polygon.chunks.end());
+                }
+                filtered.insert(filtered.end(),vertices.begin()+cursor,vertices.begin()+source.opaque.first+source.opaque.count);
+                if(vertices.size()+filtered.size()<=kTrackVertexLimit) {
+                    replacement.hasDetailed=true;replacement.detailed=source;
+                    replacement.detailed.opaque={uint32_t(vertices.size()),uint32_t(filtered.size())};
+                    vertices.insert(vertices.end(),filtered.begin(),filtered.end());
+                }
+                std::sort(replacement.chunks.begin(),replacement.chunks.end());
+                replacement.chunks.erase(std::unique(replacement.chunks.begin(),replacement.chunks.end()),replacement.chunks.end());
+            }
+        }
+        std::printf("native scene: %zu coarse scenery polygons have detailed course replacements\n",replacedPolygons);
         // The rear-view mirror's low-detail copies of the chunks (chunk + 0x94; 0x80020110 with param_3 != 0).
         mirrorRanges_.assign(track.chunks.size(), {});
         for (size_t ci = 0; ci < track.chunks.size(); ci++) {
-            emitShape(track.chunks[ci], track.chunks[ci].surround);
+            emitShape(seamUvs.size(), track.chunks[ci], track.chunks[ci].surround);
             flush(mirrorRanges_[ci]);
         }
         renderer_.SetVertices(0, vertices);
@@ -1057,6 +1147,7 @@ private:
         bool separateWheels = false;
         std::array<std::array<uint32_t, 2>, 4> wheelRanges{};
         std::array<std::array<float, 3>, 4> wheelCentres{};
+        float shadowHeight = 0;
     };
 
     // The reflection pass of an external mesh (UseExternalCar with reflective triangles): the original's rule of
@@ -1208,6 +1299,16 @@ private:
     std::string trackName_;
     std::unique_ptr<Track> track_;
     std::vector<ShapeRanges> chunkRanges_, modelRanges_, mirrorRanges_;
+    struct PolygonReplacement { Range range; std::vector<uint16_t> chunks; };
+    struct InstanceReplacement {
+        size_t model=size_t(-1);
+        ShapeRanges source;
+        std::vector<PolygonReplacement> polygons;
+        ShapeRanges detailed;
+        std::vector<uint16_t> chunks;
+        bool hasDetailed=false;
+    };
+    std::vector<InstanceReplacement> instanceReplacements_;
     TrackStats stats_;
     std::vector<BackdropRange> backdropRanges_;
     std::array<float, 3> skyColor_{0.45f, 0.58f, 0.78f};

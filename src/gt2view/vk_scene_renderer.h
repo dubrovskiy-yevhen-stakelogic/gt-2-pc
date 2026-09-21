@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "gt2view/vk_context.h"
 #include "gt2view/draw_culling.h"
@@ -23,6 +24,10 @@ constexpr uint32_t kTextured = 1, kRawTexture = 2, kCarPaint = 4, kOverlay = 8;
 // instead of the PS1 VRAM: page = first texel of the image, clut = width | height << 16, repeat wrapping,
 // alpha < 0.5 discards, colour = texel x vertex colour.
 constexpr uint32_t kExternalTexture = 16;
+constexpr uint32_t kReconstructedUi = 1u << 20;
+constexpr uint32_t kUiMap = 1u << 19;
+constexpr uint32_t kSmoothUi = 1u << 18;
+constexpr uint32_t kHdUi = 1u << 17; // Offline enlarged indices; the palette stays in native VRAM.
 // Course polygons: kSemiTransparent = the PS1 code's semi-transparency bit (the texels with the STP bit blend, the
 // others are opaque - see DrawItem::stpPass); kCullBack = drawn only when front-facing (the original's NCLIP test,
 // polygon word0 bit 31: front = counter-clockwise on screen, y down); bits 12-13 = the ordering-table tier as
@@ -77,7 +82,7 @@ struct FrameParams {
     float hudClip[4] = {};
 };
 static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 112);
-constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2;
+constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2, kOptionMipmaps = 8;
 
 // The two eyes of one stereo frame (docs/research/vr_port_plan.md, M2; src/platform/xr/vr_rig.h builds them). The
 // renderer uploads them into a uniform buffer the stereo vertex shader indexes by gl_ViewIndex (multiview) or by the
@@ -97,6 +102,7 @@ struct RenderOptions {
     uint32_t sceneWidth = 0, sceneHeight = 0;
     float sceneScale = 1.0f;     // internal resolution of the scene, times the window (0.5 .. 2)
     uint32_t msaa = 1;           // multisampling of the scene: 1 (off), 2, 4, 8 (clamped to the GPU's limit)
+    bool mipmaps = true;
     bool smoothTextures = false; // bilinear filtering of the decoded PS1 texels (CLUT-aware, inside the polygon's UV
                                  // rectangle, STP class kept); false = the PS1's nearest texel (exact)
     bool affine = false;         // screen-linear (PS1 GPU) texture / colour interpolation; false = perspective-correct
@@ -127,8 +133,11 @@ public:
     static constexpr uint32_t kMenuReflectionRow = kNativeFontRow + kNativeFontRows;
     static constexpr uint32_t kVramWidth = 1024, kVramRows = kMenuReflectionRow + 512;
     static constexpr uint32_t kVrHandTexelBase = 1u << 22;
-    static constexpr uint32_t kMovieTexelBase = kVrHandTexelBase - 640 * 512;
-    static constexpr uint32_t kExternalTexels = kVrHandTexelBase + (1u << 20);          // RGBA8 texels of the external texture store (16 MiB)
+    static constexpr uint32_t kMovieTexelBase = kVrHandTexelBase + (1u << 20);
+    static constexpr uint32_t kHdMenuTexelBase = kMovieTexelBase + 2048 * 2048;
+    static constexpr uint32_t kHdUiTexelBase = kHdMenuTexelBase + 2048 * 2048;
+    static constexpr uint32_t kHdUiSlots = 16, kHdUiPageTexels = 1024 * 1024 / 2;
+    static constexpr uint32_t kExternalTexels = kHdUiTexelBase + kHdUiSlots * kHdUiPageTexels;
 
     explicit VkSceneRenderer(VkContext& context);
     // Offscreen (the XR path, M1): no window swapchain - every frame is recorded into one image of `extent` and
@@ -152,6 +161,7 @@ public:
     void UploadVram(uint32_t firstRow, uint32_t rowCount, const uint16_t* words);
     // Copies `count` RGBA8 texels (R in the low byte) into the external texture store at `firstTexel`
     // (kExternalTexture vertices address it; see scene_assets.h UseExternalCar).
+    void ApplyHdUi(std::vector<SceneVertex>& vertices);
     void UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba);
 
     // If screenshotPath is not empty the presented image is also saved as PNG. items[0, sceneItems) are the scene
@@ -221,6 +231,12 @@ private:
     bool deferUploads_ = false;
     std::vector<float> rectScratch_;
     std::vector<uint16_t> vramShadow_;
+    struct HdUiSlot { std::string key; uint64_t used=0; bool reconstructed=false; };
+    std::vector<HdUiSlot> hdUiSlots_;
+    std::unordered_set<std::string> hdUiAssets_, hdFontAssets_;
+    std::unordered_map<uint64_t,int> hdUiPages_;
+    uint64_t hdUiGeneration_=~uint64_t(0), hdUiFrame_=0;
+    bool hdUiEnabled_=false;
     std::vector<bool> vramKnown_;
     void WriteBuffer(Buffer& buffer, size_t offset, const void* data, size_t bytes);
     void FlushFrameUploads(); // caller has waited for the frame fence
@@ -229,21 +245,21 @@ private:
     void DestroySwapchain();
     void CreatePipeline();
     // `stereo` = the stereo vertex shader (scene_stereo.vert); `viewMask` != 0 = its multiview variant.
-    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[5], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false);
-    void DestroyPipelineSet(VkPipeline set[5]);
+    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[6], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false);
+    void DestroyPipelineSet(VkPipeline set[6]);
     struct Image {
         VkImage image = VK_NULL_HANDLE;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;   // the whole image (2D, or 2D_ARRAY when layers > 1)
         VkImageView layer[2] = {};           // one view per array layer (the two-pass stereo path)
-        uint32_t layers = 1;
+        uint32_t layers = 1, mipLevels = 1;
         bool ownsImage = true;
     };
     Image CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples, VkImageAspectFlags aspect,
-                      uint32_t layers = 1);
+                      uint32_t layers = 1, uint32_t mipLevels = 1);
     void DestroyImage(Image& image);
     void DestroyStereoTarget();
-    void PrepareDecodedTextures(const std::vector<DrawItem>& items);
+    void PrepareDecodedTextures(const std::vector<DrawItem>& items, size_t sceneItems);
     void UploadDecodedTextures();
     // Records `items` once per eye into the stereo target (`layer` < 0 = one multiview pass).
     void RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer);
@@ -252,7 +268,7 @@ private:
     VkSampleCountFlagBits ClampSamples(uint32_t requested) const;
     // Records items[first, last) into the current dynamic rendering (target of `extent`), with `pipelines` (sample count
     // of the target); items below `sceneItems` get the scene's option bits.
-    void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[5], size_t sceneItems);
+    void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[6], size_t sceneItems);
     // The swapchain image `imageIndex` with the window's depth buffer, as a target for BeginTargetRendering.
     RenderTarget WindowTarget(uint32_t imageIndex) const;
     // Begins dynamic rendering into `target` (colour loaded or cleared, depth cleared and not stored).
@@ -297,8 +313,8 @@ private:
     VkDescriptorPool descPool_ = VK_NULL_HANDLE;
     VkDescriptorSet descSet_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-    VkPipeline pipelines_[5] = {}; // [0..3] PS1 blend modes, [4] opaque
-    VkPipeline msaaPipelines_[5] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
+    VkPipeline pipelines_[6] = {}; // [0..3] PS1 blend modes, [4] opaque, [5] UI coverage
+    VkPipeline msaaPipelines_[6] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
     VkSampleCountFlagBits msaaSamples_ = VK_SAMPLE_COUNT_1_BIT;
 
     RenderOptions options_;
@@ -326,19 +342,15 @@ private:
     void UploadRateImage();
     VkImage externalStereoImage_ = VK_NULL_HANDLE;
     std::unordered_map<VkImage, Image> externalStereoViews_;
-    VkPipeline cachedPipelines_[5] = {};
-    VkPipeline cachedHudPipelines_[5] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
+    VkPipeline cachedPipelines_[6] = {};
+    VkPipeline cachedHudPipelines_[6] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
     std::vector<uint8_t> cachedDraws_;
-    VkPipeline stereoPipelines_[5] = {}; // the stereo shader at the stereo target's sample count
+    VkPipeline stereoPipelines_[6] = {}; // the stereo shader at the stereo target's sample count
     bool recordStereo_ = false;
     uint32_t recordEye_ = 0;             // the eye index RecordItems pushes (the two-pass path)
     uint32_t recordLayers_ = 1;          // array layers of the target being recorded (vkCmdClearAttachments)
     StereoViews stereoViews_;
-#ifdef __ANDROID__
     bool decodedEnabled_ = true;
-#else
-    bool decodedEnabled_ = false; // Desktop GPUs retain their faster direct VRAM path.
-#endif
     DecodedTextureCache decoded_;
     std::unordered_map<uint64_t, std::vector<uint64_t>> materialRanges_;
     Image decodedImage_, handImage_;

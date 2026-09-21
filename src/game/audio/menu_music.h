@@ -33,10 +33,14 @@ public:
     int Current() const { return current_; }
 
 private:
-    Mixer mixer_;
+    // Post-race music objects can remain in the race's call stack on Android.
+    // Keep the mixer's 512 KiB sample RAM off that stack, and allocate only on Open.
+    std::unique_ptr<Mixer> mixer_;
     AudioDevice device_;
     std::unique_ptr<MusicPlayer> player_;
     int current_ = -1;
 };
+
+static_assert(sizeof(MenuMusic) < 4096, "MenuMusic must not embed large audio buffers on the game thread stack");
 
 } // namespace gt2::audio

@@ -40,12 +40,20 @@ Observations relevant for VR: windows are opaque painted texture; there is no in
 ## Shadow block (after the last LOD, 196 bytes on the attract cars) **[new]**
 
 `u16 vertexCount (24), u16 triCount (2), u16 quadCount (16), u16 0; 4 x { s16 v, s16 0 } = xmin, zmin, xmax, zmax;
-u32 0x11 | n << 16 (n = 4868 us36n, 5117 ulcun ... unknown); vertexCount x { s16 x, s16 z } (LOD 0 units);
+s16 scale, s16 radius (4868 us36n, 5117 ulcun ...); vertexCount x { s16 x, s16 z } (shadow units);
 (tri + quad) x u32`: four 6-bit vertex indices (bits 0-23), bit 31 = fully shaded polygon; otherwise corners 0-1 are
 the unshaded outer edge and 2-3 the shaded inner edge (ring order). The original draws it as gouraud quads with
 GPU blend mode 2 (B - F, `E1 tpage bits 5-6 = 2`), corner colours 000000 / FFFFFF, on the ground plane with the
 car's heading, 271 LOD 0 units (0.13 m) below the body origin of us36n. Verified: 18 primitives per car in the
 captured draw list = 2 tris (FFFFFF) + 4 interior quads (FFFFFF) + 12 edge quads (00 00 FF FF).
+
+Shadow metres per unit are `2^(shadow.scale - 16) / 4096`, independently of the body LOD.
+The original `0x80068004` passes the shadow header's `+0x18` exponent to `0x8007B8A0`.
+For example, `ilden` and `ulpsn` have body scale 17 and shadow scale 16; using the body
+scale doubles both shadow dimensions. `gt2assetchecks <disc.bin>` scans every `.cdo`
+and `.cno` and checks emitted corners against the raw shadow header. In a race the
+shadow uses the ground-following visual pose; body pitch and suspension do not move
+the shadow plane into the road.
 
 ## What the original draws per car (Seattle attract race, field 3600, `gt2play --prims`) **[new]**
 

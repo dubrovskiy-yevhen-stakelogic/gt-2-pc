@@ -1,10 +1,17 @@
 #include "gt2view/title_view.h"
+#include "gt2view/hd_picture.h"
 
 #include <algorithm>
 
 namespace gt2view {
 
-void TitleView::UploadVram(const gt2::MenuVram& vram) { renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data()); }
+void TitleView::UploadVram(const gt2::MenuVram& vram) {
+    renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data());
+    if (hdGeneration_ != gt2::hd::Generation()) {
+        hdGeneration_ = gt2::hd::Generation();
+        hdSize_ = UploadHdPicture(renderer_, "title.png", 352, 480);
+    }
+}
 
 void TitleView::Emit(const gt2::MenuPrim& p, int frameWidth) {
     const uint32_t mode = uint32_t(p.tpage >> 5) & 3;
@@ -30,6 +37,17 @@ void TitleView::Emit(const gt2::MenuPrim& p, int frameWidth) {
         q.page = uint32_t((p.tpage & 0xF) * 64) | ((rowBase_ + uint32_t(((p.tpage >> 4) & 1) * 256)) << 16);
         q.clut = uint32_t((p.clut & 0x3F) * 16) | ((rowBase_ + uint32_t(p.clut >> 6)) << 16);
         q.flags = kTextured | kIntegerModulate | ((uint32_t(p.tpage >> 7) & 3) << 8);
+        if (hdSize_ && p.clut == 0x7fd8 && !p.semi && p.u == 0 && p.v == 0 &&
+            (p.tpage == 0x86 || p.tpage == 0x96 || p.tpage == 0x88 || p.tpage == 0x98) &&
+            p.x[0] == ((p.tpage & 8) ? 256 : 0) && p.y[0] == ((p.tpage & 16) ? 256 : 0)) {
+            for (int k=0;k<4;++k) {
+                q.u[k] = q.x[k] * float(hdSize_ & 65535) / 352.f;
+                q.v[k] = q.y[k] * float(hdSize_ >> 16) / 480.f;
+                for (int c=0;c<3;++c) q.colour[k][c] *= 255.f/128.f;
+            }
+            q.page=VkSceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
+        }
+
         if (p.semi) { // PS1: only the texels with the STP bit blend
             q.stpPass = 1;
             quads_.push_back(q);
@@ -124,6 +142,9 @@ void TitleView::EmitRasterised(const gt2::MenuPrim& p, int frameWidth) {
 }
 
 void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels) {
+    if(hdGeneration_ != gt2::hd::Generation()) {
+        hdGeneration_=gt2::hd::Generation(); hdSize_=UploadHdPicture(renderer_,"title.png",352,480);
+    }
     quads_.clear();
     for (const gt2::MenuPrim& p : prims) Emit(p, frameWidth);
     if (quads_.size() * 6 > kVertexLimit) quads_.resize(kVertexLimit / 6);
@@ -148,6 +169,7 @@ void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, f
             vertices.push_back(v);
         }
     }
+    renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(kVertexBase, vertices);
     const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     size_t first = 0;

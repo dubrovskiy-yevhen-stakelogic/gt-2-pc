@@ -235,6 +235,8 @@ struct MenuRender {
 // A menu frame as GPU primitives in draw order: 0x80022278's list (background tiles, page tiles, group sprites), the
 // item pass of 0x8001B9AC (drawn in reverse: the OT prepends), the custom items, the cursor.
 struct MenuFrame {
+    int backgroundId = -1;
+    size_t backgroundPrims = 0;
     std::vector<MenuPrim> prims;
     bool clearBehind = false;   // page flag bit 9: the frame is cleared first (the 3D car shows through)
     // Where the 3D car view (type 0x0A: its own draw environment, drawn between the text OT and the OT of the

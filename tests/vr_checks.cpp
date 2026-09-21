@@ -92,25 +92,25 @@ int main() {
         for (int y = 0; y < 256; ++y) for (int x = 0; x < 64; ++x) vram[size_t(y) * 1024 + x] = 0x1111;
         vram[513] = 0x7c1f;
         textures.Begin(); textures.Prepare(0, 512, vram.data(), 512);
-        Check(textures.hits == 1 && textures.uploads.size() == 1 && textures.pixels[0] == 0xff1f001f, "cache decodes 4-bit RGB with exact 5-bit channels");
+        Check(textures.hits == 1 && textures.uploads.size() == 1 && textures.pixels[0] == 0xffff00ff, "cache expands 4-bit palette RGB while retaining recoverable 5-bit channels");
         textures.Begin(); textures.Prepare(0, 512, vram.data(), 512);
         Check(textures.uploads.empty(), "unchanged texture page is not decoded or uploaded again");
         vram[513] = 0x8001; textures.Invalidate(0, 1);
         textures.Begin(); textures.Prepare(0, 512, vram.data(), 512);
         bool stp = false; for (auto e : textures.table) if (e[3] && e[1] == 512) stp = (e[2] & 65536) != 0;
-        Check(stp && textures.pixels[0] == 0xff000001, "palette edit invalidates cache and preserves STP class");
+        Check(stp && textures.pixels[0] == 0xff000008, "palette edit invalidates cache and preserves STP class");
         vram[514] = 2; vram[0] = 0x1211; textures.Invalidate(0, 1);
         textures.Begin(); textures.Prepare(0, 512, vram.data(), 512);
         Check(textures.hits == 1 && textures.uploads.size() == 2, "mixed STP pages use two hardware-filtered layers");
-        Check(textures.pixels[0] == 0 && textures.pixels[gt2view::DecodedTextureCache::kTexels] == 0xff000001,
+        Check(textures.pixels[0] == 0 && textures.pixels[gt2view::DecodedTextureCache::kTexels] == 0xff000008,
               "STP pixels have zero coverage in the opaque filter layer");
-        Check(textures.pixels[2] == 0xff000002 && textures.pixels[gt2view::DecodedTextureCache::kTexels + 2] == 0,
+        Check(textures.pixels[2] == 0xff000010 && textures.pixels[gt2view::DecodedTextureCache::kTexels + 2] == 0,
               "opaque pixels have zero coverage in the STP filter layer");
         textures.Invalidate(0, 512);
         for (int y = 0; y < 256; ++y) for (int x = 0; x < 128; ++x) vram[size_t(y) * 1024 + x] = 0x0101;
         vram[513] = 0x03e0;
         textures.Begin(); textures.Prepare(0, 512 | (1u << 28), vram.data(), 512);
-        Check(textures.hits == 1 && textures.pixels[0] == 0xff001f00, "cache decodes 8-bit palette pages");
+        Check(textures.hits == 1 && textures.pixels[0] == 0xff00ff00, "cache decodes 8-bit palette pages");
         textures.Begin(); textures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
         Check(textures.pixels[2 * gt2view::DecodedTextureCache::kTexels] == 0, "direct-colour zero texels retain transparent coverage");
         gt2game::FrameProfiler profiler;

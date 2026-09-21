@@ -13,6 +13,7 @@
 #include "pc_overlay.h"
 #include "game_window.h"
 #include "game/shell/title_options.h"
+#include "game/shell/shared_vr_settings.h"
 #include "platform/os/paths.h"
 
 namespace {
@@ -37,7 +38,7 @@ msaa=2
 texture_filter=smooth
 texture_mapping=perspective
 scenery_detail=original
-draw_distance=500
+draw_distance=all
 vr_stereo=1
 vr_multiview=1
 vr_horizon_lock=60
@@ -58,7 +59,7 @@ msaa=2
 texture_filter=smooth
 texture_mapping=perspective
 scenery_detail=original
-draw_distance=500
+draw_distance=all
 adaptive=60
 rumble=100
 unlock_courses=0
@@ -93,7 +94,7 @@ vr_hud_messages=1
 vr_hud_replay=1
 profiler=0
 vr_foveation=2
-vr_refresh=80
+vr_refresh=72
 unlock_sim_events=0
 )settings";
 void Command(android_app*, int32_t command) {
@@ -125,7 +126,7 @@ void android_main(android_app* app) {
     std::freopen(gt2::os::LogPath().string().c_str(), "w", stdout);
     std::freopen((gt2::os::SavesDir().parent_path() / "gt2game-error.log").string().c_str(), "w", stderr);
     std::setvbuf(stdout, nullptr, _IONBF, 0);
-    std::printf("android: new activity, lifecycle and controller state reset (0.1.11)\n");
+    std::printf("android: new activity, lifecycle and controller state reset (0.2.0)\n");
     std::atomic<bool> finished{false};
     std::thread game;
     bool started = false;
@@ -146,6 +147,8 @@ void android_main(android_app* app) {
                     std::string requested; modeFile >> requested;
                     if (requested == "arcade" || requested == "simulation") mode = requested;
                     else if (!std::filesystem::exists(root / mode / "disc.raw2352")) mode = "simulation";
+                    gt2::shell::InitializeSharedVrSettings(gt2::os::SavesDir(),kInitialSettings,kInitialOverlay);
+                    gt2game::LoadOverlaySettings((gt2::os::SavesDir()/mode/"settings.txt").string());
                     mode = gt2game::SelectQuestDisc(root.string(), mode);
                     if (mode.empty()) { finished = true; if (attached) app->activity->vm->DetachCurrentThread(); ALooper_wake(app->looper); return; }
                     { std::ofstream choice(root / "launch-mode.txt"); choice << mode; }

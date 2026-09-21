@@ -1,4 +1,5 @@
 #include "gt2view/menu_view.h"
+#include "gt2view/hd_picture.h"
 
 #include <algorithm>
 #include <array>
@@ -182,10 +183,27 @@ void MenuView::FrameScale(float windowAspect, bool squarePixels, float& scaleX, 
 void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vector<DrawItem>& items, bool squarePixels,
                      const std::function<void(std::vector<DrawItem>&)>& layer3d) {
     quads_.clear();
+    const int background = frame.clearBehind ? -1 : frame.backgroundId;
+    if (background != hdBackground_ || hdGeneration_ != gt2::hd::Generation()) {
+        hdGeneration_=gt2::hd::Generation();
+        hdBackground_ = background;
+        hdSize_ = background < 0 ? 0 : UploadHdPicture(renderer_, "gt-background-" + std::to_string(background) + ".png", 512, 480);
+    }
+    if (hdSize_ && frame.backgroundPrims) {
+        Quad q{};
+        for (int k=0;k<4;++k) {
+            const bool right = k==1 || k==2, bottom = k>=2;
+            q.x[k]=right ? 512.f : 0.f; q.y[k]=bottom ? 480.f : 0.f;
+            q.u[k]=right ? float(hdSize_&65535) : 0.f; q.v[k]=bottom ? float(hdSize_>>16) : 0.f;
+            q.colour[k][0]=q.colour[k][1]=q.colour[k][2]=1;
+        }
+        q.page=VkSceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
+        quads_.push_back(q);
+    }
     size_t splitQuad = SIZE_MAX; // quads before it are drawn at the far depth, before the 3D layer
     for (size_t i = 0; i < frame.prims.size(); i++) {
         if (layer3d && i == frame.layer3dAt) splitQuad = quads_.size();
-        Emit(frame.prims[i]);
+        if (!(hdSize_ && i < frame.backgroundPrims)) Emit(frame.prims[i]);
     }
     if (layer3d && splitQuad == SIZE_MAX) splitQuad = quads_.size();
     if (quads_.size() * 6 > kVertexLimit) quads_.resize(kVertexLimit / 6);
@@ -216,6 +234,7 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
         static constexpr int kRect[6] = {0, 1, 2, 0, 2, 3}, kGpu[6] = {0, 1, 2, 1, 2, 3};
         for (int k : q.triangles ? kGpu : kRect) vertex(q, k);
     }
+    renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(kVertexBase, vertices);
     const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     size_t first = 0;

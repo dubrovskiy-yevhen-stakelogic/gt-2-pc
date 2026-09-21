@@ -1,4 +1,5 @@
 #include "game/shell/title_options.h"
+#include "game/shell/shared_vr_settings.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -205,6 +206,11 @@ PcSettings PcSettings::Load(const std::string& path) {
             for (size_t i = 0; i < b.size(); i++) b[i] = uint8_t(std::strtoul(line.substr(eq + 1 + 2 * i, 2).c_str(), nullptr, 16));
             s.havePadBlocks = true;
         }
+    }
+    std::ifstream shared(sharedVrSettingsPath);
+    while(std::getline(shared,line)) {
+        const auto eq=line.find('=');
+        if(eq!=std::string::npos) s.vr.Parse(line.substr(0,eq),line.substr(eq+1));
     }
     return s;
 }

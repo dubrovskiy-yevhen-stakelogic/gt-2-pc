@@ -321,7 +321,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     const bool automatedBoot = !options.script.empty() || !options.globalScript.empty() ||
         !options.shots.empty() || !options.anyShots.empty() || !options.compare.empty() || options.quitAfter > 0;
     if (!options.noMovies && (options.forceMovies || !automatedBoot) &&
-        !gt2game::PlayBootScreens(window, disc)) return 0;
+        !gt2game::PlayBootScreens(window, disc, !options.noSound)) return 0;
     gt2view::VkSceneRenderer* renderer = &window.Renderer();
     renderer->clearColor[0] = renderer->clearColor[1] = renderer->clearColor[2] = 0.0f;
     auto view = std::make_unique<gt2view::TitleView>(*renderer);

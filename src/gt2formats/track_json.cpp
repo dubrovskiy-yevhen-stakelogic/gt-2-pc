@@ -217,7 +217,7 @@ Value ModelToJson(const TrackSceneryModel& m) {
     for (const TrackSceneryPolygon& p : m.polygons) {
         Value a = Value::Array();
         a.Push(Value::Int(p.primCode));
-        a.Push(Value::Int((p.sortNearest ? 1 : 0) | (p.cullBackface ? 2 : 0)));
+        a.Push(Value::Int((p.sortFarthest ? 1 : 0) | (p.cullBackface ? 2 : 0)));
         for (uint16_t v : p.vertex) a.Push(Value::Int(v));
         if (p.IsTextured()) {
             for (size_t k = 0; k < 4; k++) { a.Push(Value::Int(p.u[k])); a.Push(Value::Int(p.v[k])); }
@@ -364,7 +364,7 @@ TrackSceneryModel ModelFromJson(const Value& o, const std::string& where, std::v
         TrackSceneryPolygon p;
         p.primCode = uint8_t(IntIn(a.At(0), 0x20, 0x3F, w + " code"));
         const int64_t f = IntIn(a.At(1), 0, 3, w + " flags");
-        p.sortNearest = (f & 1) != 0;
+        p.sortFarthest = (f & 1) != 0;
         p.cullBackface = (f & 2) != 0;
         for (size_t k = 0; k < 4; k++) p.vertex[k] = uint16_t(IntIn(a.At(2 + k), 0, 1023, w + " vertex"));
         size_t at = 6;
@@ -704,7 +704,7 @@ std::vector<uint8_t> CanonicalTrackBytes(const Track& t) {
         o.U32(uint32_t(m.polygons.size()));
         for (const TrackSceneryPolygon& p : m.polygons) {
             for (uint16_t v : p.vertex) o.U16(v);
-            o.U8((p.sortNearest ? 1 : 0) | (p.cullBackface ? 2 : 0));
+            o.U8((p.sortFarthest ? 1 : 0) | (p.cullBackface ? 2 : 0));
             for (const auto& c : p.color) { o.U8(c[0]); o.U8(c[1]); o.U8(c[2]); }
             o.U8(p.primCode);
             for (size_t k = 0; k < 4; k++) { o.U8(p.u[k]); o.U8(p.v[k]); }

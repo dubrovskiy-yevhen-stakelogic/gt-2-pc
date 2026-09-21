@@ -4,6 +4,9 @@ param(
     [string]$InstallDir = (Join-Path (Split-Path $PSScriptRoot) 'runtime'),
     [string]$BuildDir = 'build_install',
     [switch]$SkipDependencies,
+    [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Original',
+    [string]$Bios,
+    [string]$CaptureCore,
     [switch]$NoBuild
 )
 $ErrorActionPreference = 'Stop'
@@ -140,6 +143,9 @@ cd /d "%~dp0"
     }
 }
 [IO.File]::WriteAllText((Join-Path $repo 'install-location.txt'), $InstallDir, [Text.Encoding]::UTF8)
+if ($HdMedia -ne 'Original' -or $Bios) {
+    & (Join-Path $PSScriptRoot 'prepare-hd.ps1') -Runtime $InstallDir -BuildDir $build -HdMedia $HdMedia -Bios $Bios -CaptureCore $CaptureCore
+}
 Write-Host "Ready: $InstallDir"
 Write-Host 'Use PLAY-arcade.bat or PLAY-simulation.bat. F10 opens the in-game settings and cheat overlay.'
 Write-Host "Existing data is preserved in $backup. Installation staging is in $job."

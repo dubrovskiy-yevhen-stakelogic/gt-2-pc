@@ -66,6 +66,9 @@ private:
     uint32_t lba_ = 0, endLba_ = 0;
     uint8_t channel_ = 0;
     XaDecoderState decoder_;
+    std::vector<uint8_t> rawCache_;
+    std::vector<int16_t> decoded_;
+    uint32_t cacheLba_ = 0, cacheSectors_ = 0;
     std::vector<int16_t> source_;       // decoded stereo frames at the source rate
     size_t sourcePos_ = 0;              // next unread frame in source_
     double phase_ = 0, step_ = 37800.0 / 44100.0;

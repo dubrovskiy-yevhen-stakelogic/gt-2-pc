@@ -271,7 +271,7 @@ the licence menu's state 0x8004E104 after a pass whose time ranks; OK stores the
   dump with 0 field differences (`--race-menu-check newrecord | records`).
 - gt2game: a licence pass whose time ranks opens NEW RECORD (keys as the settings page, Delete = square, Space =
   circle); OK stores the record and the name into the career. The RECORD table (`RunLicenceRecordsScreen`) is ready but
-  not reachable yet: the licence menu's rows are built in race_view.cpp (another agent's file), "Records" stays disabled.
+  not reachable yet: the licence menu's rows are built in race_view.cpp, "Records" stays disabled.
   (2026-09-19, later: "Records ..." is enabled and opens the RECORD view - section 5.4.)
 
 ### 5.4 The 3D car / trophy (0x80048754), the championship end (0x80059800), SAVE GAME, sounds - 2026-09-19

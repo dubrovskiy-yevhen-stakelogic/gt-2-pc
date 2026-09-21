@@ -5,8 +5,8 @@
 #include <vector>
 
 namespace gt2view {
-// Palette expansion for the hardware bilinear path. RGB stores the original
-// five-bit channels (0..31); alpha carries coverage. Mixed STP pages use two
+// Palette expansion for hardware filtering. RGB expands five-bit channels
+// to eight bits; zero-alpha texels are black for premultiplied mip filtering. Mixed STP pages use two
 // layers so hardware filtering never blends opaque and semitransparent classes.
 class DecodedTextureCache {
 public:
@@ -52,7 +52,7 @@ public:
                     else texel = word(px + x, py + y);
                     if (texel) classes |= (texel & 32768) ? 2 : 1;
                     pixels[size_t(entry.slot) * kTexels + y * 256 + x] = texel ?
-                        (texel & 31) | (((texel >> 5) & 31) << 8) | (((texel >> 10) & 31) << 16) | ((texel & 32768) ? 0x80000000u : 0xff000000u) : 0;
+                        Expand(texel & 31) | (Expand((texel >> 5) & 31) << 8) | (Expand((texel >> 10) & 31) << 16) | ((texel & 32768) ? 0x80000000u : 0xff000000u) : 0;
                 }
                 const size_t base = size_t(entry.slot) * kTexels;
                 for (uint32_t i = 0; i < kTexels; ++i) {
@@ -73,6 +73,7 @@ public:
         ++misses;
     }
 private:
+    static uint32_t Expand(uint32_t v) { return (v << 3) | (v >> 2); }
     std::unordered_map<uint64_t, Entry> entries_;
 };
 }

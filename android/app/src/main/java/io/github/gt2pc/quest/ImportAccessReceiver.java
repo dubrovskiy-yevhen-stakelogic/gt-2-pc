@@ -19,7 +19,7 @@ public final class ImportAccessReceiver extends BroadcastReceiver {
             if (paths != null) {
                 if (paths.length() > 8192) return;
                 for (String path : paths.split(",")) {
-                    if (!path.matches("(arcade|simulation)(/[A-Za-z0-9_.-]+)*")) return;
+                    if (!path.matches("(arcade|simulation)(/[A-Za-z0-9_.-]+)*") && !(verify && (path.equals("startup.gtm") || path.equals("startup-hd.gtm")))) return;
                     File directory = new File(root, path).getCanonicalFile();
                     if (!directory.getPath().startsWith(root.getPath() + File.separator) || !directory.equals(new File(root, path).getAbsoluteFile())) return;
                     if (verify) {

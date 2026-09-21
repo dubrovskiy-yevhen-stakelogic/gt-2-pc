@@ -150,7 +150,7 @@ Vertices: s16 x, y (UP), z, 0 - the earlier "Y down" note was wrong; the sign co
 z scale. Polygons (lists F3 F4 G3 G4 FT3 FT4 GT3 GT4, strides 12 12 20 24 24 24 32 36):
 
     word0  bits 0-9 / 10-19 / 20-29 = vertex 0 / 1 / 2 (10-bit, unlike the chunk shapes' 9-bit fields)
-           bit 30 = ordering-table depth from the nearest corner + a bias (else the farthest corner)
+           bit 30 = ordering-table depth from the farthest corner + 96 slots (else the nearest corner)
            bit 31 = back-face culling on (the NCLIP sign is tested only when set)
     word1  bits 0-9 = vertex 3 (quads)
     word2  r, g, b, code

@@ -51,7 +51,7 @@ layout(location = 8) out vec3 outScreen;
 layout(location = 9) flat out uint outCache;
 layout(std430, set = 0, binding = 4) readonly buffer MaterialTable { uvec4 entries[]; } materials;
 uint cachedPage() {
-    if ((inFlags & 1u) == 0u || (inFlags & (24u | 65536u)) != 0u) return 0u;
+    if ((inFlags & 1u) == 0u || (inFlags & (24u | 65536u | 131072u | 262144u)) != 0u) return 0u;
     uint clut = inClut;
     if ((inFlags & 4u) != 0u) {
         clut += pc.paint << 16;

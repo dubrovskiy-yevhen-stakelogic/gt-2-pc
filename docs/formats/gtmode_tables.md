@@ -45,7 +45,7 @@ entry: +0 u32 packed car id; +4 u32 & 0xFFFFFF price (credits); +7 u8 paint id (
 
 - 0x800224E0(counter, buffer): loads file 11, copies period `counter % 60` (0x88888889 division) to 0x800B9544, then
   for each of the 39 lists keeps only the entries with 0x80060B70(id) != 0 (region filter) and rewrites the counts.
-  The caller ovl4 0x800136B0 passes `u32[0x801C99D8] / 10`. The runtime trace of the other agent identifies
+  The caller ovl4 0x800136B0 passes `u32[0x801C99D8] / 10`. The runtime trace identifies
   0x801C99D8 as the career day counter (starts at 1), so the lot changes every 10 days and repeats after 600.
 - The list index is the manufacturer index of the catalogue (section 4, row + 0x3A): only lists 7, 11, 18, 22, 23, 30,
   31, 33 are non-empty, and every car id in list k has catalogue maker k (0 exceptions).

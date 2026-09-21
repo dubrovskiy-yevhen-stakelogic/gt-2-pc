@@ -28,8 +28,25 @@ layout(location = 7) flat out vec4 outRect;
 layout(location = 8) out vec3 outScreen;
 
 layout(location = 9) flat out uint outCache;
+layout(std430, set = 0, binding = 4) readonly buffer MaterialTable { uvec4 entries[]; } materials;
+uint cachedPage() {
+    if ((inFlags & 1u) == 0u || (inFlags & (24u | 65536u | 131072u | 262144u)) != 0u) return 0u;
+    uint clut = inClut;
+    if ((inFlags & 4u) != 0u) {
+        clut += pc.paint << 16;
+        if ((clut & 65535u) == 224u && pc.brakeLit != 0u) clut += 16u;
+    }
+    uint key = clut | (((inFlags >> 8) & 3u) << 28);
+    uint at = ((inPage * 73856093u) ^ (key * 19349663u)) & 4095u;
+    for (uint i = 0u; i < 16u; ++i, at = (at + 1u) & 4095u) {
+        uvec4 e = materials.entries[at];
+        if (e.w == 0u) break;
+        if (e.x == inPage && e.y == key) return e.z;
+    }
+    return 0u;
+}
 void main() {
-    outCache = 0u;
+    outCache = cachedPage();
     gl_Position = pc.mvp * vec4(inPos, 1.0);
     // Ordering-table tier (flags bits 12-13, 0 = none): reversed Z, so a larger clip z is nearer. 2e-5 of the
     // distance per tier (0.6 mm at 30 m) keeps coplanar decals above their surface and nothing else.

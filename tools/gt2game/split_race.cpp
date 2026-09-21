@@ -159,6 +159,7 @@ ViewDraw SplitViewFrame(camera::RaceCamera& a, camera::RaceCamera& b, uint8_t& v
 struct SplitSnapshot {
     bool valid = false;
     std::array<sim::CarPose, 2> poses{};
+    std::array<sim::CarPose, 2> groundPoses{};
     std::array<std::array<sim::WheelVisual, 4>, 2> wheels{};
     std::array<camera::RaceCamera, 2> cameras{};
     SmokePool smoke;
@@ -672,6 +673,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 previous.valid = true;
                 for (size_t i = 0; i < 2; i++) {
                     previous.poses[i] = race.Pose(i);
+                    previous.groundPoses[i] = race.VisualPose(i);
                     previous.wheels[i] = race.Wheels(i);
                     previous.cameras[i] = cameras[i].Camera();
                     const sim::CarBody& b = race.CarAt(i).body;
@@ -802,7 +804,14 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                         const float centre[3] = {float((w & 1) ? halfTrack : -halfTrack) / 4096.0f, float(v.verticalOffset) / 4096.0f, float(wheelZ[car][w]) / 4096.0f};
                         WheelModelMatrix(int(w), centre, v.steerAngle, body.camber[w >> 1], v.rotation, wheelModels[w].data());
                     }
-                    assets.AppendCarItems(items, slot, mvp, car < data.paints.size() ? data.paints[car] : 0u, 0, true, &wheelModels);
+                    float ground[16], shadowMvp[16];
+                    const auto groundPose = race.VisualPose(car);
+                    if (interp && !PoseJump(previous.groundPoses[car], groundPose))
+                        InterpolatedModelMatrix(previous.groundPoses[car], groundPose, at, ground);
+                    else ModelMatrix(groundPose, ground);
+                    GroundShadowMatrix(ground, assets.SlotShadowHeight(slot));
+                    Multiply(vp, ground, shadowMvp);
+                    assets.AppendCarItems(items, slot, mvp, car < data.paints.size() ? data.paints[car] : 0u, 0, true, &wheelModels, shadowMvp);
                 }
                 if (particles) {
                     const float right[3] = {p.right[0], p.right[1], p.right[2]}, up[3] = {p.up[0], p.up[1], p.up[2]}, fwd[3] = {p.forward[0], p.forward[1], p.forward[2]};

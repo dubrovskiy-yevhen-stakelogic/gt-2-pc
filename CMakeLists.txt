@@ -24,6 +24,7 @@ target_include_directories(gt2vfs PUBLIC src)
 
 add_library(gt2formats STATIC
   src/gt2formats/boot_images.cpp
+  src/gt2formats/hd_media.cpp
   src/gt2formats/backdrop.cpp
   src/gt2formats/car_info.cpp
   src/gt2formats/car_model.cpp
@@ -77,6 +78,12 @@ add_executable(gt2tool tools/gt2tool/main.cpp tools/gt2tool/menu_cmds.cpp tools/
 target_link_libraries(gt2tool PRIVATE gt2vfs gt2formats gt2export gt2career)
 add_executable(gt2install tools/gt2install/main.cpp)
 target_link_libraries(gt2install PRIVATE gt2vfs gt2formats)
+add_executable(gt2media tools/gt2media/main.cpp)
+target_link_libraries(gt2media PRIVATE gt2formats gt2export)
+if(WIN32)
+  add_executable(gt2bootcapture tools/gt2bootcapture/main.cpp)
+  target_link_libraries(gt2bootcapture PRIVATE gt2formats)
+endif()
 
 # --- guest runtime: interpreter, HLE kernel, hardware boundary ---
 add_library(gt2interp STATIC
@@ -259,13 +266,13 @@ if(Vulkan_FOUND AND Vulkan_glslc_FOUND AND WIN32)
     set(out ${GT2VK_SHADER_DIR}/${shader}.inc)
     add_custom_command(OUTPUT ${out}
       COMMAND Vulkan::glslc -O -mfmt=c -o ${out} ${src}
-      DEPENDS ${src} VERBATIM)
+      DEPENDS ${src} ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl VERBATIM)
     list(APPEND GT2VK_SHADER_OUTPUTS ${out})
   endforeach()
 
   set(GT2_GLSLC ${Vulkan_GLSLC_EXECUTABLE})
   include(cmake/stereo-shaders.cmake)
-  add_library(gt2vk STATIC src/gt2view/vk_context.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp src/gt2view/decoded_textures.cpp src/gt2view/stereo_foveation.cpp src/gt2view/hud.cpp src/gt2view/particles.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp src/gt2view/panel_view.cpp src/gt2view/race_overlay_screens.cpp src/gt2view/movie_view.cpp ${GT2VK_SHADER_OUTPUTS})
+  add_library(gt2vk STATIC src/gt2view/vk_context.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp src/gt2view/decoded_textures.cpp src/gt2view/hd_ui.cpp src/gt2view/stereo_foveation.cpp src/gt2view/hud.cpp src/gt2view/particles.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp src/gt2view/panel_view.cpp src/gt2view/race_overlay_screens.cpp src/gt2view/movie_view.cpp ${GT2VK_SHADER_OUTPUTS})
   include(cmake/vr-hand-assets.cmake)
   target_include_directories(gt2vk PRIVATE ${GT2VK_SHADER_DIR})
   target_compile_definitions(gt2vk PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -307,6 +314,12 @@ if(ANDROID)
 endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
+  add_executable(gt2assetchecks tests/asset_checks.cpp)
+  target_link_libraries(gt2assetchecks PRIVATE gt2export gt2audio gt2shell)
+  add_test(NAME asset_geometry_checks COMMAND gt2assetchecks)
+  add_executable(gt2hdchecks tests/hd_checks.cpp)
+  target_link_libraries(gt2hdchecks PRIVATE gt2formats gt2shell)
+  add_test(NAME hd_media_checks COMMAND gt2hdchecks)
   add_executable(gt2vrchecks tests/vr_checks.cpp src/platform/xr/vr_rig.cpp src/platform/xr/vr_driving.cpp)
   target_include_directories(gt2vrchecks PRIVATE src)
   add_test(NAME vr_rig_checks COMMAND gt2vrchecks)

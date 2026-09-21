@@ -84,7 +84,7 @@ desktop.ini
 *.swp
 *~
 
-# Local logs and agent scratch
+# Local logs and temporary diagnostics
 *.log
 /.claude/settings.local.json
 
@@ -101,3 +101,5 @@ desktop.ini
 /.agents/
 *.jks
 *.keystore
+__pycache__/
+*.pyc

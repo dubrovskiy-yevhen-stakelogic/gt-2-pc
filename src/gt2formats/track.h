@@ -133,7 +133,7 @@ struct TrackChunk {
 // Polygon of a scenery model: 10-bit vertex indices, inline PS1 texture words.
 struct TrackSceneryPolygon {
     std::array<uint16_t, 4> vertex{};  // word0 bits 0-9 / 10-19 / 20-29, word1 bits 0-9 (quads)
-    bool sortNearest = false;          // word0 bit 30: ordering-table depth from the nearest corner (else the farthest) plus a bias
+    bool sortFarthest = false;          // word0 bit 30: ordering-table depth from the farthest corner plus 96 slots (else the nearest)
     bool cullBackface = false;         // word0 bit 31: drawn only when the screen winding is front-facing
     std::array<std::array<uint8_t, 3>, 4> color{}; // per corner; flat polygons repeat colour 0
     uint8_t primCode = 0;              // libgpu code: 0x20 F3 ... 0x3C GT4

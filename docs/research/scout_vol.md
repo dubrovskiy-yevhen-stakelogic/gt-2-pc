@@ -24,7 +24,7 @@ Gt2Vol split     <x.dat> <x.idx> <outDir>   распаковка контейн�
 
 ## 2. Формат GTFS (проверен на обоих дисках)
 
-Источники описания формата (прочитаны в этой сессии): `adeyblue/GTVolTools` (`GT2VolFile.cs`) и QuickBMS-скрипт `gran_turismo_2.bms` из `RetingencyPlan/le_quickbms_script_compendium`. В `pez2k/gt2tools` отдельного инструмента для GT2.VOL **нет** (есть GT3VOLExtractor и GT1ArchiveTool, но не GT2) - проверено по листингу корня репозитория.
+Источники описания формата (прочитаны при подготовке этой заметки): `adeyblue/GTVolTools` (`GT2VolFile.cs`) и QuickBMS-скрипт `gran_turismo_2.bms` из `RetingencyPlan/le_quickbms_script_compendium`. В `pez2k/gt2tools` отдельного инструмента для GT2.VOL **нет** (есть GT3VOLExtractor и GT1ArchiveTool, но не GT2) - проверено по листингу корня репозитория.
 
 Little-endian:
 
@@ -188,7 +188,7 @@ TOC record (32 байта): `u32 unix timestamp`, `u16 index`, `u8 flags`, `char
 - `.text/data-race.txd` - 2,296 строк HUD.
 - `arcade/demofile*.gmr` - header формата memory card save с Shift-JIS заголовком.
 
-## 9. Внешние ресурсы, увиденные в этой сессии
+## 9. Внешние ресурсы, увиденные при подготовке этой заметки
 
 - `github.com/adeyblue/GTVolTools` - C# парсер GT2 VOL + `GT2DataExploder` (прочитан `GT2VolFile.cs`).
 - `github.com/RetingencyPlan/le_quickbms_script_compendium` - `gran_turismo_2.bms`.

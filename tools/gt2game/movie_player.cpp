@@ -1,5 +1,9 @@
 #include "movie_player.h"
 #include "pc_overlay.h"
+#include "gt2formats/hd_media.h"
+#include <atomic>
+#include <condition_variable>
+#include <thread>
 
 #include "platform/os/keys.h"
 #include "platform/os/paths.h"
@@ -113,10 +117,105 @@ MovieSpec MovieSpecOf(int movie) {
     return s;
 }
 
+MovieResult PlayPreparedMovie(GameWindow& window, const std::string& path, const MovieSpec& spec, bool sound) {
+    hd::Movie movie(path);
+    std::printf("HD movie: %ux%u, %u frames, %u/%u fps, skip %s\n", movie.width,movie.height,movie.frames,movie.fpsNum,movie.fpsDen,spec.skippable?"enabled":"disabled");
+    class Pcm final : public audio::StreamSource {
+    public:
+        std::vector<int16_t> samples;
+        std::atomic<uint64_t> position{0};
+        void MixStream(float* out, size_t frames) override {
+            const uint64_t start = position.load(std::memory_order_relaxed);
+            for (size_t i = 0; i < frames * 2; ++i)
+                if (start * 2 + i < samples.size()) out[i] += float(samples[size_t(start * 2 + i)]) / 32768.0f;
+            position.store(start + frames, std::memory_order_relaxed);
+        }
+    } pcm;
+    if (sound) pcm.samples = movie.Audio();
+    gt2view::MovieView view(window.Renderer());
+    auto first = movie.Frame(0);
+    view.Upload(first.rgb.data(), int(first.width), int(first.height), int(movie.sourceWidth), int(movie.sourceHeight));
+    PrepareNativeUi(window.Renderer());
+    auto& renderer = window.Renderer();
+    const float oldClear[] = {renderer.clearColor[0], renderer.clearColor[1], renderer.clearColor[2]};
+    struct Restore {
+        gt2view::VkSceneRenderer& renderer; const float* value;
+        ~Restore() { std::copy(value, value + 3, renderer.clearColor); }
+    } restore{renderer, oldClear};
+    renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0;
+    std::mutex mutex;
+    std::condition_variable changed;
+    std::deque<std::pair<uint32_t, hd::Picture>> queue;
+    std::atomic<uint32_t> wanted{1};
+    bool stop = false;
+    std::exception_ptr failure;
+    std::thread decoder([&] {
+        try {
+            for (uint32_t i = 1; i < movie.frames; ++i) {
+                std::unique_lock lock(mutex);
+                changed.wait(lock, [&] { return stop || queue.size() < 3; });
+                if (stop) return;
+                lock.unlock();
+                i = std::max(i, wanted.load(std::memory_order_relaxed));
+                if (i >= movie.frames) return;
+                auto picture = movie.Frame(i);
+                lock.lock(); queue.emplace_back(i, std::move(picture));
+            }
+        } catch (...) { std::lock_guard lock(mutex); failure = std::current_exception(); }
+    });
+    struct Join {
+        std::mutex& mutex; std::condition_variable& changed; bool& stop; std::thread& thread;
+        ~Join() { { std::lock_guard lock(mutex); stop = true; } changed.notify_all(); thread.join(); }
+    } join{mutex, changed, stop, decoder};
+    // Device dies before the mixer/PCM source and decoder on every exit path.
+    audio::Mixer mixer;
+    audio::AudioDevice device;
+    std::string error;
+    mixer.SetStream(&pcm);
+    const bool audioClock = sound && !pcm.samples.empty() && device.Open(mixer, error);
+    auto previous = window.DisplayTime();
+    double elapsed = 0;
+    window.ResetPacing();
+    MovieResult result = MovieResult::kFinished;
+    while (window.BeginFrame()) {
+        if (spec.skippable && (window.PadPressed(input::ps1::kStart | input::ps1::kCross | input::ps1::kTriangle) ||
+            window.KeyPressed(keys::kReturn) || window.KeyPressed('S') || window.KeyPressed(keys::kEscape))) {
+            result = MovieResult::kSkipped; break;
+        }
+        const auto now = window.DisplayTime();
+        elapsed += std::clamp(std::chrono::duration<double>(now - previous).count(), 0.0, 0.1);
+        previous = now;
+        const double seconds = audioClock ? double(pcm.position.load()) / audio::kSampleRate : elapsed;
+        const uint32_t target = uint32_t(seconds * movie.fpsNum / movie.fpsDen);
+        if (target >= movie.frames) break;
+        wanted.store(target, std::memory_order_relaxed);
+        hd::Picture picture;
+        { std::lock_guard lock(mutex);
+            if (failure) std::rethrow_exception(failure);
+            while (!queue.empty() && queue.front().first <= target) { picture = std::move(queue.front().second); queue.pop_front(); }
+        }
+        changed.notify_one();
+        if (!picture.rgb.empty()) view.Upload(picture.rgb.data(), int(picture.width), int(picture.height), int(movie.sourceWidth), int(movie.sourceHeight));
+        std::vector<gt2view::DrawItem> items;
+        view.Append(items, spec.displayWidth, spec.displayHeight, spec.x, spec.y, renderer.AspectRatio());
+        if (spec.skippable) AppendSkipHint(renderer, items);
+        window.EndFrame(items, {}, std::chrono::nanoseconds(16'683'333));
+    }
+    device.Close(); mixer.SetStream(nullptr);
+    if (window.Closed()) result = MovieResult::kClosed;
+    window.ResetPacing();
+    return result;
+}
+
 MovieResult PlayMovie(GameWindow& window, const DiscImage& disc, const MovieLibrary& library, int movie, bool sound) {
     if (movie < 0 || size_t(movie) >= library.movies.size()) throw std::runtime_error("movie: no movie " + std::to_string(movie));
     MovieSpec spec = MovieSpecOf(movie);
     if (VrMode()) spec.skippable = true;
+    const auto prepared = gt2::hd::Asset("movies/" + std::to_string(movie) + ".gtm");
+    if (!prepared.empty()) {
+        try { return PlayPreparedMovie(window, prepared, spec, sound); }
+        catch (const std::exception& e) { std::printf("HD movie fallback: %s\n", e.what()); }
+    }
     if (spec.skippable) PrepareNativeUi(window.Renderer());
     const StreamMovie& m = library.movies[size_t(movie)];
     GtMovieReader reader(disc, library.streamLba, m);

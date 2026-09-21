@@ -5,8 +5,10 @@
 
 namespace gt2view {
 
-void MovieView::Upload(const uint8_t* rgb, int width, int height) {
-    if (width <= 0 || height <= 0 || width > 640 || height > 512) throw std::runtime_error("movie picture larger than 640 x 512");
+void MovieView::Upload(const uint8_t* rgb, int width, int height, int sourceWidth, int sourceHeight) {
+    sourceWidth_ = sourceWidth ? sourceWidth : width;
+    sourceHeight_ = sourceHeight ? sourceHeight : height;
+    if (width <= 0 || height <= 0 || width > 2048 || height > 2048) throw std::runtime_error("movie picture larger than 2048 x 2048");
     texels_.resize(size_t(width) * size_t(height));
     for (size_t i = 0; i < texels_.size(); i++)
         texels_[i] = uint32_t(rgb[i * 3]) | uint32_t(rgb[i * 3 + 1]) << 8 | uint32_t(rgb[i * 3 + 2]) << 16 | 0xFF000000u;
@@ -22,9 +24,9 @@ void MovieView::Append(std::vector<DrawItem>& items, int displayWidth, int displ
     auto nx = [&](int px) { return -k + 2.0f * k * float(px) / float(displayWidth); };
     auto ny = [&](int py) { return -ky + 2.0f * ky * float(py) / float(displayHeight); };
     const float corners[4][4] = {{nx(x), ny(y), 0, 0},
-                                 {nx(x + width_), ny(y), float(width_), 0},
-                                 {nx(x + width_), ny(y + height_), float(width_), float(height_)},
-                                 {nx(x), ny(y + height_), 0, float(height_)}};
+                                 {nx(x + sourceWidth_), ny(y), float(width_), 0},
+                                 {nx(x + sourceWidth_), ny(y + sourceHeight_), float(width_), float(height_)},
+                                 {nx(x), ny(y + sourceHeight_), 0, float(height_)}};
     std::vector<SceneVertex> quad;
     for (int i : {0, 1, 2, 0, 2, 3}) {
         SceneVertex v{};

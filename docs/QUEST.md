@@ -1,8 +1,8 @@
-# Quest 3 standalone — 0.1.0
+# Quest 3 standalone — 0.2.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 
-For the precompiled release, follow [PLAYER-INSTALL.md](PLAYER-INSTALL.md). Every launch offers a disc picker. Only installed modes appear; the previous disc is highlighted. Each disc retains its own settings and memory card.
+For the precompiled release, follow [PLAYER-INSTALL.md](PLAYER-INSTALL.md). Every launch offers a disc picker. Only installed modes appear; the previous disc is highlighted. VR preferences are shared between both discs; each disc retains its own memory card.
 
 ## Touch controls
 
@@ -36,9 +36,9 @@ Intro camera lower adjusts only the height of the original starting flythrough: 
 
 ## Graphics, performance and HUD
 
-Settings save automatically per disc. Eye resolution is 50–200% of the runtime's recommended width and height and requires a restart. Available OpenXR refresh rates are listed dynamically; accepted changes apply immediately. Initial defaults are 72 Hz, 70% resolution, MSAA 2x and 500 m distance. Existing saved preferences are retained.
+VR settings save automatically and are shared between both discs. Eye resolution is 50–200% of the runtime's recommended width and height and requires a restart. Available OpenXR refresh rates are listed dynamically; accepted changes apply immediately. Initial defaults are 72 Hz, 150% resolution, MSAA 2x and the entire detailed course. Existing saved preferences are retained.
 
-MSAA, texture filtering, draw distance, foveation and vibration can be adjusted. Entire course bypasses original scenery distance/visibility limits and retains the highest scenery detail, while stereo frustum culling can still skip objects outside both eyes. Foveation Off/Low/Balanced/High changes peripheral fragment shading; the centre, menus, HUD and mirror remain full rate. It is fixed foveation, not eye tracking, and falls back to full-rate shading where unsupported.
+MSAA, texture filtering, draw distance, foveation and vibration can be adjusted. Entire course extends all road and scenery to full distance and detail, including large mountains. It selects the authored nearest scenery representation, including empty near entries for distant-only course copies, so simplified asphalt and hills do not overlap the detailed course. When detailed course geometry is present, matching coarse scenery surfaces are replaced by it; independent scenery keeps the selected distance. Stereo frustum culling still skips objects outside both eyes. Foveation Off/Low/Balanced/High changes peripheral fragment shading; the centre, menus, HUD and mirror remain full rate. It is fixed foveation, not eye tracking, and falls back to full-rate shading where unsupported.
 
 The profiler shows APP FPS, average/MAX frame interval, preceding GPU render time, texture-cache coverage, slowest 1% of the last 256 frame intervals, peak interval and culling counts. It counts fresh stereo application frames; it does not count repeated compositor images or physics ticks. Physics remains 30 Hz with interpolated presentation. GPU/CPU performance requests are hints subject to the headset's thermal management.
 
@@ -48,11 +48,11 @@ HUD elements has two pages: map, lap/times, records, gauges, turbo, tyres, mirro
 
 Trees remain flat billboards. Their horizontal axis is computed from the common viewer position, so turning your head in place does not swivel the trees. Walking/driving around a tree still changes its facing direction.
 
-In **HUD elements > Speed units**, use either trigger to switch between **km/h** and **mph**. The choice applies on resume, is saved separately for each disc and also controls speed records. New Arcade and Simulation profiles default to km/h; existing saved unit choices are preserved.
+In **HUD elements > Speed units**, use either trigger to switch between **km/h** and **mph**. The choice applies on resume, is saved for both discs and also controls speed records. New Arcade and Simulation profiles default to km/h; existing saved unit choices are preserved.
 
 ## First-launch defaults
 
-Each new disc profile uses 150% eye resolution, 80 Hz, MSAA 2x, smooth perspective-correct textures, original scenery detail, 500 m extended draw distance and medium foveation. Multiview is on, horizon lock is 60%, world scale is 100%, the near plane is 50 mm and seat offsets are zero. The stored flat frame cap is 72; VR presentation follows the selected 80 Hz headset rate.
+Each new disc profile uses 150% eye resolution, 72 Hz, MSAA 2x, smooth perspective-correct textures, the entire course with its authored near scenery representations and medium foveation. Multiview is on, horizon lock is 60%, world scale is 100%, the near plane is 50 mm and seat offsets are zero. The stored flat frame cap is 72; VR presentation follows the selected 72 Hz headset rate.
 
 Driving starts in Virtual wheel mode, with the wheel 28 cm below, 38 cm forward and 18 cm in radius. The original start flythrough is lowered by 200 cm. Automatic brake-to-reverse is on; the steering stick is left and the Motion hand is right. Bindings follow the controls table. All HUD elements are on, the profiler is off, vibration is 100%, speed units are km/h, music volume is 240/255 and effects volume is 192/255.
 
@@ -76,9 +76,9 @@ $env:VULKAN_SDK = 'C:\VulkanSDK\<version>'
 .\scripts\build-quest-release.ps1 -AndroidSdk 'C:\Android\Sdk' -JavaDirectory 'C:\Java\jdk-21' -Gradle 'C:\Gradle\bin\gradle.bat' -InitializeSigningKey
 ```
 
-Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.1.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
+Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.2.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
 
-The public version is 0.1.0; Android versionCode is 13 to remain above development build codes. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
+The public version is 0.2.0; Android versionCode is 14 to remain above development build codes. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs
@@ -86,4 +86,14 @@ The public version is 0.1.0; Android versionCode is 13 to remain above developme
 
 Source deployment defaults to the debug APK and does not launch it. It installs with `-r`, copies changed game data, verifies raw-disc SHA-256 and tests access through the application's UID. The public player installer passes its release APK explicitly. Data lives under `/sdcard/Android/data/io.github.gt2pc.quest/files`; private debug logs can be retrieved with `adb shell run-as io.github.gt2pc.quest`.
 
-The animated PlayStation BIOS startup and its boot audio are still absent. Disc publisher/warning artwork and existing Arcade movies are supported. Build, signing and desktop tests do not replace headset checks of comfort, controls and sustained performance.
+Optional offline media preparation captures the complete, unskippable PlayStation startup and boot audio from a local BIOS dump. It also prepares HD backgrounds/movies and enlarged menu/HUD atlases; see [HD media](HD-MEDIA.md). Smooth + mipmaps filtering reduces distant texture aliasing. Disc publisher/warning artwork and existing Arcade movies remain supported. Build, signing and desktop tests do not replace headset checks of comfort, controls and sustained performance.
+
+### HD resources and shared preferences
+
+**Graphics and performance → HD textures and media** selects prepared HD pictures, interface atlases, movies and the enhanced PlayStation startup. OFF uses original resources; world texture filtering/mipmaps have their own switch. Missing HD resources use the original assets. Startup remains unskippable in both modes.
+
+Arcade and Simulation use one private `files/saves/vr-settings.txt` for VR graphics, controls, HUD, speed units, vibration and HD selection. On the first launch after updating, preferences migrate from the most recently modified disc overlay. Later disc switches reuse that common file. Disc memory cards, earned progress and cheat switches remain separate. The migration does not alter old per-disc files.
+
+On the second **HUD elements** page, **Movie skip hint** controls the A/B skip reminder. It defaults to ON, saves with the shared VR preferences, and does not change the skip buttons or the unskippable PlayStation startup.
+
+**Graphics and performance → PlayStation intro** can disable the complete console startup for subsequent launches. This defaults to ON and is saved with the shared VR preferences. Enabled startup still plays to completion before the disc selector.

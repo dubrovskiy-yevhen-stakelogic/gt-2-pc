@@ -127,7 +127,7 @@ TrackSurfaceGrid ReadSurfaceGrid(const Reader& r, size_t chunk, const TrackShape
 }
 
 // Scenery model at `s` (same 0x44-byte shape header as the chunk shapes, then bounds, scale exponent and two
-// reference vertices). Polygons: word0 = v0 | v1 << 10 | v2 << 20 | sortNearest << 30 | cullBackface << 31,
+// reference vertices). Polygons: word0 = v0 | v1 << 10 | v2 << 20 | sortFarthest << 30 | cullBackface << 31,
 // word1 = v3 (quads), then (r, g, b, code), then for textured lists the three texture words
 // (u0 v0 clut) (u1 v1 tpage) (u2 v2 u3 v3), then the extra gouraud colours. Strides: F 12, G3 20, G4 24,
 // FT 24, GT3 32, GT4 36 (0x80019B58; corner/UV order verified against the captured GP0 output).
@@ -171,7 +171,7 @@ TrackSceneryModel ReadSceneryModel(const Reader& r, size_t s) {
             TrackSceneryPolygon p;
             const uint32_t w0 = r.U32(po), w1 = r.U32(po + 4);
             p.vertex = {uint16_t(w0 & 0x3FF), uint16_t((w0 >> 10) & 0x3FF), uint16_t((w0 >> 20) & 0x3FF), uint16_t(w1 & 0x3FF)};
-            p.sortNearest = (w0 & 0x40000000u) != 0;
+            p.sortFarthest = (w0 & 0x40000000u) != 0;
             p.cullBackface = (w0 & 0x80000000u) != 0;
             p.primCode = r.U8(po + 11);
             if ((p.primCode & 0xFC) != kExpectedCode[li]) throw std::runtime_error("track: scenery polygon code does not match its list");

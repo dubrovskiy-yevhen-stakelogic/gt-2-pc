@@ -540,7 +540,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: card manager state 0x11 / 0x16 text (EXE): Sim 0x800721B0 addiu v0, v0, -1536 (lui 0x801F); Arcade 0x800720C0 addiu v0, v0, -3026. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: card manager state 0x11 / 0x16 text (EXE): Sim 0x800721B0 addiu v0, v0, -1536 (lui 0x801F); Arcade 0x800720C0 addiu v0, v0, -3026. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
 - address: 0x801EF47B
   name: global_text_create_replay_failed
@@ -550,7 +550,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: card manager state 0xC 0x80070254 (EXE): Sim 0x800702F0 addiu v0, v0, -1459 (lui 0x801F); Arcade 0x80070200 addiu v0, v0, -2949. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: card manager state 0xC 0x80070254 (EXE): Sim 0x800702F0 addiu v0, v0, -1459 (lui 0x801F); Arcade 0x80070200 addiu v0, v0, -2949. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
 - address: 0x801EF59B
   name: global_text_sectors_free
@@ -560,7 +560,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: card manager list hints 0x8006F6E8 h(2) (EXE): Sim 0x8006FDB8 addiu a1, s5, -46 on s5 = 0x801EFBA2 ("Press L1 + R1 for Delete Mode"); Arcade 0x8006FCC8 addiu a1, s5, -47 on s5 = 0x801EF5CA (0x8006FB78 addiu s5, v0, -2614). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: card manager list hints 0x8006F6E8 h(2) (EXE): Sim 0x8006FDB8 addiu a1, s5, -46 on s5 = 0x801EFBA2 ("Press L1 + R1 for Delete Mode"); Arcade 0x8006FCC8 addiu a1, s5, -47 on s5 = 0x801EF5CA (0x8006FB78 addiu s5, v0, -2614). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
 - address: 0x801EF5B2
   name: global_text_need_sectors
@@ -570,7 +570,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: card manager list hints 0x8006F6E8 h(2) (EXE): Sim 0x8006FDFC addiu a1, s5, -23 on s5 = 0x801EFBA2; Arcade 0x8006FD0C addiu a1, s5, -24 on s5 = 0x801EF5CA. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: card manager list hints 0x8006F6E8 h(2) (EXE): Sim 0x8006FDFC addiu a1, s5, -23 on s5 = 0x801EFBA2; Arcade 0x8006FD0C addiu a1, s5, -24 on s5 = 0x801EF5CA. Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
 - address: 0x801EF742
   name: global_text_kind_ghost
@@ -580,7 +580,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: row printer 0x8006A4E4 (EXE): Sim 0x8006A794 addiu a1, s3, 73 on s3 = 0x801EFCCD ("%d sector", 0x8006A734); the Arcade row printer takes it from its own "%d sector" (0x801EF6FD) + 69. The strings at both addresses are equal (US block). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: row printer 0x8006A4E4 (EXE): Sim 0x8006A794 addiu a1, s3, 73 on s3 = 0x801EFCCD ("%d sector", 0x8006A734); the Arcade row printer takes it from its own "%d sector" (0x801EF6FD) + 69. The strings at both addresses are equal (US block). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
 - address: 0x801EF74B
   name: global_text_kind_race
@@ -590,9 +590,9 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: verified
   evidence: >
     String of data-global.txd (RAM 0x801EF0E0 in the arcade build, Sim 0x801EF6B0) that no accepted reference run maps (the
-    cards agent, 2026-09-19: the race overlay's card views). Our disassembly: row printer 0x8006A4E4 (EXE): Sim 0x8006A7A8 addiu a1, s3, 89 on s3 = 0x801EFCCD (the kind of game modes >= 12 and the default); the Arcade string sits at its "%d sector" 0x801EF6FD + 78. The strings at both addresses are equal (US block). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
+    2026-09-19: the race overlay's card views). Our disassembly: row printer 0x8006A4E4 (EXE): Sim 0x8006A7A8 addiu a1, s3, 89 on s3 = 0x801EFCCD (the kind of game modes >= 12 and the default); the Arcade string sits at its "%d sector" 0x801EF6FD + 78. The strings at both addresses are equal (US block). Bytes checked in the arcade RAM of work/play/cards/sgcap/c_11900.txt.ram.bin.
 
-# ---- the title's Replay Theater / Data Transfer and CHANGE PARTS on this disc (2026-09-19, arcade agent; docs/formats/title.md
+# ---- the title's Replay Theater / Data Transfer and CHANGE PARTS on this disc (2026-09-19; docs/formats/title.md
 # section 12, docs/formats/race_screens.md section 8). Evidence: normalised instruction diffs of member 1 / member 0 against the
 # Simulation's (objdump), gt2run sessions work/play/arc_theater/sess1, sess2 and gt2play captures work/play/arc_theater/*,
 # work/play/change_parts/cap2.
@@ -644,7 +644,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
     (34 captures of L1 / R1 / L1 / triangle incl. both slides) 0 differing pixels outside the 3D car; the career after the
     session = the original's RAM (all 0x7C9C bytes, docs/formats/race_screens.md section 8.1).
 
-# ---- race text facts (2026-09-19, 2P agent, docs/research/arcade_disc.md section 19.7): strings of data-race.txd (Arcade
+# ---- race text facts (2026-09-19, docs/research/arcade_disc.md section 19.7): strings of data-race.txd (Arcade
 # RAM 0x801C6940, Sim 0x801C6C50) the port names by Simulation address and no accepted reference run maps.
 
 - address: 0x801C750C
@@ -5606,7 +5606,7 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: observed
   evidence: "COURSE SELECTION road list (0x800228BC kind 0): 32-byte rows {file ptr, name ptr, map info ptr, flags, id (0x8001D120 recomputes the file-name hash), tier, record, open}; row 20 = roma_night (Rome-Night, tier 0), row 16 = highway (Special Stage Route 5, tier 1). Glow capture route (docs/formats/track_tro.md 'Glow records'): gt2play --ai-player with the default arcade script and --poke 4100 of row 0's file / name / map pointers, id (CourseFileId) and record with row 20's or 16's values races that course."
 
-# ---- mode 6 replay (2026-09-19, mode 6 agent; capture work/re/mode6_replay: Time Trial tahiti_t, pause Exit, the replay = race 2)
+# ---- mode 6 replay (2026-09-19; capture work/re/mode6_replay: Time Trial tahiti_t, pause Exit, the replay = race 2)
 - address: 0x80016274
   name: arcade_loop_replay_state
   overlay: ovl0

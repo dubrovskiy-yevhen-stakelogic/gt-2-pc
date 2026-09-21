@@ -1,4 +1,5 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
 layout(constant_id = 0) const bool cachedOnly = false;
 
 // PS1-style texturing: the whole 1024-wide VRAM image lives in a buffer of 16-bit words and
@@ -50,7 +51,7 @@ uint pageTexel(uvec2 t, uint pageX, uint pageY, uint clutX, uint clutY, uint dep
             c = uvec4(round(texelFetch(decodedPages, ivec3(t, layer + 1), 0) * 255.0));
             stp = 32768u;
         }
-        return c.a == 0u ? 0u : c.r | (c.g << 5) | (c.b << 10) | stp;
+        return c.a == 0u ? 0u : (c.r >> 3) | ((c.g >> 3) << 5) | ((c.b >> 3) << 10) | stp;
     }
     if (depth == 0u) {
         uint w = word(pageX + t.x / 4u, pageY + t.y);
@@ -70,6 +71,38 @@ vec4 externalTexel(ivec2 t, ivec2 size) {
     uint px = ext.texels[inPage + uint(t.y) * uint(size.x) + uint(t.x)];
     return vec4(float(px & 255u), float((px >> 8) & 255u), float((px >> 16) & 255u), float(px >> 24)) / 255.0;
 }
+
+vec4 uiColour(uint px, vec3 color) {
+    if (px==0u || (pc.stpPass==1u && (px&32768u)!=0u) || (pc.stpPass==2u && (px&32768u)==0u)) return vec4(0);
+    vec3 rgb = rgb15(px);
+    if ((inFlags & 16384u) != 0u) rgb=min(floor(rgb*31.0*floor(color*255.0+0.5)/128.0),vec3(31))/31.0;
+    else if ((inFlags & 2u) == 0u) rgb=min(rgb*color*(255.0/128.0),vec3(1));
+    return vec4(rgb,1);
+}
+
+vec4 uiTexel(ivec2 t, ivec2 lo, ivec2 hi, vec3 color) {
+    t = clamp(t, lo, hi);
+    uint px;
+    if ((inFlags & 131072u) != 0u) {
+        uint address = uint(t.y)*1024u+uint(t.x);
+        uint index = (ext.texels[inPage+address/4u] >> ((address&3u)*8u)) & 255u;
+        px = word((inClut&65535u)+index, inClut>>16);
+    } else {
+        px = pageTexel(uvec2(t), inPage&65535u, inPage>>16, inClut&65535u, inClut>>16, (inFlags>>8)&3u);
+    }
+    return uiColour(px,color);
+}
+
+vec4 contourTexel(ivec2 t,ivec2 lo,ivec2 hi,vec3 color) {
+    t=clamp(t,lo,hi);
+    uint address=uint(t.y)*1024u+uint(t.x);
+    uint pair=(ext.texels[inPage+address/2u]>>((address&1u)*16u))&65535u;
+    vec4 c=uiColour(word((inClut&65535u)+(pair&15u),inClut>>16),color);
+    if((pair>>8)!=0u) c=mix(c,uiColour(word((inClut&65535u)+((pair>>4)&15u),inClut>>16),color),float(pair>>8)/255.0);
+    return c;
+}
+
+#include "texture_mips.glsl"
 
 void main() {
     if ((inFlags & 65536u) != 0u) {
@@ -94,6 +127,40 @@ void main() {
         if (pc.stpPass == 1u) discard; // untextured semi-transparent: blended pass only
         outColor = vec4(color, 1.0);
         return;
+    }
+    if ((inFlags & 1048576u) != 0u) {
+        ivec2 lo=clamp(ivec2(floor(inRect.xy)),ivec2(0),ivec2(1023));
+        ivec2 hi=clamp(max(ivec2(ceil(inRect.zw))-1,lo),lo,ivec2(1023));
+        vec2 p=texelCoord-0.5;ivec2 t=ivec2(floor(p));vec2 f=fract(p);
+        vec4 c=mix(mix(contourTexel(t,lo,hi,color),contourTexel(t+ivec2(1,0),lo,hi,color),f.x),
+                   mix(contourTexel(t+ivec2(0,1),lo,hi,color),contourTexel(t+ivec2(1,1),lo,hi,color),f.x),f.y);
+        if(c.a<0.001 || (pc.stpPass==2u && c.a<0.5)) discard;
+        outColor=vec4(c.rgb/c.a,pc.stpPass==2u?1.0:c.a); return;
+    }
+    if ((inFlags & 262144u) != 0u) {
+        int limit = (inFlags & 131072u) != 0u ? 1023 : 255;
+        ivec2 lo = clamp(ivec2(floor(inRect.xy)), ivec2(0), ivec2(limit));
+        ivec2 hi = clamp(max(ivec2(ceil(inRect.zw))-1, lo), lo, ivec2(limit));
+        // Reconstructed contours are sampled at HD resolution, without a source-sized blur.
+        int scale = (inFlags & 131072u) != 0u ? 4 : 1;
+        int step = max(1,scale/2);
+        vec2 p = (texelCoord - 0.5*float(step))/float(step);
+        ivec2 base = ivec2(floor(p))*step;
+        vec2 f = fract(p);
+        vec4 c = mix(mix(uiTexel(base,lo,hi,color), uiTexel(base+ivec2(step,0),lo,hi,color), f.x),
+                     mix(uiTexel(base+ivec2(0,step),lo,hi,color), uiTexel(base+ivec2(step,step),lo,hi,color), f.x), f.y);
+        if(c.a < 0.001) discard;
+        // STP draws retain their fixed PS1 blend equation; opaque UI uses alpha coverage.
+        if(pc.stpPass==2u && c.a<0.5) discard;
+        outColor=vec4(c.rgb/c.a, pc.stpPass==2u ? 1.0 : c.a);
+        return;
+    }
+    if ((inFlags & 131072u) != 0u) {
+        ivec2 lo=clamp(ivec2(floor(inRect.xy)),ivec2(0),ivec2(1023));
+        ivec2 hi=clamp(max(ivec2(ceil(inRect.zw))-1,lo),lo,ivec2(1023));
+        vec4 c=uiTexel(ivec2(floor(texelCoord)),lo,hi,color);
+        if(c.a<0.5) discard;
+        outColor=vec4(c.rgb/c.a,1); return;
     }
     if (!cachedOnly && (inFlags & 16u) != 0u) { // external RGBA8 image, repeat wrapping, nearest texel, alpha mask at 0.5
         ivec2 size = ivec2(int(inClut & 0xFFFFu), int(inClut >> 16));
@@ -126,6 +193,7 @@ void main() {
         outColor = vec4(vec3(float(px & 31u), float((px >> 5) & 31u), float((px >> 10) & 31u)) / 31.0, 1.0);
         return;
     }
+    if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) return;
     uvec2 t = uvec2(clamp(ivec2(floor(texelCoord)), ivec2(0), ivec2(255)));
     if ((inFlags & 32768u) != 0u) t = uvec2(clamp(ivec2(t), ivec2(floor(inRect.xy)), ivec2(max(ceil(inRect.zw) - 1, floor(inRect.xy)))));
     uint clutX = inClut & 0xFFFFu, clutY = inClut >> 16;
@@ -152,13 +220,13 @@ void main() {
         ivec2 lo = clamp(ivec2(floor(inRect.xy)), ivec2(0), ivec2(255));
         ivec2 hi = clamp(max(ivec2(ceil(inRect.zw)) - 1, lo), ivec2(0), ivec2(255));
         if (cachedOnly || inCache != 0u) {
-            // Coverage-normalized hardware bilinear: RGB contains the original 5-bit
-            // channels. Mixed pages select the layer of the nearest texel's STP class.
+            // Coverage-normalized hardware bilinear. Mixed pages select
+            // the layer of the nearest texel's STP class.
             vec2 uv = (clamp(p, vec2(lo), vec2(hi)) + 0.5) / 256.0;
             uint layer = (inCache & 65535u) - 1u;
             if ((inCache & 131072u) != 0u && (texel & 32768u) != 0u) ++layer;
             vec4 c = textureLod(decodedPages, vec3(uv, float(layer)), 0.0);
-            if (c.a > 0.0) rgb = (c.rgb / c.a) * (255.0 / 31.0);
+            if (c.a > 0.0) rgb = (c.rgb / c.a);
         } else {
         vec3 sum = vec3(0.0);
         float wsum = 0.0;

@@ -1,4 +1,4 @@
-# GT2 VR 0.1.0 player installation
+# GT2 VR 0.2.0 player installation
 
 ## Quest 3
 
@@ -7,6 +7,10 @@
 3. Run **INSTALL.bat**. Select your supported Arcade and/or Simulation image. You can select both at once; select either its BIN or CUE, not both copies of the same disc.
 4. The installer validates package hashes, finds/downloads ADB, extracts and validates your disc data, installs the signed APK and verifies the headset's raw-disc hash and application access.
 5. Open **GT2 VR** in Unknown Sources. Select a disc with the stick and A. A/B skips movies.
+
+The installation wizard asks whether to prepare the original PlayStation startup from your own BIOS. Choose **No** to play without a BIOS or that sequence. Choose **Yes** and select a matching 512 KiB BIOS dump to capture both screens and sound. The BIOS is not copied to Quest. `-NoBios` skips the question; `-Bios 'path'` enables capture explicitly. Command-line installs with `-DiscImage` do not prompt for BIOS unless it is supplied.
+
+For **Linux / Steam Deck**, use `bash INSTALL-LINUX.sh` from the same extracted release. The complete [Linux instructions](LINUX-INSTALL.md) require no Wine or SteamOS system changes.
 
 The headset runs independently of the PC after installation. The default PC staging folder is `%LOCALAPPDATA%\GT2-VR\runtime`; keep it to speed up later updates. Allow several GB per disc for raw data, extracted assets, temporary staging and previous-install backups. A 7z input requires 7-Zip; the installer can install it through WinGet. ADB's pinned download comes from Google; its terms are at https://developer.android.com/studio/terms.
 
@@ -32,4 +36,4 @@ Use `-Adb` for an existing adb.exe and `-Serial` to choose one of multiple conne
 
 ## First run
 
-Menu pauses; both grips + Menu opens VR settings. Stick up/down selects a setting; triggers change it. Start with the saved/default graphics settings, then watch APP FPS while adjusting them. Eye resolution needs an app restart. The selected 90 Hz refresh rate is a target, not a guarantee of 90 application FPS. See QUEST.md for all controls and cheats.
+Menu pauses; both grips + Menu opens VR settings. Stick up/down selects a setting; triggers change it. Start with the saved/default graphics settings, then watch APP FPS while adjusting them. Eye resolution needs an app restart. New profiles target 72 Hz; existing saved refresh settings are retained. The refresh rate is a target, not a guarantee of sustained application FPS. See QUEST.md for all controls and cheats.

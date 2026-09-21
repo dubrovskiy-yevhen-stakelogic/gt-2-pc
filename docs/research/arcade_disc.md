@@ -284,7 +284,7 @@ race cameras, HUD tables / fonts / race text copy, race audio, particles, sponso
 EXE tables), `RaceAddress()` / gt2verify's `D()` for guest RAM. `gt2tool profile-check <arcade.bin> <dirs>`: of the 1648
 0x80xxxxxx literals of src\game, src\gt2formats, src\gt2view, tools\gt2game and tools\gt2verify 1612 resolve; the other
 36 are harness-owned free RAM, comments, title / GT-menu addresses (member 1 / 4, not part of the arcade flow) and the
-race-screen files of the other agent.
+corresponding race-screen files.
 
 Logic differences selected by the profile: `wheelEffectsTail` (UpdateWheelEffects: the Arcade function 0x8004269C ends at
 0x80042FF4 right after the engine visuals, the Sim tail 0x8004304C..0x800430D4 does not exist; `GroundGlobals`,
@@ -879,7 +879,7 @@ the 3D car's rectangle (0x8A, 0xF0, 200, 200) counted apart (the car is drawn by
 
 gt2verify (build `build_mode6b`, 2026-09-19): race_demo 252 ok, license_race 236 ok, arcade_tt 221 ok, arcade_rally 207 ok, each
 with the new CarDraw row (3000 cases, 0 mismatches); the only FAIL of the run, RepUnpack 0x80069AC4 on the two Arcade dumps, is the
-replay-file row another agent added the same day (verify_title_replay.cpp, in progress), not a row of this work. `gt2game <Sim disc>
+replay-file row added the same day (verify_title_replay.cpp, in progress), not a row of this work. `gt2game <Sim disc>
 --selftest --cars 6`: the reference line (step 300: 137.8 km/h, rpm 6126, gear 3; 0 failures). The mode 6 frames-compare runs of 17.9:
 11807 / 11807 / 11799 frames, 0 differ (the race simulation is unchanged).
 
@@ -917,7 +917,7 @@ work\re\mode6_replay\race.bin` -> 5216 compared (2608 of the replay), 0 differ (
 playback block, flags, and the replay's clock). Before the car record copy was modelled, every replay frame differed in 8 bytes
 of lap buffer 2's stream header (the port re-initialised the reference's stream). With the replay in place: gt2verify race_demo
 253 ok, license_race 237 ok (0 FAIL), arcade_tt 221 ok, arcade_rally 207 ok (all Ghost* rows and CarDraw 0 mismatches; their
-only FAIL / guest exception is the RepUnpack / RepPack row of verify_title_replay.cpp, another agent's work in progress); selftest
+only FAIL / guest exception is the RepUnpack / RepPack row of verify_title_replay.cpp's work in progress); selftest
 reference line and 0 failures; the three 17.9 frames-compare runs 11807 / 11807 / 11799 frames, 0 differ.
 
 **Open.** The ghost / replay card managers (Save Ghost 0x8005B540, Load Ghost 0x8005B564 -> 0x801D55AA, Save Replay 0x8005B51C) and
@@ -926,7 +926,7 @@ the settings view 0x8005D1C0: rows drawn disabled. The replay's pause menu (Star
 Frames of the back transition (Records -> the menu) and of the leave view are not compared (no capture); the replay's rendered
 frames are not compared with the capture (the simulation is).
 
-### 17.11 The TIME TRIAL menu's card rows, the views' music, the replay pause and lap steps (2026-09-19, cards agent)
+### 17.11 The TIME TRIAL menu's card rows, the views' music, the replay pause and lap steps (2026-09-19)
 
 Addresses: Simulation v1.2 (the race overlay's views and the EXE card manager; the Arcade copies are the Simulation's shifted:
 member 0 code -0xE0 / data -0x90, EXE -0xF0). Evidence: our disassembly (views 0x8005B51C / 0x8005B540 / 0x8005B564, their code
@@ -955,7 +955,7 @@ gt2run sessions of the original arcade with the dev capture aid (`work/re/cards/
 - **Settings ...** (0xFB -> view 0x8005D1C0 "CHANGE PARTS", enabled for a garage car only): not ported here (the row stays
   disabled; the Simulation port of CHANGE PARTS / PARTS SETTING, race_screens.md, would need the garage car's configuration and its
   write-back to the career).
-  Status 2026-09-19 (misc agent, still not ported; what is known): the original's route to it with a HOME GARAGE car in the Time
+  Status 2026-09-19 (still not ported; what is known): the original's route to it with a HOME GARAGE car in the Time
   Trial is captured - `gt2play <Arcade disc> --original --ai-player --card <copy of work/re/arcade_garage/card_s1.mcd> --script
   <work/play/change_parts/cap1/script.txt>` (ARCADE MODE -> Single Player -> Time Trial -> Home Garage -> the Protege GT-X ->
   Tahiti Road, one AI lap, pause Exit, the replay's Exit, ENTER YOUR NAME "A", SESSION RESULTS, TIME TRIAL row 2 "Settings ..." at
@@ -974,10 +974,10 @@ gt2run sessions of the original arcade with the dev capture aid (`work/re/cards/
   EXE's power / torque graph widget (0x80073CE4 .. 0x800747D0, ~880 instructions, not ported anywhere), the TIME TRIAL menu's
   hook (arcade_post_race.cpp) with the garage car's sheet (arcade_setup TuneGarageCar / LoadCarSheet), and a capture with a garage
   car that owns parts (e.g. a card holding work/re/spec_msettings/card_tuned.mcd's tuned car) to verify a change and the career bytes.
-  Ported 2026-09-19 (arcade agent): states 0 / 1 / 2, the preview queue and the executable's graph widget, the row in the TIME TRIAL
+  Ported 2026-09-19: states 0 / 1 / 2, the preview queue and the executable's graph widget, the row in the TIME TRIAL
   menu (enabled by the garage rule 0x8004C0B0; Replay / Save Replay disabled after it, 0x801C90B4) - docs/formats/race_screens.md
   section 8: 20 captures 0 differing pixels, the career after the change = the original's.
-  PARTS SETTING ported 2026-09-19 (parts agent): L1 on CHANGE PARTS replaces the view with PARTS SETTING (Arcade view 0x8005D154 =
+  PARTS SETTING ported 2026-09-19: L1 on CHANGE PARTS replaces the view with PARTS SETTING (Arcade view 0x8005D154 =
   Sim 0x8005D1E4, replace 0x80048294 = Sim 0x80048374, commit 0x80056F60 = Sim 0x80056FF0, the manager's sideways slides 3 / 2),
   its R1 goes back, triangle / square commit and return to TIME TRIAL - docs/formats/race_screens.md section 8.1: 34 captures of
   the original's L1 / R1 route (`work/play/change_parts/cap3`) 0 differing pixels outside the 3D car in gt2game's own session,
@@ -1283,9 +1283,9 @@ are not compared (the original loads the model from the CD about 35 fields after
   HUD frames compared with captures.) Open: see 19.10 (the scene pixels of the halves, the replay cameras' HUD inputs).
 - The model load delay of the menus (the original's CD read) is not modelled (as the car page, section 18).
 - `--no-movies` is not in gt2game's list of title-mode flags (main.cpp kTitleFlags): with it the arcade disc starts the default race
-  instead of the title (seen during this work; the movie agent's flag).
+  instead of the title (seen during this work; the movie-exit flag).
 
-### 19.7 After the race: RESULTS on two columns, the "2PLAYER BATTLE" menu (2026-09-19, 2P agent)
+### 19.7 After the race: RESULTS on two columns, the "2PLAYER BATTLE" menu (2026-09-19)
 
 Addresses: the views are named by their Simulation addresses (the race overlay's code is the same; Arcade = Sim - 0xE0 for the
 code, the data 0x90 lower, as 17.10); Arcade addresses marked. Evidence: our objdump / Ghidra pseudo-C of the Sim race overlay
@@ -1337,7 +1337,7 @@ the lap reveal of RESULTS). Facts: `db/arcade_us11_symbols.yaml` ("2 player Batt
 | post_p1 (P1): RESULTS 16620 .. 17049, the passage 17119, the menu 17144 .. 17449 | 14 | 0 in all (the menu one field earlier than our timeline: the second run's start is a phase of the original's task switch, 0 in post1 and the 1P captures) |
 | 1P regression (work/play/arcade_results/cap, the documented presses with the menu 25 fields later: 1377 / 1463, down 1427) | 4 | 0 in all |
 
-### 19.8 2-player replays (2026-09-19, 2P agent)
+### 19.8 2-player replays (2026-09-19)
 
 - **Recording**: 0x80013EF0 (pad slot 2, player 1's stream 0x801D5F84) and 0x80014030 (pad slot 3, player 2's stream 0x801DA49C, the
   pad object 0x800A95D8) -> 0x80013C90; both stop at 300 fields after the first finish (0x800A9522 is the shell's), so the replay
@@ -1369,7 +1369,7 @@ the lap reveal of RESULTS). Facts: `db/arcade_us11_symbols.yaml` ("2 player Batt
   --ai-player --fast`): race (2:44.986 / 2:52.560), the replay (5367 frames), RESULTS, 2PLAYER BATTLE, Save Replay ... (entry 0
   stored), Exit.
 
-### 19.9 Split-screen presentation and sound (2026-09-19, 2P agent)
+### 19.9 Split-screen presentation and sound (2026-09-19)
 
 - **Sim 0x800292A0** (Arcade 0x8002924C): the view's split flag (view + 0x2EA) follows the camera objects' + 0x103 - off and either
   split: both split, camera 1 on car 0 / camera 2 on car 1, replay mode 0, on; on and not both split: both unsplit with replay mode 2,
@@ -1394,7 +1394,7 @@ the lap reveal of RESULTS). Facts: `db/arcade_us11_symbols.yaml` ("2 player Batt
   in the doppler and one slot volume - found and fixed in 19.10 (all frames equal now).
   Both players' sounds go to one stereo output (the original's single SPU mix).
 
-### 19.10 The start of the split sound, the full-view replay HUD, the HUD frames against captures (2026-09-19, 2PFIX agent)
+### 19.10 The start of the split sound, the full-view replay HUD, the HUD frames against captures (2026-09-19)
 
 Addresses Sim v1.2 unless marked (Arcade = the same code: 0x800133F0 / 0x800146D8 / 0x80014ED0 at the same addresses, the HUD
 routines 0x54 lower). Evidence: objdump of the race overlay in work/re/race_demo/ram.bin (Sim) and work/re/arcade_race/ram.bin

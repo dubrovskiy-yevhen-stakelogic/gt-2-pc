@@ -8,11 +8,11 @@ set(GT2VK_SHADER_OUTPUTS)
 foreach(shader scene.vert scene.frag scene_cached.frag)
   set(out "${GT2VK_SHADER_DIR}/${shader}.inc")
   add_custom_command(OUTPUT "${out}" COMMAND "${GT2_GLSLC}" -O -mfmt=c -o "${out}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}" VERBATIM)
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl" VERBATIM)
   list(APPEND GT2VK_SHADER_OUTPUTS "${out}")
 endforeach()
 include(cmake/stereo-shaders.cmake)
-add_library(gt2vk STATIC src/gt2view/vk_context_android.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp src/gt2view/decoded_textures.cpp src/gt2view/stereo_foveation.cpp src/gt2view/hud.cpp
+add_library(gt2vk STATIC src/gt2view/vk_context_android.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp src/gt2view/decoded_textures.cpp src/gt2view/hd_ui.cpp src/gt2view/stereo_foveation.cpp src/gt2view/hud.cpp
   src/gt2view/particles.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp
   src/gt2view/panel_view.cpp src/gt2view/race_overlay_screens.cpp src/gt2view/movie_view.cpp ${GT2VK_SHADER_OUTPUTS})
 include(cmake/vr-hand-assets.cmake)

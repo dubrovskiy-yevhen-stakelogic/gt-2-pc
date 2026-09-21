@@ -46,9 +46,15 @@ DiscImage::~DiscImage() {
 }
 
 void DiscImage::ReadRawSector(uint32_t lba, uint8_t* out2352) const {
-    if (lba >= sectorCount_) throw std::runtime_error("disc read past end of image");
-    gt2_fseek64(file_, static_cast<int64_t>(lba) * kRawSectorSize, SEEK_SET);
-    if (std::fread(out2352, 1, kRawSectorSize, file_) != kRawSectorSize)
+    ReadRawSectors(lba, 1, out2352);
+}
+
+void DiscImage::ReadRawSectors(uint32_t lba, uint32_t count, uint8_t* output) const {
+    if (lba > sectorCount_ || count > sectorCount_ - lba) throw std::runtime_error("disc read past end of image");
+    if (!count) return;
+    if (gt2_fseek64(file_, static_cast<int64_t>(lba) * kRawSectorSize, SEEK_SET) != 0)
+        throw std::runtime_error("disc seek failed");
+    if (std::fread(output, kRawSectorSize, count, file_) != count)
         throw std::runtime_error("disc read failed");
 }
 

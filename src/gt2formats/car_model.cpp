@@ -147,6 +147,8 @@ CarModel ParseCarModel(std::span<const uint8_t> data) {
         const size_t end = lodPos + 28 + size_t(vertexCount) * 4 + (size_t(triCount) + quadCount) * 4;
         if (r.U16(lodPos + 6) == 0 && vertexCount <= 64 && end == data.size()) {
             CarShadow s;
+            s.scale = r.S16(lodPos + 24);
+            if (s.scale < 8 || s.scale > 31) throw std::runtime_error("car model: bad shadow scale");
             size_t pos = lodPos + 28;
             for (uint16_t i = 0; i < vertexCount; i++, pos += 4) s.vertices.push_back({r.S16(pos), r.S16(pos + 2)});
             for (uint16_t i = 0; i < triCount + quadCount; i++, pos += 4) {

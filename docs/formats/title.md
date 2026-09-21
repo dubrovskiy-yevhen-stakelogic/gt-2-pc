@@ -159,7 +159,7 @@ The native frames of the theater run 5 fields behind the capture's field minus 1
 after its transfer. Not compared: "Checking Replay File" / "Loading..." with a partly lit progress bar (our card rate), the view
 slides. The Vulkan view differs in the gradients (float gouraud), as the other title screens.
 
-### 9.1 RENAME & DELETE (2026-09-19, cards agent)
+### 9.1 RENAME & DELETE (2026-09-19)
 
 View 0x8004B41C "RENAME & DELETE" (header 0x288DC0, 0x801B99F0; init 0x800129C4: 0x8007284C with the object 0x8004B1A0 - fonts
 +0xC 0x801B95D0 tiny, +0x10 0x801B95C0 small, +0x14 0x801B9620 medium, page 0x1E - and EXE 0x80072F20 = card manager mode 2; update
@@ -189,7 +189,7 @@ Not compared: "Select a Slot" during the bars' pulse (rd_1600, 668 at best: the 
 lit progress bar (our card rate). The card after the second run (rename "Short B100", delete "Demo 01", OK, Exit) is byte-identical
 to the card the original wrote through the same presses (all 131072 bytes: `rd_nat2/card_native.mcd` = `rd_cap2/card.mcd`).
 
-### 9.2 COPY REPLAY (2026-09-19, misc agent)
+### 9.2 COPY REPLAY (2026-09-19)
 
 View 0x8004B470 over member 1's copy screen (behaviour: replay.md section 9.7; port `src/game/shell/title_copy.*`). Captures:
 `gt2play --original --card <copy of work/play/cards/card_r3.mcd> --card2 <copy of work/play/copy/blank.mcd>` (the interpreter's
@@ -317,7 +317,7 @@ Facts: `db\sim_us12_symbols.yaml` (0x80011624, 0x800A9500), `db\arcade_us11_symb
   the frame's draw list): demo 02 f21000 (mode 6) 36 / 36, demo 03 f30000 78 / 78, demo 04 f42000 (Rome-Night, mode 4) 57 / 57 (the harness gives our HUD no car name, so the capture's car-name line is not compared; ours lists "Replay" before the lap block, the original after the car name - the texts do not overlap). gt2game's run of the title (`--title --fast
   --no-sound`) plays the demos in the original's order (log lines "attract demo 'Demo NN'"; arcade: the intro every fourth).
 
-### 11.1 The exit fade (both exits of a title-launched replay; 2026-09-19, misc agent)
+### 11.1 The exit fade (both exits of a title-launched replay; 2026-09-19)
 
 Captures (US Simulation v1.2, EXE SHA-1 3030aa271c0a4022fc69ce09d76a6bc75e69a32a): `gt2play <Sim disc> --original --script
 3000:start --prims F ...` for F = 2990, 3000 .. 3080 every 8 fields (work/play/fade), and the same without input around the end of

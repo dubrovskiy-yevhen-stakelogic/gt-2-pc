@@ -1151,6 +1151,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 previous.valid = true;
                 previous.poses.resize(race.CarCount());
                 for (size_t i = 0; i < race.CarCount(); i++) previous.poses[i] = race.Pose(i);
+                previous.groundPoses.resize(race.CarCount());
+                for (size_t i = 0; i < race.CarCount(); i++) previous.groundPoses[i] = race.VisualPose(i);
                 previous.camera = raceCamera.Camera();
                 previous.smoke = smoke;
                 const sim::CarBody& b = race.CarAt(0).body;
@@ -1280,6 +1282,19 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         auto carModel = [&](size_t i, float* m) { // the car's render transform (interpolated unless it jumped)
             if (interp && !PoseJump(previous.poses[i], race.Pose(i))) InterpolatedModelMatrix(previous.poses[i], race.Pose(i), at, m);
             else ModelMatrix(race.Pose(i), m);
+        };
+        auto shadowClip = [&](size_t i, int slot, const float* viewProjection) {
+            float ground[16];
+            const auto pose = race.VisualPose(i);
+            if (interp && i < previous.groundPoses.size() && !PoseJump(previous.groundPoses[i], pose))
+                InterpolatedModelMatrix(previous.groundPoses[i], pose, at, ground);
+            else ModelMatrix(pose, ground);
+            // Race shadows follow the road pose, not suspension/body pitch. The
+            // mesh's menu-space height must be removed before applying this pose.
+            GroundShadowMatrix(ground, assets.SlotShadowHeight(slot));
+            std::array<float,16> clip{};
+            Multiply(viewProjection, ground, clip.data());
+            return clip;
         };
         // The wheels' transforms (car space) as 0x800140A4 / 0x800670F0 build them: the record of 0x800133F0 (-/+ half track,
         // ride reference - travel, the .cdo wheel x) and the angles steer / camber / rolling angle (car_mesh.h WheelModelMatrix);
@@ -1436,7 +1451,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             assets.UpdateCarReflection(carSlot, model, cameraAxes);
             const uint32_t playerPaint = data.paints.empty() ? 0u : data.paints[0];
             const auto playerWheels = wheelModels(0, carSlot);
-            assets.AppendCarItems(items, carSlot, carMvp, playerPaint, lastPad.brake ? 1u : 0u, true, &playerWheels); // shadow + body + wheels + reflection
+            const auto shadow = shadowClip(0, carSlot, vp);
+            assets.AppendCarItems(items, carSlot, carMvp, playerPaint, lastPad.brake ? 1u : 0u, true, &playerWheels, shadow.data()); // shadow + body + wheels + reflection
         }
         for (size_t i = 1; i < race.CarCount() && i < data.carIds.size(); i++) { // the other cars
             if (int(i) == hiddenCar) continue;
@@ -1454,12 +1470,14 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (ghostLook) { // LOD 2, no body texels (empty CLUT rows), no wheels: the reflection pass (colour by the dirt, 0x800140A4) and the shadow
                 const int32_t dirt = std::min<int32_t>(int32_t(race.CarAt(1).body.dirtiness << 12) / 600000, 0x1000);
                 assets.UpdateCarReflection(slot, otherModel, cameraAxes, uint16_t(9), uint16_t(0x7FD7), uint8_t(((0x1000 - dirt) * 3) >> 7), 2);
-                assets.AppendCarItems(items, slot, otherMvp, 0u, 0, false);
+                const auto shadow = shadowClip(i, slot, vp);
+                assets.AppendCarItems(items, slot, otherMvp, 0u, 0, false, nullptr, shadow.data());
                 continue;
             }
             if (slot != carSlot || hiddenCar == 0) assets.UpdateCarReflection(slot, otherModel, cameraAxes); // a slot shared with a drawn player keeps the player's pass
             const auto otherWheels = wheelModels(i, slot);
-            assets.AppendCarItems(items, slot, otherMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &otherWheels);
+            const auto shadow = shadowClip(i, slot, vp);
+            assets.AppendCarItems(items, slot, otherMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &otherWheels, shadow.data());
         }
         if (particles) { // tyre smoke: camera-facing sprites of the pool (0x8002EB60), additive
             const float smokeEye[3] = {eye.x, eye.y, eye.z}, smokeRight[3] = {cs.x, cs.y, cs.z}, smokeUp[3] = {cu.x, cu.y, cu.z}, smokeForward[3] = {cf.x, cf.y, cf.z};
@@ -1521,7 +1539,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 carModel(i, mirrorModel);
                 Multiply(mirrorVp, mirrorModel, carMirrorMvp);
                 const auto mirrorWheels = wheelModels(i, slot);
-                assets.AppendCarItems(items, slot, carMirrorMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &mirrorWheels);
+                const auto shadow = shadowClip(i, slot, mirrorVp);
+                assets.AppendCarItems(items, slot, carMirrorMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &mirrorWheels, shadow.data());
             }
             for (size_t k = firstCar; k < items.size(); k++) std::copy(rect, rect + 4, items[k].scissor);
             items.insert(items.end(), mirrorBlended.begin(), mirrorBlended.end());

@@ -283,7 +283,7 @@ functions:
   - { address: 0x80030424, name: ScaleDisplacement, status: "ported (verified through 0x800340A4)" }
   - { address: 0x80075E90, name: Div12Shift, status: "ported + verified (sim/fixed.h; gt2verify row Div12Shift: 64-bit shift of the sign-extended a by 12 + extra, then 0x80086084)" }
   - { address: 0x80034320, name: MovePass, status: "ported + verified (400 cases x 6 cars, 670 wall hits)" }
-  - { address: 0x80081288, name: SquareRoot, status: "ported + verified (tyres agent)" }
+  - { address: 0x80081288, name: SquareRoot, status: "ported + verified" }
   - { address: 0x8003D848, name: InterpolateS16, status: "ported + verified (sim/tyres.*; the drivetrain's former private copy LookupCurveS16 was merged into it)" }
   - { address: 0x8003D940, name: InterpolateS16Pair, status: "ported + verified" }
   - { address: 0x80039F4C, name: SymmetricCurve, status: "ported + verified" }

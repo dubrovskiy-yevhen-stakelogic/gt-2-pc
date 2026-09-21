@@ -103,6 +103,7 @@ void AudioDevice::Close() {
     if (waveOut_) {
         AAudioStream* stream = static_cast<AAudioStream*>(waveOut_);
         AAudioStream_requestStop(stream);
+        std::printf("audio: AAudio underruns=%d\n", AAudioStream_getXRunCount(stream));
         AAudioStream_close(stream); // waits for the callback to return
         waveOut_ = nullptr;
     }

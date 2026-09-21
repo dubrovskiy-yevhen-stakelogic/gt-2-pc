@@ -4,15 +4,15 @@
 #include <stdexcept>
 
 namespace gt2view {
-void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items) {
+void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items, size_t sceneItems) {
     decoded_.Begin();
     cachedDraws_.assign(items.size(), 0);
-    if (!decodedEnabled_) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
+    if (!decodedEnabled_ || !sceneItems) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
     if (!decodedUpload_.buffer) {
         decodedUpload_ = CreateBuffer(size_t(DecodedTextureCache::kLayers) * DecodedTextureCache::kTexels * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         DestroyImage(decodedImage_);
-        decodedImage_ = CreateImage({256, 256}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, DecodedTextureCache::kLayers);
+        decodedImage_ = CreateImage({256, 256}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, DecodedTextureCache::kLayers, 9);
         VkDescriptorImageInfo info{decodedSampler_, decodedImage_.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = descSet_; write.dstBinding = 3; write.descriptorCount = 1;
@@ -20,7 +20,7 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items)
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr); decodedInitialized_ = false;
     }
     const auto* vertices = static_cast<const SceneVertex*>(vertexBuffer_.mapped);
-    for (size_t draw = 0; draw < items.size(); ++draw) {
+    for (size_t draw = 0; draw < std::min(sceneItems, items.size()); ++draw) {
         const auto& item = items[draw];
         if (uint64_t(item.firstVertex) + item.vertexCount > kMaxVertices) continue;
         if (item.firstVertex >= kVrDrivingVertexBase) { cachedDraws_[draw] = 1; continue; }
@@ -30,7 +30,7 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items)
             auto& materials = it->second;
             for (uint32_t i = 0; i < item.vertexCount; i += 3) {
                 const auto& v = vertices[item.firstVertex + i];
-                if (v.flags & (kOverlay | kExternalTexture)) { materials.push_back(~uint64_t(0)); continue; }
+                if (v.flags & (kOverlay | kExternalTexture | kHdUi)) { materials.push_back(~uint64_t(0)); continue; }
                 if (!(v.flags & kTextured)) continue;
                 const uint32_t clutDepth = v.clut | (((v.flags >> 8) & 3u) << 28);
                 const uint64_t key = uint64_t(v.page) | (uint64_t(clutDepth) << 32) | ((v.flags & kCarPaint) ? uint64_t(1) << 63 : 0);
@@ -63,7 +63,7 @@ void VkSceneRenderer::UploadDecodedTextures() {
     VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = decodedImage_.image;
-    barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, decodedImage_.layers};
+    barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, decodedImage_.mipLevels, 0, decodedImage_.layers};
     barrier.oldLayout = decodedInitialized_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.srcAccessMask = decodedInitialized_ ? VK_ACCESS_SHADER_READ_BIT : 0;
@@ -79,8 +79,32 @@ void VkSceneRenderer::UploadDecodedTextures() {
     }
     if (!copies.empty()) vkCmdCopyBufferToImage(cmd_, decodedUpload_.buffer, decodedImage_.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         uint32_t(copies.size()), copies.data());
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    for (uint32_t level = 1; level <= decodedImage_.mipLevels; ++level) {
+        barrier.subresourceRange.baseMipLevel = level - 1;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        vkCmdPipelineBarrier(cmd_, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0, 0, nullptr, 0, nullptr, 1, &barrier);
+        if (level == decodedImage_.mipLevels) break;
+        std::vector<VkImageBlit> blits;
+        for (uint32_t layer : decoded_.uploads) {
+            VkImageBlit b{};
+            b.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, level - 1, layer, 1};
+            b.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, level, layer, 1};
+            b.srcOffsets[1] = {int32_t(256u >> (level - 1)), int32_t(256u >> (level - 1)), 1};
+            b.dstOffsets[1] = {int32_t(256u >> level), int32_t(256u >> level), 1};
+            blits.push_back(b);
+        }
+        if (!blits.empty()) vkCmdBlitImage(cmd_, decodedImage_.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            decodedImage_.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, uint32_t(blits.size()), blits.data(), VK_FILTER_LINEAR);
+    }
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = decodedImage_.mipLevels;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     vkCmdPipelineBarrier(cmd_, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     decodedInitialized_ = true; decoded_.uploads.clear();
 }

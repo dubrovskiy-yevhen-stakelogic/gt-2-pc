@@ -36,6 +36,8 @@ private:
 
     VkSceneRenderer& renderer_;
     uint32_t rowBase_;
+    uint32_t hdSize_ = 0;
+    uint64_t hdGeneration_ = ~uint64_t(0);
     std::vector<Quad> quads_;
     gt2::MenuCanvas coverA_, coverB_;
     gt2::MenuVram noTextures_;

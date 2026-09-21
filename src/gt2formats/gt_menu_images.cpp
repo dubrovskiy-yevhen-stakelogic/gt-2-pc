@@ -680,6 +680,8 @@ MenuFrame BuildMenuFrame(const MenuAssets& assets, const MenuPage& page, const M
     };
     const GtmpPicture bg = assets.Background(page.picture);
     for (uint32_t w : bg.tiles) tile(DecodeBackgroundTile(w));   // 0x80021F88
+    out.backgroundId = int(page.picture);
+    out.backgroundPrims = list.size();
     for (uint32_t w : page.own.tiles) tile(DecodePageTile(w));   // 0x8002202C
     for (const MenuGroup& g : page.groups)                       // 0x800220C8
         for (const MenuSprite& s : g.sprites) {

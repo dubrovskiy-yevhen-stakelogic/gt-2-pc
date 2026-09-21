@@ -1,16 +1,16 @@
-# Gran Turismo 2 PC & VR — 0.1.0
+# Gran Turismo 2 PC & VR — 0.2.0
 
 A native C++ port of Gran Turismo 2 for **Windows PC** and **Quest 3 standalone VR**, with Vulkan rendering. Quest runs the game on the headset without a streaming PC. The game uses ported simulation code; the PS1 interpreter is a separate development/reference tool.
 
-This is the first public release. Supply your own supported disc images. Game data, BIOS, saves and copyrighted game artwork are not included.
+See [CHANGELOG.md](CHANGELOG.md) for the 0.2.0 changes. Supply your own supported disc images. Game data, BIOS, saves and copyrighted game artwork are not included.
 
 ## Features
 
-- Arcade and Simulation discs, with a disc picker at Quest startup and separate settings and saves for each mode.
+- Arcade and Simulation discs, with a disc picker at Quest startup and shared VR preferences and separate saves for each mode.
 - Arcade races, rally/time trials, opponent AI, ghost/replay sessions; Simulation career, licences, dealerships, garage, tuning and events.
 - Original fixed-step vehicle simulation, animated steering/suspension/wheels, car reflections, track scenery, particles and night lighting.
 - Native audio: engine, tyres, road effects, music and movies. Race pause stops timers and the entire race audio mixer. VR/system suspension does not advance the race.
-- Disc publisher/warning screens and Arcade intro, course previews and ending movies; button skipping. The animated PlayStation BIOS boot and console boot sound are **not included**.
+- Disc publisher/warning screens and Arcade intro, course previews and ending movies; button skipping. Optional playback of a locally prepared PlayStation startup; BIOS and captured startup media are **not bundled or required to play**.
 - Saved graphics and control settings, graphics overlay, configurable draw distance including the entire course and distant scenery, MSAA and texture filtering.
 - Original-resolution assets with higher-resolution rendering. PC supports fixed **720p, 1080p, 1440p and 4K**, or 50–200% of window size; configurable FPS cap/VSync and interpolated presentation. Physics stays at 30 Hz.
 - Keyboard, XInput controllers and **native DualSense / DualSense Edge support on PC**, over USB or Bluetooth: buttons, sticks, trigger pedals, adjustable vibration and adaptive accelerator/brake resistance. Adaptive effects do not require Steam Input. Touch controllers have vibration, not adaptive triggers.
@@ -27,7 +27,11 @@ This is the first public release. Supply your own supported disc images. Game da
 
 ## Install the player release
 
-Extract **GT2-VR-0.1.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest or **INSTALL-PC.bat** for Windows, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+Extract **GT2-VR-0.2.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest or **INSTALL-PC.bat** for Windows, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+
+On **Linux / Steam Deck**, extract the same ZIP, open a terminal in its folder and run `bash INSTALL-LINUX.sh`. It prepares discs and installs the standalone Quest game without Wine or modifying the SteamOS system partition. See the [Steam Deck step-by-step guide](docs/LINUX-INSTALL.md).
+
+Both installers offer an **optional PlayStation startup**. Skip the BIOS prompt to play normally without it, or select your own matching 512 KiB BIOS dump to prepare the original white and dark screens with sound. Firmware is never downloaded or sent to Quest. Existing prepared intros can be disabled in the VR menu.
 
 For Quest, enable developer mode, connect USB and accept USB debugging in the headset. The installer locates ADB or downloads a pinned Google Platform Tools archive, prepares the disc data, updates the APK, copies the assets and verifies the disc hashes and application read access. It does not launch the game. Open **GT2 VR** under **Unknown Sources**. See [player installation](docs/PLAYER-INSTALL.md).
 
@@ -50,7 +54,7 @@ On Quest, **Menu** pauses the race. **Hold both grips + Menu** opens VR settings
 
 ## Performance and limits
 
-New Quest disc profiles start at **150% resolution, 80 Hz, MSAA 2x, 500 m draw distance and medium foveation**, with smooth textures, virtual-wheel driving, full HUD, 100% vibration and the profiler off. All cheats and unlock overrides start off on both discs. These defaults match the release-tested configuration and do not replace existing saved preferences. See [the full default settings](docs/QUEST.md#first-launch-defaults).
+New Quest disc profiles start at **150% resolution, 72 Hz, MSAA 2x, the entire detailed course and medium foveation**, with smooth textures, virtual-wheel driving, full HUD, 100% vibration and the profiler off. All cheats and unlock overrides start off on both discs. Existing saved preferences are preserved. See [the full default settings](docs/QUEST.md#first-launch-defaults).
 
 175% eye resolution means about **3.06 times as many pixels** as 100%. Sustained 175% at 90 FPS is not achieved across races. Select resolution, MSAA, foveation and distance to suit the scene; the profiler reports actual application frames, not the selected display refresh rate.
 
@@ -68,4 +72,39 @@ ctest --test-dir build_local --output-on-failure
 
 `-InstallDir`, `-BuildDir`, `-SkipDependencies` and `-NoBuild` support custom/offline preparations. Loose assets are stored under `runtime/{arcade,simulation}/assets`, with raw sectors retained for audio, movies and overlay data. Source installation preserves previous data and saves. Android build/signing instructions are in [QUEST.md](docs/QUEST.md).
 
-Sources are published as a normal repository folder. Run `scripts/audit-source.ps1` before publication; retail data, private diagnostics, signing keys and build outputs are excluded. See [validation](docs/VALIDATION.md) and [third-party provenance](THIRD_PARTY.md). No blanket licence is assigned to pre-existing project code by this release packaging.
+Sources are published as a normal repository folder. Run `scripts/audit-source.ps1` before publication; retail data, private diagnostics, signing keys and build outputs are excluded. See [validation](docs/VALIDATION.md) and [third-party provenance](THIRD_PARTY.md).
+
+## Optional offline media preparation
+
+The installer can upscale title/GT Mode backgrounds, startup pictures and full-screen movies, and prepare 4x menu-font/button/HUD atlases with palette-aware shader smoothing on a Windows GPU, then use the prepared assets on PC or Quest. It can also capture the original two-screen PlayStation startup and sound from a local BIOS dump, before the Quest disc selector; the firmware sequence cannot be skipped. Movie preparation limits neural changes against the original frames to reduce invented detail. Smooth texture filtering now includes mipmaps for distant surfaces and fences. See [HD media setup, coverage and limitations](docs/HD-MEDIA.md). BIOS is optional and used only to prepare the console startup; normal installation and gameplay do not require it. No BIOS or generated game artwork is distributed.
+
+HD resources can be switched off in **VR menu → Graphics and performance → HD textures and media**. Arcade and Simulation share VR graphics, controls and HUD preferences. Optional offline HD preparation also enhances the PlayStation startup while retaining its original version and audio; see [HD media](docs/HD-MEDIA.md).
+
+HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases with original glyphs and live palette colours. Opaque menu captions are included. Pictures and movies use a separate neural upscaler. The HUD submenu can hide the movie-skip reminder; its visibility is saved across both discs.
+
+**VR menu → Graphics and performance → PlayStation intro** enables or disables the prepared console startup on the next launch. It defaults to ON and is shared by both discs. When enabled, the sequence plays completely before disc selection.
+
+## License
+
+Project code is available under the [MIT License](LICENSE). You may use, modify
+and redistribute it, including commercially, provided that you retain the
+copyright and permission notice. Credit as **Gran Turismo 2 PC & VR contributors**.
+Third-party components retain their own licenses. The MIT license does not grant
+rights to Gran Turismo game data, Sony firmware, trademarks or extracted assets.
+
+Virtual-wheel and motion controls and hand integration are shared with MiamiVR
+Quest, a project by the same sole author.
+
+## Credits and third-party components
+
+- **Khronos Group** — OpenXR headers and the Android OpenXR loader, Apache-2.0.
+- **VRMADA / UltimateXR** — virtual hand meshes, poses and skin texture, MIT.
+- **Sean Barrett and stb contributors** — image decoding/encoding libraries, used under MIT.
+- **Hyllian** — xBR contour algorithm adapted for offline UI processing, MIT.
+- **RetroArch team** — libretro API header used by the optional offline boot-capture helper, MIT.
+
+The optional installer also downloads **Real-ESRGAN** (Xintao Wang, BSD-3-Clause)
+and **Beetle PSX libretro** (GPL-2.0) for offline media preparation and local BIOS
+capture respectively. They are separate tools, not linked into the game.
+See [THIRD_PARTY.md](THIRD_PARTY.md) for source links, exact provenance and license
+locations; player packages retain the dependency notices under `LICENSES/`.

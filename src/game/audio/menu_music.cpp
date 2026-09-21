@@ -7,25 +7,31 @@ namespace gt2::audio {
 
 MenuMusic::~MenuMusic() {
     device_.Close();
-    mixer_.SetStream(nullptr);
+    if (mixer_) mixer_->SetStream(nullptr);
 }
 
 bool MenuMusic::Open(const std::string& discPath, const GuestImage& exe) {
+    device_.Close();
+    if (mixer_) mixer_->SetStream(nullptr);
+    player_.reset();
+    current_ = -1;
     try {
         player_ = std::make_unique<MusicPlayer>();
         player_->Open(discPath, exe);
-        mixer_.SetStream(player_.get());
+        if (!mixer_) mixer_ = std::make_unique<Mixer>();
+        mixer_->SetStream(player_.get());
         std::string error;
-        if (!device_.Open(mixer_, error)) {
+        if (!device_.Open(*mixer_, error)) {
             std::printf("music: no sound device (%s)\n", error.c_str());
-            mixer_.SetStream(nullptr);
+            mixer_->SetStream(nullptr);
             player_.reset();
             return false;
         }
         return true;
     } catch (const std::exception& e) {
         std::printf("music: disabled (%s)\n", e.what());
-        mixer_.SetStream(nullptr);
+        device_.Close();
+        if (mixer_) mixer_->SetStream(nullptr);
         player_.reset();
         return false;
     }

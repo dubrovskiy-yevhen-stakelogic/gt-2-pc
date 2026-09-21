@@ -146,6 +146,8 @@ void BuildWheelMesh(std::vector<CarMeshVertex>& out, float centre[3], float side
 // (wheel centre y - radius = -0.17 m): pass CarShadowHeight(model).
 std::vector<CarMeshVertex> BuildCarShadowMesh(const CarModel& model, float groundY);
 float CarShadowHeight(const CarModel& model);
+// Move a menu-space shadow onto a ground-following model matrix (column-major).
+void GroundShadowMatrix(float* ground, float meshHeight);
 
 // Body units -> metres: 2^(lod.scale - 16) / 4096 (see docs/formats/car_cdo_cdp.md).
 double CarBodyMetresPerUnit(const CarLod& lod);

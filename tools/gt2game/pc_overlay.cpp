@@ -1,4 +1,7 @@
 #include "pc_overlay.h"
+#include "gt2formats/hd_media.h"
+#include "game/shell/shared_vr_settings.h"
+#include "movie_player.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -19,8 +22,10 @@
 namespace gt2game {
 namespace {
 std::string settingsPath;
+gt2::shell::VrSettings baseVrSettings;
 int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
 bool profiler = true;
+bool playStationIntro = true;
 int foveation = 2;
 int metricUnits = -1;
 bool baseMetricUnits = true;
@@ -40,7 +45,8 @@ constexpr HudSetting hudSettings[] = {
     {"Start countdown", "vr_hud_countdown", &gt2view::HudVisibility::countdown},
     {"Driving warnings", "vr_hud_warnings", &gt2view::HudVisibility::warnings},
     {"Split times and messages", "vr_hud_messages", &gt2view::HudVisibility::messages},
-    {"Replay caption", "vr_hud_replay", &gt2view::HudVisibility::replay}
+    {"Replay caption", "vr_hud_replay", &gt2view::HudVisibility::replay},
+    {"Movie skip hint", "vr_hud_movie_hint", &gt2view::HudVisibility::movieHint}
 };
 constexpr uint32_t vertexBase = gt2view::VkSceneRenderer::kNativeUiVertexBase, fontRow = gt2view::VkSceneRenderer::kNativeFontRow;
 
@@ -126,6 +132,8 @@ void Save() {
     {
         std::ofstream out(temp, std::ios::trunc);
         out << "# Live overlay preferences; separate from earned progress.\n" << CurrentGraphics().Serialize();
+        out << "hd_assets=" << int(gt2::hd::Enabled()) << '\n';
+        out << "vr_ps1_intro=" << int(playStationIntro) << '\n';
         out << "adaptive=" << adaptive << "\nrumble=" << rumble << "\nunlock_courses=" << int(gt2::pc::unlockCourses)
             << "\nunlock_cars=" << int(gt2::pc::unlockCars) << "\n";
         if (metricUnits >= 0) out << "units=" << (metricUnits ? "kmh" : "mph") << '\n';
@@ -148,6 +156,9 @@ void Save() {
 #else
     std::filesystem::rename(temp, settingsPath);
 #endif
+    if(!gt2::shell::sharedVrSettingsPath.empty())
+        gt2::shell::WritePreferences(gt2::shell::sharedVrSettingsPath,
+            baseVrSettings.Serialize()+gt2::shell::VrPreferences(gt2::shell::ReadPreferences(settingsPath)));
 }
 }
 
@@ -155,12 +166,15 @@ void LoadOverlaySettings(const std::string& basePath) {
     adaptive = 60; rumble = 50; vrScale = -1; vrRefresh = 72; profiler = true; foveation = 2;
     hudVisibility = {}; drivingSettings = {}; controlBindings = {}; introLowerCm = 200;
     metricUnits = -1;
-    baseMetricUnits = gt2::shell::PcSettings::Load(basePath).metric;
+    playStationIntro = true;
+    const auto base=gt2::shell::PcSettings::Load(basePath);
+    baseMetricUnits = base.metric; baseVrSettings=base.vr;
+    gt2::hd::SetEnabled(true);
     gt2::pc::SetUnlocks(false, false);
     gt2::pc::unlockSimulationEvents = false;
     settingsPath = basePath + ".overlay";
-    std::ifstream in(settingsPath);
-    if (!in) return;
+    std::istringstream in(gt2::shell::ReadPreferences(settingsPath)+"\n"+
+        gt2::shell::VrPreferences(gt2::shell::ReadPreferences(gt2::shell::sharedVrSettingsPath)));
     auto graphics = CurrentGraphics();
     bool courses = false, cars = false;
     std::string line;
@@ -168,7 +182,9 @@ void LoadOverlaySettings(const std::string& basePath) {
         const auto eq = line.find('=');
         if (eq == std::string::npos || line.empty() || line[0] == '#') continue;
         const auto key = line.substr(0, eq), value = line.substr(eq + 1);
-        if (key == "units" && (value == "kmh" || value == "mph")) metricUnits = value == "kmh";
+        if (key == "hd_assets") gt2::hd::SetEnabled(value != "0");
+        else if (key == "vr_ps1_intro") playStationIntro = value != "0";
+        else if (key == "units" && (value == "kmh" || value == "mph")) metricUnits = value == "kmh";
         else if (key == "vr_brake_reverse") controlBindings.brakeReverse = value == "1";
         else if (key == "vr_steering_stick") controlBindings.steeringStick = std::clamp(std::atoi(value.c_str()),0,1);
         else if (key.size()==12 && key.substr(0,11)=="vr_binding_" && key[11]>='0' && key[11]<='7') controlBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,8);
@@ -251,7 +267,7 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.Quad(28, 24, 744, 552, 0x101c2a); canvas.Quad(28, 24, 744, 5, 0x42b6f5);
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * 40;
+        const float y = 112 + float(i) * (rows.size()>9 ? 35.f : 40.f);
         if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
     }
@@ -299,9 +315,11 @@ void ShowVrMenu(GameWindow& window) {
                 "Refresh rate: " + std::to_string(vrRefresh) + " Hz",
                 "MSAA: " + std::to_string(graphics.msaa) + "x",
                 "Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"),
-                "Vibration: " + std::to_string(rumble) + "%", "Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth" : "Original"),
+                "Vibration: " + std::to_string(rumble) + "%", "Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"),
                 "FPS profiler: " + std::string(profiler ? "ON" : "OFF"),
-                "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"), "Back"};
+                "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
+                "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
+                "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"), "Back"};
         }
         if (page == 2) {
             title = "GT2 VR / CHEATS";
@@ -364,7 +382,7 @@ void ShowVrMenu(GameWindow& window) {
                     if (selected >= 4) { if (selected == 4) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
                 }
-                else if (page == 1 && (direction || selected == 8)) {
+                else if (page == 1 && (direction || selected == 10)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     status = "Saved.";
                     if (selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
@@ -383,7 +401,9 @@ void ShowVrMenu(GameWindow& window) {
                     if (selected == 5) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == 6) profiler = !profiler;
                     if (selected == 7) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
-                    if (selected == 8) { page = 0; selected = 0; }
+                    if (selected == 8 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
+                    if (selected == 9 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
+                    if (selected == 10) { page = 0; selected = 0; }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 2) {
@@ -480,6 +500,7 @@ void AppendFrameProfiler(gt2view::VkSceneRenderer& renderer, std::vector<gt2view
     canvas.Append(renderer, items, gt2view::VkSceneRenderer::kProfilerVertexBase);
 }
 void AppendSkipHint(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items) {
+    if (!hudVisibility.movieHint) return;
     NativeCanvas canvas; canvas.Quad(244, 550, 312, 34, 0x101c2a);
     canvas.Text(256, 555, VrMode() ? "A / B : SKIP MOVIE" : "START / ENTER : SKIP"); canvas.Append(renderer, items);
 }
@@ -493,6 +514,13 @@ std::string SelectQuestDisc(const std::string& root, const std::string& preferre
     if (modes.empty()) throw std::runtime_error("No installed GT2 disc found");
     SetVrMode(true, false); VrOptions vr; vr.stereo = false; SetVrOptions(vr);
     GameWindow window("GT2 VR - Choose disc", 1280, 960); window.EnableNativeMenu(false); PrepareNativeUi(window.Renderer());
+    auto startup = std::filesystem::path(root) / "startup-hd.gtm";
+    if(!gt2::hd::Enabled() || !std::filesystem::is_regular_file(startup)) startup=std::filesystem::path(root)/"startup.gtm";
+    if (playStationIntro && std::filesystem::is_regular_file(startup)) {
+        MovieSpec spec; spec.skippable = false; spec.displayWidth = 640; spec.displayHeight = 480; spec.x = spec.y = 0;
+        try { if (PlayPreparedMovie(window, startup.string(), spec, true) == MovieResult::kClosed) return {}; }
+        catch (const std::exception& e) { std::printf("BIOS intro unavailable: %s\n", e.what()); }
+    }
     int selected = modes.size() == 2 && preferred == modes[1] ? 1 : 0;
     while (window.BeginFrame()) {
         if (window.Pressed(gt2::keys::kUp) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
@@ -598,7 +626,7 @@ void ShowPcOverlay(GameWindow& window, const std::vector<gt2view::DrawItem>& bac
             {"Frame presentation", graphics.frameRate == 0 ? "Original 30" : "Interpolated"},
             {"FPS limit", VrMode() ? "Headset timing" : graphics.frameCap ? std::to_string(graphics.frameCap) : "Display / uncapped"},
             {"MSAA", std::to_string(graphics.msaa) + "x (GPU " + std::to_string(renderer.EffectiveMsaa()) + "x)"},
-            {"VSync", VrMode() ? "Headset timing" : graphics.vsync ? on : off}, {"Texture filtering", graphics.smoothTextures ? "Smooth" : "Original"},
+            {"VSync", VrMode() ? "Headset timing" : graphics.vsync ? on : off}, {"Texture filtering", graphics.smoothTextures ? "Smooth + mipmaps" : "Original"},
             {"Draw distance", graphics.drawDistance < 0 ? "Entire course" : graphics.drawDistance == 0 ? "Original" : std::to_string(graphics.drawDistance) + " m"},
             {"Vibration strength", std::to_string(rumble) + "%"},
             {"Adaptive pedals", VrMode() ? "Not available on Touch" : std::to_string(adaptive) + "%"},

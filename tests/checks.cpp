@@ -17,6 +17,7 @@
 #include <sstream>
 #include "game/audio/pause.h"
 #include "game/audio/music_player.h"
+#include "game/audio/menu_music.h"
 #include "game/shell/title_options.h"
 #include <array>
 #include <cmath>
@@ -31,6 +32,15 @@ static void Check(bool ok, const char* what) { ++checks; if (!ok) throw std::run
 
 static void CheckPcChanges(const char* discPath) {
     using namespace gt2;
+    {
+        audio::MenuMusic music;
+        Check(sizeof(music) < 4096 && !music.IsOpen(), "unopened menu music keeps sample RAM off the game stack");
+        music.Play(0, 240);
+        music.Stop();
+        Check(music.Current() == -1, "unopened menu music can stop safely");
+        Check(!music.Open("", GuestImage{}) && !music.IsOpen(), "failed menu music open releases the player");
+        Check(!music.Open("", GuestImage{}) && !music.IsOpen(), "failed menu music open can be retried safely");
+    }
     std::array<uint8_t, 64> usb{};
     usb[0] = 1;
     std::fill(usb.begin() + 1, usb.begin() + 5, uint8_t(128));

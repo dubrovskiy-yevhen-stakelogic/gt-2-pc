@@ -917,9 +917,12 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
             v.page = q.page;
             v.clut = q.clut;
             v.flags = q.textured ? kTextured | kClampTextureRect : 0u; // 4-bit pages: depth bits 8-9 = 0
+            if(q.textured && q.page == (uint32_t(gt2::CourseMap::kVramX) | (kRowBase << 16)) &&
+               q.clut == (uint32_t(gt2::CourseMap::kClutX) | ((kRowBase+gt2::CourseMap::kClutY)<<16))) v.flags |= kUiMap;
             vertices.push_back(v);
         }
     }
+    renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(kVertexBase, vertices);
     size_t first = 0;
     while (first < quads_.size()) {

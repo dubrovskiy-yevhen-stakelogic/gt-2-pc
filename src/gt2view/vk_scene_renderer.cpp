@@ -108,11 +108,11 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     decodedTable_ = CreateBuffer(sizeof(decoded_.table), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table));
     // A tiny valid array descriptor until the first cached stereo scene needs storage.
-    decodedImage_ = CreateImage({1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    decodedImage_ = CreateImage({1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 2);
     VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
     sampler.magFilter = sampler.minFilter = VK_FILTER_LINEAR;
-    sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sampler.maxLod = 8.0f;
     sampler.addressModeU = sampler.addressModeV = sampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     Check(vkCreateSampler(device_, &sampler, nullptr, &decodedSampler_), "vkCreateSampler(decoded)");
     handImage_ = CreateImage({1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -327,14 +327,14 @@ VkSampleCountFlagBits VkSceneRenderer::ClampSamples(uint32_t requested) const {
 }
 
 VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
-                                                    VkImageAspectFlags aspect, uint32_t layers) {
+                                                    VkImageAspectFlags aspect, uint32_t layers, uint32_t mipLevels) {
     Image img;
-    img.layers = layers;
+    img.layers = layers; img.mipLevels = mipLevels;
     VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ici.imageType = VK_IMAGE_TYPE_2D;
     ici.format = format;
     ici.extent = {extent.width, extent.height, 1};
-    ici.mipLevels = 1;
+    ici.mipLevels = mipLevels;
     ici.arrayLayers = layers;
     ici.samples = samples;
     ici.usage = usage;
@@ -357,7 +357,7 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
     vci.image = img.image;
     vci.viewType = layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
     vci.format = format;
-    vci.subresourceRange = {aspect, 0, 1, 0, layers};
+    vci.subresourceRange = {aspect, 0, mipLevels, 0, layers};
     Check(vkCreateImageView(device_, &vci, nullptr, &img.view), "vkCreateImageView(scene)");
     if (layers > 1) // one view per eye: the two-pass stereo path renders into each array layer on its own
         for (uint32_t l = 0; l < layers && l < 2; l++) {
@@ -498,14 +498,14 @@ void VkSceneRenderer::CreatePipeline() {
     CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, pipelines_);
 }
 
-void VkSceneRenderer::DestroyPipelineSet(VkPipeline set[5]) {
-    for (uint32_t i = 0; i < 5; i++) {
+void VkSceneRenderer::DestroyPipelineSet(VkPipeline set[6]) {
+    for (uint32_t i = 0; i < 6; i++) {
         if (set[i]) vkDestroyPipeline(device_, set[i], nullptr);
         set[i] = VK_NULL_HANDLE;
     }
 }
 
-void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[5], bool stereo, uint32_t viewMask, bool cachedOnly, bool cachedHud) {
+void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[6], bool stereo, uint32_t viewMask, bool cachedOnly, bool cachedHud) {
     auto makeModule = [&](const uint32_t* code, size_t bytes) {
         VkShaderModuleCreateInfo smi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
         smi.codeSize = bytes;
@@ -564,6 +564,7 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
     rs.lineWidth = 1.0f;
     VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     ms.rasterizationSamples = samples;
+    ms.alphaToCoverageEnable = samples != VK_SAMPLE_COUNT_1_BIT;
     VkPipelineDepthStencilStateCreateInfo ds{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     ds.depthTestEnable = VK_TRUE;
     ds.depthWriteEnable = VK_TRUE;
@@ -613,7 +614,7 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
                                 {VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE, VK_BLEND_OP_ADD},
                                 {VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE, VK_BLEND_OP_REVERSE_SUBTRACT},
                                 {VK_BLEND_FACTOR_CONSTANT_COLOR, VK_BLEND_FACTOR_ONE, VK_BLEND_OP_ADD}};
-    for (uint32_t i = 0; i < 5; i++) {
+    for (uint32_t i = 0; i < 6; i++) {
         if (i < 4) {
             cba.blendEnable = VK_TRUE;
             cba.srcColorBlendFactor = modes[i].src;
@@ -625,10 +626,17 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
             ds.depthWriteEnable = VK_FALSE;
             rs.depthBiasEnable = VK_TRUE; // blended layers lie on opaque surfaces (shadows on the road): pull them nearer
         } else {
-            cba.blendEnable = VK_FALSE;
+            cba.blendEnable = i == 5;
+            cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            cba.colorBlendOp = VK_BLEND_OP_ADD;
+            cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            cba.alphaBlendOp = VK_BLEND_OP_ADD;
             ds.depthWriteEnable = VK_TRUE;
             rs.depthBiasEnable = VK_FALSE;
         }
+        ms.alphaToCoverageEnable = i != 5 && samples != VK_SAMPLE_COUNT_1_BIT;
         Check(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &gpi, nullptr, &out[i]), "vkCreateGraphicsPipelines");
     }
     vkDestroyShaderModule(device_, vs, nullptr);
@@ -704,6 +712,10 @@ void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uin
         std::copy(words + source, words + source + count, vramShadow_.data() + target);
         std::fill(vramKnown_.begin() + firstRow + begin, vramKnown_.begin() + firstRow + row, true);
         decoded_.Invalidate(firstRow + begin, row - begin);
+        for(auto it=hdUiPages_.begin();it!=hdUiPages_.end();) {
+            const uint32_t y=(it->first>>16)&0x7fff;
+            if(firstRow+begin<y+256 && firstRow+row>y) it=hdUiPages_.erase(it); else ++it;
+        }
     }
 }
 
@@ -721,6 +733,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     }
     vkWaitForFences(device_, 1, &fence_, VK_TRUE, UINT64_MAX);
     FlushFrameUploads();
+    PrepareDecodedTextures(items, sceneItems);
 
     uint32_t imageIndex = 0;
     if (!offscreen_) {
@@ -799,7 +812,7 @@ void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, VkAttachm
     cmdBeginRendering_(cmd_, &ri);
 }
 
-void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[5],
+void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[6],
                                   size_t sceneItems) {
     VkViewport viewport{0, 0, float(extent.width), float(extent.height), 0, 1};
     VkRect2D scissor{{0, 0}, extent};
@@ -809,7 +822,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
     const VkBuffer vertexBuffers[2] = {vertexBuffer_.buffer, rectBuffer_.buffer};
     const VkDeviceSize zero[2] = {0, 0};
     vkCmdBindVertexBuffers(cmd_, 0, 2, vertexBuffers, zero);
-    const uint32_t sceneOptions = (options_.smoothTextures ? kOptionSmoothTextures : 0u) | (options_.affine ? kOptionAffine : 0u);
+    const uint32_t sceneOptions = (options_.smoothTextures ? kOptionSmoothTextures : 0u) | (options_.affine ? kOptionAffine : 0u) | (options_.mipmaps ? kOptionMipmaps : 0u);
     uint32_t boundPipeline = ~0u;
     bool clipped = false;
     for (size_t i = first; i < last; i++) {
@@ -854,9 +867,9 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             rect.layerCount = recordLayers_;
             if (rect.rect.extent.width && rect.rect.extent.height) vkCmdClearAttachments(cmd_, 1, &clear, 1, &rect);
         }
-        const uint32_t which = item.blend < 4 ? item.blend : 4;
+        const uint32_t which = item.blend < 4 ? item.blend : (i >= sceneItems ? 5u : 4u);
         const bool cached = recordStereo_ && i < cachedDraws_.size() && cachedDraws_[i];
-        const uint32_t pipelineKey = which + (cached ? (hud ? 10 : 5) : 0);
+        const uint32_t pipelineKey = which + (cached ? (hud ? 12 : 6) : 0);
         if (pipelineKey != boundPipeline) {
             vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, cached ? (hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
             const float k = which == 0 ? 0.5f : 0.25f;
@@ -873,6 +886,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.brakeLit = item.brakeLit;
         params.stpPass = item.stpPass;
         params.options = i < sceneItems ? sceneOptions : 0u;
+        if ((recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
@@ -1125,7 +1139,7 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
     culling_ = {};
     WaitFrame();
     FlushFrameUploads();
-    PrepareDecodedTextures(items);
+    PrepareDecodedTextures(items, sceneItems);
     vkResetFences(device_, 1, &fence_);
     std::memcpy(viewBuffer_.mapped, &stereoViews_, sizeof(StereoViews)); // the frame in flight has finished above
 

@@ -2,8 +2,9 @@ param([string]$Repo = (Split-Path $PSScriptRoot))
 $ErrorActionPreference = 'Stop'
 Push-Location $Repo
 try {
-    $files = @(& git -c core.quotepath=false ls-files)
-    if ($LASTEXITCODE -ne 0 -or !$files.Count) { throw 'Stage or commit the source files in Git before auditing.' }
+    $files = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo)
+    if ($LASTEXITCODE -ne 0 -or !$files.Count) { throw 'No source files found for auditing.' }
+    if ($files -notcontains 'LICENSE') { throw 'Missing project MIT license in the source snapshot.' }
     $forbidden = '(?i)^(work|runtime|build[^/]*|dist|saves)/|^android/(\.gradle/|build/|app/(build|\.cxx)/|local\.properties$)|(^|/)(bin|obj|game-decomp)/|\.(bin|cue|iso|raw2352|chd|gtr|vol|ovl|tro|trp|cdo|cdp|mcd|mcr|sav|png|jpg|exe|dll|lib|pdb|spv|apk|aar|so|keystore|jks|prims\.txt)$|^install-location\.txt$'
     $forbidden += '|(^|/)(AGENTS|CLAUDE|HANDOFF)\.md$|(^|/)\.(codex|agents|claude)/|credential\.xml$'
     # This redistributable MIT texture is a source asset, not extracted game data.
@@ -18,5 +19,5 @@ try {
     foreach ($path in $files) {
         if ((Get-Item -LiteralPath $path).Length -gt 8MB) { throw "Unexpectedly large source file: $path" }
     }
-    Write-Host "Source audit passed: $($files.Count) tracked files; no game payloads or build artifacts by path/type/size checks."
+    Write-Host "Source audit passed: $($files.Count) source files; no game payloads or build artifacts by path/type/size checks."
 } finally { Pop-Location }

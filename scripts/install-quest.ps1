@@ -41,8 +41,14 @@ foreach ($disc in $modes) {
     $directories += @(Get-ChildItem (Join-Path $source 'assets') -Recurse -Directory | ForEach-Object {
         "$disc/" + $_.FullName.Substring($source.Length + 1).Replace('\','/')
     })
+    $hd = Join-Path $source 'hd'
+    if (Test-Path -LiteralPath $hd) {
+        $directories += "$disc/hd"
+        $directories += @(Get-ChildItem -LiteralPath $hd -Recurse -Directory | ForEach-Object { "$disc/hd/" + $_.FullName.Substring($hd.Length+1).Replace('\','/') })
+    }
     $ready = @(Invoke-Adb @('shell','am','broadcast','-n',"$package/.ImportAccessReceiver",'-a',"$package.PREPARE_DATA",'--es','paths',($directories -join ',')))
     if (($ready -join ' ') -notmatch 'result=0') { throw "Cannot prepare $disc directories as application UID." }
+    if (Test-Path -LiteralPath $hd) { Invoke-Adb @('push','--sync',$hd,"$external/$disc/") }
     Invoke-Adb @('push','--sync',(Join-Path $source 'assets'),"$external/$disc/")
     Invoke-Adb @('push','--sync',(Join-Path $source 'disc.raw2352'),"$external/$disc/disc.raw2352")
     $expected = (Get-FileHash (Join-Path $source 'disc.raw2352') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -51,6 +57,15 @@ foreach ($disc in $modes) {
     $access = @(Invoke-Adb @('shell','am','broadcast','-n',"$package/.ImportAccessReceiver",'-a',"$package.VERIFY_DATA",'--es','paths',"$disc/disc.raw2352,$disc/assets/.carcolor"))
     if (($access -join ' ') -notmatch 'result=0') { throw "The app cannot read $disc data." }
     Write-Host "$disc verified: disc SHA256 and application read access."
+}
+foreach ($startupName in @('startup.gtm','startup-hd.gtm')) {
+$startup = Join-Path $Runtime $startupName
+if (Test-Path -LiteralPath $startup) {
+    Invoke-Adb @('push','--sync',$startup,"$external/$startupName")
+    $expected = (Get-FileHash -LiteralPath $startup -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actual = @(Invoke-Adb @('shell','sha256sum',"$external/$startupName"))
+    if (($actual -join ' ') -notmatch "^$expected\s") { throw 'Startup movie hash differs on the headset.' }
+}
 }
 $modeFile = [IO.Path]::GetTempFileName()
 try {

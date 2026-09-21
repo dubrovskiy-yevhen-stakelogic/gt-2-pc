@@ -950,7 +950,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     const bool automated = !options.globalScript.empty() || !options.shots.empty() || !options.anyShots.empty() || options.quitAfter > 0 || options.noRace;
     if (!options.noMovies && (options.forceMovies || !automated)) {
         sfx.reset();
-        if (!PlayBootScreens(window, disc)) return 0;
+        if (!PlayBootScreens(window, disc, !options.noSound)) return 0;
         resetView();
         openSound();
     }
