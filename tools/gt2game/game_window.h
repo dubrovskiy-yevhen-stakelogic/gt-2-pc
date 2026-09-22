@@ -67,6 +67,8 @@ void SetRumbleScale(int percent);
 // first GameWindow.
 void SetWindowNoFocus(bool on);
 bool WindowNoFocus();
+void SetWindowedMode(bool on);
+bool WindowedMode();
 
 // The operating system's half of the window: the window itself, the Vulkan renderer on it, the keyboard and the
 // frame timing. One implementation per platform (game_window_win32.cpp; the XR session of M1 adds its own).

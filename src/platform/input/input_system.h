@@ -9,7 +9,8 @@
 //   - DirectInput game controllers that are not XInput devices: Sony pads (VID 054C: DualShock 4 / DualSense in their
 //     DirectInput layout) and other gamepads as type 7 (generic layout: buttons 1..4 = Cross, Circle, Square, Triangle);
 //     wheels (DI8DEVTYPE_DRIVING) as a neGcon (type 2: twist = the wheel, I = accelerator, II = brake, L = clutch), the
-//     original's analogue-wheel path with its calibration page. No motors (DirectInput force feedback is not used).
+//     legacy analogue-wheel path when no racing-wheel profile claims the device.
+//   - configured wheel rigs: independently assigned axes/buttons and DirectInput constant-force feedback (wheel.h).
 //   - a scripted fake pad (--fake-pad): any type, analogue values per field, motor changes printed.
 // The keyboard is not part of this: gt2game merges it (game_window.h, race_view.cpp).
 
@@ -20,6 +21,7 @@
 #include <vector>
 
 #include "platform/input/ps1_pad.h"
+#include "platform/input/wheel.h"
 
 namespace gt2::input {
 
@@ -54,7 +56,9 @@ public:
         rest_.emplace_back();
     }
     // WM_DEVICECHANGE: look for new devices at the next poll.
-    void DevicesChanged() { rescan_ = true; }
+    void DevicesChanged() { rescan_ = true; wheel_.Rescan(); }
+    wheel::Rig& Wheel() { return wheel_; }
+    const wheel::Rig& Wheel() const { return wheel_; }
     // Once per presentation field. `focused`: real devices count only while the game window is in the foreground
     // (scripted fake pads always).
     void Poll(int field, bool focused);
@@ -82,6 +86,7 @@ public:
     std::vector<std::string> TakeLog();
 
 private:
+    wheel::Rig wheel_;
     void Rescan(int field);
     void ApplyMotors();
 

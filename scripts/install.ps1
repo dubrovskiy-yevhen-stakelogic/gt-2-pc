@@ -4,7 +4,7 @@ param(
     [string]$InstallDir = (Join-Path (Split-Path $PSScriptRoot) 'runtime'),
     [string]$BuildDir = 'build_install',
     [switch]$SkipDependencies,
-    [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Original',
+    [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Menus',
     [string]$Bios,
     [string]$CaptureCore,
     [switch]$NoBuild

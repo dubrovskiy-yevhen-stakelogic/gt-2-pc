@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "sourceCommit": "80eee32c0bab18e28e76e91ddb8d69e0755494c4",
   "sourceDirty": true,
   "files": [
@@ -13,7 +13,7 @@
     },
     {
       "path": "android/app/build.gradle",
-      "sha256": "bda44e4695f671822f024d840b939533de13af3453dd52afd88870584bae9d9e"
+      "sha256": "d9723ac53d46843bb6cd095f6465d229316bcc66426a93c42425c4fed2bd90d3"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -49,11 +49,11 @@
     },
     {
       "path": "build.cmd",
-      "sha256": "97f98245c667185907dc65b2eee4afe70fc89b2483f5005faf3b862c43ef7ddf"
+      "sha256": "9205fadc664a37e072b3659e64b6ba8dfcaacdf241f3af92c76d41d881b40cec"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "461cc1187a88d713c95048abeb18e0e03f58f51e28dab000d017f3717c5a1508"
+      "sha256": "637c4b9cd7516d5ddf5dd3e6ffecf81d7351514eff9ecb717c6a9237891c39a9"
     },
     {
       "path": "cmake/android.cmake",
@@ -69,7 +69,7 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "94c1f8c616b062e997e5838e9624ea552a8f176349429caddd1a181889b8e434"
+      "sha256": "2a9b3defd28b88f0b7b171e5e564dc4db055222b7e9bc21ddef90f44a05606ff"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -172,6 +172,10 @@
       "sha256": "f2918463d183439468ee83fc918a81806d68a95db8a24d3a478345d2b5fd8813"
     },
     {
+      "path": "docs/formats/steering_feedback.md",
+      "sha256": "383fb2017969b7552f01875c0913fca88c16ec2e29b07f53f27ba3a18f54ec3e"
+    },
+    {
       "path": "docs/formats/str_video.md",
       "sha256": "66b1dff73578aabede205bd399eb2f7e0763bf95daea30b3e7c4cb86629bf690"
     },
@@ -188,16 +192,20 @@
       "sha256": "a23c94a45329f83e05d9296424cea6a0f61371eaed7e146da9f118b395f0d15f"
     },
     {
+      "path": "docs/formats/wheel_replay.md",
+      "sha256": "433b4d5420ec3afab14f4994392e70d717f2db540b4a787af236bace6c39cbab"
+    },
+    {
       "path": "docs/hardware_boundary.md",
       "sha256": "f12891859cd2f6e53867360eebb58f2ce634535ebf89f8a437a8c880f3609f01"
     },
     {
       "path": "docs/HD-MEDIA.md",
-      "sha256": "40fb55c40ba428f4ca5481e1620234d9c01bb54e75f7879fa03e6ff3f6cf9d01"
+      "sha256": "ed8c6a88c5f9db2695ff9920a6e614e6044d361bb143e822405e4c1548051490"
     },
     {
       "path": "docs/LINUX-INSTALL.md",
-      "sha256": "440fea90a8493a5328a190b58fb8de536e8e6482d19da8a32a52890e7472d32f"
+      "sha256": "5309744e706bae66e0d50544f7743f97a003cf1c47acad75c60526ac7b51335c"
     },
     {
       "path": "docs/MIPMAPS.md",
@@ -205,15 +213,15 @@
     },
     {
       "path": "docs/PCVR.md",
-      "sha256": "ad410b1aee070f165a8e0dbda8efac85e0dec8d6682312383f906d44d0ce11ce"
+      "sha256": "e805582af15d49a6c4b31ffe58196bf6b9f5a2f2b18195b8f0ba8b95c4c2e6fc"
     },
     {
       "path": "docs/PLAYER-INSTALL.md",
-      "sha256": "3d0ae399081fcc9e01c6113aeedcbe1cd6734b83019a926078e9fdef9d9bfa4a"
+      "sha256": "83ab58e74489811ea78b9fd4dc42c2cbd6cac93f669c425960eecc0f93497c46"
     },
     {
       "path": "docs/QUEST.md",
-      "sha256": "7e1f7ced4cd90f34d4ab633f38a8e33387f1af35f7ac6827eb907432ba3cc3aa"
+      "sha256": "d039e4744f7ace1bfbf4108ecd6a29753d9be896b96af265d2d116ed9f0f5585"
     },
     {
       "path": "docs/RENDER_BENCHMARK.md",
@@ -277,7 +285,19 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "sha256": "b971ca4e54c37dc18140ffec3c94fc6d602c9c530cf6c5b60cef2b9c03ebc1b9"
+      "sha256": "15fa7a9719f97b9f1fd8a4516923dc902f50677c71149e63f1dc690463ac9ef7"
+    },
+    {
+      "path": "docs/wheel-profile-provenance.json",
+      "sha256": "3b9538f9f96e96800838c11fd7b71e2dcc84c657d2e67208c1b68eaa13dcbb4b"
+    },
+    {
+      "path": "docs/WHEEL-PROFILES.md",
+      "sha256": "96ba9bb47d3c82021401c3794f7976f11233f548885f31f3efb5aec46805d537"
+    },
+    {
+      "path": "docs/WHEELS.md",
+      "sha256": "97fffcb87805eebb9b12988e0a1fd935373ea0c3fbb09b46d028928b117a9d74"
     },
     {
       "path": "gt2_arcade.bat",
@@ -325,7 +345,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "38ff918eaab827d2f5d93a25b96f3fe088fe674553ff0b5d8aff4ff0aedf192e"
+      "sha256": "595bf3b00d21f5cdf636c378f1d372bd4b03888a630e51752da914d4dc214a04"
     },
     {
       "path": "run_race.bat",
@@ -336,12 +356,20 @@
       "sha256": "a279b40f737493d3169e27ee9feecbb6ecf70345bcd1630cfa575d3c06a959cb"
     },
     {
+      "path": "scripts/audit-wheel-inputmaps.py",
+      "sha256": "3b1b5705d342c41fde9b39e15586a0ed5419cd660a2b6002c3506c73a205cfaa"
+    },
+    {
       "path": "scripts/build-quest-release.ps1",
-      "sha256": "95822cfac0e622cc7b02c93f651357d49bcdaf65cf09282bd58698f860869521"
+      "sha256": "edef00aa66fd195d9ea19adb253d1fe2f15187a8fd39b26a45f61a9265a66a9a"
     },
     {
       "path": "scripts/build-quest.ps1",
       "sha256": "177ebce3d47923e87c3d05c55313a4a89998da39b2680349f52a70727981ef27"
+    },
+    {
+      "path": "scripts/compile-wheel-catalog.py",
+      "sha256": "6f9271f8e61c72fe64d90d7e448f3fb9c73725ffed1e80e1bae332acca5eae42"
     },
     {
       "path": "scripts/gt2_boot.py",
@@ -353,11 +381,11 @@
     },
     {
       "path": "scripts/install-linux.py",
-      "sha256": "2507fa5d169bdb07bcd46f118a6c5b095ca7c9344219e4b5f2b3e0ce1b753d2b"
+      "sha256": "12643c6c5699cccc4d9d7ae18cfe9dedcc45bdbfbf0f049c60eaf9750f791a66"
     },
     {
       "path": "scripts/install-player.ps1",
-      "sha256": "a698d82546aacbe90731d4d1115126f4d2bbeb780557bdf4de4d58aabf15fb85"
+      "sha256": "df9a0655e3e72be9c2267f933dd30654fe7928324b2d528e0ad88461325f5d1f"
     },
     {
       "path": "scripts/install-quest.ps1",
@@ -365,7 +393,7 @@
     },
     {
       "path": "scripts/install.ps1",
-      "sha256": "784303818a22325318b536e7b0f0889cbc288bea8431e3c97f0269878862663d"
+      "sha256": "bd2b61f09fa954244121f7c1820500a0a6e9d64431a36643eb62446fcac71b1d"
     },
     {
       "path": "scripts/linux-downloads.json",
@@ -373,11 +401,11 @@
     },
     {
       "path": "scripts/package-player.ps1",
-      "sha256": "ca34468a5218cb049495ccb4f57bd0b5a5d20f24c38243adc644f19a8e95a924"
+      "sha256": "c204138e67f14b05906dc86a7b23f176a9fdc5f58584863a2b8fd9b659530f11"
     },
     {
       "path": "scripts/package-source.ps1",
-      "sha256": "6467c86769576bd462e96f9c8758b7eab057e311400897fd3f937217753dbaed"
+      "sha256": "70818f6a59589534d2556b2dc78d2f0d73e8bcc923f71c4b16fa5ef20d262f3b"
     },
     {
       "path": "scripts/platform-tools.ps1",
@@ -393,7 +421,7 @@
     },
     {
       "path": "scripts/prepare-hd.ps1",
-      "sha256": "ab86dcd67bd438a2ca3a5b04dbfa5141d660ef02953e790129379cf094abdd70"
+      "sha256": "2a46a784e642bfdede3eed0162815fbdb454cb9df905e304d41e017593e00646"
     },
     {
       "path": "scripts/source-files.ps1",
@@ -809,19 +837,19 @@
     },
     {
       "path": "src/game/sim/drive_shafts.cpp",
-      "sha256": "d25ed74673b3e87e9578eff6e6cd76dcaa16e3001bbc2b0494c35a47f2b23071"
+      "sha256": "0100cc43e188b60dddb9efd1fc914a07e6cc54528861fa1bb2d8ba58654d926a"
     },
     {
       "path": "src/game/sim/drive_shafts.h",
-      "sha256": "591b5901dd4d1c81547e6f4708555a86b7f998ea9de4a06e15c449468c9df274"
+      "sha256": "1163a55b0aa26d326db11fcf6c3ec59f6787260b55d2fe9fb775989ff7298b08"
     },
     {
       "path": "src/game/sim/drivetrain.cpp",
-      "sha256": "06dd254af0e62ca4165daf2f62fd1544b57eeaa422663c3ae127e055ca6bde3b"
+      "sha256": "051238a87d3989d5d35fb4d3aea9f8689715d157128ff6740cda78ef34811a68"
     },
     {
       "path": "src/game/sim/drivetrain.h",
-      "sha256": "12848936ab1e1d551e6ede66a7db55e881ea7777b2c29c83419df5eb83094324"
+      "sha256": "a6f53cbd8bb54998ebfb30e4669c0014cf98eaf26478ee8b183c31d85c01a0d0"
     },
     {
       "path": "src/game/sim/field.h",
@@ -841,7 +869,7 @@
     },
     {
       "path": "src/game/sim/physics_core.cpp",
-      "sha256": "4c9ede768654743485bea1addb921e5266708475bff1a71d99cb982121ae92aa"
+      "sha256": "8c2310824417f554d317b4a0115953b539c071bc404720202e5cbaa2eadbe61d"
     },
     {
       "path": "src/game/sim/physics_core.h",
@@ -857,11 +885,11 @@
     },
     {
       "path": "src/game/sim/race_sim.cpp",
-      "sha256": "9ee28916fb533c7cebeec2ebe82b032a967bdeaccdfc08699e6598308673261b"
+      "sha256": "3b3aa034674a33c122a1f5ee981be3d3aeed548870aa8be5652b6079f20b8e55"
     },
     {
       "path": "src/game/sim/race_sim.h",
-      "sha256": "5c2b5804698ecc67036e157408e2c39d9cb437fc869f9fd932951db1fe46b387"
+      "sha256": "7acb07daa755e7b7cd37f9fcad508423835b92de8a56868413bcb0a3b6d14082"
     },
     {
       "path": "src/game/sim/track_collision.cpp",
@@ -1181,11 +1209,11 @@
     },
     {
       "path": "src/gt2formats/replay.cpp",
-      "sha256": "94dcb4be0f12a3c1c0ac86b4f786a8cdcd5aceb3855929a9b5fc4b4fea47c532"
+      "sha256": "762534050523331cdafd1becad25d6e91e3b9e03052837565b6f185bc31892b6"
     },
     {
       "path": "src/gt2formats/replay.h",
-      "sha256": "ea11971c80b1711af32d05d0d05e89de272ee79e84c4123499c3b66c1576cf17"
+      "sha256": "12576716a6f21fd446f5e6cfb6ac19b5beb86db803962835965d6862a9578163"
     },
     {
       "path": "src/gt2formats/save_data.cpp",
@@ -1313,11 +1341,11 @@
     },
     {
       "path": "src/gt2view/decoded_texture_cache.h",
-      "sha256": "dc0ae554a8601079cff62111fc86b317650890cbc638122aa79bb49c0b73c818"
+      "sha256": "2e052f3d6e7b2b83804f2afd414fa2a371851758dbf4e775474f07096439152a"
     },
     {
       "path": "src/gt2view/decoded_textures.cpp",
-      "sha256": "0ddb331b927a46de906f9643d3e7143c5b19b4b77656ef062435a88a2d86182e"
+      "sha256": "8f079dba59cc0a428de3f205333590b9e687bca00e871889d875c81edb056604"
     },
     {
       "path": "src/gt2view/draw_culling.h",
@@ -1349,11 +1377,11 @@
     },
     {
       "path": "src/gt2view/hud.cpp",
-      "sha256": "87b4b616ce430d1993bd529f6ddc156c6de7a6e37eb5e048007fa1c1c42a4f57"
+      "sha256": "c20aa4fe213a2f069e0aa728c7d20a4deb064a5b334dca90002ab4d128609967"
     },
     {
       "path": "src/gt2view/hud.h",
-      "sha256": "1c7aa080f545f60b4f271fdefc6ade4c79f032156d4c487f1b442d51a1be43a5"
+      "sha256": "15a09cab487be77b8f092ee776cc0fe3c827ea79b30d42617c69e0a06d4ffac1"
     },
     {
       "path": "src/gt2view/machine_test_views.cpp",
@@ -1465,7 +1493,7 @@
     },
     {
       "path": "src/gt2view/render_capture.cpp",
-      "sha256": "5a27135fea510f2057ca6dcfd5edbfca950081b9834b37bcf6323d2c111d3d14"
+      "sha256": "af844c2a16902b3deef145cae9aad4e3fbc2fcf27c0e01646df0fecdf60fa946"
     },
     {
       "path": "src/gt2view/scene_assets.h",
@@ -1529,7 +1557,7 @@
     },
     {
       "path": "src/gt2view/vk_scene_renderer.cpp",
-      "sha256": "482796203828d844c8002f685f7b99c3db2d3582c2a7c88f354b7c7231b04eef"
+      "sha256": "ee0fbff71745a9285c13ef158fc559df80b2d5924fe110bfffbcdd5681fd01bc"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.h",
@@ -1628,16 +1656,20 @@
       "sha256": "68e227f8dc9fe8b997a253bf68b2d9e77e3ed6a25e1e8de5a7bd1be7b2a6fc11"
     },
     {
+      "path": "src/platform/input/input_diagnostics.h",
+      "sha256": "d112dea808c1113e82dbdd177bb4b3794e3748eaabeb8e70b620fd785a767f49"
+    },
+    {
       "path": "src/platform/input/input_system_android.cpp",
-      "sha256": "3599a78703c33df2c28eb70f52e2212bf18e8cdaacb7d640d196277d7959c0d9"
+      "sha256": "31cfeceb74bfe86dcfdfb5b8fed452c67833f314b886a9145919001c30f0a8ea"
     },
     {
       "path": "src/platform/input/input_system_win32.cpp",
-      "sha256": "1e2435163ae9fb9a4e6ddd8c1df05146c5979f7b0bccb5a62a3e68476017ba14"
+      "sha256": "cc69255e3c13313e1ed66d467b38d87973e1dfe48c5640a58c9209826775a618"
     },
     {
       "path": "src/platform/input/input_system.h",
-      "sha256": "f358edb0acd3eea9529bcc36fd225008002460855d485e086d976e4791b9c472"
+      "sha256": "07f9d70bbcf8d2030e90a618d09b586d00d09a457f3029e31472fcb16a0fe7cd"
     },
     {
       "path": "src/platform/input/ps1_pad.cpp",
@@ -1646,6 +1678,34 @@
     {
       "path": "src/platform/input/ps1_pad.h",
       "sha256": "1c977a9484345a4fd8ac500d5567b00c7a7ad052a6b1a93958bd66b9b110ed33"
+    },
+    {
+      "path": "src/platform/input/steering_feedback.h",
+      "sha256": "01d9cccc0d1b18fa500a189c34d5bee432f8d429d3c554afd3a47033708a4cb5"
+    },
+    {
+      "path": "src/platform/input/wheel_hardware.cpp",
+      "sha256": "cdd22abaa0061c8a9f2e7f3e59a9d62d4fb94019f73fb19b68ec46e895f578fe"
+    },
+    {
+      "path": "src/platform/input/wheel_profiles_data.h",
+      "sha256": "f8182f9c58cab1a90919a7bea09a5ec600d09e2d75e172877fa217960ff2738c"
+    },
+    {
+      "path": "src/platform/input/wheel_profiles.cpp",
+      "sha256": "72ed2200608802edc86a1b71b12096d2f20f2c6cc5e7f48b5d6723d9f660b8e4"
+    },
+    {
+      "path": "src/platform/input/wheel_setup.cpp",
+      "sha256": "207162edae8a24aeb296ddee2b44416f48f909d275396e51fc9a46ce9f0a9923"
+    },
+    {
+      "path": "src/platform/input/wheel.cpp",
+      "sha256": "89a2068e8fb26ce38b9df987693deee361ae9b3579ccb85034cd625e71a48497"
+    },
+    {
+      "path": "src/platform/input/wheel.h",
+      "sha256": "d111a2eef6ad701ddbd43aa7b0cba6eeb9504119c419beb825f9777c15456fed"
     },
     {
       "path": "src/platform/os/keys.h",
@@ -1716,12 +1776,16 @@
       "sha256": "4f65aba30ece21c159c85decc7724ee8bd644c946c5f84f41d843f3f5b98d385"
     },
     {
+      "path": "tests/check_installed_hd.py",
+      "sha256": "8050ea29e33a6e74d19b351f2beb6b65f57f0c3bb0440be895c6f196afe4e91f"
+    },
+    {
       "path": "tests/check_linux_disc_parity.py",
       "sha256": "d386329f3332ba2539a206bdfcf02b5265a5b7c6bb1de4c25a16e7bf243c7295"
     },
     {
       "path": "tests/check_pcvr.py",
-      "sha256": "6744c6ee0bdc990fbbb5ac068ef5d5e4137b0abf5149b8faa430232a141f30c5"
+      "sha256": "d2e61b2ff3db6c0d4703836cc1dba4d028b16a8bf76dcf86fb40d75ed54d098e"
     },
     {
       "path": "tests/check_player_startup.py",
@@ -1730,6 +1794,14 @@
     {
       "path": "tests/check_startup_audio.py",
       "sha256": "add3e66d3c2ab8c8fa17cf0cc19fda416023d82a5bafd6228e9f8d47b98fa06a"
+    },
+    {
+      "path": "tests/check_wheel_assists.py",
+      "sha256": "18f2039e7cbff88e8e53d26a92663739c681a1235806109c18f64bf14b6935b5"
+    },
+    {
+      "path": "tests/check_wheel_menu.py",
+      "sha256": "8c622ce8647bd6b368841307ead5bb72b740e44c53e70031c6350b5cdf0b3f08"
     },
     {
       "path": "tests/checks.cpp",
@@ -1748,8 +1820,16 @@
       "sha256": "147011015761cad0face7d61bb790a2272e46222002780b5d147779382e2a42e"
     },
     {
+      "path": "tests/steering_feedback_checks.h",
+      "sha256": "9cfdb3c9f3e0c31b4c1b5ab56ec75cc68d21620a523eb4e95a595d7966c72e4e"
+    },
+    {
       "path": "tests/test_linux_installer.py",
       "sha256": "a76d80e826d273127c3aa7d720cbc828432d700a2ffda9c91511a8bb0c68e359"
+    },
+    {
+      "path": "tests/test_wheel_inputmap_audit.py",
+      "sha256": "15c837475e69949410ba20ac569178e9d4f8179966dedfbe7f2acde6eba60ab2"
     },
     {
       "path": "tests/test-save-transfer.ps1",
@@ -1757,11 +1837,19 @@
     },
     {
       "path": "tests/vr_checks.cpp",
-      "sha256": "a8a598a32bd0435c8ef824aa5a82c85aac850ebd4de29b351fe41bae16af1658"
+      "sha256": "37111e263edf99bbd37a8f9821d82808c6dbc20a1fea2e8099b0f534f486dfaf"
+    },
+    {
+      "path": "tests/wheel_checks.cpp",
+      "sha256": "826b8120d5b5731bb16b39427883fabf29d2ccaa4c583b9086e9599098be310b"
+    },
+    {
+      "path": "tests/wheel_driving_aids_checks.h",
+      "sha256": "66ebcbb33352fb2909092aa9d43e0e595e6561d0b893a5a43c2b6e96a51ea534"
     },
     {
       "path": "THIRD_PARTY.md",
-      "sha256": "41242748d3c7d8c30835e6dfcf48fea93b4a1b69ba7784be7083ea568cb28fc4"
+      "sha256": "82e316523aa8e494808973ff2d9862c77b61098f76e0702820d2293941df78e8"
     },
     {
       "path": "third_party/libretro/libretro.h",
@@ -1992,12 +2080,16 @@
       "sha256": "79df0bf11d5bc09da045eca96152f366484fcdbea9d755f72cee59756c3558fd"
     },
     {
+      "path": "tools/gt2game/desktop_field_pacing.h",
+      "sha256": "b88d2995d5a119cac0ebab49d893c18613cf26720ed40c2d4edfa139ba5bafb1"
+    },
+    {
       "path": "tools/gt2game/frame_interp.cpp",
-      "sha256": "6b673496c921e008d0c8058627305fac200ea00ca1ee785ea6a7a4a8da481acc"
+      "sha256": "92b8e9ff75f3721f6bba10b89f82a1c9383573e6013a737226056fcda86dc8d0"
     },
     {
       "path": "tools/gt2game/frame_interp.h",
-      "sha256": "279c78c36d02f0909e7266294caa6c32d59382391823777e34968739e0d0dd3e"
+      "sha256": "c12735d1151b01be9a005c9883fe2161917eacf7f3e3b68f2f07ec574ba50e5b"
     },
     {
       "path": "tools/gt2game/frame_profiler.h",
@@ -2005,7 +2097,7 @@
     },
     {
       "path": "tools/gt2game/game_main.cpp",
-      "sha256": "08b7f0357bb56212d78b717d56d4edc2c896d783fc16f26022b198f0804d939c"
+      "sha256": "67c6a14a3381654005ddd42cdbdac49a4b6b578ccd57182fc7d51ed75180224a"
     },
     {
       "path": "tools/gt2game/game_main.h",
@@ -2017,7 +2109,7 @@
     },
     {
       "path": "tools/gt2game/game_window_win32.cpp",
-      "sha256": "c2a51faf906f8d775dd0028242ffc6c01f917faea428231cec234e044faa7f77"
+      "sha256": "096fc448aa6a6ddf9bdb71fa6235072fe989a75ebdcec7333f8a15f81bd1db9f"
     },
     {
       "path": "tools/gt2game/game_window_xr.cpp",
@@ -2025,11 +2117,11 @@
     },
     {
       "path": "tools/gt2game/game_window.cpp",
-      "sha256": "d989ce13ef8acb55e915218fa6172797a98ef34431e80e9eb40a7ab1934d89c7"
+      "sha256": "2fd4ebff4ed400bc32fa2d85b24ec1f083d707a392a2a3ef0ba869585e1f8c79"
     },
     {
       "path": "tools/gt2game/game_window.h",
-      "sha256": "25fa64ec877814fd745426ffe29df6fa844afdf92f99270de8b64738e5ba73ea"
+      "sha256": "41a8a177b809b5ff70ed517a62468c27987473551074ac1203a9ed48a0f9fbf8"
     },
     {
       "path": "tools/gt2game/ghost_replay.cpp",
@@ -2057,7 +2149,7 @@
     },
     {
       "path": "tools/gt2game/main.cpp",
-      "sha256": "016dc3a78f12946152e9e4344ac05bf07e34dd318b8381fa007b139234cd62a1"
+      "sha256": "87bc348671fb122511e21fb0b148dede61713738fe7d718d88606143c2aa290d"
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
@@ -2101,7 +2193,7 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "df111bd5f326a771e8c2e96c21284a4d78ae69d366e46d2fa7589a8f88699a7c"
+      "sha256": "eda4368921b0766fd05c8054b66b2c54112a03313a72309db0013d1552b168ed"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
@@ -2133,7 +2225,7 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "349afb566a222383d24f436b31201cc773a179573fdd2fbfba92eb8eae170cba"
+      "sha256": "60d1fc54f359645c3df04ffbf69efea9505e2e1103d66ff69b2236eaca280602"
     },
     {
       "path": "tools/gt2game/race_view.h",
@@ -2153,7 +2245,7 @@
     },
     {
       "path": "tools/gt2game/split_race.cpp",
-      "sha256": "881a9efd7bd28883ad195db01b927e65c84d51f4619f8eae5d45eca228f51bfe"
+      "sha256": "3862ca97092f9cabe749758639d8ebd90084e4a7cf988e64de94af83813340da"
     },
     {
       "path": "tools/gt2game/split_race.h",
@@ -2174,6 +2266,22 @@
     {
       "path": "tools/gt2game/title_mode.h",
       "sha256": "e58a6742f5c4b119b7b22fc842e476dcb93076e89a1d097018d8c08387863513"
+    },
+    {
+      "path": "tools/gt2game/wheel_driving_aids.h",
+      "sha256": "a4696ba6c17f398f7ce1716bd0cc14a089bfee29caa721a1ee32e2b33cc30aca"
+    },
+    {
+      "path": "tools/gt2game/wheel_feedback.h",
+      "sha256": "543fdd1288d4187c408a9a7283777b475ffcac7dcb9e1d37c0ef4058498457a3"
+    },
+    {
+      "path": "tools/gt2game/wheel_race_trace.h",
+      "sha256": "a0ce19bec9c87bd169f5b252c7682aebabda93064f900fbd084504314ac9567b"
+    },
+    {
+      "path": "tools/gt2game/wheel_shift_hint.h",
+      "sha256": "93c4f3dcffae0f6ca63e1be8868cfba6dfbd1e25988bbf9bac5a8b41c4d9dfdb"
     },
     {
       "path": "tools/gt2game/xr_field_pacing.h",

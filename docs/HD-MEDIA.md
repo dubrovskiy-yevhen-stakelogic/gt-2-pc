@@ -1,8 +1,10 @@
 # Offline HD media and PlayStation startup
 
-Neural HD preparation runs on Windows before copying data to Quest. The PC and Quest game load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; neural HD preparation remains Windows-only in 0.2.0.
+Neural HD preparation runs on Windows before copying data to Quest. The PC and Quest game load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; neural HD preparation remains Windows-only in 0.4.0.
 
 ## Installation
+
+Windows 0.4.0 installers default to `Menus`: HD pictures, fonts and HUD are prepared for both Arcade and Simulation. The Simulation US v1.2 disc produces 461 pictures. `-HdMedia Original` skips preparation; `MenusAndMovies` additionally processes full-screen movies.
 
 After installing the original discs, double-click `PREPARE-HD.bat` to choose pictures, pictures plus movies, and an optional local BIOS file. The script preserves existing saves and original disc data.
 

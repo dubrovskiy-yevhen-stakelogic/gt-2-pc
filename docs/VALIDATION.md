@@ -1,5 +1,15 @@
 # Validation
 
+## 0.4.0 release checks (2026-09-22)
+
+- Windows Release and signed Android ARM64 builds passed. The APK is versionName **0.4.0**, versionCode **16**, non-debuggable, with the same signing certificate as 0.3.0.
+- All seven CTest suites passed, including wheel disconnect fallback, transmission direction requests, speed override, clutch, compressed replays, driving assists and steering-feedback checks. Native tyre-slip calculations confirm that TCS cuts wheelspin input and is bypassed at level 0.
+- The 23 Python installer/profile tests passed. Regenerating the 72-record wheel catalogue and its provenance produced byte-identical files; all USB vendor/product pairs are unique.
+- Desktop wheel menus were checked for defaults, saved changes, reload and return to racing. Defaults are TCS **0**, countersteering **Weak**, and speed override **Off**.
+- Unified desktop/PCVR startup, both discs, shared settings and stereo transitions passed. The local OpenXR simulator also passed stereo/hands, menu shortcuts, camera switching, return and exit checks. Simulator results do not establish compatibility with every headset/runtime.
+- A fresh Windows player installation completed for both US discs using the default HD setting. It generated all 3 Arcade and 461 Simulation background pictures, UI pages and fonts from the local discs. The installed HD packs passed full filename, profile, SHA-256, image decoding and dimension checks: 1,194 Arcade files and 8,197 Simulation files. The installed executable rendered both discs with HD enabled and disabled, including the Simulation map and Home menu, without picture fallback.
+- The reported hardware setup is **Fanatec Gran Turismo DD Pro (8 Nm)** with **Thrustmaster TH8A Shifter**. Wheel driving and weak countersteering received player feedback; the catalogue is not a claim of physical testing on every supported device.
+
 ## 0.3.0 development checks (2026-09-21)
 
 - Windows Release and signed Android ARM64 release builds passed. Android metadata is versionName 0.3.0, versionCode 15, non-debuggable, with the existing public signing identity.
@@ -10,7 +20,7 @@
 
 For additional headset/runtime combinations, check: title → race → pause → settings, both menu shortcuts, all three driving modes, vibration, taking the headset off and returning. Load a transferred saved game in both directions. Provider checks establish byte-preserving transfer, not regional save compatibility or game-load acceptance.
 
-The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.3.0.
+The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.4.0.
 
 ## Public release 0.1.0
 

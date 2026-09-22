@@ -51,6 +51,7 @@ capture 8 18 28 40 50 62 80 105
 @112 event exit
 ''', encoding='ascii')
     settings = output / 'settings.txt'
+    (output / 'wheel-settings.txt').write_text('version 2\noptions 0 0 0 25 10 0\nauto 0 0 0 "" ""\n', encoding='ascii')
     settings.write_text('vr_multiview=1\n', encoding='ascii')
     settings.with_suffix('.txt.overlay').write_text('vr_driving_mode=1\nhd_assets=0\n', encoding='ascii')
     env = dict(os.environ, XR_RUNTIME_JSON=str(args.runtime_json.resolve()), XRSIM_SCRIPT=str(script),

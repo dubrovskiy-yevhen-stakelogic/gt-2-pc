@@ -184,7 +184,7 @@ int GameMain(int argc, char** argv) {
                                                       "--sponsors", "--sponsor-seed", "--mods", "--ai-cars", "--generated-atan", "--laps", "--music",
                                                       // the graphics settings (graphics_options.h) apply to every mode
                                                       "--vanilla", "--modern", "--frame-rate", "--frame-cap", "--vsync", "--render-scale", "--msaa",
-                                                      "--texture-filter", "--texture-mapping", "--draw-distance", "--frame-log"};
+                                                      "--texture-filter", "--texture-mapping", "--draw-distance", "--frame-log", "--windowed"};
             const std::string a = argv[i];
             if (a.rfind("--", 0) != 0) continue; // a flag's value
             if (std::find(std::begin(kTitleFlags), std::end(kTitleFlags), a) == std::end(kTitleFlags)) titleMode = false;
@@ -297,7 +297,9 @@ int GameMain(int argc, char** argv) {
             else if (a == "--music" && i + 1 < argc) musicTrack = std::clamp(std::atoi(argv[++i]), 0, int(kMusicTrackCount) - 1); // force the race track id (0..20)
             else if (a == "--no-hud") noHud = true;
             else if (a == "--no-particles") noParticles = true; // no tyre smoke sprites
-            else if (a == "--window" && i + 1 < argc) { // client size, e.g. 1280x720 (default) or 960x720
+            else if (a == "--windowed") SetWindowedMode(true);
+            else if (a == "--window" && i + 1 < argc) { // explicit windowed client size
+                SetWindowedMode(true);
                 if (std::sscanf(argv[++i], "%dx%d", &windowWidth, &windowHeight) != 2 || windowWidth < 64 || windowHeight < 64) throw std::runtime_error("bad --window");
             }
             else if (a == "--sponsors" && i + 1 < argc) sponsorCategory = argv[++i]; // .crstims.tsd category (General01 default; General02, One-Make, JP, US, UK, DE, FR, IT, TUNE)

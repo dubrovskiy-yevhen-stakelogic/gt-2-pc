@@ -11,6 +11,19 @@ namespace gt2 {
 // ---------------------------------------------------------------- frames (0x80013C90)
 
 ReplayFrame FrameOfPad(const LogicalPad& pad) {
+    if (pad.wheel) {
+        const uint16_t steer = std::min<uint16_t>(pad.steerAxis, 4095), throttle = std::min<uint16_t>(pad.throttle, 1023), brake = std::min<uint16_t>(pad.brake, 1023);
+        uint8_t buttons = uint8_t((pad.buttons & 0xd0) | ((pad.clutch & 1) << 5) | (pad.wheelGear & 15));
+        if (pad.ignoreShiftSpeed && pad.wheelGear >= 2 && pad.wheelGear <= 9) {
+            // Codes 11/12 carry a direct unrestricted gear; bits 6/7 carry
+            // the target's low bits instead of unused direct-mode paddles.
+            const int target = pad.wheelGear - 2;
+            buttons = uint8_t((buttons & 0x30) | (11 + target / 4) | ((target % 4) << 6));
+        } else if (pad.ignoreShiftSpeed && pad.wheelGear == 15) buttons = uint8_t((buttons & 0xf0) | 13);
+        return {uint8_t(0x80 | (pad.clutch >> 1)), buttons,
+            uint8_t(steer >> 4), uint8_t(throttle >> 6), uint8_t(brake >> 6),
+            uint16_t((steer & 15) | ((throttle & 63) << 4) | ((brake & 63) << 10))};
+    }
     uint16_t flags = 0, steer = 0, throttle = 0, brake = 0;
     if (pad.analog & 1) {
         flags = 1;
@@ -37,6 +50,27 @@ ReplayFrame FrameOfPad(const LogicalPad& pad) {
 sim::PadRecord PadOfFrame(const ReplayFrame& frame, std::span<const uint16_t, 16> pedalTable) {
     sim::PadRecord pad{};
     const uint32_t flags = frame.flags, buttons = frame.buttons;
+    if (flags & 0x80) {
+        const uint8_t clutch = uint8_t(((flags & 127) << 1) | ((buttons >> 5) & 1));
+        const int steering = (frame.steer << 4) | (frame.wheelFine & 15);
+        pad.flags = uint16_t(0x107 | ((clutch & 15) << 4));
+        pad.reserved = uint8_t((clutch & 0xf0) | (buttons & 15));
+        pad.steer = int16_t(steering < 2048 ? (2048 - steering) * 2 : -(steering - 2048) * 4096 / 2047);
+        pad.throttle = uint16_t((((frame.throttle & 15) << 6) | ((frame.wheelFine >> 4) & 63)) * 4096 / 1023);
+        pad.brake = uint16_t((((frame.brake & 15) << 6) | ((frame.wheelFine >> 10) & 63)) * 4096 / 1023);
+        pad.handbrake = uint8_t((buttons & 0x10) != 0);
+        pad.shift = int8_t(int((buttons & 0x40) != 0) - int((buttons & 0x80) != 0));
+        const int mode = buttons & 15;
+        if (mode == 11 || mode == 12) {
+            pad.flags |= sim::kWheelIgnoreShiftSpeed;
+            pad.reserved = uint8_t((clutch & 0xf0) | (2 + (mode - 11) * 4 + (buttons >> 6)));
+            pad.shift = 0;
+        } else if (mode == 13) {
+            pad.flags |= sim::kWheelIgnoreShiftSpeed;
+            pad.reserved = uint8_t((clutch & 0xf0) | 15);
+        }
+        return pad;
+    }
     pad.flags = uint16_t(flags);
     uint16_t steer;
     if ((flags & 1) == 0) {
@@ -66,6 +100,7 @@ ReplayStream ReplayStream::FromBytes(std::span<const uint8_t> bytes) {
     s.bytes_.assign(bytes.begin(), bytes.end());
     const size_t size = kHeaderSize + s.Capacity();
     if (s.bytes_.size() < size) s.bytes_.resize(size, 0);
+    if (s.Capacity() >= 2 && (s.bytes_[0x15] & 0x80)) s.wheelFine_ = uint16_t(s.bytes_[size - 2] | (s.bytes_[size - 1] << 8));
     return s;
 }
 
@@ -81,6 +116,7 @@ uint8_t& ReplayStream::Data(size_t pos) {
 }
 
 void ReplayStream::Init(bool playback, uint16_t capacity) { // 0x800163B8(object, playback, capacity)
+    wheelFine_ = 0;
     if (bytes_.size() < kHeaderSize + capacity) bytes_.resize(kHeaderSize + capacity, 0);
     if (!playback) {
         std::fill(bytes_.begin(), bytes_.begin() + 0x1C, uint8_t(0)); // memset(object, 0, 0x1C): the first 3 data bytes too
@@ -104,6 +140,7 @@ void ReplayStream::Record(const ReplayFrame& frame) { // 0x800166CC
         if (frame.buttons != bytes_[0x16]) header |= 0x10;
         if (frame.steer != bytes_[0x17]) header |= 0x20;
         if (b3 != bytes_[0x18]) header |= 0x40;
+        if ((frame.flags & 0x80) && (!(bytes_[0x15] & 0x80) || frame.wheelFine != wheelFine_)) header |= 0x40;
         if (header == 0) {
             Put32(0x08, I32(0x08) + 1);
             return;
@@ -115,7 +152,19 @@ void ReplayStream::Record(const ReplayFrame& frame) { // 0x800166CC
     bytes_[0x16] = frame.buttons;
     bytes_[0x17] = frame.steer;
     bytes_[0x18] = b3;
+    CacheWheelFine(frame.wheelFine);
     Put32(0x08, 0);
+}
+
+void ReplayStream::CacheWheelFine(uint16_t value) {
+    wheelFine_ = value;
+    // GhostSession reconstructs a stream from bytes every tick. Reserve the
+    // final two capacity bytes for the native cache; the 17-byte full margin
+    // keeps encoded runs below them. Original streams never write this cache.
+    if ((bytes_[0x15] & 0x80) && Capacity() >= 2) {
+        const size_t end = kHeaderSize + Capacity();
+        bytes_[end - 2] = uint8_t(value); bytes_[end - 1] = uint8_t(value >> 8);
+    }
 }
 
 void ReplayStream::Flush() { // 0x80016598
@@ -127,7 +176,10 @@ void ReplayStream::Flush() { // 0x80016598
     if (header & 0x08) Data(p++) = bytes_[0x15];
     if (header & 0x10) Data(p++) = bytes_[0x16];
     if (header & 0x20) Data(p++) = bytes_[0x17];
-    if (header & 0x40) Data(p++) = bytes_[0x18];
+    if (header & 0x40) {
+        Data(p++) = bytes_[0x18];
+        if (bytes_[0x15] & 0x80) { Data(p++) = uint8_t(wheelFine_); Data(p++) = uint8_t(wheelFine_ >> 8); }
+    }
     const int32_t count = run >> 3;
     if (header & 0x80) {
         uint8_t prefix3 = 0, prefix2 = 0;
@@ -181,7 +233,10 @@ void ReplayStream::Read(ReplayFrame& frame) { // 0x80016428
         if (header & 0x08) bytes_[0x15] = b0 = Data(p++);
         if (header & 0x10) bytes_[0x16] = b1 = Data(p++);
         if (header & 0x20) bytes_[0x17] = b2 = Data(p++);
-        if (header & 0x40) bytes_[0x18] = uint8_t(b3 = Data(p++));
+        if (header & 0x40) {
+            bytes_[0x18] = uint8_t(b3 = Data(p++));
+            if (b0 & 0x80) { const uint8_t low = Data(p++); CacheWheelFine(uint16_t(low | (uint16_t(Data(p++)) << 8))); }
+        }
         run = 0;
         if (header & 0x80) {
             const uint32_t c0 = Data(p++);
@@ -210,6 +265,7 @@ void ReplayStream::Read(ReplayFrame& frame) { // 0x80016428
     frame.buttons = b1;
     frame.steer = b2;
     frame.brake = uint8_t(b3 >> 4);
+    frame.wheelFine = (b0 & 0x80) ? wheelFine_ : 0;
 }
 
 // ---------------------------------------------------------------- the file

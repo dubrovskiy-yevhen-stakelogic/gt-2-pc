@@ -54,6 +54,7 @@ public:
 
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+    void ToggleFullscreen();
 
     HWND hwnd_ = nullptr;
     std::unique_ptr<gt2view::VkContext> vulkan_;
@@ -61,6 +62,8 @@ private:
     std::vector<int> keyDowns_; // key-down messages since the last TakeKeyDowns
     bool closed_ = false;
     bool devicesChanged_ = false;
+    bool fullscreen_ = false, canFullscreen_ = false;
+    RECT windowedRect_{};
     HANDLE timer_ = nullptr; // SleepUntil's high-resolution waitable timer
 };
 
@@ -76,6 +79,10 @@ LRESULT CALLBACK Win32Window::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     }
     if (msg == WM_DEVICECHANGE && self) self->devicesChanged_ = true; // a controller plugged in / out
     if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && !(lp & (1 << 30)) && self) {
+        if (msg == WM_SYSKEYDOWN && wp == VK_RETURN && (lp & (1 << 29)) && self->canFullscreen_) {
+            self->ToggleFullscreen();
+            return 0;
+        }
         self->keyDowns_.push_back(int(wp));
         if (msg == WM_SYSKEYDOWN && wp == VK_F10) return 0;
     }
@@ -116,6 +123,8 @@ Win32Window::Win32Window(const std::string& title, int clientWidth, int clientHe
     if (!hwnd_) throw std::runtime_error("CreateWindow failed");
     SetWindowLongPtrA(hwnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
     const bool noFocus = WindowNoFocus() || std::getenv("GT2_NO_FOCUS") != nullptr;
+    canFullscreen_ = withRenderer && !VrMode();
+    if (canFullscreen_ && !noFocus && !WindowedMode()) ToggleFullscreen();
     if (noFocus) {
         // Not ShowWindow: the FIRST ShowWindow of a process takes its command from the launcher's STARTUPINFO, so
         // SW_SHOWNOACTIVATE can be turned back into "show and activate" by whoever started the run. SetWindowPos
@@ -129,6 +138,24 @@ Win32Window::Win32Window(const std::string& title, int clientWidth, int clientHe
         renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*vulkan_);
     }
     timeBeginPeriod(1);
+}
+
+void Win32Window::ToggleFullscreen() {
+    if (!fullscreen_) {
+        MONITORINFO monitor{}; monitor.cbSize = sizeof(monitor);
+        if (!GetMonitorInfoA(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+        GetWindowRect(hwnd_, &windowedRect_);
+        SetWindowLongPtrA(hwnd_, GWL_STYLE, WS_POPUP);
+        const auto& r = monitor.rcMonitor;
+        SetWindowPos(hwnd_, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
+                     SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    } else {
+        SetWindowLongPtrA(hwnd_, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+        const auto& r = windowedRect_;
+        SetWindowPos(hwnd_, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
+                     SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+    fullscreen_ = !fullscreen_;
 }
 
 Win32Window::~Win32Window() {

@@ -1,6 +1,6 @@
-# GT2 0.3.0 player installation
+# GT2 0.4.0 player installation
 
-**GT2-0.3.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
+**GT2-0.4.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
 
 ## Quest 3
 
@@ -19,6 +19,8 @@ The headset runs independently of the PC after installation. The default PC stag
 ## Windows PC
 
 Run **INSTALL-PC.bat** with the same images. It uses the included Windows executables and needs no build toolchain. Open **PLAY.bat**, or **gt2game.exe** directly, in the install folder. After the optional PlayStation intro, choose your installed disc. Press F10 for graphics, controls, HUD, media and Arcade/Simulation cheats. A Vulkan 1.3 graphics driver is required. DualSense adaptive pedals and vibration are supported through the native physical USB/Bluetooth device.
+
+Windows installation prepares **HD pictures, fonts and HUD for every installed disc**, including Simulation. A Vulkan-capable GPU and time for offline preparation are required. No game pictures are bundled: they are generated from your own disc. Use `-HdMedia Original` to skip this step, or `-HdMedia MenusAndMovies` for additional full-screen movies.
 
 ## Existing installations and saves
 

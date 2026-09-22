@@ -1,5 +1,6 @@
 #include <windows.h>
 #include "platform/input/input_system.h"
+#include "platform/input/input_diagnostics.h"
 #include "platform/input/dualsense.h"
 
 #define DIRECTINPUT_VERSION 0x0800
@@ -338,6 +339,7 @@ public:
     bool HasTriggers() const override { return HasMotors(); }
     std::string Name() const override { return name_; }
     const GUID& Instance() const { return instance_; }
+    void ReleaseForWheel() { device_->Unacquire(); }
 
 private:
     IDirectInputDevice8A* device_;
@@ -371,6 +373,7 @@ InputSystem::~InputSystem() {
 }
 
 void InputSystem::AttachWindow(void* hwnd) {
+    wheel_.Attach(hwnd);
     hwnd_ = hwnd;
     rescan_ = true;
 }
@@ -390,6 +393,7 @@ std::vector<std::string> InputSystem::TakeLog() {
 }
 
 void InputSystem::Rescan(int field) {
+    InputCallTimer timer("controller scan (XInput/DirectInput)");
     lastScan_ = field;
     // XInput slots not open yet.
     if (XInput().Ok()) {
@@ -466,11 +470,15 @@ void InputSystem::Rescan(int field) {
 }
 
 void InputSystem::Poll(int field, bool focused) {
+    InputCallTimer timer("complete input poll");
     focused_ = focused;
     if (!focused) StopFeedback();
     if (rescan_ || field - lastScan_ >= 120) Rescan(field);
     for (size_t i = 0; i < devices_.size();) {
         Ps1PadFrame f;
+        if (auto* d = dynamic_cast<DirectInputDevice*>(devices_[i].get()); d && wheel_.Claims(wheel::InstanceId(&d->Instance()))) {
+            d->ReleaseForWheel(); frames_[i] = {}; ++i; continue;
+        }
         if (!devices_[i]->Poll(field, f)) {
             log_.push_back("disconnected: " + devices_[i]->Name());
             if (active_ == int(i)) active_ = -1;
@@ -493,6 +501,13 @@ void InputSystem::Poll(int field, bool focused) {
         if (Active(f, rest_[i])) lastActivity_[i] = field;
         i++;
     }
+    wheel_.Poll(focused);
+    // Auto detection may claim a device during this poll. Suppress its legacy
+    // gamepad frame immediately, including the potential second-player frame.
+    for (size_t i = 0; i < devices_.size(); ++i)
+        if (auto* d = dynamic_cast<DirectInputDevice*>(devices_[i].get()); d && wheel_.Claims(wheel::InstanceId(&d->Instance()))) {
+            d->ReleaseForWheel(); frames_[i] = {};
+        }
     int best = active_;
     if (best >= 0 && frames_[size_t(best)].type == kTypeNone) best = -1;
     for (size_t i = 0; i < devices_.size(); i++)
@@ -504,6 +519,10 @@ void InputSystem::Poll(int field, bool focused) {
     active_ = best;
     for (size_t i = 0; i < devices_.size(); ++i) devices_[i]->SetActive(int(i) == active_);
     port1_ = active_ >= 0 ? frames_[size_t(active_)] : Ps1PadFrame{};
+    if (wheel_.MenuButtons() && (active_ < 0 || !devices_[size_t(active_)]->Scripted())) {
+        if (port1_.type == kTypeNone) port1_.type = kTypeDigital;
+        port1_.buttons |= wheel_.MenuButtons();
+    }
     // Port 2 (the 2 player Battle): a --fake-pad2 script, else the most recently used of the other devices (a second pad).
     int second = -1;
     for (size_t i = 0; i < devices_.size(); i++) {
@@ -557,6 +576,7 @@ void InputSystem::SetPedalResistance(uint8_t a, uint8_t b) {
     if (active_ >= 0) devices_[size_t(active_)]->SetTriggers(focused_ ? a : 0, focused_ ? b : 0);
 }
 void InputSystem::StopFeedback() {
+    wheel_.Stop();
     actuators_ = {}; applied_ = {}; actuatorsSet_ = false;
     for (auto& d : devices_) { d->SetMotors(0, 0); d->SetTriggers(0, 0); }
 }

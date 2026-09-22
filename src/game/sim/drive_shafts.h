@@ -54,6 +54,7 @@ static_assert(sizeof(DriveStepWork) <= 0x400);
 struct DrivetrainGlobals {
     uint8_t raceModeByte = 2;        // u8 at 0x801D5866: the locked 4WD coupling integrates without the previous
                                      // acceleration when this equals 3 and the car is drive type 5 (0x80045AE8)
+    uint8_t wheelClutch[7] = {};    // Native input only: pedal depression 0..255 per car.
 };
 
 // Marker returned by CentreCouplingFraction: "fully locked" (INT32_MAX in the original).

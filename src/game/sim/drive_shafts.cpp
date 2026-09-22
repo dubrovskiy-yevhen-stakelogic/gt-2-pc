@@ -267,6 +267,7 @@ void UpdateDriveShafts(CarBody& body, DriveStepWork& work, size_t car, const Dri
             else if (engineTorque > 0) coupled = Mul12Floor(ClutchSlipFactor(Sub(block.clutchInputSpeed, block.clutchOutputSpeed)), engineTorque);
             else coupled = body.overrunClutchTorque;
             if (block.clutchInputSpeed < block.clutchOutputSpeed) coupled = Neg(coupled);
+            if (globals.wheelClutch[car]) coupled = int32_t(int64_t(coupled) * (255 - globals.wheelClutch[car]) / 255);
             const int32_t engineAccel = Mul16Wide(stepTime, Mul12Wide(Sub(engineTorque, coupled), body.engineInvInertia));
             body.engineSpeed = Add(body.engineSpeed, engineAccel);
             shaftTorque = coupled;

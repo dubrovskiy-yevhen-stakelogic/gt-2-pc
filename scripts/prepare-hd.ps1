@@ -90,7 +90,9 @@ if ($HdMedia -ne 'Original') {
             Set-Content -LiteralPath (Join-Path $images 'complete.txt') -Value 'realesrgan-x4plus-4x-v1' -Encoding ascii
         }
         Run $media @('fit-images',$images)
-        if (@(Get-ChildItem -LiteralPath $images -Filter '*.png').Count -ne @(Get-ChildItem -LiteralPath $original -Filter '*.png').Count) { throw 'HD image set is incomplete.' }
+        $expectedImages = @(Get-ChildItem -LiteralPath $original -Filter '*.png' | ForEach-Object Name | Sort-Object)
+        $actualImages = @(Get-ChildItem -LiteralPath $images -Filter '*.png' | ForEach-Object Name | Sort-Object)
+        if (!$expectedImages.Count -or (Compare-Object $expectedImages $actualImages)) { throw "HD image set is incomplete for $($disc.mode)." }
         New-Item -ItemType Directory -Path (Join-Path $stage 'images') | Out-Null
         Get-ChildItem -LiteralPath $images -Filter '*.png' | Copy-Item -Destination (Join-Path $stage 'images')
         Copy-Item -LiteralPath (Join-Path $original 'profile.txt') -Destination $stage

@@ -105,6 +105,7 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     std::memset(rectBuffer_.mapped, 0, static_cast<size_t>(rectBuffer_.size));
     textureBuffer_ = CreateBuffer(sizeof(uint32_t) * kVramWidth * kVramRows, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(textureBuffer_.mapped, 0, static_cast<size_t>(textureBuffer_.size));
+    vramShadow_.resize(size_t(kVramRows) * kVramWidth);
     decodedTable_ = CreateBuffer(sizeof(decoded_.table), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table));
     // A tiny valid array descriptor until the first cached stereo scene needs storage.

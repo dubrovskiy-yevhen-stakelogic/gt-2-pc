@@ -26,7 +26,8 @@ public:
             if ((row < imageRow + 257 && row + count > imageRow) || (row <= paletteRow && row + count > paletteRow)) entry.dirty = true;
         }
     }
-    void Prepare(uint32_t page, uint32_t clutDepth, const uint32_t* vram, uint32_t rows) {
+    template<class Word>
+    void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows) {
         if (pixels.empty()) pixels.resize(size_t(kLayers) * kTexels);
         const uint64_t key = (uint64_t(page) << 32) | clutDepth;
         auto it = entries_.find(key);

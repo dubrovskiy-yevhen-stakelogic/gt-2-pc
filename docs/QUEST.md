@@ -1,4 +1,4 @@
-# Quest 3 standalone — 0.3.0
+# Quest 3 standalone — 0.4.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 - 2026-09-22
+
+- Added an embedded offline catalogue of 72 USB device records for automatic wheel/pedal/shifter setup, with exact device matching and explicit choices for ambiguous rigs or interchangeable rims.
+- Replaced the main wheel setup page with live input indicators and simple gearbox/FFB controls. Added guided axis calibration, an illustrated H-shifter wizard and wheel-operated menu buttons.
+- Fixed DirectInput axis discovery to use offsets from the selected data format. Selected peripheral disconnects retain their bindings; optional clutch input no longer assumes every base has three pedals.
+- Added a Windows PC / PCVR racing-wheel submenu under Controls, with independent USB device assignments for steering, pedals and shifters.
+- Added axis detection, calibration, inversion, dead zones, saturation, response curves, live input values and saved profiles shared by both discs.
+- Added sequential/paddle and H-pattern gear selection, neutral, analogue reverse throttle and a clutch pedal. Wheel steering and pedals bypass the gamepad curves.
+- Added tyre-force-based DirectInput force feedback, strength, damping and force-direction settings. Effects stop on pause, focus/device loss and exit, with a finite driver-side timeout.
+- Added native wheel replay/ghost frames that preserve direct gear selection and clutch travel. These frames require 0.4.0 or later; original pad replay encoding is unchanged.
+- Fixed wheel/pedal operation after an optional USB shifter disconnects, and kept race AT/MT selection independent of the hardware layout.
+- Automatic wheel driving no longer selects reverse just because the car rolls backwards. Added an optional **Ignore gear-change speed** switch, off by default, with the policy preserved in replays.
+- Added **Traction control 0..5** (default 0) and **Countersteering assistance Off / Weak / Strong** (default Weak). Settings are shared by both discs and saved without resetting calibration.
+- Added configurable steering geometry for tyre-force feedback and timing diagnostics for input/FFB stalls.
+- Windows installation now prepares HD pictures, fonts and HUD for both Arcade and Simulation by default. Simulation US v1.2 contains 461 picture replacements. Original media and additional movie preparation remain selectable.
+- Wheel driving and weak countersteering were tried with a **Fanatec Gran Turismo DD Pro (8 Nm)** and **Thrustmaster TH8A Shifter**. Other devices and the new speed override still require hardware testing. See [wheel setup and limitations](docs/WHEELS.md).
+
 ## 0.3.0 - 2026-09-21
 
 ### One release for PC and VR

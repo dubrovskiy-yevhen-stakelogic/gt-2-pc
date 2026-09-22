@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "--help") {
         std::puts("gt2game [--vr] [--data-root installed-folder] [--save-root saves-folder]\n"
                   "Plays the optional PlayStation intro, then shows installed discs.\n"
+                  "Flat mode starts fullscreen. Alt+Enter toggles windowed mode; --windowed starts in a window.\n"
                   "Advanced tools: gt2game <disc-folder-or-image> [options]");
         return 0;
     }
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
                 if (arg == "--vr") vr = true;
                 if (arg == "--xr-deterministic") deterministic = true;
                 if (arg == "--no-sound") sound = false;
+                if (arg == "--windowed" || arg == "--window") SetWindowedMode(true);
             }
         }
         root = std::filesystem::absolute(root);

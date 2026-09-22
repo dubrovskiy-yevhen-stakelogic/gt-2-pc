@@ -1,5 +1,6 @@
 // High frame rates for the race (see frame_interp.h).
 #include "frame_interp.h"
+#include "platform/input/input_diagnostics.h"
 
 #include <algorithm>
 #include <array>
@@ -190,6 +191,11 @@ void FrameLog::Presented(bool extra, double alpha, int simSteps, double buildMs,
     const Clock::time_point now = Clock::now();
     if (stepsAtWindow_ < 0) stepsAtWindow_ = simSteps;
     const double frameMs = haveLast_ ? std::chrono::duration<double, std::milli>(now - last_).count() : 0.0;
+    if (frameMs >= 100) {
+        char line[192]; std::snprintf(line, sizeof(line), "render gap %.1f ms at sim step %d; build %.2f ms submit %.2f ms GPU %.2f ms",
+            frameMs, simSteps, buildMs, presentMs, gpuMs);
+        gt2::input::InputDiagnostic(line);
+    }
     if (haveLast_) {
         sumFrame_ += frameMs;
         maxFrame_ = std::max(maxFrame_, frameMs);
@@ -206,6 +212,11 @@ void FrameLog::Presented(bool extra, double alpha, int simSteps, double buildMs,
                      buildMs, presentMs);
     const double elapsed = std::chrono::duration<double>(now - windowStart_).count();
     if (elapsed >= interval_) {
+        char line[256]; std::snprintf(line, sizeof(line), "render submissions %.1f fps; max gap %.1f ms; physics %.1f steps/s; build %.2f ms submit %.2f ms GPU %.2f ms",
+            frames_ / elapsed, maxFrame_, (simSteps - stepsAtWindow_) / elapsed,
+            workSamples_ ? sumBuild_ / workSamples_ : -1, workSamples_ ? sumPresent_ / workSamples_ : -1,
+            gpuSamples_ ? sumGpu_ / gpuSamples_ : -1);
+        gt2::input::InputDiagnostic(line);
         const int intervals = timed_ > 0 ? timed_ : 1;
         std::printf("render: %.1f fps (%d frames, %d in-between) over %.1f s, frame time avg %.2f ms max %.2f ms; simulation %.1f steps/s\n", frames_ / elapsed,
                     frames_, extras_, elapsed, sumFrame_ / intervals, maxFrame_, (simSteps - stepsAtWindow_) / elapsed);
@@ -217,6 +228,17 @@ void FrameLog::Presented(bool extra, double alpha, int simSteps, double buildMs,
         sumFrame_ = maxFrame_ = 0;
         haveLast_ = true;
         stepsAtWindow_ = simSteps;
+    }
+}
+
+void FrameLog::Field(int simSteps) {
+    // Only reached while the game loop advances. A renderer blocked inside a
+    // Vulkan call cannot produce this record; a starving scheduler can.
+    const auto now = Clock::now();
+    const double gap = std::chrono::duration<double, std::milli>(now - (haveLast_ ? last_ : start_)).count();
+    if (gap >= 250 && simSteps % 30 == 0) {
+        char line[128]; std::snprintf(line, sizeof(line), "render scheduling: no submission for %.1f ms; physics reached step %d", gap, simSteps);
+        gt2::input::InputDiagnostic(line);
     }
 }
 

@@ -10,6 +10,11 @@
 #include <thread>
 
 #include "frame_interp.h"
+#include "desktop_field_pacing.h"
+#include "wheel_race_trace.h"
+#include "wheel_shift_hint.h"
+#include "wheel_feedback.h"
+#include "wheel_driving_aids.h"
 #include "xr_field_pacing.h"
 #include "graphics_options.h"
 #include "pc_overlay.h"
@@ -42,6 +47,7 @@
 #include "mods.h"
 #include "panel.h"
 #include "platform/input/ps1_pad.h"
+#include "platform/input/input_diagnostics.h"
 #include "settings_screen.h"
 #include "title_attract.h"
 #include "title_mode.h"
@@ -442,6 +448,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     std::vector<sim::PadRecord> pads(race.CarCount());
     sim::PadRecord lastPad{};
     int steps = 0;
+    WheelRaceTrace wheelTrace;
+    WheelShiftHint wheelShiftHint;
+    WheelDrivingAids wheelDrivingAids;
     int shiftRequest = 0;
     int cameraMode = 0; // --old-camera only
 
@@ -540,6 +549,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         smoke.Reset();
         standingsPrinted = false;
         steps = 0;
+        wheelShiftHint.Reset();
+        wheelDrivingAids.Reset();
         pads.assign(race.CarCount(), sim::PadRecord{});
     };
 
@@ -730,6 +741,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         return stereoActive;
     };
     for (int frame = 1;; frame++) {
+        input::InputCallTimer frameTimer("race frame (input/simulation/render/present)", 250);
         const int fieldBeforeOverlay = window.Field();
         const uint64_t clockBeforePump = window.ClockRevision();
         window.SetDrivingActive(phase == Phase::kRacing && !replaying && race.HoldFrames() == 0);
@@ -1003,7 +1015,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     pauseMenu.Open();
                 }
             }
-            if (window.KeyPressed('C')) {
+            if (window.KeyPressed('C') || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) {
                 cameraMode = (cameraMode + 1) % 3;
                 cameraPressed = true;
             }
@@ -1086,6 +1098,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         if (raceAudio) raceAudio->SetPaused(phase == Phase::kPaused);
         if (phase != Phase::kPaused) hudSubFrame = frame & 0xF;
         if (phase != Phase::kRacing || (replaying && replayOver())) {
+            window.Input().Wheel().Stop();
             accumulator = 0;
         } else if (highRate) { // one step on every second field of the paced clock (the display frame rate's time base)
             if (frame % 2 == 0) accumulator = stepSeconds;
@@ -1160,6 +1173,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             replayDriver.pad.buttons |= padLogicalHeld & (kPadShiftUp | kPadShiftDown); // the pad's shift buttons (held, as the original records them)
             if (shiftRequest > 0) replayDriver.pad.buttons |= kPadShiftUp;
             if (shiftRequest < 0) replayDriver.pad.buttons |= kPadShiftDown;
+            if (!replaying) {
+                input::wheel::Apply(input::wheel::Config(), window.Input().Wheel().Current(), replayDriver.pad);
+                input::wheel::ApplyRaceTransmission(replayDriver.pad, race.CarAt(0).body.transmissionMode == 1, race.CarAt(0).body.gear);
+                wheelDrivingAids.Apply(replayDriver.pad, race.CarAt(0).body, input::wheel::Config());
+                if (replayDriver.pad.wheel) pads[0] = PadOfFrame(FrameOfPad(replayDriver.pad), replayDriver.pedalTable);
+            }
             if (interpolating) { // what the renderer reads of the state before this step (copies; frame_interp.h)
                 previous.valid = true;
                 previous.poses.resize(race.CarCount());
@@ -1179,6 +1198,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (particles) smoke.Update(); // 0x80016978 from BeginFrame, before the physics of the frame
             const uint32_t buttons[2] = {enterPressedForShell, enterPressedForShell};
             race.Step(pads.data(), buttons);
+            wheelShiftHint.Tick(race.WheelDirectionBlocked(0), race.CarAt(0).body.gear, !replaying && phase == Phase::kRacing);
+            {
+                const auto& b = race.CarAt(0).body;
+                window.Input().Wheel().Feedback(WheelFeedbackOf(b),
+                    !replaying && phase == Phase::kRacing && b.raceState == 0);
+            }
+            if (!replaying) wheelTrace.Sample(window.Input().Wheel(), pads[0], race.CarAt(0).body, steps, race.WheelDirectionBlocked(0));
             enterPressedForShell = 0;
             { // the camera after the tick (0x80015B64: 0x8003EBF0, then 0x800100F4)
                 camera::CameraPad cameraPad;
@@ -1188,7 +1214,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 }
                 cameraPad.replayPressed |= replayButtons;
                 replayButtons = 0;
-                if (config.lookBack || window.KeyHeld('V') || (padLogicalHeld & camera::kButtonLookBack)) cameraPad.held |= camera::kButtonLookBack;
+                if (config.lookBack || window.KeyHeld('V') || (padLogicalHeld & camera::kButtonLookBack) || (!replaying && window.Input().Wheel().Current().held[input::wheel::LookBack])) cameraPad.held |= camera::kButtonLookBack;
                 raceCamera.Update(race, cameraPad);
                 cameraPressed = false;
                 // game mode 6 replays: the lap step the controls wrote (car + 0x21), read by 0x80013EF0 at the next tick
@@ -1281,6 +1307,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         std::vector<DrawItem> items;
         size_t sceneCount = 0; // items[0, sceneCount) = the 3D scene (the graphics options' scale / MSAA / textures)
         auto buildFrame = [&](double alpha, bool fieldFrame) {
+        input::InputCallTimer buildTimer("race scene preparation", 50);
         items.clear();
         // In VR the frame is built for the eye image, not for the desktop window (they are both 4:3 in the checks).
         const float aspect = stereoActive ? window.StereoAspect() : renderer.AspectRatio();
@@ -1597,6 +1624,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.redlineRpm = body.upshiftRpm;       // car + 0x3C2
             hf.speedReadout = interp ? LerpInt(previous.speedReadout, body.speedReadout, at) : body.speedReadout; // car + 0x6DA
             hf.gear = body.gear;                   // car + 0x644
+            hf.neutral = race.WheelInNeutral(0);
+            hf.wheelDirectionBlocked = wheelShiftHint.Visible();
             hf.clutchEngaged = body.clutchState == 1; // car + 0x645
             hf.turbo = body.boostCap;              // car + 0x154
             hf.boost = interp ? LerpInt(previous.boost, body.intakeLoad, at) : body.intakeLoad; // car + 0x76E
@@ -1747,8 +1776,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         } else {
             // The display frame rate: the field (input, script, logic: 60 Hz) only advances; the frames are presented at
             // their own cadence, each drawing the state of the time it reaches the screen between the last two steps:
-            // - vsync (FIFO): one frame per vertical blank of the compositor (DwmGetCompositionTimingInfo), built just before
-            //   it and showing that blank's time (a 60 Hz display gets 60 distinct states from the 30 Hz steps);
+            // - vsync (FIFO): Vulkan synchronizes display; the refresh period paces CPU submissions.
             // - no vsync: at the cap's period (sleeping), or as fast as frames are built without a cap.
             window.SkipFrame(std::chrono::nanoseconds(16'666'667), std::chrono::nanoseconds(66'666'667)); // catch up to 4 fields
             const bool racing = phase == Phase::kRacing && !(replaying && replayOver());
@@ -1758,20 +1786,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             Clock::time_point vblank;
             Clock::duration refresh{};
             const bool vsyncPaced = (presentMode == 2 || presentMode == 3) && window.VBlankTiming(vblank, refresh);
+            const auto presentPeriod = vsyncPaced ? std::max(refresh, capPeriod) : capPeriod;
             bool fresh = true; // `items` = the field's own frame (fieldAlpha, built for its present right away)
             for (;;) {
                 const auto t = Clock::now();
                 Clock::time_point slot = std::max(t, nextPresent);
-                if (vsyncPaced) { // the first blank the frame can still be built for
-                    const auto earliest = std::max(t + seconds(buildEstimate) + std::chrono::microseconds(500), nextPresent);
-                    const auto blanks = (earliest - vblank + refresh - Clock::duration(1)) / refresh;
-                    slot = vblank + refresh * std::max<long long>(blanks, 0);
-                }
                 const bool rebuild = racing && (!fresh || slot > t);
-                // A slot whose build would start after the next field is due belongs to the next field (the cadence carries
-                // on across fields: the next field's frame takes it, with the newer state); a slot before it is presented
-                // even when its build runs a little into the next field (the steps keep their scheduled times, stepAnchor).
-                if (window.NextField() <= slot - (vsyncPaced ? seconds(buildEstimate) : Clock::duration::zero())) break;
+                if (!DesktopFrameDue(t, window.NextField(), nextPresent, fresh)) break;
                 double a = fieldAlpha;
                 const auto buildStart = rebuild ? std::max(Clock::now(), slot - seconds(buildEstimate)) : Clock::now();
                 window.SleepUntil(buildStart);
@@ -1781,16 +1802,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     // a hitch (page-in, a first-use pipeline) must not stop the in-between frames: at most a third of a field
                     const double built = std::min(std::chrono::duration<double>(Clock::now() - buildStart).count(), 0.0055);
                     buildEstimate = built > buildEstimate ? built : buildEstimate * 0.9 + built * 0.1;
-                    if (!vsyncPaced) window.SleepUntil(slot); // with vsync the present itself waits for the blank
                 }
+                window.SleepUntil(slot);
                 const auto presentStart = Clock::now();
                 window.Present(items, sceneCount);
                 const auto after = Clock::now();
                 frameLog.Presented(!fresh, a, steps, std::chrono::duration<double, std::milli>(presentStart - buildStart).count(),
                                    std::chrono::duration<double, std::milli>(after - presentStart).count(), renderer.GpuMilliseconds());
                 // the cap's cadence: a slot delayed by the field's work is made up by the next one; no catch-up bursts beyond that
-                if (vsyncPaced) nextPresent = slot + std::max(refresh / 2, capPeriod - refresh / 2); // the next blank (cap: the blank at the period)
-                else nextPresent = capPeriod > Clock::duration::zero() ? std::max(slot + capPeriod, after - capPeriod / 2) : after;
+                nextPresent = NextDesktopPresent(slot, after, presentPeriod);
                 fresh = false;
                 if (!presentModeLogged) {
                     static const char* const kModes[] = {"IMMEDIATE", "MAILBOX", "FIFO (vsync)", "FIFO_RELAXED"};
@@ -1801,6 +1821,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if (!racing) break; // nothing moves: one frame per field
             }
             window.SleepUntil(window.NextField());
+            frameLog.Field(steps);
         }
         if (config.exitFade) {
             shownItems = items;

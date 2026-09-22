@@ -1,6 +1,10 @@
-# Gran Turismo 2 PC & VR - 0.3.0
+# Gran Turismo 2 PC & VR - 0.4.0
 
-**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.3.0.zip`.**
+**0.4.0 adds Windows PC / PCVR wheels, pedals, USB shifters and force feedback**, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
+
+**Tested hardware:** Fanatec Gran Turismo DD Pro (8 Nm) with a Thrustmaster TH8A Shifter. This setup was used for wheel-driving tests and feedback on countersteering assistance. The other embedded device profiles have not all been tested on physical hardware.
+
+**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.4.0.zip`.**
 
 | Version included | Where the game runs | Install | Launch |
 |---|---|---|---|
@@ -8,7 +12,7 @@
 | **Windows PCVR (OpenXR)** | On your PC, displayed in your connected headset | `INSTALL-PCVR.bat` | `PLAY-PCVR-STEAMVR.bat`, `PLAY-PCVR-META.bat` or `PLAY-PCVR-VD.bat` |
 | **Quest 3 standalone VR** | On the headset; no streaming PC required to play | `INSTALL.bat` | **GT2 VR** under **Unknown Sources** |
 
-The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.3.0.apk`; it is only the standalone component of the complete release.
+The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.4.0.apk`; it is only the standalone component of the complete release.
 
 This is a native C++ port with Vulkan rendering and ported game simulation. Arcade and Simulation are available in all three versions. See [CHANGELOG.md](CHANGELOG.md) for the release notes.
 
@@ -40,13 +44,15 @@ Supply your own supported disc images. Game data, BIOS, saves and copyrighted ga
 
 ## Install the player release
 
-Extract **GT2-0.3.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+Extract **GT2-0.4.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
 
 Start **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR), and **PLAY.bat** (also **gt2game.exe** directly) for desktop. All use one application: the optional PlayStation intro, then the same disc picker as Quest. **PLAY-PCVR.bat** retains automatic selection: running SteamVR, otherwise the system default. Runtime choices affect only the game process. The package includes the Khronos loader; the headset software must be installed separately. Use **TRANSFER_QUEST_SAVES_TO_PC.bat** or **TRANSFER_PC_SAVES_TO_QUEST.bat** to move saved cards after closing the game on both devices. Quest save exchange requires the 0.3.0 APK or newer.
 
 On **Linux / Steam Deck**, extract the same ZIP, open a terminal in its folder and run `bash INSTALL-LINUX.sh`. It prepares discs and installs the standalone Quest game without Wine or modifying the SteamOS system partition. See the [Steam Deck step-by-step guide](docs/LINUX-INSTALL.md).
 
-Both installers offer an **optional PlayStation startup**. Skip the BIOS prompt to play normally without it, or select your own matching 512 KiB BIOS dump to prepare the original white and dark screens with sound. Firmware is never downloaded or sent to Quest. Existing prepared intros can be disabled in the VR menu.
+Windows installers prepare **HD pictures, fonts and HUD for both Arcade and Simulation by default**. Use `-HdMedia Original` to skip HD preparation, or `-HdMedia MenusAndMovies` to also prepare full-screen movies. Linux installs original media and can copy previously prepared HD packs.
+
+Both Windows and Linux installers offer an **optional PlayStation startup**. Skip the BIOS prompt to play normally without it, or select your own matching 512 KiB BIOS dump to prepare the original white and dark screens with sound. Firmware is never downloaded or sent to Quest. Existing prepared intros can be disabled in the VR menu.
 
 For Quest, enable developer mode, connect USB and accept USB debugging in the headset. The installer locates ADB or downloads a pinned Google Platform Tools archive, prepares the disc data, updates the APK, copies the assets and verifies the disc hashes and application read access. It does not launch the game. Open **GT2 VR** under **Unknown Sources**. See [player installation](docs/PLAYER-INSTALL.md).
 
@@ -103,9 +109,8 @@ HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases
 
 ## Committed roadmap
 
-The following features are planned for future releases and are not included in 0.3.0:
+The following features are planned for future releases and are not included in 0.4.0:
 
-- Full racing-wheel and pedal support, including external gear shifters and force feedback.
 - An interior cockpit view for driving.
 - Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
 

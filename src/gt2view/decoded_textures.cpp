@@ -48,7 +48,9 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                 clutDepth += item.paint << 16;
                 if ((clutDepth & 65535) == 224 && item.brakeLit) clutDepth += 16;
             }
-            decoded_.Prepare(uint32_t(key), clutDepth, static_cast<const uint32_t*>(textureBuffer_.mapped), kVramRows);
+            // Decode from the CPU copy: repeated palette reads from the mapped
+            // GPU upload allocation can stall for seconds on discrete GPUs.
+            decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows);
         }
         cachedDraws_[draw] = supported && decoded_.misses == misses;
     }

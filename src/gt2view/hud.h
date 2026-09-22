@@ -45,6 +45,8 @@ struct HudFrame {
     int redlineRpm = 7000;      // car + 0x3C2: the ring turns red from here
     int speedReadout = 0;       // car + 0x6DA: 1/100 mph (the US readout)
     int gear = 1;               // car + 0x644, 0 = reverse
+    bool neutral = false;       // Native H-pattern gearbox, without changing the physics gear-array index.
+    bool wheelDirectionBlocked = false;
     bool clutchEngaged = true;  // car + 0x645 == 1: the gear glyph is bright
     int turbo = 0;              // car + 0x154: 0 = no turbo gauge
     int boost = 0;              // car + 0x76E

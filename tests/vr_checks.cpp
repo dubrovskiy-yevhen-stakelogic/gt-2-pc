@@ -7,6 +7,7 @@
 #include "../tools/gt2game/android_activity_state.h"
 #include "../tools/gt2game/frame_profiler.h"
 #include "../tools/gt2game/xr_field_pacing.h"
+#include "../tools/gt2game/desktop_field_pacing.h"
 #include "game/audio/audio_resampler.h"
 #include <vector>
 #include <cmath>
@@ -46,6 +47,53 @@ int main() {
         // Model a runtime whose predicted display time leads the CPU by two frames.
         // 600 fields must still yield ten seconds of physics and refresh-rate rendering.
         using Clock = std::chrono::steady_clock;
+        {
+            using namespace std::chrono;
+            const auto fieldPeriod = nanoseconds(16'666'667);
+            const auto estimate = milliseconds(3);
+            // Reproduce the old phase lock: 1 ms of CPU work, DWM blanks 4 ms
+            // after each field boundary. All 600 fields advance, no image does.
+            int oldPresents = 0;
+            for (int field = 0; field < 600; ++field) {
+                const auto now = Clock::time_point(fieldPeriod * field + milliseconds(1));
+                const auto deadline = Clock::time_point(fieldPeriod * (field + 1));
+                const auto blank = Clock::time_point(fieldPeriod * field + milliseconds(4));
+                const auto earliest = now + estimate + microseconds(500);
+                const auto slots = (earliest - blank + fieldPeriod - Clock::duration(1)) / fieldPeriod;
+                const auto slot = blank + fieldPeriod * std::max<int64_t>(slots, 0);
+                if (deadline > slot - estimate) ++oldPresents;
+            }
+            Check(oldPresents == 0, "reproduce legacy desktop freeze while all simulation fields advance");
+            for (int hz : {50, 60, 75, 90, 120, 144}) for (int cap : {0, 30, 60}) {
+                const auto period = nanoseconds(1'000'000'000 / (cap ? std::min(hz, cap) : hz));
+                Clock::time_point now{}, deadline{}, nextPresent{}, lastPresent{};
+                int frames = 0, fields = 0;
+                for (; fields < 600; ++fields) {
+                    now += milliseconds(1); // input, simulation and the field's already built frame
+                    deadline += fieldPeriod;
+                    bool first = true;
+                    int inField = 0;
+                    while (gt2game::DesktopFrameDue(now, deadline, nextPresent, first)) {
+                        const auto slot = std::max(now, nextPresent);
+                        now = slot + microseconds(500); // recording/submission; no fixed display phase assumption
+                        nextPresent = gt2game::NextDesktopPresent(slot, now, period);
+                        Check(frames == 0 || now - lastPresent < milliseconds(70), "desktop cannot starve presentation");
+                        lastPresent = now; ++frames; first = false;
+                        Check(++inField < 10, "desktop cannot burst indefinitely within one field");
+                    }
+                    now = std::max(now, deadline);
+                }
+                const int expected = (cap ? std::min(hz, cap) : hz) * 10;
+                Check(std::abs(frames - expected) <= 2 && fields == 600, "desktop honours refresh/cap independently of 60 Hz simulation");
+            }
+            const auto now = Clock::time_point(seconds(1));
+            Check(gt2game::DesktopFrameDue(now, now - milliseconds(20), now - milliseconds(10), true),
+                  "first overdue image is still drawn after a long frame");
+            Check(!gt2game::DesktopFrameDue(now, now - milliseconds(20), now - milliseconds(10), false),
+                  "overdue physics does not cause extra catch-up images");
+            Check(!gt2game::DesktopFrameDue(now, now + milliseconds(16), now + milliseconds(30), true),
+                  "future capped frame is not forced early");
+        }
         for (int hz : {72, 80, 90, 120}) {
             int presented = 0, betweenFrames = 0, fieldEffects = 0, physicsSteps = 0;
             Clock::time_point cpuNow{};
@@ -113,6 +161,19 @@ int main() {
         Check(textures.hits == 1 && textures.pixels[0] == 0xff00ff00, "cache decodes 8-bit palette pages");
         textures.Begin(); textures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
         Check(textures.pixels[2 * gt2view::DecodedTextureCache::kTexels] == 0, "direct-colour zero texels retain transparent coverage");
+        {
+            // UploadVram retains 16-bit CPU words; capture fixtures use 32-bit
+            // GPU words. Both must produce identical palette and STP layers.
+            gt2view::DecodedTextureCache cpuTextures, gpuTextures;
+            std::vector<uint16_t> cpuVram(vram.size());
+            std::transform(vram.begin(), vram.end(), cpuVram.begin(), [](uint32_t word) { return uint16_t(word); });
+            cpuTextures.Begin(); cpuTextures.Prepare(0, 512 | (1u << 28), cpuVram.data(), 512);
+            cpuTextures.Prepare(256u << 16, 2u << 28, cpuVram.data(), 512);
+            gpuTextures.Begin(); gpuTextures.Prepare(0, 512 | (1u << 28), vram.data(), 512);
+            gpuTextures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
+            Check(cpuTextures.table == gpuTextures.table && cpuTextures.pixels == gpuTextures.pixels,
+                  "CPU VRAM decoding preserves GPU-word texture colours and coverage");
+        }
         gt2game::FrameProfiler profiler;
         for (int i = 0; i <= 180; ++i) profiler.Record(double(i) / 90);
         Check(std::abs(profiler.fps - 90) < 0.001 && std::abs(profiler.frameMs - 1000.0 / 90) < 0.001, "profiler counts application frames");

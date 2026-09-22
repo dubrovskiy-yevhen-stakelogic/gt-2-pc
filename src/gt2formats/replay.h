@@ -23,6 +23,7 @@ namespace gt2 {
 // and brake >> 4 (0..15, analogue only).
 struct ReplayFrame {
     uint8_t flags = 0, buttons = 0, steer = 0, throttle = 0, brake = 0;
+    uint16_t wheelFine = 0; // Native wheel frames: low 4 steering / 6 throttle / 6 brake bits.
     bool operator==(const ReplayFrame&) const = default;
 };
 
@@ -33,6 +34,12 @@ struct LogicalPad {
     uint32_t buttons = 0;
     uint16_t analog = 0;
     uint16_t steerAxis = 0x80, throttle = 0, brake = 0;
+    // Native wheel frame: 12-bit steer, 10-bit throttle/brake, 8-bit clutch;
+    // gear 0 auto, 1 neutral,
+    // 2 reverse, 3..9 gears 1..7, 10 forward-only auto, 15 sequential. Original pads leave wheel false.
+    bool wheel = false;
+    bool ignoreShiftSpeed = false; // Recorded only for explicit wheel gear requests.
+    uint8_t clutch = 0, wheelGear = 0;
 };
 // Logical button bits (the default key configuration maps them from the pad; gt2game from the keyboard).
 constexpr uint32_t kPadLeft = 0x1, kPadRight = 0x2, kPadThrottle = 0x4, kPadBrake = 0x8, kPadHandbrake = 0x10, kPadReverse = 0x20,
@@ -77,6 +84,7 @@ public:
 
 private:
     void Flush(); // 0x80016598
+    void CacheWheelFine(uint16_t value);
     int32_t I32(size_t o) const;
     int16_t I16(size_t o) const;
     uint16_t U16(size_t o) const;
@@ -84,6 +92,7 @@ private:
     void Put16(size_t o, uint16_t v);
     uint8_t& Data(size_t pos);
     std::vector<uint8_t> bytes_;
+    uint16_t wheelFine_ = 0; // Cached native extension of the current run; never part of a PS1 frame.
 };
 
 // ---------------------------------------------------------------- the replay file (.gmr)

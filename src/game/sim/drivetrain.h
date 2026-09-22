@@ -41,6 +41,12 @@ struct PadRecord {
     uint8_t reserved;    // +11
 };
 static_assert(sizeof(PadRecord) == 12);
+constexpr uint16_t kWheelPad = 0x100;
+constexpr uint16_t kWheelIgnoreShiftSpeed = 0x200;
+// Applies only to native wheel frames, after the original pad mapping.
+void ApplyWheelInput(CarBody& body, const PadRecord& pad, struct GearRequest& request);
+bool WheelNeutral(const CarBody& body, const struct GearRequest& request);
+bool WheelDirectionBlocked(const CarBody& body, const struct GearRequest& request);
 
 // Per-car gear request in the scratchpad (0x1F800364 + car * 4), written by the input routines and read by
 // the gear selection in the same step.
@@ -50,6 +56,9 @@ struct GearRequest {
     uint8_t reserved[2];
 };
 static_assert(sizeof(GearRequest) == 4);
+inline uint8_t WheelClutch(const GearRequest& request) {
+    return (request.reserved[1] & 0x80) ? uint8_t(((request.reserved[1] & 15) << 4) | (request.reserved[0] >> 4)) : 0;
+}
 
 // Tuning constants of the input mapping (overlay data 0x80046D7C..0x80046F44). The per-car rates are indexed
 // by the car index in the original (u16 tables at 0x80046DB0.. with one entry per player).

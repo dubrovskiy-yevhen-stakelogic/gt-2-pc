@@ -1,0 +1,600 @@
+{
+  "schema": 1,
+  "reference": "BeamNG factory inputmaps, Steam build 24617469",
+  "profiles": [
+    {
+      "file": "0000346e.json",
+      "sha256": "ba02bbdd3c4fca40b18b5023c8d622bdc9b7b1e9055bda9987326fdc6752fc72",
+      "vendor": "346e",
+      "product": "0000",
+      "name": "MOZA R16/R21 Base",
+      "issues": [
+        "rim_specific_bindings"
+      ]
+    },
+    {
+      "file": "00010eb7.json",
+      "sha256": "64aee99b514d40cd52ca2eda056d36b753c42e62da7f529ece36fc3edff50ee7",
+      "vendor": "0eb7",
+      "product": "0001",
+      "name": "FANATEC ClubSport Wheel Base V2",
+      "issues": []
+    },
+    {
+      "file": "0001346e.json",
+      "sha256": "146decebc372f018b47798f5335e1fe618b82b36ea0c96a4fad785a782ae4d4e",
+      "vendor": "346e",
+      "product": "0001",
+      "name": "MOZA CRP pedals",
+      "issues": []
+    },
+    {
+      "file": "0002346e.json",
+      "sha256": "b8f668b17c1e4fe32e900f84cba8b2c6ba7ab76d83bd416e828f7ed8ce79d434",
+      "vendor": "346e",
+      "product": "0002",
+      "name": "MOZA R9 Base",
+      "issues": [
+        "rim_specific_bindings"
+      ]
+    },
+    {
+      "file": "00030e8f.json",
+      "sha256": "30051e9ba600622fdae32033a61a5d7ccca36760cf64d86d59b23cf3894f6b01",
+      "vendor": "0e8f",
+      "product": "0003",
+      "name": "Hama Thunder VS Racing Wheel for PS3, Racing Wheel V18",
+      "issues": [
+        "digital_driving_axis:accelerate",
+        "digital_driving_axis:brake",
+        "digital_driving_axis:clutch"
+      ]
+    },
+    {
+      "file": "0003346e.json",
+      "sha256": "834f26de6fdba8ebe6ed148baf12c3bc6e8b4e3defa31dedbdd0ea537c1eb053",
+      "vendor": "346e",
+      "product": "0003",
+      "name": "MOZA SR-P pedals",
+      "issues": []
+    },
+    {
+      "file": "00040eb7.json",
+      "sha256": "d6c308165cac81445cf33a3f68c87ed38b83b21dd79d5f662ea9a80703fb8cb2",
+      "vendor": "0eb7",
+      "product": "0004",
+      "name": "FANATEC ClubSport Wheel Base V2.5",
+      "issues": []
+    },
+    {
+      "file": "0004346e.json",
+      "sha256": "8317968d486cda1a1c067cdf961be414e708eebdf5e9136711c10e3a32b66704",
+      "vendor": "346e",
+      "product": "0004",
+      "name": "MOZA R5 Base",
+      "issues": [
+        "rim_specific_bindings"
+      ]
+    },
+    {
+      "file": "00050eb7.json",
+      "sha256": "43f40b533ee28b5db2dc7ab4b6e84a1d036924ae40e2b4f23473ee76ccbf71b0",
+      "vendor": "0eb7",
+      "product": "0005",
+      "name": "FANATEC CSL Elite Wheel Base PlayStation 4",
+      "issues": []
+    },
+    {
+      "file": "0005346e.json",
+      "sha256": "b479172bf13a94ebdc6f7524ca4c127f7b116afb37a8d69888f4666b9a703ee4",
+      "vendor": "346e",
+      "product": "0005",
+      "name": "MOZA R3 Base",
+      "issues": []
+    },
+    {
+      "file": "00060eb7.json",
+      "sha256": "7346bfda6a9748805af317024772826002adab9d0aa5334afd77d3f33087279d",
+      "vendor": "0eb7",
+      "product": "0006",
+      "name": "FANATEC Podium Wheel Base DD1",
+      "issues": []
+    },
+    {
+      "file": "0006346e.json",
+      "sha256": "4e1c35198822ee6ee208e08e377c22055be02aeee156e98652b1e120999426d1",
+      "vendor": "346e",
+      "product": "0006",
+      "name": "MOZA R12 Base",
+      "issues": []
+    },
+    {
+      "file": "00070eb7.json",
+      "sha256": "4e4d9825de6f2e80baa6c7d8882a9fd6ab95e4ca7e7c8f4177ebede4b6960b4a",
+      "vendor": "0eb7",
+      "product": "0007",
+      "name": "FANATEC Podium Wheel Base DD2",
+      "issues": []
+    },
+    {
+      "file": "001e346e.json",
+      "sha256": "208b3c220b085bbb21f0b82f26697dda3a0bab2e1de9500662ccdf13292cf6e3",
+      "vendor": "346e",
+      "product": "001e",
+      "name": "MOZA HGP Shifter",
+      "issues": []
+    },
+    {
+      "file": "00200eb7.json",
+      "sha256": "04208af6f450215f2aabdf3f87347bf2840f5713208b121dd2823fea0da00c09",
+      "vendor": "0eb7",
+      "product": "0020",
+      "name": "Fanatec CSL DD, Fanatec GT DD Pro",
+      "issues": []
+    },
+    {
+      "file": "0020346e.json",
+      "sha256": "d935123d657a0019691852a2d271e340502fe2b5eb5ed83ba0a5d4c305988fdd",
+      "vendor": "346e",
+      "product": "0020",
+      "name": "Universal HUB",
+      "issues": []
+    },
+    {
+      "file": "01970eb7.json",
+      "sha256": "da09ccbffd2c481a83ed104f03f94577e913f1db193e03fc62f538d1cb50e53a",
+      "vendor": "0eb7",
+      "product": "0197",
+      "name": "Fanatec Porsche 911 Turbo S Wheel",
+      "issues": []
+    },
+    {
+      "file": "027e1cbe.json",
+      "sha256": "44e519b36c6598c1ab2d1b61b1e8d51d0f52e2dcbe1ea756ae8a67c2bc12c2c8",
+      "vendor": "1cbe",
+      "product": "027e",
+      "name": "SW20 V3",
+      "issues": []
+    },
+    {
+      "file": "03013416.json",
+      "sha256": "1610f0f8989a3abb5673d81d3d10c6438155f497f541206dd4c586b316376d66",
+      "vendor": "3416",
+      "product": "0301",
+      "name": "CAMMUS C5 Wheel Base",
+      "issues": []
+    },
+    {
+      "file": "038e0eb7.json",
+      "sha256": "74ccd204debcc923ca5f701381477c80e7c2782ac380bb37f8d404c0f4284126",
+      "vendor": "0eb7",
+      "product": "038e",
+      "name": "FANATEC ClubSport Wheel Base",
+      "issues": []
+    },
+    {
+      "file": "048716c0.json",
+      "sha256": "d2a0e58d3a54af5bcaf849e2a062bdab3e641353f3f0eaea1500b6d0b5e072c5",
+      "vendor": "16c0",
+      "product": "0487",
+      "name": "SimRacingCoach wheel button box",
+      "issues": []
+    },
+    {
+      "file": "05e116c0.json",
+      "sha256": "70acc6cf28bfad8a55667990b71b2e23706dbf40de572ea32c25e1ff770d3a82",
+      "vendor": "16c0",
+      "product": "05e1",
+      "name": "SHH Shifter Newt",
+      "issues": []
+    },
+    {
+      "file": "0d5a16d0.json",
+      "sha256": "469344e63ba302fbab9e1c2d8dddc8e1c651ee3def61918115de3dd32c83e9a4",
+      "vendor": "16d0",
+      "product": "0d5a",
+      "name": "Simucube 1",
+      "issues": []
+    },
+    {
+      "file": "0d5f16d0.json",
+      "sha256": "ddb7dc3c460c98cf347d41f53c67c150459d943d20baea33302667dd055b7ac9",
+      "vendor": "16d0",
+      "product": "0d5f",
+      "name": "Simucube 2 Ultimate",
+      "issues": []
+    },
+    {
+      "file": "0d6016d0.json",
+      "sha256": "be579f73a423bcb5a06a25d1f4fd0dd0bc8cb5985e718881f9c7ba1c769277b2",
+      "vendor": "16d0",
+      "product": "0d60",
+      "name": "Simucube 2 Pro",
+      "issues": [
+        "rim_specific_bindings"
+      ]
+    },
+    {
+      "file": "0d6116d0.json",
+      "sha256": "9b6ca0b9a7d986200aeb09406d560a00d3bf3537e76259486f4d7968b996f86b",
+      "vendor": "16d0",
+      "product": "0d61",
+      "name": "Simucube 2 Sport",
+      "issues": [
+        "rim_specific_bindings"
+      ]
+    },
+    {
+      "file": "0d6616d0.json",
+      "sha256": "47b87cb0b79dffa8e23d9d46f513bec6fb5eeb1d76b0a8c359197a34b2a90585",
+      "vendor": "16d0",
+      "product": "0d66",
+      "name": "Simucube Link Hub - ActivePedals",
+      "issues": []
+    },
+    {
+      "file": "0e030eb7.json",
+      "sha256": "934099f003bfaed22ab88adb7f19c82fce063ddb966380483d3b8f71f56958dd",
+      "vendor": "0eb7",
+      "product": "0e03",
+      "name": "CSL Elite Wheel Base and 1.1",
+      "issues": []
+    },
+    {
+      "file": "100130b7.json",
+      "sha256": "1f4a73459a2a3ae470582577252375802b0e4260fc5a9fc737482db712c34e19",
+      "vendor": "30b7",
+      "product": "1001",
+      "name": "Heusinkveld Sim Pedals Sprint",
+      "issues": []
+    },
+    {
+      "file": "10183416.json",
+      "sha256": "f0a0dd23d57fd6f748f3e1c753a7f62ff447e92605bd5881705620e0a979644a",
+      "vendor": "3416",
+      "product": "1018",
+      "name": "CAMMUS CP5 Pedals",
+      "issues": []
+    },
+    {
+      "file": "10213416.json",
+      "sha256": "236740488063f9ea026601261c0061466e1415ec52bbd687a85826933b4eb6a6",
+      "vendor": "3416",
+      "product": "1021",
+      "name": "CAMMUS C5 Steering Wheel",
+      "issues": []
+    },
+    {
+      "file": "10a01dd2.json",
+      "sha256": "5b8e0ab029e38d1bcf81868ce8b8e21f6c57530db0201d73b736c80573563c4c",
+      "vendor": "1dd2",
+      "product": "10a0",
+      "name": "Shifter adapter for Logitech G25, G27, G29, G920",
+      "issues": []
+    },
+    {
+      "file": "111211ff.json",
+      "sha256": "bf4c251683acb96cd1aa6c4d104acb019e1e9268177ad79439a74412d0eeae97",
+      "vendor": "11ff",
+      "product": "1112",
+      "name": "PXN-V12lite",
+      "issues": []
+    },
+    {
+      "file": "121211ff.json",
+      "sha256": "a95ef2329a213ccad1894adad4fcd8bfc953946e66169ce57cec00504abbe664",
+      "vendor": "11ff",
+      "product": "1212",
+      "name": "PXN-V12 Wheel",
+      "issues": []
+    },
+    {
+      "file": "14101038.json",
+      "sha256": "98da2f5eede488f92da191a8193dbd69c3278f4a8fb07325a69418dc47fbac57",
+      "vendor": "1038",
+      "product": "1410",
+      "name": "SteelSeries SRW-S1 steering wheel",
+      "issues": []
+    },
+    {
+      "file": "18390eb7.json",
+      "sha256": "a49b57bfdbd5a2e0e4fed998323be3e9744c9fb19466a44b6dedb2baf0ad75e6",
+      "vendor": "0eb7",
+      "product": "1839",
+      "name": "FANATEC ClubSport Pedals V1",
+      "issues": []
+    },
+    {
+      "file": "183b0eb7.json",
+      "sha256": "ff2bf021f69fba578ccb56765d79b58856b6bc1b2f8715369fc2fc9ee88d357b",
+      "vendor": "0eb7",
+      "product": "183b",
+      "name": "FANATEC ClubSport Pedals V3 via USB to PC",
+      "issues": []
+    },
+    {
+      "file": "1a950eb7.json",
+      "sha256": "16b3c8f808b1088d62da9018bd816518b90ab92082860257b98e77e226e247d7",
+      "vendor": "0eb7",
+      "product": "1a95",
+      "name": "FANATEC CSL Pedals Pedals",
+      "issues": []
+    },
+    {
+      "file": "22170738.json",
+      "sha256": "88a40cbd94a05ac936174e49dcd510ec11a6c6e62ee724a42e0693b90104b746",
+      "vendor": "0738",
+      "product": "2217",
+      "name": "Saitek Heavy Eqpt. Wheel & Pedal",
+      "issues": []
+    },
+    {
+      "file": "3142a020.json",
+      "sha256": "0655417d659d9589eab968f23a448e2b892e14dd42bbb8b421da0de08efa65bb",
+      "vendor": "a020",
+      "product": "3142",
+      "name": "HE Sequential Shifter",
+      "issues": []
+    },
+    {
+      "file": "324511ff.json",
+      "sha256": "7afa3d83e5d4c7b89be836dba3fdfbf7638f2363e5538ce6c899271ac1dcefc5",
+      "vendor": "11ff",
+      "product": "3245",
+      "name": "PXN-V10 Wheel",
+      "issues": []
+    },
+    {
+      "file": "335211ff.json",
+      "sha256": "5112552950b5b9968d93f7d43767dd43ba50bba43b336f8abdb66e47ea1fe9b8",
+      "vendor": "11ff",
+      "product": "3352",
+      "name": "PC Game Controller",
+      "issues": [
+        "digital_driving_axis:clutch"
+      ]
+    },
+    {
+      "file": "350111ff.json",
+      "sha256": "866cc841d2007249c27ab59ac094c19286e59d11026efb66d30d78a0953ca9e2",
+      "vendor": "11ff",
+      "product": "3501",
+      "name": "IMOLA FFB WHEEL 3401",
+      "issues": []
+    },
+    {
+      "file": "62040eb7.json",
+      "sha256": "ff5c2e09b7c1e5dcd9920344aeab5bf044aa8763c782d0fb5e65f8e125ba0ee3",
+      "vendor": "0eb7",
+      "product": "6204",
+      "name": "FANATEC CSL Elite Pedals LC via USB to PC",
+      "issues": []
+    },
+    {
+      "file": "62050eb7.json",
+      "sha256": "5fb9298414dad7e5144683e6166aec98fee995ef62e77ee23c091c5a2a5daf60",
+      "vendor": "0eb7",
+      "product": "6205",
+      "name": "FANATEC CSL Pedals LCK (Load Cell Kit) via USB to PC",
+      "issues": []
+    },
+    {
+      "file": "62060eb7.json",
+      "sha256": "e0338f261ae3fd8312ea6f24eec76b92b297f21cd465efef4aab816d4c240edf",
+      "vendor": "0eb7",
+      "product": "6206",
+      "name": "FANATEC CSL Elite Pedals V2 via USB to PC",
+      "issues": []
+    },
+    {
+      "file": "707710f5.json",
+      "sha256": "23b8f906d4a2bbe96142be8ebbdf5380b8ae66d011ebf8387c1b9338b5980a1a",
+      "vendor": "10f5",
+      "product": "7077",
+      "name": "VelocityOne Race",
+      "issues": []
+    },
+    {
+      "file": "804c1fc9.json",
+      "sha256": "6175fe04dfa29da8c75731e15492efb1c603dc36e180b3983737c501e2a62a6a",
+      "vendor": "1fc9",
+      "product": "804c",
+      "name": "SimXperience AccuForce",
+      "issues": []
+    },
+    {
+      "file": "b0020583.json",
+      "sha256": "e1dcd4c3478d3ba87fd08a65cbc80c6e6b6f1b4078cbf6a28564d2c64e4bc85a",
+      "vendor": "0583",
+      "product": "b002",
+      "name": "Genius TwinWheel for PC & PS2",
+      "issues": [
+        "digital_driving_axis:clutch"
+      ]
+    },
+    {
+      "file": "b65b044f.json",
+      "sha256": "cb8e266b565be5f2c0e0c627dd31100902a9eb8441ac1da4da606493bc1c7691",
+      "vendor": "044f",
+      "product": "b65b",
+      "name": "F430 Cockpit Wireless",
+      "issues": []
+    },
+    {
+      "file": "b65e044f.json",
+      "sha256": "07b4a339c9bd4ba7df67f60c62a71dd54c779e4d96657c833156dc0c729416c6",
+      "vendor": "044f",
+      "product": "b65e",
+      "name": "Thrustmaster T500 RS Racing wheel",
+      "issues": []
+    },
+    {
+      "file": "b660044f.json",
+      "sha256": "358f67ae781f1b6fae6bc83e7fb9a2a166a6c1ff035c5b4258f5c457ba95ee27",
+      "vendor": "044f",
+      "product": "b660",
+      "name": "T500 RS Gear Shift",
+      "issues": []
+    },
+    {
+      "file": "b669044f.json",
+      "sha256": "92d7ef9c7f7e1b75d65a61b0221f37434df8aedd3b0f0d5834a7d6f4926b9f90",
+      "vendor": "044f",
+      "product": "b669",
+      "name": "Thrustmaster TX Racing Wheel",
+      "issues": []
+    },
+    {
+      "file": "b66e044f.json",
+      "sha256": "1eade8d44afc5cbf8d24ccc1d4ec192477ad27ce572d1c3aa3069f08a4ee60d8",
+      "vendor": "044f",
+      "product": "b66e",
+      "name": "Thrustmaster T300RS Racing wheel",
+      "issues": []
+    },
+    {
+      "file": "b684044f.json",
+      "sha256": "23f5383de4b74a912e8190275ab834e417fcb19851be04208b97f316a410afe5",
+      "vendor": "044f",
+      "product": "b684",
+      "name": "Thrustmaster T-GT II Racing Wheel",
+      "issues": []
+    },
+    {
+      "file": "b692044f.json",
+      "sha256": "2393159c0d41e7d0eb5d6bf3dd3a4f0689d90d807671ce9a9727d22acb1d824c",
+      "vendor": "044f",
+      "product": "b692",
+      "name": "TS-XW Racer",
+      "issues": []
+    },
+    {
+      "file": "b695044f.json",
+      "sha256": "6843d4f8bbced1379d315b75af261fb7cb6bafe66ae4ce07f84f43357a63248c",
+      "vendor": "044f",
+      "product": "b695",
+      "name": "TSS HANDBRAKE",
+      "issues": []
+    },
+    {
+      "file": "b696044f.json",
+      "sha256": "0f46f8dbfb5315f383d103923eb45d9bd7638dfc413f917728a4c3dc7b23425d",
+      "vendor": "044f",
+      "product": "b696",
+      "name": "Thrustmaster Advanced Mode Racer",
+      "issues": []
+    },
+    {
+      "file": "b6a1044f.json",
+      "sha256": "5debe0a478f6e4aef3536b26de6f4f1cd11226d998c5a121cf0794811e60eb10",
+      "vendor": "044f",
+      "product": "b6a1",
+      "name": "Thrustmaster T598 Racing Wheel",
+      "issues": []
+    },
+    {
+      "file": "c24f046d.json",
+      "sha256": "16a165a2e8d9168dbd4799e372e5075ac047b4c82cc34fe6b16c660fd42f1836",
+      "vendor": "046d",
+      "product": "c24f",
+      "name": "Logitech G29",
+      "issues": []
+    },
+    {
+      "file": "c262046d.json",
+      "sha256": "55d29e9f46e8702dd13b9382cd82f504484ae017c818ed85150da47085710ac4",
+      "vendor": "046d",
+      "product": "c262",
+      "name": "Logitech G920",
+      "issues": []
+    },
+    {
+      "file": "c266046d.json",
+      "sha256": "fddaac111a8233e03b0f07bf324e494596ad59500d090af3694937e326291e48",
+      "vendor": "046d",
+      "product": "c266",
+      "name": "Logitech G HUB G923 Racing Wheel for PlayStation 4 and PC (USB)",
+      "issues": []
+    },
+    {
+      "file": "c268046d.json",
+      "sha256": "059d27f858a4a00ad9c8e1760f6c46adcc32755c84615317a784c47324260aee",
+      "vendor": "046d",
+      "product": "c268",
+      "name": "Logitech G HUB PRO Racing Wheel for PlayStation and PC (USB)",
+      "issues": []
+    },
+    {
+      "file": "c26e046d.json",
+      "sha256": "aafce02fb4352f0740a34323eac03e89cb67fd08f4a77591b33a9102e27295d0",
+      "vendor": "046d",
+      "product": "c26e",
+      "name": "Logitech G HUB G923 Racing Wheel for XBox One and PC (USB)",
+      "issues": []
+    },
+    {
+      "file": "c272046d.json",
+      "sha256": "d825d4e526a8b796a027fb3d7fa78f2d4055e90d022edf4ff193354186b8f3e5",
+      "vendor": "046d",
+      "product": "c272",
+      "name": "Logitech G HUB PRO Racing Wheel for Xbox and PC (USB)",
+      "issues": []
+    },
+    {
+      "file": "c28f1cbe.json",
+      "sha256": "525509a2432d00267a98f866ae02a96afdaedc9499c620c5f50c491072252720",
+      "vendor": "1cbe",
+      "product": "c28f",
+      "name": "SW20 V3 (Game Mode)",
+      "issues": []
+    },
+    {
+      "file": "c298046d.json",
+      "sha256": "7548bd92ee47a786df86ca5da004b17bcd6eb0fe6f22aaf000ca906373e52065",
+      "vendor": "046d",
+      "product": "c298",
+      "name": "Logitech Driving Force Pro USB",
+      "issues": []
+    },
+    {
+      "file": "c299046d.json",
+      "sha256": "93b89b10c9f252c5711543542cc56d20479c703da306fbd483bb8a4d91e7dcf1",
+      "vendor": "046d",
+      "product": "c299",
+      "name": "Logitech G25 Racing Wheel USB",
+      "issues": []
+    },
+    {
+      "file": "c29a046d.json",
+      "sha256": "9292ab647e7e96ace5a5c2c73cbb64a53831fe5f7341b72ff2218686d4203ce4",
+      "vendor": "046d",
+      "product": "c29a",
+      "name": "Logitech Driving Force GT USB",
+      "issues": []
+    },
+    {
+      "file": "c29b046d.json",
+      "sha256": "11b8cffb27a614b6792c5160e12d3c7c453053f011f1c047e0d5e498d8a6f215",
+      "vendor": "046d",
+      "product": "c29b",
+      "name": "Logitech G27 Racing Wheel USB",
+      "issues": []
+    },
+    {
+      "file": "ca03046d.json",
+      "sha256": "a9bc38c7ded69d37c98f182f1e9935da44cbbb53092a9603ad50169358384f24",
+      "vendor": "046d",
+      "product": "ca03",
+      "name": "Logitech Momo Racing Force Feedback Wheel",
+      "issues": []
+    },
+    {
+      "file": "ffb01209.json",
+      "sha256": "d216fae8282bd770bdda81b83fd1432deebac090c72a92e675e0ab3760583e59",
+      "vendor": "1209",
+      "product": "ffb0",
+      "name": "OpenFFBoard",
+      "issues": []
+    }
+  ]
+}

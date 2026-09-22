@@ -319,6 +319,8 @@ public:
     size_t CarCount() const { return cars_.size(); }
     const Car& CarAt(size_t i) const { return cars_[i]; }
     Car& CarAt(size_t i) { return cars_[i]; }
+    bool WheelInNeutral(size_t i) const { return WheelNeutral(cars_[i].body, requests_[i]); }
+    bool WheelDirectionBlocked(size_t i) const { return sim::WheelDirectionBlocked(cars_[i].body, requests_[i]); }
     const CarContactState& Contact() const { return contact_; }
     uint16_t HoldFrames() const { return shell_.State().hold; }
     // The race clock (0x80046F64, 1/3000 s): 0 at Setup, the dump's value after LoadState, +100 per frame while the
@@ -373,6 +375,7 @@ private:
     std::shared_ptr<GhostSession> ownGhost_;   // when the options bring no session
     GhostSession* ghost_ = nullptr;
     std::array<uint8_t, 5> playerFrame_{};     // the noted frame (flags, buttons, steer, throttle, brake)
+    uint16_t playerWheelFine_ = 0;
     bool playerFrameNoted_ = false;
     std::array<uint16_t, 16> pedalTable_{};
     Car ghostDisplay_{};                       // car 1 as 0x800133F0 draws it (the blended pose of 0x8003F2F0)

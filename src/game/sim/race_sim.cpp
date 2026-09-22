@@ -691,7 +691,7 @@ void RaceSim::Step(const PadRecord* pads, const uint32_t* buttons) {
         for (int car = 0; car < count; car++) {
             if (cars_[car].padSlot == 2 && constants_.flag800A951C == 0) {
                 ReplayFrame frame = FrameOfPad(LogicalPad{});
-                if (playerFrameNoted_) frame = {playerFrame_[0], playerFrame_[1], playerFrame_[2], playerFrame_[3], playerFrame_[4]};
+                if (playerFrameNoted_) frame = {playerFrame_[0], playerFrame_[1], playerFrame_[2], playerFrame_[3], playerFrame_[4], playerWheelFine_};
                 GhostPlayerInput(ctx, frame);
             } else if (cars_[car].padSlot == 2) { // a mode 6 replay: player 1 plays the ring's laps (0x80013EF0)
                 ReplayFrame frame;
@@ -787,6 +787,7 @@ CarPose RaceSim::Pose(size_t car) const {
 
 void RaceSim::NotePlayerFrame(const ReplayFrame& frame) {
     playerFrame_ = {frame.flags, frame.buttons, frame.steer, frame.throttle, frame.brake};
+    playerWheelFine_ = frame.wheelFine;
     playerFrameNoted_ = true;
 }
 

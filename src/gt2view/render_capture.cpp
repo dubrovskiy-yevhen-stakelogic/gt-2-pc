@@ -2,6 +2,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <algorithm>
+#include <cstring>
 
 namespace gt2view {
 // Private benchmark captures contain game assets; write only to the user's chosen path.
@@ -37,7 +38,13 @@ void VkSceneRenderer::LoadCapture(const std::string& path, std::vector<DrawItem>
         (h[4] != kExternalTexels && h[4] != kVrHandTexelBase) || h[5] > 100000 || h[6] > h[5]) throw std::runtime_error("invalid render capture header");
     read(clearColor, sizeof(clearColor));
     std::vector<SceneVertex> vertices(h[2]); read(vertices.data(), vertices.size() * sizeof(SceneVertex));
-    read(textureBuffer_.mapped, size_t(h[3]) * sizeof(uint32_t));
+    std::vector<uint32_t> textureWords(h[3]);
+    read(textureWords.data(), textureWords.size() * sizeof(uint32_t));
+    std::memcpy(textureBuffer_.mapped, textureWords.data(), textureWords.size() * sizeof(uint32_t));
+    // Keep CPU palette decoding consistent with the restored GPU contents.
+    // Older captures can contain fewer rows than the current renderer.
+    for (size_t i = 0; i < textureWords.size(); ++i)
+        vramShadow_[i] = uint16_t(textureWords[i]);
     read(externalBuffer_.mapped, size_t(h[4]) * sizeof(uint32_t));
     items.resize(h[5]); read(items.data(), items.size() * sizeof(DrawItem)); sceneItems = h[6];
     for (const auto& item : items)

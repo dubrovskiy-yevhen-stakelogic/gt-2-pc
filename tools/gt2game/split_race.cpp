@@ -1,5 +1,10 @@
 // The 2 player Battle's split-screen race (split_race.h).
 #include "split_race.h"
+#include "desktop_field_pacing.h"
+#include "wheel_race_trace.h"
+#include "wheel_shift_hint.h"
+#include "wheel_feedback.h"
+#include "wheel_driving_aids.h"
 
 #include "platform/os/keys.h"
 #include "platform/os/paths.h"
@@ -241,6 +246,8 @@ SplitHud SplitHudOf(const sim::RaceSim& race, const std::array<const camera::Rac
         f.redlineRpm = body.upshiftRpm;
         f.speedReadout = previous ? LerpInt(previous->speedReadout[car], body.speedReadout, at) : body.speedReadout;
         f.gear = body.gear;
+        f.neutral = race.WheelInNeutral(car);
+        f.wheelDirectionBlocked = race.WheelDirectionBlocked(car);
         f.clutchEngaged = body.clutchState == 1;
         f.turbo = body.boostCap;
         f.boost = previous ? LerpInt(previous->boost[car], body.intakeLoad, at) : body.intakeLoad;
@@ -547,6 +554,9 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
     std::array<uint32_t, 2> replayButtons{}; // 0x800109FC's buttons per camera since the last step (camera + 0x6C)
     uint32_t enterForShell = 0;
     int steps = 0, shiftRequest = 0;
+    WheelShiftHint wheelShiftHint;
+    WheelDrivingAids wheelDrivingAids;
+    WheelRaceTrace wheelTrace;
     std::vector<sim::PadRecord> pads(race.CarCount());
     bool finishLogged = false, replayEndLogged = false;
     using Clock = std::chrono::steady_clock;
@@ -615,7 +625,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     leave = true;
                 }
             }
-            if (window.KeyPressed('C')) cameraPressed[0] = true;
+            if (window.KeyPressed('C') || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) cameraPressed[0] = true;
             if (window.KeyPressed('Q')) shiftRequest = 1;
             if (window.KeyPressed('A')) shiftRequest = -1;
             if (enter && !replaying) enterForShell = 0x200; // X: the shell's results wait (0x8002A700)
@@ -629,6 +639,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
         }
         if (leave) break;
         if (raceAudio) raceAudio->SetPaused(paused);
+        if (paused || replaying) window.Input().Wheel().Stop();
         if (paused) for (PlayerPad& pl : players) input::SnapshotTracker(pl.object.data() + input::pad_object::kTracker, pl.scratch.data());
 
         // One step on every second field (frame-locked, reproducible; with the display frame rate the paced field clock).
@@ -663,6 +674,9 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     if (k.buttons & kPadThrottle) merged.analog &= 0xFFFBu;
                     if (k.buttons & kPadBrake) merged.analog &= 0xFFF7u;
                 }
+                if (p == 0 && !replaying) input::wheel::Apply(input::wheel::Config(), window.Input().Wheel().Current(), merged);
+                if (p == 0 && !replaying) input::wheel::ApplyRaceTransmission(merged, race.CarAt(0).body.transmissionMode == 1, race.CarAt(0).body.gear);
+                if (p == 0 && !replaying) wheelDrivingAids.Apply(merged, race.CarAt(0).body, input::wheel::Config());
                 splitPads.pad[p] = merged;
                 if (!replaying && (pressed & camera::kButtonView)) cameraPressed[p] = true; // the view button (not read in replays)
                 // the replay controls read each camera's generic pad (0x800109FC with pad + 0x6C): Circle / Square / Cross,
@@ -687,6 +701,13 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
             if (particles) smoke.Update();
             const uint32_t buttons[2] = {enterForShell, enterForShell};
             race.Step(pads.data(), buttons);
+            wheelShiftHint.Tick(race.WheelDirectionBlocked(0), race.CarAt(0).body.gear, !replaying);
+            {
+                const auto& b = race.CarAt(0).body;
+                window.Input().Wheel().Feedback(WheelFeedbackOf(b),
+                    !replaying && b.raceState == 0);
+            }
+            if (!replaying) wheelTrace.Sample(window.Input().Wheel(), pads[0], race.CarAt(0).body, steps, race.WheelDirectionBlocked(0));
             SplitHudCounter(race, hudCounter);
             enterForShell = 0;
             shiftRequest = 0;
@@ -698,7 +719,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 }
                 cameraPad.replayPressed |= replayButtons[p];
                 replayButtons[p] = 0;
-                if (!replaying && ((held[p] & camera::kButtonLookBack) || (p == 0 && (window.KeyHeld('V') || config.lookBack)))) cameraPad.held |= camera::kButtonLookBack;
+                if (!replaying && ((held[p] & camera::kButtonLookBack) || (p == 0 && (window.KeyHeld('V') || config.lookBack || window.Input().Wheel().Current().held[input::wheel::LookBack])))) cameraPad.held |= camera::kButtonLookBack;
                 cameras[p].Update(race, cameraPad);
                 cameraPressed[p] = false;
             }
@@ -836,7 +857,8 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 hc.courseMap = !haveOptions || settings->options.courseMap;
                 hc.tyrePanel = data.constants.wear.wearLimit != 0 || data.constants.shellControlClass == 2;
                 hc.counter = hudCounter;
-                const SplitHud h = SplitHudOf(race, {&cameras[0].Camera(), &cameras[1].Camera()}, viewSplit != 0, hc, hud->Strings(), interp ? &previous : nullptr, at);
+                SplitHud h = SplitHudOf(race, {&cameras[0].Camera(), &cameras[1].Camera()}, viewSplit != 0, hc, hud->Strings(), interp ? &previous : nullptr, at);
+                h.frames[0].wheelDirectionBlocked = wheelShiftHint.Visible();
                 if (h.split) hud->Build2P(h.frames[0], h.frames[1], renderer.AspectRatio(), items);
                 else hud->Build2PFull(h.frames[h.followed], race.CarAt(0).body.revLimitRpm, race.CarAt(1).body.revLimitRpm, renderer.AspectRatio(), items);
             }
@@ -889,17 +911,13 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
             Clock::time_point vblank;
             Clock::duration refresh{};
             const bool vsyncPaced = (presentMode == 2 || presentMode == 3) && window.VBlankTiming(vblank, refresh);
+            const auto presentPeriod = vsyncPaced ? std::max(refresh, capPeriod) : capPeriod;
             bool fresh = true;
             for (;;) {
                 const auto t = Clock::now();
                 Clock::time_point slot = std::max(t, nextPresent);
-                if (vsyncPaced) {
-                    const auto earliest = std::max(t + seconds(buildEstimate) + std::chrono::microseconds(500), nextPresent);
-                    const auto blanks = (earliest - vblank + refresh - Clock::duration(1)) / refresh;
-                    slot = vblank + refresh * std::max<long long>(blanks, 0);
-                }
                 const bool rebuild = moving && (!fresh || slot > t);
-                if (window.NextField() <= slot - (vsyncPaced ? seconds(buildEstimate) : Clock::duration::zero())) break;
+                if (!DesktopFrameDue(t, window.NextField(), nextPresent, fresh)) break;
                 double a = fieldAlpha;
                 const auto buildStart = rebuild ? std::max(Clock::now(), slot - seconds(buildEstimate)) : Clock::now();
                 window.SleepUntil(buildStart);
@@ -908,19 +926,19 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     buildFrame(a);
                     const double built = std::min(std::chrono::duration<double>(Clock::now() - buildStart).count(), 0.0055);
                     buildEstimate = built > buildEstimate ? built : buildEstimate * 0.9 + built * 0.1;
-                    if (!vsyncPaced) window.SleepUntil(slot);
                 }
+                window.SleepUntil(slot);
                 const auto presentStart = Clock::now();
                 window.Present(items, sceneCount);
                 const auto after = Clock::now();
                 frameLog.Presented(!fresh, a, steps, std::chrono::duration<double, std::milli>(presentStart - buildStart).count(),
                                    std::chrono::duration<double, std::milli>(after - presentStart).count());
-                if (vsyncPaced) nextPresent = slot + std::max(refresh / 2, capPeriod - refresh / 2);
-                else nextPresent = capPeriod > Clock::duration::zero() ? std::max(slot + capPeriod, after - capPeriod / 2) : after;
+                nextPresent = NextDesktopPresent(slot, after, presentPeriod);
                 fresh = false;
                 if (!moving) break;
             }
             window.SleepUntil(window.NextField());
+            frameLog.Field(steps);
         }
         if (capture) {
             std::printf("wrote %s after %d steps\n", config.shotPath.c_str(), steps);

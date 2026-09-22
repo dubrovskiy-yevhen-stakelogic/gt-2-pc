@@ -3,6 +3,7 @@
 // (game_window_win32.cpp).
 #include "game_window.h"
 #include "pc_overlay.h"
+#include "platform/input/input_diagnostics.h"
 
 #include <algorithm>
 #include <cctype>
@@ -28,6 +29,7 @@ std::string g_fakePad, g_fakePad2;
 int g_rumbleScale = 100;
 bool g_vr = false, g_vrDeterministic = false;
 bool g_noFocus = false;
+bool g_windowed = false;
 VrOptions g_vrOptions;
 std::unique_ptr<WindowBackend> retainedBackend;
 } // namespace
@@ -37,6 +39,8 @@ const VrOptions& VrOptionsInUse() { return g_vrOptions; }
 
 void SetWindowNoFocus(bool on) { g_noFocus = on; }
 bool WindowNoFocus() { return g_noFocus; }
+void SetWindowedMode(bool on) { g_windowed = on; }
+bool WindowedMode() { return g_windowed; }
 
 void SetVrMode(bool on, bool deterministic) {
     g_vr = on;
@@ -158,7 +162,7 @@ bool GameWindow::BeginFrame() {
     if (pad2_.type == gt2::input::kTypeNone) pad2_.type = gt2::input::kTypeDigital; // the keyboard is always there
     pad2Pressed_ = uint16_t(pad2_.buttons & ~pad2Previous_);
     pad2Previous_ = pad2_.buttons;
-    if (nativeMenuEnabled_ && !overlayActive_ && (Pressed(gt2::keys::kF10) || (PadHeld(ps1::kSelect) && PadPressed(ps1::kStart)))) {
+    if (nativeMenuEnabled_ && !overlayActive_ && (input_.Wheel().Pressed(gt2::input::wheel::Menu) || Pressed(gt2::keys::kF10) || (PadHeld(ps1::kSelect) && PadPressed(ps1::kStart)))) {
         overlayActive_ = true;
         backend_->SetVrMenuActive(true);
         ShowPcOverlay(*this, VrMode() ? std::vector<gt2view::DrawItem>{} : lastItems_, VrMode() ? 0 : lastScene_);
@@ -217,6 +221,7 @@ void GameWindow::FinishPresent(const std::vector<gt2view::DrawItem>& items, size
 }
 
 void GameWindow::DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t sceneItems, const std::string& path) {
+    gt2::input::InputCallTimer timer("renderer and GPU submission", 50);
     const auto* draw = &items;
     std::vector<gt2view::DrawItem> withProfiler;
     if (FrameProfilerEnabled()) {

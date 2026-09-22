@@ -64,6 +64,7 @@ public:
     // `buildMs` / `presentMs` = the time spent building its draw items / in the renderer's Draw (-1 = not measured).
     void Presented(bool extra, double alpha, int simSteps, double buildMs = -1, double presentMs = -1, double gpuMs = -1);
     void Reset();
+    void Field(int simSteps);
 
 private:
     std::FILE* csv_ = nullptr;

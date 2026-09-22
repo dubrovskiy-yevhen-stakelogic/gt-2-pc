@@ -1,6 +1,6 @@
 # Install GT2 VR on Quest from Linux or Steam Deck
 
-This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.3.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
+This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.4.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
 
 ## Steam Deck: step by step
 

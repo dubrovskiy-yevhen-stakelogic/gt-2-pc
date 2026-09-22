@@ -1,6 +1,7 @@
 #include "game/sim/drivetrain.h"
 
 #include <cstring>
+#include <algorithm>
 
 #include "game/sim/fixed.h"
 
@@ -205,7 +206,27 @@ int32_t SelectGear(CarBody& body, const GearRequest& request) { // 0x800449C8
     // Penalty / forced state: first gear, or reverse... the original returns 1 unless already in gear 1.
     if (body.penaltyFrames != 0) return gear == 1 ? -1 : 1;
 
-    const uint8_t mode = body.raceState == 0 ? body.transmissionMode : 0;
+    const bool wheelInput = (request.reserved[1] & 0x80) != 0;
+    const bool ignoreShiftSpeed = wheelInput && (request.reserved[1] & 0x40) != 0;
+    const int wheelGear = request.reserved[0] & 15;
+    if (wheelInput && body.raceState == 0) {
+        if (wheelGear >= 1 && wheelGear <= 9) {
+            const int target = wheelGear - 2;
+            if (target < 0 || target > gears || target == gear) return -1;
+            if (!ignoreShiftSpeed && ((target == 0 && speed > 2048) || (target > 0 && speed < -2048))) return -1;
+            return target;
+        }
+        if (wheelGear == 15) {
+            if (body.shiftTimer) { body.shiftTimer = request.shift ? 1 : 0; return -1; }
+            const int target = gear + (request.shift > 0 ? 1 : request.shift < 0 ? -1 : 0);
+            if (target < 0 || target > gears || target == gear) return -1;
+            if (!ignoreShiftSpeed && ((target == 0 && speed > 2048) || (gear == 0 && speed < -2048))) return -1;
+            body.shiftTimer = 1;
+            return target;
+        }
+    }
+
+    const uint8_t mode = body.raceState == 0 && !wheelInput ? body.transmissionMode : 0;
     if (mode != 0) {
         if (mode != 1) return -1;
         // ---- manual gearbox (0x80044D98)
@@ -246,7 +267,7 @@ int32_t SelectGear(CarBody& body, const GearRequest& request) { // 0x800449C8
     const int32_t throttle = body.effectiveThrottle;
     bool considerOverrev;
     if (throttle == 0) {
-        if (speed < -0x472) { // rolling backwards without throttle
+        if (speed < -0x472 && !(wheelInput && wheelGear == 10)) { // wheel AT requires an explicit reverse request
             if (gear != 0) return 0;
             considerOverrev = false;
         } else {
@@ -601,7 +622,43 @@ void UpdatePlayerInput(CarBody& body, const PadRecord& pad, GearRequest& request
     }
 }
 
+bool WheelDirectionBlocked(const CarBody& body, const GearRequest& request) {
+    if (!(request.reserved[1] & 0x80) || body.raceState != 0) return false;
+    if (request.reserved[1] & 0x40) return false;
+    const int gear = request.reserved[0] & 15;
+    const int target = gear == 15 ? int(body.gear) + (request.shift > 0 ? 1 : request.shift < 0 ? -1 : 0) : gear - 2;
+    if (gear == 15 && (!request.shift || target == body.gear)) return false;
+    if ((gear != 15 && (gear < 2 || gear > 9)) || target < 0 || target > body.forwardGears) return false;
+    return (target == 0 && body.forwardSpeed > 2048) || ((gear == 15 ? body.gear == 0 : target > 0) && body.forwardSpeed < -2048);
+}
+
+bool WheelNeutral(const CarBody& body, const GearRequest& request) {
+    if (!(request.reserved[1] & 0x80) || body.raceState != 0) return false;
+    const int gear = request.reserved[0] & 15, target = gear - 2;
+    return gear == 1 || (gear >= 2 && gear <= 9 && (target > body.forwardGears ||
+        (!(request.reserved[1] & 0x40) && ((target == 0 && body.forwardSpeed > 2048) || (target > 0 && body.forwardSpeed < -2048)))));
+}
+
+void ApplyWheelInput(CarBody& body, const PadRecord& pad, GearRequest& request) {
+    request.reserved[0] = request.reserved[1] = 0;
+    if (!(pad.flags & kWheelPad)) return;
+    const int gear = pad.reserved & 15, clutch = (pad.reserved & 0xf0) | ((pad.flags >> 4) & 15);
+    request.reserved[0] = uint8_t(gear | ((clutch & 15) << 4));
+    request.reserved[1] = uint8_t(0x80 | ((pad.flags & kWheelIgnoreShiftSpeed) ? 0x40 : 0) | (clutch >> 4));
+    request.shift = body.penaltyFrames == 0 ? pad.shift : 0;
+    request.reverse = 0;
+    body.steerAngle = int16_t(std::clamp(int(pad.steer), -4096, 4096) * int(body.steerLock) / 4096);
+    body.steerAngleRate = 0;
+    body.throttle = int16_t(std::min<uint16_t>(pad.throttle, 4096));
+    body.brake = int16_t(std::min<uint16_t>(pad.brake, 4096));
+    // Neutral and a fully depressed clutch disconnect the engine, including
+    // one/two-gear cars whose original input routine otherwise adds creep.
+    if (WheelNeutral(body, request) || clutch == 255) { body.clutchRequest = 0; body.clutchState = 0; }
+    else if (clutch > 0 && body.clutchState != 0) body.clutchState = 2;
+}
+
 AiDispatch PrepareAiInput(CarBody& body, GearRequest& request, int32_t raceFrame, int32_t rate) { // 0x80038540
+    request.reserved[0] = request.reserved[1] = 0;
     body.handbrake = 0;
     request.reverse = 0;
     request.shift = 0;

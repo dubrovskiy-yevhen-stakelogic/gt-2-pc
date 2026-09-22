@@ -434,8 +434,14 @@ void Hud::Needles(const HudFrame& f, int x, int y) {
     const int angle = int(int16_t(uint16_t((int(int16_t(f.rpm)) * 0x96C) / std::max(maxRpm, 1) + 0x4FA)));
     Needle(angle, x, y, tables_.needles[0]);
     Needle(angle, x, y, tables_.needles[1]);
-    const gt2::HudSpriteDesc& gear = tables_.strip[size_t(tables_.gearGlyph[size_t(std::clamp(f.gear, 0, 9))])];
-    SpriteAt(x - ((gear.w >> 1) - 0x17), y - ((gear.h >> 1) - 2), gear, f.clutchEngaged ? kCaption : kGearDim);
+    if (f.neutral) {
+        std::vector<gt2::HudFontSprite> glyphs;
+        text_.Text("N", x + 0x13, y - 5, 0, glyphs);
+        Glyphs(glyphs, kCaption);
+    } else {
+        const gt2::HudSpriteDesc& gear = tables_.strip[size_t(tables_.gearGlyph[size_t(std::clamp(f.gear, 0, 9))])];
+        SpriteAt(x - ((gear.w >> 1) - 0x17), y - ((gear.h >> 1) - 2), gear, f.clutchEngaged ? kCaption : kGearDim);
+    }
     Mode(uint16_t(tables_.strip[0].tpage | 0x20));
     Tile(x + 0x10, y - 6, 0xE, 0x10, kGearBox);
     Mode(0x40);
@@ -613,6 +619,13 @@ void Hud::StartDisplay(const HudFrame& f) {
 // 0x8002E204 (x 160, y 182): the warning line of car + 0x790 (codes 1..12 through the jump table 0x8002F320; other
 // codes an empty string), large font centred, colour 0x020C1879 with the context's blend bits cleared (mode 0).
 void Hud::Warning(const HudFrame& f, int x, int y) {
+    if (f.wheelDirectionBlocked) {
+        const std::string hint = "Stop the car to change gear";
+        std::vector<gt2::HudFontSprite> s;
+        text_.Text(hint, x - text_.TextWidth(hint, 0) / 2, y, 0, s);
+        Glyphs(s, 0x20C1879);
+        return;
+    }
     if (f.messageCode < 1 || f.messageCode > 12 || warningTokens_[0] == 0) return;
     const std::string text = strings_.At(warningTokens_[size_t(f.messageCode - 1)]);
     std::vector<gt2::HudFontSprite> s;

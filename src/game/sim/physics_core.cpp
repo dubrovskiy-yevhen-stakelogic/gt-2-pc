@@ -204,7 +204,7 @@ void IntegrateLongitudinal(CarBody& body, DriveStepWork& work, int car) {
 }
 
 // ---- pass G: engine speed of one car with a clutch (body + 0x372 != 1) ----
-void EngineStep(const PhysicsContext& context, CarBody& body, DriveCarWork& block, int32_t stepTime) {
+void EngineStep(const PhysicsContext& context, CarBody& body, DriveCarWork& block, int32_t stepTime, bool partialClutch) {
     const int32_t idleSpeed = RpmToEngineSpeed(body.idleRpm);
     if (body.clutchState == 0) {
         // Clutch open: the engine spins up freely against its own inertia, never below idle.
@@ -225,7 +225,7 @@ void EngineStep(const PhysicsContext& context, CarBody& body, DriveCarWork& bloc
         const int32_t output = block.clutchOutputSpeed, input = block.clutchInputSpeed;
         const int32_t engine = body.engineSpeed;
         const bool crossed = (input <= output && wheelSpeed <= engine) || (output <= input && engine <= wheelSpeed);
-        if (crossed) {
+        if (crossed && !partialClutch) {
             body.clutchState = 1;
             body.engineSpeed = wheelSpeed;
             body.shiftTimer = uint8_t(Div(context.move.globals.rate, 5));
@@ -725,7 +725,9 @@ void TyreForces(const PhysicsContext& context, Car* cars, int count, DriveStepWo
     {
         CarBody* bodies[kMaxCars];
         for (int car = 0; car < count; car++) bodies[car] = &BodyOf(cars, car);
-        UpdateDrivetrain(bodies, size_t(count), work, context.drivetrain); // 0x80046B58
+        auto drivetrain = context.drivetrain;
+        for (int car = 0; car < count; ++car) drivetrain.wheelClutch[car] = WheelClutch(requests[car]);
+        UpdateDrivetrain(bodies, size_t(count), work, drivetrain); // 0x80046B58
     }
     for (int car = 0; car < count; car++) {
         CarBody& body = BodyOf(cars, car);
@@ -733,12 +735,13 @@ void TyreForces(const PhysicsContext& context, Car* cars, int count, DriveStepWo
         const uint32_t gears = body.forwardGears;
         if (gears == 1) {
             SingleGearRpm(body);
-            SingleGearSelect(body, requests[car]);
+            if (requests[car].reserved[1] & 0x80) UpdateGear(body, requests[car]);
+            else SingleGearSelect(body, requests[car]);
             continue;
         }
-        EngineStep(context, body, BlockOf(work, car), work.stepTime);
+        EngineStep(context, body, BlockOf(work, car), work.stepTime, WheelClutch(requests[car]) != 0);
         UpdateEngineRpm(body); // 0x8003941C
-        if (gears == 2) SingleGearSelect(body, requests[car]);
+        if (gears == 2 && !(requests[car].reserved[1] & 0x80)) SingleGearSelect(body, requests[car]);
         else UpdateGear(body, requests[car]); // 0x8003991C
     }
     for (int car = 0; car < count; car++) IntegrateLateral(BodyOf(cars, car), work, car);
@@ -787,6 +790,7 @@ void PhysicsCore(const PhysicsContext& context, Car* cars, int count, const PadR
                 RaiseAiInput(context, body, car, requests[car]);
             } else {
                 UpdatePlayerInput(body, pads[car], requests[car], work.stepTime, context.input[car], context.curves[car].steerLimit); // 0x8002FB18
+                ApplyWheelInput(body, pads[car], requests[car]);
                 body.effectiveThrottle = body.throttle;
                 for (uint32_t w = 0; w < 4; w++) body.wheels[w].brakeInput = body.brake;
             }

@@ -5,7 +5,7 @@ param(
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'GT2-VR/runtime'),
     [string]$Adb,
     [string]$Serial,
-    [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Original',
+    [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Menus',
     [string]$Bios,
     [string]$CaptureCore,
     [switch]$NoBios,
@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot
 $manifest = Get-Content -LiteralPath (Join-Path $root 'release-manifest.json') -Raw | ConvertFrom-Json
-if ($manifest.version -ne '0.3.0') { throw 'Unexpected release version.' }
+if ($manifest.version -ne '0.4.0') { throw 'Unexpected release version.' }
 $seen = @{}
 foreach ($entry in $manifest.files) {
     if ($entry.path -match '(^|[\\/])\.\.([\\/]|$)|^[\\/]|:' -or $seen.ContainsKey($entry.path)) { throw 'Invalid release manifest path.' }
@@ -23,7 +23,7 @@ foreach ($entry in $manifest.files) {
     $path = Join-Path $root $entry.path
     if (!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $entry.sha256) { throw "Release file failed verification: $($entry.path)" }
 }
-foreach ($required in @('GT2-VR-0.3.0.apk','tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/install-quest.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')) {
+foreach ($required in @('GT2-VR-0.4.0.apk','tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/install-quest.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')) {
     if (!$seen.ContainsKey($required)) { throw "Required release file is missing from the manifest: $required" }
 }
 if ($VerifyOnly) { Write-Host 'Release files verified.'; return }
@@ -61,5 +61,5 @@ if ($Target -eq 'Quest') {
 if ($Target -eq 'Quest') {
     $modes = @('arcade','simulation' | Where-Object { Test-Path -LiteralPath (Join-Path $InstallDir "$_/disc.raw2352") })
     if ($modes.Count -eq 0) { throw 'No prepared discs.' }
-    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root 'GT2-VR-0.3.0.apk') -Runtime $InstallDir -Mode $modes[0] -BothDiscs:($modes.Count -eq 2)
+    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root 'GT2-VR-0.4.0.apk') -Runtime $InstallDir -Mode $modes[0] -BothDiscs:($modes.Count -eq 2)
 } else { Write-Host "PC game ready: $InstallDir. Use PLAY.bat for desktop, PLAY-PCVR-META.bat for Meta Link, PLAY-PCVR-STEAMVR.bat for SteamVR, or PLAY-PCVR-VD.bat for Virtual Desktop (VDXR). PLAY-PCVR.bat selects automatically." }

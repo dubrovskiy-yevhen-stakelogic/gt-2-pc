@@ -186,6 +186,7 @@ void InputSystem::Rescan(int field) {
 }
 
 void InputSystem::Poll(int field, bool focused) {
+    wheel_.Poll(focused);
     if (rescan_ || field - lastScan_ >= 60) Rescan(field);
     for (size_t i = 0; i < devices_.size(); i++) {
         Ps1PadFrame f;
