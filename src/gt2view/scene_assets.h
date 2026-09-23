@@ -1,5 +1,6 @@
 #pragma once
 #include "gt2view/billboard.h"
+#include "gt2view/cockpit_eye_fit.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -492,10 +493,44 @@ public:
                     ownRows_[(kCarClutRow - kOwnRowsBase + slot * 16 + p) * 1024 + c * 16 + k] = texture.paints[p].cluts[c][k];
         for (size_t p = 0; p < texture.paints.size() && p < 16; p++) // the rims' own CLUT: CLUT 0 of the paint (the car's wheels)
             for (size_t k = 0; k < 16; k++) ownRows_[(kCarClutRow - kOwnRowsBase + slot * 16 + p) * 1024 + kRimPalette * 16 + k] = texture.paints[p].cluts[0][k];
-        renderer_.UploadVram(kOwnRowsBase, 512, ownRows_.data());
-
         slots_.push_back({key, bodyCount, uint32_t(vertices.size()) - bodyCount, 0, std::move(texture), std::move(model)});
         slots_.back().shadowHeight = CarShadowHeight(slots_.back().model);
+        slots_.back().cockpit = FitCockpit(slots_.back().model);
+        if (slots_.back().cockpit.valid) {
+            const auto body = BuildCockpitBody(slots_.back().model, slots_.back().texture, slots_.back().cockpit);
+            FitCockpitSideSills(slots_.back().cockpit,body.windowOpenings);
+            RefineCockpitEye(slots_.back().cockpit, body.vertices, slots_.back().texture, body.glassMasks);
+            FitCockpitMirror(slots_.back().cockpit, slots_.back().model);
+            slots_.back().cockpitExterior = body.exteriorPolygons;
+            if (body.vertices.size() > VkSceneRenderer::kCockpitBodyVertexStride)
+                throw std::runtime_error("scene: cockpit body exceeds reserved vertex range");
+            const auto& paints = slots_.back().texture.paints;
+            for (size_t p = 0; p < paints.size() && p < 16; ++p)
+                for (size_t c = 0; c < 16; ++c)
+                    for (size_t k = 0; k < 16; ++k)
+                        ownRows_[(kCarClutRow - kOwnRowsBase + slot * 16 + p) * 1024 + (kCockpitGlazingPalette + c) * 16 + k] =
+                            (body.glassMasks[c] & (1u << k)) ? 0 : paints[p].cluts[c][k];
+            for (size_t p = 0; p < paints.size() && p < 16; ++p)
+                for (size_t c = 0; c < 16; ++c)
+                    for (size_t k = 0; k < 16; ++k)
+                        ownRows_[(kCarClutRow - kOwnRowsBase + slot * 16 + p) * 1024 + (kCockpitLiningPalette + c) * 16 + k] =
+                            paints[p].cluts[c][k] ? kCockpitTrimColor : 0;
+            std::vector<SceneVertex> bodyVertices;
+            bodyVertices.reserve(body.vertices.size());
+            for (const auto& v : body.vertices) {
+                SceneVertex o{};
+                std::copy(v.pos, v.pos + 3, o.pos);
+                std::copy(v.texel, v.texel + 2, o.texel);
+                std::copy(v.color, v.color + 3, o.color);
+                o.page = (slot * 64) | (kOwnRowsBase << 16);
+                o.clut = uint32_t(v.palette) * 16 | ((kCarClutRow + slot * 16) << 16);
+                o.flags = (v.textured ? kTextured : 0u) | (v.rawTexture ? kRawTexture : 0u) | kCarPaint;
+                bodyVertices.push_back(o);
+            }
+            slots_.back().cockpitBodyCount = uint32_t(bodyVertices.size());
+            renderer_.SetVertices(VkSceneRenderer::kCockpitBodyVertexBase + slot * VkSceneRenderer::kCockpitBodyVertexStride, bodyVertices);
+        }
+        renderer_.UploadVram(kOwnRowsBase, 512, ownRows_.data());
         if (wheelRanges[3][0] + wheelRanges[3][1] <= bodyCount && wheelRanges[0][1] != 0) {
             slots_.back().wheelRanges = wheelRanges;
             slots_.back().wheelCentres = wheelCentres;
@@ -686,7 +721,8 @@ public:
     // GT-mode menus' car view: the map inside arcade/gt_cursor.tim, CLUT 0x2624, colour 0x40 from 0x8001A8A4).
     // `lodIndex`: the LOD whose polygons are passed (the game mode 6 ghost look: LOD 2, race_shell.h CarDrawRule).
     void UpdateCarReflection(int slot, const float* world, const std::array<std::array<float, 3>, 3>& cameraAxes, uint16_t tpage = kEnvMapTpage,
-                             uint16_t clut = kEnvMapClut, uint8_t colour = 0x60, size_t lodIndex = 0, uint32_t rowBase = 0) {
+                             uint16_t clut = kEnvMapClut, uint8_t colour = 0x60, size_t lodIndex = 0, uint32_t rowBase = 0,
+                             bool cockpit = false) {
         Slot& s = slots_[size_t(slot)];
         if (s.model.lods.empty()) {
             UpdateExternalReflection(slot, world, cameraAxes, tpage, clut, colour, rowBase);
@@ -703,7 +739,9 @@ public:
                 r512[i][j] = int32_t(std::lround(v * 4096.0f)) / 8; // the original's matrix scaled to 512, truncated
             }
         std::vector<SceneVertex> vertices;
-        for (const CarPolygon& p : lod.polygons) {
+        for (size_t polygon=0; polygon<lod.polygons.size(); ++polygon) {
+            if (cockpit && !std::binary_search(s.cockpitExterior.begin(),s.cockpitExterior.end(),polygon)) continue;
+            const CarPolygon& p=lod.polygons[polygon];
             if (!(p.renderFlags & 0x8000)) continue;
             static constexpr int kTri[3] = {0, 1, 2}, kQuadRing[6] = {0, 1, 3, 1, 2, 3}; // the PS1's split (GPU slots v0 v1 v3 v2)
             const int* order = p.IsQuad() ? kQuadRing : kTri;
@@ -725,10 +763,22 @@ public:
                 vertices.push_back(o);
             }
         }
+        if (cockpit) {
+            if (s.cockpitBodyCount + vertices.size() > VkSceneRenderer::kCockpitBodyVertexStride)
+                throw std::runtime_error("scene: cockpit body and reflection exceed reserved vertex range");
+            renderer_.SetVertices(VkSceneRenderer::kCockpitBodyVertexBase + uint32_t(slot)*VkSceneRenderer::kCockpitBodyVertexStride +
+                                  s.cockpitBodyCount, vertices);
+            s.cockpitReflectionCount=uint32_t(vertices.size());
+            return;
+        }
         const uint32_t base = kCarVertexBase + uint32_t(slot) * kCarVertexStride + s.vertexCount + s.shadowCount;
         if (base + vertices.size() > kCarVertexBase + uint32_t(slot + 1) * kCarVertexStride) vertices.resize(kCarVertexBase + size_t(slot + 1) * kCarVertexStride - base);
         renderer_.SetVertices(base, vertices);
         s.reflectionCount = uint32_t(vertices.size());
+    }
+
+    void UpdateCockpitReflection(int slot, const float* world, const std::array<std::array<float, 3>, 3>& cameraAxes) {
+        UpdateCarReflection(slot, world, cameraAxes, kEnvMapTpage, kEnvMapClut, 0x60, 0, 0, true);
     }
 
     // Draw items of one car: the ground shadow (subtractive, before the body so the body paints over it), the
@@ -777,6 +827,27 @@ public:
             reflection.blend = 1; // B + F, as the original's tpage word (0x29 = page 9 | mode 1)
             std::copy(mvp, mvp + 16, reflection.mvp);
             items.push_back(reflection);
+        }
+    }
+
+    // The original body with transparent glazing and an interior roof lining.
+    // It has a separate immutable range: reflections and other cars sharing this slot cannot overwrite it.
+    void AppendCockpitBodyItems(std::vector<DrawItem>& items, int slot, const float* mvp, uint32_t paint) const {
+        if (slot < 0 || size_t(slot) >= slots_.size()) return;
+        const Slot& s = slots_[size_t(slot)];
+        if (!s.cockpitBodyCount) return;
+        DrawItem item;
+        item.firstVertex = VkSceneRenderer::kCockpitBodyVertexBase + uint32_t(slot) * VkSceneRenderer::kCockpitBodyVertexStride;
+        item.vertexCount = s.cockpitBodyCount;
+        item.paint = paint;
+        std::copy(mvp, mvp + 16, item.mvp);
+        items.push_back(item);
+        if (s.cockpitReflectionCount) {
+            item.firstVertex += s.cockpitBodyCount;
+            item.vertexCount = s.cockpitReflectionCount;
+            item.paint = 0;
+            item.blend = 1;
+            items.push_back(item);
         }
     }
 
@@ -850,6 +921,7 @@ public:
 
     // The parsed .cdo of a slot (empty for an external mesh): its wheel entries place the smoke (particles.h).
     const CarModel& SlotModel(int slot) const { return slots_[size_t(slot)].model; }
+    CockpitFit SlotCockpitFit(int slot) const { return slot >= 0 && size_t(slot) < slots_.size() ? slots_[size_t(slot)].cockpit : CockpitFit{}; }
     float SlotShadowHeight(int slot) const { return slots_[size_t(slot)].shadowHeight; }
     // The split screen of the 2 player Battle (tools/gt2game/split_race.cpp): the frame's billboards and tyre smoke are written
     // per view, so the second view needs its own vertex ranges - the last two car slots (kCarSlotsSplit..kCarSlots) are reserved
@@ -1148,6 +1220,10 @@ private:
         std::array<std::array<uint32_t, 2>, 4> wheelRanges{};
         std::array<std::array<float, 3>, 4> wheelCentres{};
         float shadowHeight = 0;
+        CockpitFit cockpit;
+        uint32_t cockpitBodyCount = 0;
+        uint32_t cockpitReflectionCount = 0;
+        std::vector<size_t> cockpitExterior;
     };
 
     // The reflection pass of an external mesh (UseExternalCar with reflective triangles): the original's rule of

@@ -159,6 +159,9 @@ State Resolve(const Settings& settings, const std::vector<DeviceState>& devices,
 }
 void Apply(const Settings& settings, const State& state, LogicalPad& pad) {
     if (!state.active) return;
+    // A saved rig that is not connected must not erase a fresh controller frame.
+    // An already mapped wheel frame still takes the neutral-on-disconnect path.
+    if (!state.ready && !pad.wheel) return;
     pad = {};
     pad.wheel = true;
     pad.analog = 13;

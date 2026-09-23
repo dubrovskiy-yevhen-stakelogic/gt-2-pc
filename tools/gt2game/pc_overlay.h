@@ -5,6 +5,7 @@
 #include "gt2view/vk_scene_renderer.h"
 #include "gt2view/hud_visibility.h"
 #include "platform/xr/vr_driving.h"
+#include "cockpit_camera.h"
 namespace gt2::career { struct CareerSave; struct CareerData; }
 namespace gt2game {
 class GameWindow;
@@ -20,6 +21,7 @@ const gt2::vr::ControlBindings& OverlayControlBindings();
 const gt2::vr::ControlBindings& OverlayDesktopBindings();
 bool OverlayDesktopCustomBindings();
 float OverlayIntroLowering();
+const CockpitSettings& OverlayCockpitSettings();
 const gt2view::HudVisibility& OverlayHudVisibility();
 bool OverlayMetricUnits(bool fallback);
 int OverlayVrScale(); // -1 unless the player saved an eye scale

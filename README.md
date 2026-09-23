@@ -1,10 +1,14 @@
-# Gran Turismo 2 PC & VR - 0.4.0
+![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
-**0.4.0 adds Windows PC / PCVR wheels, pedals, USB shifters and force feedback**, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
+# Gran Turismo 2 PC & VR - 0.5.0
+
+**0.5.0 adds cockpit driving.** A shared dashboard, seats and moving steering wheel fit inside each car's original body, retaining its hood, roof, pillars and window outlines. The cockpit includes adjustable seating and a rear-view mirror that can be resized or switched off. Open **F10 -> Cockpit / driver view**; see [cockpit controls and limits](docs/COCKPIT.md).
+
+Windows PC / PCVR supports wheels, pedals, USB shifters and force feedback, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
 
 **Tested hardware:** Fanatec Gran Turismo DD Pro (8 Nm) with a Thrustmaster TH8A Shifter. This setup was used for wheel-driving tests and feedback on countersteering assistance. The other embedded device profiles have not all been tested on physical hardware.
 
-**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.4.0.zip`.**
+**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.5.0.zip`.**
 
 | Version included | Where the game runs | Install | Launch |
 |---|---|---|---|
@@ -12,14 +16,15 @@
 | **Windows PCVR (OpenXR)** | On your PC, displayed in your connected headset | `INSTALL-PCVR.bat` | `PLAY-PCVR-STEAMVR.bat`, `PLAY-PCVR-META.bat` or `PLAY-PCVR-VD.bat` |
 | **Quest 3 standalone VR** | On the headset; no streaming PC required to play | `INSTALL.bat` | **GT2 VR** under **Unknown Sources** |
 
-The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.4.0.apk`; it is only the standalone component of the complete release.
+The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.5.0.apk`; it is only the standalone component of the complete release.
 
 This is a native C++ port with Vulkan rendering and ported game simulation. Arcade and Simulation are available in all three versions. See [CHANGELOG.md](CHANGELOG.md) for the release notes.
 
-Supply your own supported disc images. Game data, BIOS, saves and copyrighted game artwork are not included.
+Supply your own supported disc images. Game data, BIOS and saves are not included. The screenshot above illustrates gameplay.
 
 ## Features
 
+- A fitted cockpit for live single-player Driver view, with moving steering wheel and hands, speed/RPM needles, seat adjustments and a central rear-view mirror. Replays and split-screen retain their existing views. See [cockpit controls](docs/COCKPIT.md).
 - Unified PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, DualSense pedals and both Arcade/Simulation cheats.
 - Windows PCVR through OpenXR, with theatre menus/movies, stereo races, tracked head movement and Touch controls. See [PCVR setup](docs/PCVR.md).
 - USB save transfer in both directions between PC and Quest, with card validation, backups and verified copying. Desktop and PCVR share PC saves. See [save transfer](docs/SAVE-TRANSFER.md).
@@ -31,7 +36,7 @@ Supply your own supported disc images. Game data, BIOS, saves and copyrighted ga
 - Saved graphics and control settings, graphics overlay, configurable draw distance including the entire course and distant scenery, MSAA and texture filtering.
 - Original-resolution assets with higher-resolution rendering. PC supports fixed **720p, 1080p, 1440p and 4K**, or 50–200% of window size; configurable FPS cap/VSync and interpolated presentation. Physics stays at 30 Hz.
 - Keyboard, XInput controllers and **native DualSense / DualSense Edge support on PC**, over USB or Bluetooth: buttons, sticks, trigger pedals, adjustable vibration and adaptive accelerator/brake resistance. Adaptive effects do not require Steam Input. Touch controllers have vibration, not adaptive triggers.
-- Quest theatre-screen menus/movies and head-tracked stereo driving/replays. The HUD and mirror share a properly projected stereo plane.
+- Quest theatre-screen menus/movies and head-tracked stereo driving/replays. The HUD is projected per eye; the cockpit mirror sits on a physical surface inside the cabin.
 - Three VR driving modes on PCVR and Quest: **Stick, Virtual wheel and Motion**. One/two-handed wheel grabbing with animated hands; all fingers stay closed while holding the wheel. Motion uses wrist rotation around the forearm, with grip-held steering and independent trigger pedals.
 - VR Controls submenu: driving bindings, selected steering stick/motion hand, wheel position/size and height-only adjustment of the original starting flythrough. Automatic brake-to-reverse is available.
 - VR Graphics submenu: 50–200% eye resolution, available headset refresh rates, MSAA, distance, textures, foveation and vibration. Resolution changes require a restart; other supported settings apply immediately.
@@ -42,9 +47,9 @@ Supply your own supported disc images. Game data, BIOS, saves and copyrighted ga
 - Trees use position-based cylindrical billboards in VR: head rotation alone does not rotate them.
 - Developer tools for car/track export, JSON modifications, captures and reference comparisons. Arbitrary new-track geometry compilation is not implemented.
 
-## Install the player release
+## Install the 0.5.0 player release
 
-Extract **GT2-0.4.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+Extract **GT2-0.5.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
 
 Start **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR), and **PLAY.bat** (also **gt2game.exe** directly) for desktop. All use one application: the optional PlayStation intro, then the same disc picker as Quest. **PLAY-PCVR.bat** retains automatic selection: running SteamVR, otherwise the system default. Runtime choices affect only the game process. The package includes the Khronos loader; the headset software must be installed separately. Use **TRANSFER_QUEST_SAVES_TO_PC.bat** or **TRANSFER_PC_SAVES_TO_QUEST.bat** to move saved cards after closing the game on both devices. Quest save exchange requires the 0.3.0 APK or newer.
 
@@ -71,13 +76,15 @@ European media currently use the port's English UI. Other language selections an
 
 On PC, **F10** or **Create/Select + Options/Start** opens settings. Arrows/D-pad navigate and change values; Escape/Triangle closes. DualSense R2 accelerates and L2 brakes in the pedal profile. Native HID effects require the physical controller, rather than a virtual Xbox controller exposed by a mapper.
 
+Choose **Cockpit / driver view** to change the Driver camera. **C** still cycles Driver, Chase 1 and Chase 2. Seat height adjusts from **-20 to +20 cm** and **Seat forward / back** from **-20 to +40 cm**. The decorative steering wheel can be hidden for physical-wheel play. The recessed dashboard stays below the cowl, and a central cabin mirror shares one small rear-view image between both eyes. Its size adjusts from **25% to 100%**, and **OFF** removes its rear-view pass. Settings save automatically across both discs; **Original** restores the original Driver view.
+
 On PCVR and Quest, **L3 + R3** (press both sticks) or **both grips + Menu** opens VR settings. **Menu** alone pauses the race. **Y** still changes the camera while you hold the virtual wheel. Use **Change game (Arcade / Simulation)** to return to the disc picker after saving progress. Stick up/down selects rows; **left/right triggers decrease/increase values**. A confirms/opens, B goes back. Grips and horizontal stick drift cannot change menu values. See [Quest controls and settings](docs/QUEST.md).
 
 See [PCVR controls and runtime requirements](docs/PCVR.md) for SteamVR / Steam Link, Meta Quest Link / Air Link and Virtual Desktop setup.
 
 ## Performance and limits
 
-New Quest disc profiles start at **150% resolution, 72 Hz, MSAA 2x, the entire detailed course and medium foveation**, with smooth textures, virtual-wheel driving, full HUD, 100% vibration and the profiler off. All cheats and unlock overrides start off on both discs. Existing saved preferences are preserved. See [the full default settings](docs/QUEST.md#first-launch-defaults).
+New Quest profiles start at **130% resolution, 72 Hz, MSAA 2x, the entire detailed course and medium foveation**, with smooth textures, virtual-wheel driving and 100% vibration. PCVR also starts at **130% eye resolution**; flat desktop rendering scale remains 100%. The instrument HUD and profiler start **OFF** on all platforms; the physical cockpit instruments remain visible. All cheats and unlock overrides start off on both discs. Existing saved preferences are preserved. See [the full default settings](docs/QUEST.md#first-launch-defaults).
 
 175% eye resolution means about **3.06 times as many pixels** as 100%. Sustained 175% at 90 FPS is not achieved across races. Select resolution, MSAA, foveation and distance to suit the scene; the profiler reports actual application frames, not the selected display refresh rate.
 
@@ -95,7 +102,7 @@ ctest --test-dir build_local --output-on-failure
 
 `-InstallDir`, `-BuildDir`, `-SkipDependencies` and `-NoBuild` support custom/offline preparations. Loose assets are stored under `runtime/{arcade,simulation}/assets`, with raw sectors retained for audio, movies and overlay data. Source installation preserves previous data and saves. Android build/signing instructions are in [QUEST.md](docs/QUEST.md).
 
-Sources are published as a normal repository folder. Run `scripts/audit-source.ps1` before publication; retail data, private diagnostics, signing keys and build outputs are excluded. See [validation](docs/VALIDATION.md) and [third-party provenance](THIRD_PARTY.md).
+Sources are published as a normal repository folder. Run `scripts/audit-source.ps1` before publication, or `scripts/audit-source.ps1 -FileSystem` for a source archive without Git metadata. The source and player packagers accept the same switch and record SHA-256 snapshots without claiming a commit. Retail data, private diagnostics, signing keys and build outputs are excluded. See [validation](docs/VALIDATION.md) and [third-party provenance](THIRD_PARTY.md).
 
 ## Optional offline media preparation
 
@@ -109,10 +116,10 @@ HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases
 
 ## Committed roadmap
 
-The following features are planned for future releases and are not included in 0.4.0:
+The following features are planned; no release dates are set:
 
-- An interior cockpit view for driving.
 - Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
+- Cross-platform multiplayer between PC, PCVR and Quest.
 
 The existing adaptive accelerator/brake effects for a DualSense gamepad on Windows are separate from the planned PSVR2 Sense support.
 

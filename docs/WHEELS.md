@@ -27,7 +27,7 @@ The inspected Fanatec ClubSport USB Shifter reference has invalid fields, so thi
 
 **Advanced settings** retains individual driving-button assignments, inversion, dead zones, response curves, damping and force-direction adjustment. Changes there select Custom mode so the automatic profile does not overwrite calibration. Combined pedals can use one axis with a released centre and opposite pressed endpoints. Digital pedal buttons and analog handbrake travel are not currently exposed as analog pedal/handbrake bindings.
 
-When enabled, the wheel owns the player's driving controls; gamepads and VR controllers can still operate menus. Select Off to use the existing gamepad/virtual-wheel path.
+When enabled and ready, the wheel owns the player's driving controls; gamepads and VR controllers can still operate menus. Select Off to use the gamepad/virtual-wheel path while the rig is connected. In 0.5.0, a disconnected or incomplete rig automatically leaves driving input to the gamepad or keyboard, without erasing wheel calibration.
 
 ## Gearbox and clutch
 

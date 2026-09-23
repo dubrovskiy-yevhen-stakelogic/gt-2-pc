@@ -43,6 +43,7 @@
 #include "gt2view/hud.h"
 #include "gt2view/particles.h"
 #include "gt2view/scene_assets.h"
+#include "gt2view/procedural_cockpit.h"
 #include "mod_scene.h"
 #include "mods.h"
 #include "panel.h"
@@ -274,6 +275,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
 
     renderer.clearColor[0] = 0.45f; renderer.clearColor[1] = 0.58f; renderer.clearColor[2] = 0.78f;
     SceneAssets assets(renderer, vol);
+    ProceduralCockpit cockpit(renderer);
     // Sponsor boards (sponsor_boards.h, 0x800275E8): the original seeds its generator with the VSync counter at the
     // race load; a screenshot / scripted run uses a fixed seed (the attract race's, 0x14D57) so that it is reproducible.
     SponsorTable sponsorTable; // outlives the uploads: they refer to its logo images
@@ -706,8 +708,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     // VR (docs/research/vr_port_plan.md, M2): the race scene as a stereo projection layer. The draw list is built
     // ONCE per compositor frame, in the reference space "world - refEye" (DrawItem::space says what each item is),
     // and the renderer applies each eye's view-projection. The CPU work - the scenery LOD and render list, the smoke
-    // billboards, the car's reflection axes, the backdrop - runs once from the rig's mid eye. The 2D layers (HUD,
-    // panels, the rear-view mirror) stay flat and identical in both eyes until M4 moves them onto their own quads.
+    // billboards, the car's reflection axes, the backdrop - runs once from the rig's mid eye. HUD and panels remain
+    // flat; the cockpit mirror samples one rear-view pass on a depth-tested surface shared by both eyes.
     const bool vrStereo = window.StereoAvailable() && !config.oldCamera;
     gt2::vr::View rigView;
     bool stereoActive = false;
@@ -718,18 +720,26 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         const float at = float(std::clamp(alpha, 0.0, 1.0));
         const camera::RaceCamera& cam = raceCamera.Camera();
         const bool cameraInterp = interp && !CameraCut(previous.camera, cam);
-        const camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
+        camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
+        const auto& fit = assets.SlotCockpitFit(carSlot);
+        const bool inCockpit = fit.valid && CockpitShown(cam, OverlayCockpitSettings().enabled, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames());
+        if (inCockpit) {
+            float model[16];
+            if (interp && !PoseJump(previous.poses[0], race.Pose(0))) InterpolatedModelMatrix(previous.poses[0], race.Pose(0), at, model);
+            else ModelMatrix(race.Pose(0), model);
+            PlaceCockpitEye(p, model, fit, OverlayCockpitSettings());
+        }
         for (int k = 0; k < 3; k++) {
             rc.eye[k] = p.eye[k];
             rc.right[k] = p.right[k];
             rc.up[k] = p.up[k];
             rc.forward[k] = p.forward[k];
         }
-        if (!replaying && race.HoldFrames() != 0) {
+        if (!replaying && !inCockpit && race.HoldFrames() != 0) {
             const auto pose = race.Pose(size_t(cam.target));
             gt2::vr::LowerIntroCamera(rc,float(double(pose.worldPosition[1])/65536.0),OverlayIntroLowering());
         }
-        ClipMatrixOf(p, window.StereoAspect(), 0.1f, rc.clip);
+        ClipMatrixOf(p, window.StereoAspect(), inCockpit ? 0.03f : 0.1f, rc.clip);
         return rc;
     };
     // The 3D scene is not drawn at all while the race overlay's own menus are up (buildFrame clears the list).
@@ -744,7 +754,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         input::InputCallTimer frameTimer("race frame (input/simulation/render/present)", 250);
         const int fieldBeforeOverlay = window.Field();
         const uint64_t clockBeforePump = window.ClockRevision();
-        window.SetDrivingActive(phase == Phase::kRacing && !replaying && race.HoldFrames() == 0);
+        const bool seatedCountdown=assets.SlotCockpitFit(carSlot).valid &&
+            CockpitShown(raceCamera.Camera(),OverlayCockpitSettings().enabled,
+                         replaying || data.constants.flag800A951C!=0,config.oldCamera,race.HoldFrames());
+        window.SetDrivingActive(phase == Phase::kRacing && !replaying && (race.HoldFrames()==0 || seatedCountdown));
         if (!window.BeginFrame()) {
             result.exit = RaceExit::kClosed;
             break;
@@ -1190,6 +1203,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 const sim::CarBody& b = race.CarAt(0).body;
                 previous.rpm = b.engineRpm;
                 previous.speedReadout = b.speedReadout;
+                previous.steerAngle = b.steerAngle;
                 previous.boost = b.intakeLoad;
                 previous.clock = race.RaceClock();
                 previous.wheels.resize(race.CarCount());
@@ -1392,13 +1406,22 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         double projectionDistance = kProjectionDistance; // the view's H on the 320 x 240 frame (scenery LOD, smoke size)
         int cameraChunk = -1;                              // the chunk whose render list is drawn (camera + 0xA0)
         int hiddenCar = -1;                                // camera + 0x108: the followed car is not drawn (driver view)
+        const auto& cockpitFit = assets.SlotCockpitFit(carSlot);
+        const bool inCockpit = cockpitFit.valid && CockpitShown(cam, OverlayCockpitSettings().enabled, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames());
         if (!config.oldCamera) {
-            const camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
+            camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
+            if (inCockpit) {
+                float cockpitModel[16];
+                carModel(0, cockpitModel);
+                PlaceCockpitEye(p, cockpitModel, cockpitFit, OverlayCockpitSettings(), !stereoActive);
+                if (!stereoActive) FrameDesktopCockpit(p);
+            }
             eye = {p.eye[0], p.eye[1], p.eye[2]};
             cf = {p.forward[0], p.forward[1], p.forward[2]};
             cs = {p.right[0], p.right[1], p.right[2]};
             cu = {p.up[0], p.up[1], p.up[2]};
-            if (cameraInterp) ClipMatrixOf(p, aspect, 0.1f, vp);
+            if (inCockpit) ClipMatrixOf(p, aspect, 0.03f, vp);
+            else if (cameraInterp) ClipMatrixOf(p, aspect, 0.1f, vp);
             else camera::ClipMatrix(cam, aspect, 0.1f, vp); // the original's vertical field of view, widened for the aspect
             projectionDistance = p.H;
             cameraChunk = cam.chunk;
@@ -1487,6 +1510,33 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         AppendCourseObjects(assets, items, vp, courseObjects); // a mod course's glTF objects (mod_scene.h)
         float carMvp[16];
         Multiply(vp, model, carMvp);
+        std::array<float,16> controlsFrame{};
+        std::array<float,3> steeringHub{};
+        if (inCockpit) {
+            const auto& vr=VrOptionsInUse();
+            const auto local=CockpitControlsLocal(cockpitFit,OverlayCockpitSettings(),vr.worldScale,vr.seat);
+            Multiply(carMvp,local.data(),controlsFrame.data());
+            const auto& controls=OverlayDrivingSettings();
+            steeringHub={local[12],local[13]+controls.wheelHeightCm*.01f*vr.worldScale,
+                         local[14]-controls.wheelDistanceCm*.01f*vr.worldScale};
+        }
+        if (inCockpit) {
+            const auto& body = race.CarAt(0).body;
+            const uint32_t paint = data.paints.empty() ? 0u : data.paints[0];
+            assets.UpdateCockpitReflection(carSlot, model, cameraAxes);
+            assets.AppendCockpitBodyItems(items, carSlot, carMvp, paint);
+            const bool blendInstruments = interp && !PoseJump(previous.poses[0], race.Pose(0));
+            const float steer = float(blendInstruments ? LerpInt(previous.steerAngle, body.steerAngle, at) : body.steerAngle);
+            const float turn = body.steerLock ? std::clamp(steer / float(body.steerLock), -1.f, 1.f) : 0.f;
+            const float degrees = window.Input().Wheel().Current().ready ? float(input::wheel::Config().steeringGeometry.wheelDegrees) : 360.f;
+            const float rpm = float(blendInstruments ? LerpInt(previous.rpm, body.engineRpm, at) : body.engineRpm);
+            const float speed = float(blendInstruments ? LerpInt(previous.speedReadout, body.speedReadout, at) : body.speedReadout) * .01609344f;
+            const bool virtualWheel = vrStereo && OverlayDrivingSettings().mode == 1;
+            cockpit.Append(items, cockpitFit, carMvp, turn * degrees * .00872664626f, speed, rpm, race.WheelInNeutral(0) ? -1 : int(body.gear),
+                           OverlayCockpitSettings().steeringWheel && !virtualWheel,
+                           OverlayCockpitSettings().seatHeightCm*.01f,
+                           CockpitSeatBack(OverlayCockpitSettings(), !stereoActive),virtualWheel ? &steeringHub : nullptr);
+        }
         if (hiddenCar != 0) { // reflection pass: the view-space normals need the camera frame (rows right, down, forward - the PS1 camera)
             assets.UpdateCarReflection(carSlot, model, cameraAxes);
             const uint32_t playerPaint = data.paints.empty() ? 0u : data.paints[0];
@@ -1524,7 +1574,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (interp) assets.AppendSmokeItems(items, blended, InterpolatedSmoke(previous.smoke, smoke, at), vp, smokeEye, smokeRight, smokeUp, smokeForward, float(projectionDistance));
             else assets.AppendSmokeItems(items, blended, smoke, vp, smokeEye, smokeRight, smokeUp, smokeForward, float(projectionDistance));
         }
-        if (stereoActive && !replaying && race.HoldFrames() == 0) window.AppendDrivingVisuals(items);
+        if (stereoActive && !replaying && (inCockpit || race.HoldFrames()==0))
+            window.AppendDrivingVisuals(items,inCockpit ? controlsFrame.data() : nullptr);
         tagSpace(items, worldFirst, kSpaceWorld); // course, cars, mod objects, smoke: the reference space
         tagSpace(blended, worldBlendedFirst, kSpaceWorld);
         items.insert(items.end(), blended.begin(), blended.end());
@@ -1535,11 +1586,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         // HUD, in the frame's rectangle (100, 20) 120 x 32 (centred like the HUD's centre block), from the camera copy
         // camera::MirrorCamera: the backdrop's two flat colours, the course's mirror copies (chunk + 0x94) nearer than
         // 100 m (0x80020110 with param 1), the cars (0x8001545C with param 1; the followed car stays hidden), the frame.
-        if (config.mirror && OverlayHudVisibility().mirror && !config.oldCamera && camera::MirrorShown(cam, data.constants.gameMode, data.constants.step.rate == 60 ? 1 : 2)) {
+        if (config.mirror && OverlayHudVisibility().mirror && !config.oldCamera &&
+            (!inCockpit || OverlayCockpitSettings().mirror) &&
+            ((inCockpit && !cam.lookBack) || camera::MirrorShown(cam, data.constants.gameMode, data.constants.step.rate == 60 ? 1 : 2))) {
+            const size_t mirrorFirst = items.size();
             const camera::RaceCamera mirrorCam = camera::MirrorCamera(cam);
-            const float rect[4] = {0.5f + float(camera::kMirrorRect[0] - 160) / (240.0f * hudAspect), float(camera::kMirrorRect[1]) / 240.0f,
+            float rect[4] = {0.5f + float(camera::kMirrorRect[0] - 160) / (240.0f * hudAspect), float(camera::kMirrorRect[1]) / 240.0f,
                                    0.5f + float(camera::kMirrorRect[0] + camera::kMirrorRect[2] - 160) / (240.0f * hudAspect),
                                    float(camera::kMirrorRect[1] + camera::kMirrorRect[3]) / 240.0f};
+            if (inCockpit) { rect[0] = rect[1] = 0; rect[2] = rect[3] = 1; }
             float mirrorVp[16];
             // with the high frame rate: the mirror copies of the two steps' cameras, interpolated like the main view
             const camera::CameraProjection mp = cameraInterp ? InterpolatedProjection(camera::MirrorCamera(previous.camera), mirrorCam, at) : camera::ProjectionOf(mirrorCam);
@@ -1584,7 +1639,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             }
             for (size_t k = firstCar; k < items.size(); k++) std::copy(rect, rect + 4, items[k].scissor);
             items.insert(items.end(), mirrorBlended.begin(), mirrorBlended.end());
-            items.insert(items.end(), mirrorFrame.begin(), mirrorFrame.end());
+            if (inCockpit) {
+                for (size_t k = mirrorFirst; k < items.size(); ++k) {
+                    items[k].space = kSpaceMirrorSource;
+                    items[k].clearDepth = 0;
+                }
+                const size_t surfaceFirst = items.size();
+                cockpit.AppendMirror(items, carMvp, OverlayCockpitSettings().mirrorScalePercent*.01f);
+                tagSpace(items, surfaceFirst, kSpaceWorld);
+            } else items.insert(items.end(), mirrorFrame.begin(), mirrorFrame.end());
         }
         sceneCount = items.size(); // the HUD and the panels below are 2D layers at the window's resolution
 

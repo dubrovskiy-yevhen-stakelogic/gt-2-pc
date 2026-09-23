@@ -1,5 +1,6 @@
 #pragma once
 #include "frame_profiler.h"
+#include "frame_profiler_log.h"
 #include "platform/os/keys.h"
 // The one window of gt2game: the platform's window, the Vulkan renderer on it, the keyboard, the scripted input of
 // automated runs and the frame pacing. The menus (menu_mode.h), the race (race_view.h) and the native panels between
@@ -92,7 +93,7 @@ public:
     virtual void SetDrivingActive(bool) {}
     virtual void SetVrMenuActive(bool) {}
     virtual bool PhysicalSteering(float&) const { return false; }
-    virtual void AppendDrivingVisuals(std::vector<gt2view::DrawItem>&) {}
+    virtual void AppendDrivingVisuals(std::vector<gt2view::DrawItem>&, const float* = nullptr) {}
     virtual void EndRenderFrame() {}
     virtual bool Closed() const = 0;
     virtual void Close() = 0;
@@ -224,7 +225,8 @@ public:
     bool XrPaced() const { return backend_->XrPaced(); }
     std::vector<int> RefreshRates() const { return backend_->RefreshRates(); }
     bool SetRefreshRate(int hz) { return backend_->SetRefreshRate(hz); }
-    void BeginPresent() { backend_->BeginRenderFrame(); }
+    void BeginPresent();
+    bool ProfilerLogFailed() const { return profilerLog_.Failed(); }
     std::chrono::steady_clock::time_point DisplayTime() const { return backend_->DisplayTime(); }
     void FinishPresent(const std::vector<gt2view::DrawItem>& items, size_t sceneItems);
 
@@ -255,7 +257,9 @@ public:
     void ResetPacing() { next_ = Clock::now(); }
     void SetDrivingActive(bool on) { backend_->SetDrivingActive(on); }
     bool PhysicalSteering(float& value) const { return backend_->PhysicalSteering(value); }
-    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items) { backend_->AppendDrivingVisuals(items); }
+    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame = nullptr) {
+        backend_->AppendDrivingVisuals(items, vehicleFrame);
+    }
     // --fast: no frame pacing (automated runs render as fast as the GPU allows).
     void SetPacing(bool on) { pacing_ = on; }
     bool Pacing() const { return pacing_; }
@@ -291,6 +295,10 @@ private:
     using Clock = std::chrono::steady_clock;
     void DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t sceneItems, const std::string& path);
     FrameProfiler frameProfiler_;
+    FrameProfilerLog profilerLog_;
+    Clock::time_point frameBuildStart_{};
+    double frameBeginWaitMs_ = -1;
+    bool frameBuildTimed_ = false;
 
     std::unique_ptr<WindowBackend> backend_;
     std::vector<ScriptKey> script_;

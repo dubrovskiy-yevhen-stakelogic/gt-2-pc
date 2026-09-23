@@ -63,6 +63,8 @@ struct State {
     std::array<bool, ButtonCount> held{};
 };
 State Resolve(const Settings& settings, const std::vector<DeviceState>& devices, bool focused);
+// Ready rigs own driving input. Unavailable rigs preserve the keyboard/gamepad
+// frame; passing an old wheel frame instead clears its pedals and gear request.
 void Apply(const Settings& settings, const State& state, LogicalPad& pad);
 // Apply the race's AT/MT choice before recording the live wheel frame. Replays
 // keep their recorded gear requests and never pass through this policy.

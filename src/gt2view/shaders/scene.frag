@@ -38,6 +38,7 @@ layout(location = 0) out vec4 outColor;
 layout(location = 9) flat in uint inCache;
 layout(set = 0, binding = 3) uniform sampler2DArray decodedPages;
 layout(set = 0, binding = 5) uniform sampler2D handAlbedo;
+layout(set = 0, binding = 6) uniform sampler2D rearView;
 
 uint word(uint x, uint y) { return vram.words[y * 1024u + x]; }
 
@@ -105,6 +106,10 @@ vec4 contourTexel(ivec2 t,ivec2 lo,ivec2 hi,vec3 color) {
 #include "texture_mips.glsl"
 
 void main() {
+    if ((inFlags & 2097152u) != 0u) {
+        outColor = vec4(textureLod(rearView, inTexel, 0).rgb, 1.0);
+        return;
+    }
     if ((inFlags & 65536u) != 0u) {
         outColor = vec4(texture(handAlbedo, inTexel).rgb * inColor, 1.0);
         return;

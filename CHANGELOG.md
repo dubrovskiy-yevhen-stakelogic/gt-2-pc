@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 - 2026-09-24
+
+- Added a fitted cockpit for the live single-player Driver camera: dashboard, analogue speed/RPM needles, moving steering wheel, seats and door trim inside the selected car's original body. The cockpit appears as soon as the countdown camera switches to Driver, before GO.
+- Window openings follow the original glass and body geometry. Improved curved windscreens, side-window edges and cabin joins; removed the false windshield triangle reported on Lancer and similar decal/reflection artifacts. Exterior paint and reflections remain.
+- Added **Cockpit / driver view** settings: **Cockpit / Original**, seat height **-20 to +20 cm**, seat forward/back **-20 to +40 cm**, a steering-wheel visibility switch and reset. Seat adjustments use 2 cm steps and save across both discs.
+- Moved the default seating position back 15 cm, lowered both front seats and extended the steering column to the wheel. Hands and the interactive VR wheel now follow suspension roll, pitch and impact movement with the body.
+- Added a physical central rear-view mirror using one rear-camera image for both eyes. The mirror can be switched off or resized from **25% to 100%**. Switching it off removes its rear-view render pass.
+- Enabling the FPS profiler now also records a CSV log. Logs include frame timing, GPU timing, draw counts, rear-view activity and active graphics settings; disabling the profiler flushes and closes the file.
+- New VR profiles default to **130% eye resolution**. The **instrument HUD** and **profiler** start **off** on all platforms; physical cockpit gauges remain visible. Desktop rendering scale remains 100%. Updates preserve saved settings.
+- Fixed an enabled but disconnected or incomplete wheel setup suppressing gamepad and keyboard driving input. The saved wheel calibration remains available when the rig reconnects.
+- The cockpit uses original procedural geometry. No external game's models or textures are required. Replays, the external starting flythrough and split-screen retain their existing views; vehicle simulation and saves are unchanged.
+- The cockpit update was accepted by the project author on Quest. Automated geometry and image checks cover 1096 car models; this does not imply headset testing of every car or a new performance guarantee. See [validation](docs/VALIDATION.md).
+- Android versionName is **0.5.0**, versionCode **23**.
+
 ## 0.4.0 - 2026-09-22
 
 - Added an embedded offline catalogue of 72 USB device records for automatic wheel/pedal/shifter setup, with exact device matching and explicit choices for ambiguous rigs or interchangeable rims.

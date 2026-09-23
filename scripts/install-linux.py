@@ -18,7 +18,7 @@ import zlib
 
 from gt2_disc import Disc, digest, safe_relative
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 PACKAGE = "io.github.gt2pc.quest"
 EXTERNAL = f"/sdcard/Android/data/{PACKAGE}/files"
 ADB_URL = "https://dl.google.com/android/repository/platform-tools_r36.0.2-linux.zip"

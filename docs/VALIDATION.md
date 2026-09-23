@@ -1,5 +1,26 @@
 # Validation
 
+## 0.5.0 release checks (2026-09-24)
+
+- Windows Release built in a new directory with the local XR simulator disabled. All seven CTest suites passed. The release geometry checker passed 7927 checks across 1096 car models, with no blocked forward/side probes or models without glazing.
+- Android ARM64 Release compiled, aligned and verified with versionName **0.5.0**, versionCode **23**, non-debuggable. Its signing certificate matches the public 0.4.0 APK. Android lint could not resolve dependencies from the offline cache and was explicitly skipped; this build does not claim a lint pass.
+- All 23 Python installer and wheel-profile tests passed. Public PowerShell scripts parsed successfully. The filesystem source exporter passed Windows PowerShell 5.1 audit, binary-payload rejection and an identical path/hash roundtrip from a folder without Git metadata.
+- The exported source folder also completed a separate clean Windows Release build and all seven CTest suites, verifying its build inputs independently of the development checkout.
+- Finite desktop checks passed cockpit setting changes, persistence, reset and mirror size limits. Cockpit-on/off countdown captures keep the external intro unchanged and show the cabin from the Driver camera cut before GO. Toggling the profiler created two separate CSV sessions containing gameplay and rear-view workload.
+- Fresh desktop profiles save **130% VR resolution**, instrument HUD **off** and profiler **off**, with no CSV created while the profiler is disabled. A previously saved **175%** VR scale remains 175%. Opening desktop settings no longer replaces the VR scale with the inactive renderer's 100% value.
+- The final Windows executable passed unified desktop/VR startup, both-disc selection, remembered choice, cancellation, shared preferences and the theatre-to-stereo transition using the local OpenXR simulator.
+- Source review found no blocking defect or added assistant boilerplate in the reviewed changes. An outdated mirror-rendering comment was corrected. These checks supplement the Quest feedback below; the public-signed APK was not installed over the development-signed headset build.
+
+## 0.5.0 cockpit acceptance (2026-09-24)
+
+The project author accepted the cockpit update on Quest after testing the final Lancer windshield correction. This covers that headset feedback, not every car, every PCVR runtime, physical-wheel alignment or sustained frame rate.
+
+The final cockpit revision passed 7927 synthetic and geometry checks across 1096 car models, with no blocked forward/side probes or models without glazing. The production renderer generated 4384 audit images with no failures. Comparison with the preceding revision found 219 changed images across 70 models; all changed views were reviewed. The audit uses the first paint, a default seat and four fixed views, so it does not cover all paints or head poses. Finite local OpenXR simulator captures supplement these checks.
+
+The windshield correction removes exterior alpha decals from the inner glass surface and recognises an additional dark reflection step. Original exterior materials and opaque structural trim are preserved. Classification runs during cached cockpit preparation, with no new cameras or render passes; frame time was not measured for this change.
+
+Version 0.5.0 sets new-profile VR eye resolution to 130%, with the instrument HUD and profiler off on all platforms; physical cockpit instruments remain. Flat desktop rendering scale remains 100%. Existing preferences are preserved. Public release build and package checks are recorded separately from the accepted development installation.
+
 ## 0.4.0 release checks (2026-09-22)
 
 - Windows Release and signed Android ARM64 builds passed. The APK is versionName **0.4.0**, versionCode **16**, non-debuggable, with the same signing certificate as 0.3.0.
@@ -20,7 +41,7 @@
 
 For additional headset/runtime combinations, check: title → race → pause → settings, both menu shortcuts, all three driving modes, vibration, taking the headset off and returning. Load a transferred saved game in both directions. Provider checks establish byte-preserving transfer, not regional save compatibility or game-load acceptance.
 
-The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.4.0.
+The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.5.0.
 
 ## Public release 0.1.0
 

@@ -17,13 +17,19 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = descSet_; write.dstBinding = 3; write.descriptorCount = 1;
         write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo = &info;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+        write.dstSet = mirrorSourceSet_;
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr); decodedInitialized_ = false;
     }
     const auto* vertices = static_cast<const SceneVertex*>(vertexBuffer_.mapped);
     for (size_t draw = 0; draw < std::min(sceneItems, items.size()); ++draw) {
         const auto& item = items[draw];
         if (uint64_t(item.firstVertex) + item.vertexCount > kMaxVertices) continue;
-        if (item.firstVertex >= kVrDrivingVertexBase) { cachedDraws_[draw] = 1; continue; }
+        if (item.firstVertex >= kVrDrivingVertexBase &&
+            uint64_t(item.firstVertex) + item.vertexCount <= uint64_t(kVrDrivingVertexBase) + kVrDrivingVertexLimit) {
+            cachedDraws_[draw] = 1;
+            continue;
+        }
         const uint64_t range = (uint64_t(item.firstVertex) << 32) | item.vertexCount;
         auto [it, added] = materialRanges_.try_emplace(range);
         if (added) {
@@ -131,6 +137,10 @@ void VkSceneRenderer::UploadHandTexture(uint32_t width, uint32_t height, const u
     VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     write.dstSet = descSet_; write.dstBinding = 5; write.descriptorCount = 1;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo = &info;
+    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    write.dstSet = mirrorSourceSet_;
+    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    write.dstBinding = 6;
     vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
     handPending_ = true; handExtent_ = {width,height};
 }

@@ -24,19 +24,21 @@ namespace {
 std::string settingsPath;
 gt2::shell::VrSettings baseVrSettings;
 int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
-bool profiler = true;
+bool profiler = false;
 bool playStationIntro = true;
 bool consoleStartupHandled = false;
 bool gameChangeAvailable = false, gameChangeRequested = false;
 int foveation = 2;
 int metricUnits = -1;
 bool baseMetricUnits = true;
-gt2view::HudVisibility hudVisibility;
+constexpr gt2view::HudVisibility kDefaultHudVisibility{.gauges = false};
+gt2view::HudVisibility hudVisibility = kDefaultHudVisibility;
 gt2::vr::DrivingSettings drivingSettings;
 gt2::vr::ControlBindings controlBindings;
 gt2::vr::ControlBindings desktopBindings = gt2::vr::DesktopBindings();
 bool desktopCustom = false;
 int introLowerCm = 200;
+CockpitSettings cockpitSettings;
 struct HudSetting { const char* label; const char* key; bool gt2view::HudVisibility::*member; };
 constexpr HudSetting hudSettings[] = {
     {"Course map", "vr_hud_map", &gt2view::HudVisibility::map},
@@ -138,6 +140,9 @@ void Save() {
         out << "# Live overlay preferences; separate from earned progress.\n" << CurrentGraphics().Serialize();
         out << "hd_assets=" << int(gt2::hd::Enabled()) << '\n';
         out << "vr_ps1_intro=" << int(playStationIntro) << '\n';
+        out << "cockpit=" << int(cockpitSettings.enabled) << "\ncockpit_wheel=" << int(cockpitSettings.steeringWheel)
+            << "\ncockpit_seat_height=" << cockpitSettings.seatHeightCm << "\ncockpit_seat_back=" << cockpitSettings.seatBackCm
+            << "\ncockpit_mirror=" << int(cockpitSettings.mirror) << "\ncockpit_mirror_scale=" << cockpitSettings.mirrorScalePercent << '\n';
         out << "adaptive=" << adaptive << "\nrumble=" << rumble << "\nunlock_courses=" << int(gt2::pc::unlockCourses)
             << "\nunlock_cars=" << int(gt2::pc::unlockCars) << "\n";
         if (metricUnits >= 0) out << "units=" << (metricUnits ? "kmh" : "mph") << '\n';
@@ -173,8 +178,9 @@ void LoadOverlaySettings(const std::string& basePath) {
     const auto wheelDirectory = gt2::shell::sharedVrSettingsPath.empty() ? std::filesystem::path(basePath).parent_path()
         : std::filesystem::path(gt2::shell::sharedVrSettingsPath).parent_path();
     gt2::input::wheel::LoadSettings((wheelDirectory / "wheel-settings.txt").string());
-    adaptive = 60; rumble = 50; vrScale = -1; vrRefresh = 72; profiler = true; foveation = 2;
-    hudVisibility = {}; drivingSettings = {}; controlBindings = {}; introLowerCm = 200;
+    adaptive = 60; rumble = 50; vrScale = -1; vrRefresh = 72; profiler = false; foveation = 2;
+    hudVisibility = kDefaultHudVisibility; drivingSettings = {}; controlBindings = {}; introLowerCm = 200;
+    cockpitSettings = {};
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;
@@ -194,6 +200,12 @@ void LoadOverlaySettings(const std::string& basePath) {
         if (eq == std::string::npos || line.empty() || line[0] == '#') continue;
         const auto key = line.substr(0, eq), value = line.substr(eq + 1);
         if (key == "hd_assets") gt2::hd::SetEnabled(value != "0");
+        else if (key == "cockpit") cockpitSettings.enabled = value == "1";
+        else if (key == "cockpit_wheel") cockpitSettings.steeringWheel = value == "1";
+        else if (key == "cockpit_seat_height") cockpitSettings.seatHeightCm = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
+        else if (key == "cockpit_seat_back") cockpitSettings.seatBackCm = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinBackCm, CockpitSettings::kMaxBackCm);
+        else if (key == "cockpit_mirror") cockpitSettings.mirror = value == "1";
+        else if (key == "cockpit_mirror_scale") cockpitSettings.mirrorScalePercent = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinMirrorScalePercent, CockpitSettings::kMaxMirrorScalePercent);
         else if (key == "vr_ps1_intro") playStationIntro = value != "0";
         else if (key == "units" && (value == "kmh" || value == "mph")) metricUnits = value == "kmh";
         else if (key == "pc_custom_bindings") desktopCustom = value == "1";
@@ -234,6 +246,7 @@ const gt2::vr::ControlBindings& OverlayDesktopBindings() { return desktopBinding
 const gt2::vr::ControlBindings& OverlayControlBindings() { return controlBindings; }
 const gt2::vr::DrivingSettings& OverlayDrivingSettings() { return drivingSettings; }
 float OverlayIntroLowering() { return introLowerCm*.01f; }
+const CockpitSettings& OverlayCockpitSettings() { return cockpitSettings; }
 const gt2view::HudVisibility& OverlayHudVisibility() { return hudVisibility; }
 bool OverlayMetricUnits(bool fallback) { return metricUnits < 0 ? fallback : metricUnits != 0; }
 int OverlayVrScale() { return vrScale; }
@@ -841,8 +854,8 @@ void ShowWheelSettings(GameWindow& w) {
 void ShowSettingsMenu(GameWindow& window) {
     const gt2::audio::ScopedMixPause pause;
     PrepareNativeUi(window.Renderer()); window.Input().StopFeedback();
-    if (vrScale < 0) vrScale = int(VrOptionsInUse().renderScale * 100 + 0.5f);
     const bool vr = VrMode();
+    if (vrScale < 0) vrScale = vr ? int(VrOptionsInUse().renderScale * 100 + 0.5f) : baseVrSettings.renderScale;
     int page = 0, selected = 0, carPage = 0, hudPage = 0, controlPage = 0;
     gt2::vr::MenuTriggers triggers;
     triggers.Begin(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
@@ -853,7 +866,17 @@ void ShowSettingsMenu(GameWindow& window) {
         auto graphics = CurrentGraphics();
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
-        if (page == 0) rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Resume game"};
+        if (page == 0) rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
+        if (page == 10) {
+            title = "GT2 / COCKPIT";
+            rows = {std::string("Driver view: ") + (cockpitSettings.enabled ? "Cockpit" : "Original"),
+                "Seat height: " + std::to_string(cockpitSettings.seatHeightCm) + " cm",
+                "Seat forward / back: " + std::to_string(cockpitSettings.seatBackCm) + " cm",
+                std::string("Steering wheel: ") + (cockpitSettings.steeringWheel ? "ON" : "OFF"),
+                std::string("Rear-view mirror: ") + (cockpitSettings.mirror ? "ON" : "OFF"),
+                "Mirror size: " + std::to_string(cockpitSettings.mirrorScalePercent) + "%",
+                "Reset cockpit settings", "Back"};
+        }
         if (page == 9) {
             title = "GT2 VR / CHANGE GAME";
             rows = {"Return to disc selection", "Back to current game"};
@@ -865,7 +888,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 "MSAA: " + std::to_string(graphics.msaa) + "x",
                 "Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"),
                 "Vibration: " + std::to_string(rumble) + "%", "Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"),
-                "FPS profiler: " + std::string(profiler ? "ON" : "OFF"),
+                "FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"),
                 "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
                 "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
                 "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"), "Back"};
@@ -960,8 +983,22 @@ void ShowSettingsMenu(GameWindow& window) {
                         if (gameChangeAvailable) { page = 9; selected = 1; }
                         else status = "Launch from the disc picker with both discs installed.";
                     }
+                    else if (selected == 6) { page = 10; selected = 0; status = "Applies to Driver camera. Change view with C / your camera button."; }
                     else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
+                }
+                else if (page == 10) {
+                    if (selected == 0 && direction) cockpitSettings.enabled = !cockpitSettings.enabled;
+                    if (selected == 1 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
+                    if (selected == 2 && direction) cockpitSettings.seatBackCm = std::clamp(cockpitSettings.seatBackCm + direction * 2, CockpitSettings::kMinBackCm, CockpitSettings::kMaxBackCm);
+                    if (selected == 3 && direction) cockpitSettings.steeringWheel = !cockpitSettings.steeringWheel;
+                    if (selected == 4 && direction) cockpitSettings.mirror = !cockpitSettings.mirror;
+                    if (selected == 5 && direction) cockpitSettings.mirrorScalePercent = std::clamp(cockpitSettings.mirrorScalePercent + direction * 5, CockpitSettings::kMinMirrorScalePercent, CockpitSettings::kMaxMirrorScalePercent);
+                    if (selected == 6 && accept) cockpitSettings = {};
+                    if (selected == 7 && accept) { page = 0; selected = 6; }
+                    status = "Saved. Applies to Driver camera when you resume.";
+                    if (page == 10 && (selected == 4 || selected == 5) && cockpitSettings.mirror && !hudVisibility.mirror)
+                        status = "Saved. Enable Rear-view mirror in HUD elements to show it.";
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {

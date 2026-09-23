@@ -1,7 +1,7 @@
 {
-  "version": "0.4.0",
-  "sourceCommit": "80eee32c0bab18e28e76e91ddb8d69e0755494c4",
-  "sourceDirty": true,
+  "version": "0.5.0",
+  "sourceCommit": null,
+  "sourceDirty": null,
   "files": [
     {
       "path": ".gitattributes",
@@ -9,11 +9,11 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "01bf5f292a398f95ad907fa1d25957ae36dc1b8ea5efcea368b262ef04c65a1c"
+      "sha256": "a6539e316fefbfb9150fa1b63fddd75c13297fe376949a0d62bfac335c9c2bbd"
     },
     {
       "path": "android/app/build.gradle",
-      "sha256": "d9723ac53d46843bb6cd095f6465d229316bcc66426a93c42425c4fed2bd90d3"
+      "sha256": "73ea8982ffe8ed85368df4c473bde068b22478a76b8d6d37058e519a159d4fcb"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -21,7 +21,7 @@
     },
     {
       "path": "android/app/src/main/cpp/android_main.cpp",
-      "sha256": "0767fcf7665d28dfbafe41842d3bd2f4277c8156d5347e61821daa6fd5bf1c35"
+      "sha256": "79d9aa2c160473e8231bfcd8892eab87b4be194d7e4c2c0c99b86c03fa2e972f"
     },
     {
       "path": "android/app/src/main/java/io/github/gt2pc/quest/GT2Activity.java",
@@ -49,15 +49,15 @@
     },
     {
       "path": "build.cmd",
-      "sha256": "9205fadc664a37e072b3659e64b6ba8dfcaacdf241f3af92c76d41d881b40cec"
+      "sha256": "85f179d53b8763b0ad3d3fc4a4a2689ce7b4abfa559b17dc53285eca14ce1272"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "637c4b9cd7516d5ddf5dd3e6ffecf81d7351514eff9ecb717c6a9237891c39a9"
+      "sha256": "5cfb6aa6d4cbe56d89ccc7a2c00f930f68f528333bb8f69bde4e74869731acbe"
     },
     {
       "path": "cmake/android.cmake",
-      "sha256": "87ff65f876a201c5b16ea0ffb6af3b8d7c346c676ed1eb9858b64a97c11a6713"
+      "sha256": "86da55b9472745cad3022b3a0a65f401cdf478b37b18e90a2605de1dfac1e0c8"
     },
     {
       "path": "cmake/stereo-shaders.cmake",
@@ -69,7 +69,7 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "2a9b3defd28b88f0b7b171e5e564dc4db055222b7e9bc21ddef90f44a05606ff"
+      "sha256": "53e8f1049f4e4e2a50b7c3679c5c4c443955b57390c7de34d0ea86c87f739704"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -90,6 +90,10 @@
     {
       "path": "db/sim_us12_symbols.yaml",
       "sha256": "d4539c43d6971f0fb467c67990b20e61d46bc1a030ec2762f90d9f2c2cd7b8c9"
+    },
+    {
+      "path": "docs/COCKPIT.md",
+      "sha256": "d9fadcc2006147cd515412f71a70876adcb49f8c1f642a0e3a6ae0f9b7ef816b"
     },
     {
       "path": "docs/EUROPEAN-DISCS.md",
@@ -201,11 +205,15 @@
     },
     {
       "path": "docs/HD-MEDIA.md",
-      "sha256": "ed8c6a88c5f9db2695ff9920a6e614e6044d361bb143e822405e4c1548051490"
+      "sha256": "8ede8575c95a910f5c3f0d480fb0b5852ce06f4e8b96b18785fe892484a1b2ae"
+    },
+    {
+      "path": "docs/images/cockpit-0.5.0.png",
+      "sha256": "e10cb0f35258951842edf0f113c382c1aff0d88b8e7fbd88c8562810949284d9"
     },
     {
       "path": "docs/LINUX-INSTALL.md",
-      "sha256": "5309744e706bae66e0d50544f7743f97a003cf1c47acad75c60526ac7b51335c"
+      "sha256": "3becbfd2634733e7c111b491a044f63db2f12bb3cdc3920fe5f85ce800899031"
     },
     {
       "path": "docs/MIPMAPS.md",
@@ -213,15 +221,15 @@
     },
     {
       "path": "docs/PCVR.md",
-      "sha256": "e805582af15d49a6c4b31ffe58196bf6b9f5a2f2b18195b8f0ba8b95c4c2e6fc"
+      "sha256": "954a76b7dcaf1864e66e0abc3f627d9037077d023e484d7dd01cc0b53a14d6f3"
     },
     {
       "path": "docs/PLAYER-INSTALL.md",
-      "sha256": "83ab58e74489811ea78b9fd4dc42c2cbd6cac93f669c425960eecc0f93497c46"
+      "sha256": "8b8ec1a15189761adc77eb75a00a5ae64d50d3443e7d116d60572f0453f13dd0"
     },
     {
       "path": "docs/QUEST.md",
-      "sha256": "d039e4744f7ace1bfbf4108ecd6a29753d9be896b96af265d2d116ed9f0f5585"
+      "sha256": "7fe7b32d31bb29f6a8978c799cde45e3ab96f379a15cc33ece85ac1572ff79bc"
     },
     {
       "path": "docs/RENDER_BENCHMARK.md",
@@ -285,7 +293,7 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "sha256": "15fa7a9719f97b9f1fd8a4516923dc902f50677c71149e63f1dc690463ac9ef7"
+      "sha256": "2ecf270055758f63f95fee6b57b77cec0b247825ee32b9835d92883ce1f0f592"
     },
     {
       "path": "docs/wheel-profile-provenance.json",
@@ -297,7 +305,7 @@
     },
     {
       "path": "docs/WHEELS.md",
-      "sha256": "97fffcb87805eebb9b12988e0a1fd935373ea0c3fbb09b46d028928b117a9d74"
+      "sha256": "3d5d9ee085d054bf2c6639b6a7c8d20b82bb83d30619d9e3c70237c3d947fa82"
     },
     {
       "path": "gt2_arcade.bat",
@@ -345,7 +353,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "595bf3b00d21f5cdf636c378f1d372bd4b03888a630e51752da914d4dc214a04"
+      "sha256": "7f3b40e11fb4365b8c2087fc860ae5564b6e77b415840436800b4f6f28db8d41"
     },
     {
       "path": "run_race.bat",
@@ -353,7 +361,7 @@
     },
     {
       "path": "scripts/audit-source.ps1",
-      "sha256": "a279b40f737493d3169e27ee9feecbb6ecf70345bcd1630cfa575d3c06a959cb"
+      "sha256": "2e14c2c84c369f8cdcb059f64b7a95f5e0281ee5028192e0b35d01fb2fa804f9"
     },
     {
       "path": "scripts/audit-wheel-inputmaps.py",
@@ -361,11 +369,15 @@
     },
     {
       "path": "scripts/build-quest-release.ps1",
-      "sha256": "edef00aa66fd195d9ea19adb253d1fe2f15187a8fd39b26a45f61a9265a66a9a"
+      "sha256": "08d12be2cdd322345a4d676214239e2e43bdf455f09f007b5b153058754cc78a"
     },
     {
       "path": "scripts/build-quest.ps1",
       "sha256": "177ebce3d47923e87c3d05c55313a4a89998da39b2680349f52a70727981ef27"
+    },
+    {
+      "path": "scripts/collect-profiler-quest.ps1",
+      "sha256": "4838422f1cfbab443ca0d50c7991362a2cd714f44bcdf8fbd8fccacd8f84c40d"
     },
     {
       "path": "scripts/compile-wheel-catalog.py",
@@ -381,11 +393,11 @@
     },
     {
       "path": "scripts/install-linux.py",
-      "sha256": "12643c6c5699cccc4d9d7ae18cfe9dedcc45bdbfbf0f049c60eaf9750f791a66"
+      "sha256": "e28d8e86899f4228e4d54443e1a1feb0ca836e0a402196cf122f0259916636fa"
     },
     {
       "path": "scripts/install-player.ps1",
-      "sha256": "df9a0655e3e72be9c2267f933dd30654fe7928324b2d528e0ad88461325f5d1f"
+      "sha256": "14c9ddd587ec8b4239071067ddf3a7505e2daa64030ddb24e0b068aeb86b2661"
     },
     {
       "path": "scripts/install-quest.ps1",
@@ -401,11 +413,11 @@
     },
     {
       "path": "scripts/package-player.ps1",
-      "sha256": "c204138e67f14b05906dc86a7b23f176a9fdc5f58584863a2b8fd9b659530f11"
+      "sha256": "29281ac90db3a46e140ed929d98287f77e714dd9b28b8086c508b258b351718b"
     },
     {
       "path": "scripts/package-source.ps1",
-      "sha256": "70818f6a59589534d2556b2dc78d2f0d73e8bcc923f71c4b16fa5ef20d262f3b"
+      "sha256": "383aec5bc2819710729520b5fce3fd64f95efe30138d720ec04b8f602d25a81c"
     },
     {
       "path": "scripts/platform-tools.ps1",
@@ -425,7 +437,7 @@
     },
     {
       "path": "scripts/source-files.ps1",
-      "sha256": "bd9fa52dbdf1319460d0ae3b6e49eceb3d130870b3a2b07893a6f63031f10bea"
+      "sha256": "ed07771e4ed99768163004d650b65668aba3703847e763ae55192d23d97e1fd5"
     },
     {
       "path": "scripts/transfer-saves.ps1",
@@ -721,7 +733,7 @@
     },
     {
       "path": "src/game/shell/shared_vr_settings.h",
-      "sha256": "51a3ba84a6d154fc46351bea03d208b4fee4222432cf587b01cdb2e595f0f274"
+      "sha256": "8d071e02926b1ef4449b35cde629a6070ab64d484aa41f0b898ce25dc1556be0"
     },
     {
       "path": "src/game/shell/title_attract.cpp",
@@ -761,7 +773,7 @@
     },
     {
       "path": "src/game/shell/title_options.h",
-      "sha256": "b2700c3ae1941d6ff9a3b4fdb63ad887cc904bdd0a20f0c5c89ee30ba3824b39"
+      "sha256": "900a0412654da554f73b55eca76dad4e66a0f2f61e00537e2dcad558761c9bff"
     },
     {
       "path": "src/game/shell/title_replay.cpp",
@@ -1336,6 +1348,26 @@
       "sha256": "6ebd7e7868ce981ee3977fefd177ea341cec7e74b9f5175b18e5bad4f78ab041"
     },
     {
+      "path": "src/gt2view/cockpit_body.h",
+      "sha256": "2c04457952c45633849fc0b62d79612596bb198e633a3ba3c8a059ce59c598d3"
+    },
+    {
+      "path": "src/gt2view/cockpit_eye_fit.h",
+      "sha256": "36da048559121f9b3f6cdef83418f40f2e8e1ccf8c44e212a2cb19056b614b69"
+    },
+    {
+      "path": "src/gt2view/cockpit_fit.h",
+      "sha256": "1fd2d3bd7283282e767a2cad82428f8b5644e8b3ecbda979287cf83fac756cc3"
+    },
+    {
+      "path": "src/gt2view/cockpit_materials.h",
+      "sha256": "575b137d01492eb95875ec6603c3298b9be7ae853540605655cfe73aa0da04cb"
+    },
+    {
+      "path": "src/gt2view/cockpit_window_cut.h",
+      "sha256": "8350903d45ba447fb51c957a9d4ea5311d0c3390ca2effea9bee5e31d1737ac2"
+    },
+    {
       "path": "src/gt2view/course_texture_seams.h",
       "sha256": "7c0f6205fc4cb297b7b92f6b230401d98bd52f101bac42363c4bb50b3976a571"
     },
@@ -1345,7 +1377,7 @@
     },
     {
       "path": "src/gt2view/decoded_textures.cpp",
-      "sha256": "8f079dba59cc0a428de3f205333590b9e687bca00e871889d875c81edb056604"
+      "sha256": "3c02835654a0a2b03bd2a762c67b42756040e26df41e460b3044ba846d50ccf3"
     },
     {
       "path": "src/gt2view/draw_culling.h",
@@ -1436,6 +1468,14 @@
       "sha256": "dc26029d764793e10a6740a33f362c0bfb8ddec110599c0591bd4018e664adde"
     },
     {
+      "path": "src/gt2view/procedural_cockpit.cpp",
+      "sha256": "29f17b72264e9610db46ee430af74e76b5f892f15e2810eef5424da23dab0bfd"
+    },
+    {
+      "path": "src/gt2view/procedural_cockpit.h",
+      "sha256": "fe2a5f1a158a9eb03fa0cad77e78c44bc277ad1a077ac7efb03c1761fc4fb092"
+    },
+    {
       "path": "src/gt2view/psx_gte.h",
       "sha256": "7979937a5258aecf3f19c60dd42aa1e61df7c764ac829241c8dd1d36f6ec82b2"
     },
@@ -1497,7 +1537,7 @@
     },
     {
       "path": "src/gt2view/scene_assets.h",
-      "sha256": "57b148370218105db441b1d09ecbc6a110ece9f4d0147bb03e03f04b42b6d52d"
+      "sha256": "8e7c4027099599b3ab310505e6045f5289ef9646b7ed46c1a0de545620cdfc37"
     },
     {
       "path": "src/gt2view/scenery_replacements.h",
@@ -1509,7 +1549,7 @@
     },
     {
       "path": "src/gt2view/shaders/scene_cached.frag",
-      "sha256": "a95ad426976e7ad546b5e508d749ab3e5be559dda75ec220eb50ac4812ff0131"
+      "sha256": "e6dcb5d4e612fa0a37d4cd1a11f8cac9828adafecaae5340ef58e055c1807d04"
     },
     {
       "path": "src/gt2view/shaders/scene_stereo.vert",
@@ -1517,7 +1557,7 @@
     },
     {
       "path": "src/gt2view/shaders/scene.frag",
-      "sha256": "14f7e40cf8f7685fa946885a885c2716ce6e1036134ae4451a600e7ab467466c"
+      "sha256": "02329b2aaadb8a364bc8b723dc9bae104e588cd3c7bd21be3fc5cdb0de1e7de5"
     },
     {
       "path": "src/gt2view/shaders/scene.vert",
@@ -1557,11 +1597,11 @@
     },
     {
       "path": "src/gt2view/vk_scene_renderer.cpp",
-      "sha256": "ee0fbff71745a9285c13ef158fc559df80b2d5924fe110bfffbcdd5681fd01bc"
+      "sha256": "a6ddddfebc71ed1d7bafd8376d31f7f9b4ca53127dbab8d53f3227ac456ce021"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.h",
-      "sha256": "dea515b6f045121a755fd0bff59a08d4f65ada8d8b3514076c132f5be2b51079"
+      "sha256": "4444eea51ff331762d866494d9b9261c7bbe98b410617e7261f9d33be12b6317"
     },
     {
       "path": "src/gt2view/vr_driving_visuals.cpp",
@@ -1701,11 +1741,11 @@
     },
     {
       "path": "src/platform/input/wheel.cpp",
-      "sha256": "89a2068e8fb26ce38b9df987693deee361ae9b3579ccb85034cd625e71a48497"
+      "sha256": "e6f931243735639127da1355ed7d1469be53252c66829c307fd1aa6e75138e92"
     },
     {
       "path": "src/platform/input/wheel.h",
-      "sha256": "d111a2eef6ad701ddbd43aa7b0cba6eeb9504119c419beb825f9777c15456fed"
+      "sha256": "969764006517589434958816c1c750eb4719639a01b117c07593dc52b6e1d593"
     },
     {
       "path": "src/platform/os/keys.h",
@@ -1769,7 +1809,19 @@
     },
     {
       "path": "tests/asset_checks.cpp",
-      "sha256": "caada4538c8c9a1514a9583bb33604827d3aebcabcb174d58c75465568f90912"
+      "sha256": "202589341c924ba015254ca278451f3c9ff68e09dce66217f13ae6c54e6db857"
+    },
+    {
+      "path": "tests/check_cockpit_countdown.py",
+      "sha256": "64e8242bf9de384d26cd93042b4c9c03d9e9b111e9327bc3d32699a249733670"
+    },
+    {
+      "path": "tests/check_cockpit_menu.py",
+      "sha256": "8f5c541a498bf630813f4dcd41a758a8a74d31eebecf1476d8d2881af0440d85"
+    },
+    {
+      "path": "tests/check_cockpit.py",
+      "sha256": "1c2223a058e9908165a9f0c7834003fd97791fe5fdbbb0a295759bac90cf6f13"
     },
     {
       "path": "tests/check_game_switch.py",
@@ -1789,7 +1841,11 @@
     },
     {
       "path": "tests/check_player_startup.py",
-      "sha256": "ff9e2f76b013b752ddb1f7cbb001fbc8b9ce1b1487451f4b41439c6c1039c1a2"
+      "sha256": "a6c64281c72ee0724271b634173e55c6426b653b338fa7b56b6fea1fa963de4a"
+    },
+    {
+      "path": "tests/check_profiler_log.py",
+      "sha256": "313a357a3bb155c7eeac887ee4b5d3a1bc5535224b4a8a72a54fa74f96186f0e"
     },
     {
       "path": "tests/check_startup_audio.py",
@@ -1808,8 +1864,40 @@
       "sha256": "70f768fc88394367d520e8b79962cb70687288cb95169083741db28cc6676465"
     },
     {
+      "path": "tests/cockpit_audit_sheets.py",
+      "sha256": "d40aaac1e5c965bfee8bd024f75fe9513e1f825aff1854e12feac732d14706bf"
+    },
+    {
+      "path": "tests/cockpit_body_checks.h",
+      "sha256": "3a90cf8bea99d57260cf501d5dcc17cb08cee1dcef3554bb46782bc31856bef3"
+    },
+    {
+      "path": "tests/cockpit_camera_checks.h",
+      "sha256": "3d0f5842ce477150159f0f1d45c1eb4ce33284c7d56d6c0d25def10d0160fb4b"
+    },
+    {
+      "path": "tests/cockpit_fit_checks.h",
+      "sha256": "c0c6d6633d18f4571f538f9be3da726e9ad21650e6cf22d235ab0c4a25854d25"
+    },
+    {
+      "path": "tests/cockpit_render_audit.cpp",
+      "sha256": "62e43dfbff9966bcded884495c812d91350f8278cc1cdeeec597e1763a97b883"
+    },
+    {
+      "path": "tests/cockpit_window_checks.h",
+      "sha256": "0d852c4edc31ce48eebddd0a5c1aab82ee85fa3bddf7e3b8feb4e9719116be6c"
+    },
+    {
+      "path": "tests/compare_cockpit_audits.py",
+      "sha256": "f6c46b26e044ee8f01453acf757040b104db9708114cc5dbc8c18d998ece1a5f"
+    },
+    {
       "path": "tests/driving_checks.cpp",
       "sha256": "7728118be1ae3394a5075e5e50039872a1da2f7ab6aa6ac0e850dbd18bd58282"
+    },
+    {
+      "path": "tests/frame_profiler_log_checks.h",
+      "sha256": "2ec195ad26452acbb4eac25eb6170407a50f8ac6cb5c1558617b9aa7b015c694"
     },
     {
       "path": "tests/hd_checks.cpp",
@@ -1818,6 +1906,10 @@
     {
       "path": "tests/quest_features_checks.cpp",
       "sha256": "147011015761cad0face7d61bb790a2272e46222002780b5d147779382e2a42e"
+    },
+    {
+      "path": "tests/run_cockpit_audit.py",
+      "sha256": "b00a98d6e75f3829a3ff291ad3f944c96b1f3ab8fcd288269edcb1b8de3a84be"
     },
     {
       "path": "tests/steering_feedback_checks.h",
@@ -1837,11 +1929,11 @@
     },
     {
       "path": "tests/vr_checks.cpp",
-      "sha256": "37111e263edf99bbd37a8f9821d82808c6dbc20a1fea2e8099b0f534f486dfaf"
+      "sha256": "206c71b68486f00b9ce574fe7f9177021384159da51056e28f656ba4bd37fe42"
     },
     {
       "path": "tests/wheel_checks.cpp",
-      "sha256": "826b8120d5b5731bb16b39427883fabf29d2ccaa4c583b9086e9599098be310b"
+      "sha256": "9c76b78cdb3d7dc9d5fbfd88695c0b8fdfa34c1a6f54c7820e279d0492662864"
     },
     {
       "path": "tests/wheel_driving_aids_checks.h",
@@ -2080,6 +2172,10 @@
       "sha256": "79df0bf11d5bc09da045eca96152f366484fcdbea9d755f72cee59756c3558fd"
     },
     {
+      "path": "tools/gt2game/cockpit_camera.h",
+      "sha256": "dc9bf1c7b499ea8cb6e3a84b0abb14b8e2362d97242d53492fad66c3edf6952b"
+    },
+    {
       "path": "tools/gt2game/desktop_field_pacing.h",
       "sha256": "b88d2995d5a119cac0ebab49d893c18613cf26720ed40c2d4edfa139ba5bafb1"
     },
@@ -2089,7 +2185,11 @@
     },
     {
       "path": "tools/gt2game/frame_interp.h",
-      "sha256": "c12735d1151b01be9a005c9883fe2161917eacf7f3e3b68f2f07ec574ba50e5b"
+      "sha256": "ff408159241f1c0fd163cb035c807afe8c999e4aa9fe86d1d1966caa2bc37d82"
+    },
+    {
+      "path": "tools/gt2game/frame_profiler_log.h",
+      "sha256": "a6d4d5d7be2a3b1f34aa8b692af9dfb9a8905e79b39f1c38e35d20acb49b7486"
     },
     {
       "path": "tools/gt2game/frame_profiler.h",
@@ -2105,7 +2205,7 @@
     },
     {
       "path": "tools/gt2game/game_window_android.cpp",
-      "sha256": "ecb895fdd9692939191af958653699c74da6ab86f6a970b29e15b6318a4025d4"
+      "sha256": "8ec5fef30b5a845e210462365a7f6ee6b789640daa92d88da31de85b1555544f"
     },
     {
       "path": "tools/gt2game/game_window_win32.cpp",
@@ -2113,15 +2213,15 @@
     },
     {
       "path": "tools/gt2game/game_window_xr.cpp",
-      "sha256": "f8141f5562936133f8693cd674bbd507ec3b480160ee8076a9db5f77158bc2e4"
+      "sha256": "4eb98a3014a177db82ea030a020fc44e174078681c606f0d60086e5c90f7deb5"
     },
     {
       "path": "tools/gt2game/game_window.cpp",
-      "sha256": "2fd4ebff4ed400bc32fa2d85b24ec1f083d707a392a2a3ef0ba869585e1f8c79"
+      "sha256": "cb48f2c1a6fa09fdb8d74e74f1d666a2b5a1c6e2c738a148100ae3dea0b32937"
     },
     {
       "path": "tools/gt2game/game_window.h",
-      "sha256": "41a8a177b809b5ff70ed517a62468c27987473551074ac1203a9ed48a0f9fbf8"
+      "sha256": "e82d92383d4f3ee9626892234496dd71175c432a25fb4beedcf5e71c673f6cca"
     },
     {
       "path": "tools/gt2game/ghost_replay.cpp",
@@ -2193,11 +2293,11 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "eda4368921b0766fd05c8054b66b2c54112a03313a72309db0013d1552b168ed"
+      "sha256": "e9d55f7ceed186442babc1f2d16a37c1bb93907ffab2cb0810d5c7931c45c466"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
-      "sha256": "e78047b41e46d565ea57ac39ada5643fa87e316173b53f563f9915fdc6df4bc0"
+      "sha256": "ec91a89d250ce5f3771bb729648e56a5fe6ed5dcd9db5b77647fb368e76211b0"
     },
     {
       "path": "tools/gt2game/race_common.cpp",
@@ -2225,7 +2325,7 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "60d1fc54f359645c3df04ffbf69efea9505e2e1103d66ff69b2236eaca280602"
+      "sha256": "e56b9115c8d03cffb3a11c400dff10e42595575fefc7ba073b893a44d3dec1d1"
     },
     {
       "path": "tools/gt2game/race_view.h",
@@ -2615,5 +2715,6 @@
       "path": "TRANSFER_QUEST_SAVES_TO_PC.bat",
       "sha256": "4c74c1e9976d79bd3cba10ed99cba73510f6aaf0e3d9fc6e03270262029740ed"
     }
-  ]
+  ],
+  "sourceProvenance": "filesystem-sha256"
 }

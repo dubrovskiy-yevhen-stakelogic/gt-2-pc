@@ -14,6 +14,52 @@ bool Near(float a, float b) { return std::abs(a - b) < .002f; }
 #include "wheel_driving_aids_checks.h"
 int main() try {
     {
+        w::Settings savedRig;
+        savedRig.enabled = true; savedRig.gearbox = 2; savedRig.ignoreShiftSpeed = true;
+        savedRig.axes[w::Steering] = {"base", 0, 0, -32768, 32767, 0, 100, 100};
+        savedRig.axes[w::Throttle] = {"pedals", 1, 32767, -32768, 0, 0, 100, 100};
+        savedRig.axes[w::Brake] = {"pedals", 2, -32768, 32767, 0, 0, 100, 100};
+        savedRig.buttons[w::Gear1] = {"shifter", 0};
+        const auto savedText = savedRig.Serialize();
+        w::DeviceState base, pedals, shifter;
+        base.id = "base"; pedals.id = "pedals"; shifter.id = "shifter";
+        for (auto* d : {&base, &pedals, &shifter}) { d->online = true; d->available.fill(true); }
+        pedals.axes[1] = 32767; pedals.axes[2] = -32768;
+        auto missingAxis = pedals; missingAxis.available[1] = false;
+        auto offlineBase = base; offlineBase.online = false;
+        std::array<gt2::LogicalPad, 3> inputs{};
+        inputs[0].analog = 13; inputs[0].steerAxis = 192; inputs[0].throttle = 240; inputs[0].brake = 32;
+        inputs[1].buttons = gt2::kPadThrottle | gt2::kPadLeft | gt2::kPadShiftUp;
+        std::array<uint16_t, 16> pedalTable{};
+        for (int i = 0; i < 16; ++i) pedalTable[size_t(i)] = uint16_t(i * 4096 / 15);
+        for (const auto& connected : {std::vector<w::DeviceState>{}, {offlineBase, pedals, shifter},
+                                     {base, shifter}, {base, missingAxis, shifter}}) {
+            const auto unavailable = w::Resolve(savedRig, connected, true);
+            Check(unavailable.active && !unavailable.ready, "saved rig remains enabled when a required device or axis is unavailable");
+            for (size_t i = 0; i < inputs.size(); ++i) {
+                auto merged = inputs[i];
+                const auto expected = gt2::FrameOfPad(merged);
+                w::Apply(savedRig, unavailable, merged);
+                w::ApplyRaceTransmission(merged, false, 1);
+                Check(!merged.wheel && !merged.ignoreShiftSpeed && gt2::FrameOfPad(merged) == expected,
+                      "unavailable saved wheel must preserve gamepad, keyboard and released driving frames");
+                const auto record = gt2::PadOfFrame(gt2::FrameOfPad(merged), pedalTable);
+                Check(!(record.flags & gt2::sim::kWheelPad) && (i == 2 || record.throttle > 0),
+                      "fallback acceleration reaches the original controller drivetrain without wheel clutch or neutral");
+            }
+        }
+        const auto ready = w::Resolve(savedRig, {base, pedals, shifter}, true);
+        auto merged = inputs[0];
+        w::Apply(savedRig, ready, merged);
+        Check(ready.ready && merged.wheel && merged.throttle == 0 && merged.wheelGear == 1,
+              "connected ready wheel keeps explicit input ownership even at rest");
+        const auto disconnected = w::Resolve(savedRig, {}, true);
+        w::Apply(savedRig, disconnected, merged);
+        Check(merged.wheel && merged.wheelGear == 1 && merged.clutch == 255 && merged.throttle == 0 && !merged.ignoreShiftSpeed,
+              "an already mapped wheel frame is still cleared safely on disconnect");
+        Check(savedRig.Serialize() == savedText, "controller fallback does not change wheel calibration or transmission preferences");
+    }
+    {
         w::DeviceState base, pedals, shifter;
         base.id = "dd-pro"; base.name = "FANATEC Wheel"; base.vendor = 0x0eb7; base.product = 0x0020;
         pedals.id = "usb-pedals"; pedals.vendor = 0x0eb7; pedals.product = 0x6205;

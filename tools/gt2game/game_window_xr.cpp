@@ -272,8 +272,8 @@ public:
     bool PhysicalSteering(float& value) const override {
         value = steering_; return pad_->active && drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
     }
-    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items) override {
-        if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), drivingMatrix_);
+    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
+        if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), vehicleFrame ? vehicleFrame : drivingMatrix_);
     }
     std::unique_ptr<gt2::input::Device> CreateInputDevice() override {
         return std::make_unique<XrPadDevice>(pad_);

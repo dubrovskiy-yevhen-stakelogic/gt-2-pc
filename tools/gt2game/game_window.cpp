@@ -3,6 +3,9 @@
 // (game_window_win32.cpp).
 #include "game_window.h"
 #include "pc_overlay.h"
+#include "graphics_options.h"
+#include "gt2formats/hd_media.h"
+#include "platform/os/paths.h"
 #include "platform/input/input_diagnostics.h"
 
 #include <algorithm>
@@ -220,11 +223,23 @@ void GameWindow::FinishPresent(const std::vector<gt2view::DrawItem>& items, size
     DrawFrame(items, sceneItems, {});
 }
 
+void GameWindow::BeginPresent() {
+    const auto start = Clock::now();
+    backend_->BeginRenderFrame();
+    frameBuildStart_ = Clock::now();
+    frameBeginWaitMs_ = std::chrono::duration<double,std::milli>(frameBuildStart_-start).count();
+    frameBuildTimed_ = true;
+}
+
 void GameWindow::DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t sceneItems, const std::string& path) {
+    const auto start = Clock::now();
+    const bool profiling = FrameProfilerEnabled(), wasStereo = stereo_;
+    if (profiling != profilerLog_.Enabled())
+        profilerLog_.SetEnabled(profiling, profiling ? gt2::os::DataRoot()/"logs" : std::filesystem::path{});
     gt2::input::InputCallTimer timer("renderer and GPU submission", 50);
     const auto* draw = &items;
     std::vector<gt2view::DrawItem> withProfiler;
-    if (FrameProfilerEnabled()) {
+    if (profiling) {
         frameProfiler_.Record(std::chrono::duration<double>(Clock::now().time_since_epoch()).count());
         withProfiler = items;
         AppendFrameProfiler(backend_->Renderer(), withProfiler, frameProfiler_);
@@ -234,7 +249,42 @@ void GameWindow::DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t s
         backend_->DrawStereoScene(*draw, sceneItems, path);
         stereo_ = false;
     } else backend_->Renderer().Draw(*draw, path, sceneItems);
+    const auto submitted = Clock::now();
+    // Copy paths may wait for this frame in EndRenderFrame. Capture the prior
+    // submission's timestamp before that wait so the CSV column keeps one meaning.
+    const double previousGpuMs = wasStereo ? backend_->Renderer().GpuMilliseconds() : -1;
     backend_->EndRenderFrame();
+    const auto ended = Clock::now();
+    if (profiling) {
+        const auto& renderer = backend_->Renderer();
+        const auto extent = wasStereo ? renderer.StereoExtent() : renderer.Extent();
+        ProfilerFrame f;
+        f.now = std::chrono::duration<double>(start.time_since_epoch()).count();
+        if (frameBuildTimed_) {
+            f.waitMs = frameBeginWaitMs_;
+            f.buildMs = std::chrono::duration<double,std::milli>(start-frameBuildStart_).count();
+        }
+        f.submitMs = std::chrono::duration<double,std::milli>(submitted-start).count();
+        f.endMs = std::chrono::duration<double,std::milli>(ended-submitted).count();
+        f.previousGpuMs = previousGpuMs;
+        f.draws = unsigned(items.size()); f.sceneDraws = unsigned(sceneItems);
+        for (const auto& item : items) {
+            f.vertices += item.vertexCount;
+            if (item.space == gt2view::kSpaceMirrorSource) ++f.mirrorDraws;
+        }
+        f.cached = renderer.CachedMaterials(); f.uncached = renderer.UncachedMaterials();
+        f.tested = wasStereo ? renderer.LastCulling().tested : 0;
+        f.culled = wasStereo ? renderer.LastCulling().culled : 0;
+        f.width = extent.width; f.height = extent.height; f.msaa = renderer.EffectiveMsaa();
+        f.stereo = wasStereo; f.overlay = overlayActive_; f.foveation = renderer.Foveation();
+        f.refresh = OverlayRefreshRate(); f.drawDistance = CurrentGraphics().drawDistance;
+        f.cockpit = OverlayCockpitSettings().enabled; f.mirror = OverlayHudVisibility().mirror;
+        f.cockpitMirror = OverlayCockpitSettings().mirror;
+        f.cockpitMirrorScale = OverlayCockpitSettings().mirrorScalePercent;
+        f.smooth = renderer.Options().smoothTextures; f.hd = gt2::hd::Enabled();
+        profilerLog_.Record(f, frameProfiler_);
+    }
+    frameBuildTimed_ = false;
 }
 
 void GameWindow::EndFrame(const std::vector<gt2view::DrawItem>& items, const std::string& shotPath, std::chrono::nanoseconds frameTime, size_t sceneItems) {
@@ -245,7 +295,9 @@ void GameWindow::EndFrame(const std::vector<gt2view::DrawItem>& items, const std
     // --fast: only the frames that are saved (and one per second, to keep the window alive) are presented - with the
     // display off or the window hidden, the compositor throttles presentation to a few frames per second.
     if (pacing_ || !path.empty() || field_ % 60 == 0) {
-        backend_->BeginRenderFrame();
+        // Deterministic stereo already began the frame before constructing its
+        // draw list. Keep that start time instead of replacing it at submission.
+        if (!frameBuildTimed_) BeginPresent();
         DrawFrame(items, sceneItems, path);
     } else {
         CancelStereoScene();

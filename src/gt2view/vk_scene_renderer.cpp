@@ -126,6 +126,10 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
 
     if (offscreen_) CreateOffscreen(offscreenExtent, offscreenFormat);
     else CreateSwapchain();
+    mirrorColor_ = CreateImage(kMirrorExtent, colorFormat_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+    mirrorDepth_ = CreateImage(kMirrorExtent, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+        VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
     CreatePipeline();
 }
 
@@ -138,6 +142,7 @@ VkSceneRenderer::~VkSceneRenderer() {
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
     DestroyStereoTarget();
+    DestroyImage(mirrorColor_); DestroyImage(mirrorDepth_);
     vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
     vkDestroyDescriptorPool(device_, descPool_, nullptr);
     vkDestroyDescriptorSetLayout(device_, setLayout_, nullptr);
@@ -440,7 +445,7 @@ void VkSceneRenderer::DestroySwapchain() {
 void VkSceneRenderer::CreatePipeline() {
     // Binding 0: the PS1 VRAM words; binding 1: the external RGBA8 texture store (kExternalTexture); binding 2: the
     // two eyes of a stereo frame (M2; only scene_stereo.vert reads it, the desktop shaders ignore it).
-    VkDescriptorSetLayoutBinding bindings[6]{};
+    VkDescriptorSetLayoutBinding bindings[7]{};
     for (uint32_t i = 0; i < 2; i++) {
         bindings[i].binding = i;
         bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -455,13 +460,14 @@ void VkSceneRenderer::CreatePipeline() {
     bindings[3] = {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
     bindings[4] = {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr};
     bindings[5] = {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
-    lci.bindingCount = 6;
+    bindings[6] = {6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+    lci.bindingCount = 7;
     lci.pBindings = bindings;
     Check(vkCreateDescriptorSetLayout(device_, &lci, nullptr, &setLayout_), "vkCreateDescriptorSetLayout");
 
-    const VkDescriptorPoolSize poolSizes[3] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}};
+    const VkDescriptorPoolSize poolSizes[3] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6}};
     VkDescriptorPoolCreateInfo dpi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    dpi.maxSets = 1;
+    dpi.maxSets = 2;
     dpi.poolSizeCount = 3;
     dpi.pPoolSizes = poolSizes;
     Check(vkCreateDescriptorPool(device_, &dpi, nullptr, &descPool_), "vkCreateDescriptorPool");
@@ -470,9 +476,10 @@ void VkSceneRenderer::CreatePipeline() {
     dai.descriptorSetCount = 1;
     dai.pSetLayouts = &setLayout_;
     Check(vkAllocateDescriptorSets(device_, &dai, &descSet_), "vkAllocateDescriptorSets");
+    Check(vkAllocateDescriptorSets(device_, &dai, &mirrorSourceSet_), "vkAllocateDescriptorSets(mirror)");
     const VkDescriptorBufferInfo dbi[3] = {{textureBuffer_.buffer, 0, VK_WHOLE_SIZE}, {externalBuffer_.buffer, 0, VK_WHOLE_SIZE},
                                            {viewBuffer_.buffer, 0, VK_WHOLE_SIZE}};
-    VkWriteDescriptorSet writes[6]{};
+    VkWriteDescriptorSet writes[7]{};
     for (uint32_t i = 0; i < 3; i++) {
         writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[i].dstSet = descSet_;
@@ -487,7 +494,13 @@ void VkSceneRenderer::CreatePipeline() {
     writes[4] = writes[1]; writes[4].dstBinding = 4; writes[4].pBufferInfo = &tableInfo;
     const VkDescriptorImageInfo handInfo{decodedSampler_, handImage_.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     writes[5] = writes[3]; writes[5].dstBinding = 5; writes[5].pImageInfo = &handInfo;
-    vkUpdateDescriptorSets(device_, 6, writes, 0, nullptr);
+    const VkDescriptorImageInfo mirrorInfo{decodedSampler_, mirrorColor_.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    writes[6] = writes[3]; writes[6].dstBinding = 6; writes[6].pImageInfo = &mirrorInfo;
+    vkUpdateDescriptorSets(device_, 7, writes, 0, nullptr);
+    // The source pass must not bind its own color attachment for sampling.
+    for (auto& write : writes) write.dstSet = mirrorSourceSet_;
+    writes[6].pImageInfo = &handInfo;
+    vkUpdateDescriptorSets(device_, 7, writes, 0, nullptr);
 
     VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FrameParams)};
     VkPipelineLayoutCreateInfo pli{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
@@ -761,6 +774,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     UploadHandImage();
     UploadDecodedTextures();
 
+    RecordMirrorPass(items, sceneItems);
     sceneItems = std::min(sceneItems, items.size());
     if (sceneItems > 0 && sceneTargets_) {
         DrawScenePass(items, sceneItems, imageIndex);
@@ -819,7 +833,8 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
     VkRect2D scissor{{0, 0}, extent};
     vkCmdSetViewport(cmd_, 0, 1, &viewport);
     vkCmdSetScissor(cmd_, 0, 1, &scissor);
-    vkCmdBindDescriptorSets(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &descSet_, 0, nullptr);
+    const VkDescriptorSet descriptors = recordMirror_ ? mirrorSourceSet_ : descSet_;
+    vkCmdBindDescriptorSets(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &descriptors, 0, nullptr);
     const VkBuffer vertexBuffers[2] = {vertexBuffer_.buffer, rectBuffer_.buffer};
     const VkDeviceSize zero[2] = {0, 0};
     vkCmdBindVertexBuffers(cmd_, 0, 2, vertexBuffers, zero);
@@ -828,6 +843,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
     bool clipped = false;
     for (size_t i = first; i < last; i++) {
         const DrawItem& item = items[i];
+        if ((item.space == kSpaceMirrorSource) != recordMirror_) continue;
         if (item.vertexCount == 0) continue;
         if (recordStereo_ && item.space == kSpaceWorld && !item.clearDepth &&
             uint64_t(item.firstVertex) + item.vertexCount <= kMaxVertices) {
@@ -887,7 +903,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.brakeLit = item.brakeLit;
         params.stpPass = item.stpPass;
         params.options = i < sceneItems ? sceneOptions : 0u;
-        if ((recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT) params.options |= 4u;
+        if (!recordMirror_ && (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
@@ -895,6 +911,39 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
                            sizeof(FrameParams), &params);
         vkCmdDraw(cmd_, item.vertexCount, 1, item.firstVertex, 0);
     }
+}
+
+// A fixed-size mono target replaces the HUD mirror pass in cockpit mode.
+// It uses the same low-detail draw list, with no CPU readback or extra eye passes.
+void VkSceneRenderer::RecordMirrorPass(const std::vector<DrawItem>& items, size_t sceneItems) {
+    size_t first = 0, last = 0;
+    for (size_t i = 0; i < std::min(sceneItems, items.size()); ++i) {
+        if (items[i].space != kSpaceMirrorSource) continue;
+        if (!last) first = i;
+        last = i + 1;
+    }
+    if (!last && mirrorInitialized_) return;
+    Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT,
+        mirrorInitialized_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, mirrorInitialized_ ? VkAccessFlags(VK_ACCESS_SHADER_READ_BIT) : VkAccessFlags(0),
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, mirrorInitialized_ ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    Transition(cmd_, mirrorDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    RenderTarget target;
+    target.colorView = mirrorColor_.view; target.colorFormat = colorFormat_;
+    target.depthView = mirrorDepth_.view; target.depthFormat = kDepthFormat;
+    target.extent = kMirrorExtent; target.layers = 1;
+    BeginTargetRendering(target, VK_ATTACHMENT_LOAD_OP_CLEAR);
+    recordMirror_ = true;
+    RecordItems(items, first, last, kMirrorExtent, pipelines_, sceneItems);
+    recordMirror_ = false;
+    cmdEndRendering_(cmd_);
+    Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    mirrorInitialized_ = true;
 }
 
 // The scene at its own resolution / sample count: items[0, sceneItems) into the scene target (MSAA resolved into
@@ -1161,6 +1210,7 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
         vkCmdResetQueryPool(cmd_, gpuQueries_, 0, 2);
         vkCmdWriteTimestamp(cmd_, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, gpuQueries_, 0);
     }
+    RecordMirrorPass(items, sceneItems);
     Transition(cmd_, colorTarget.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 2);
     if (stereoMsaa_.image)

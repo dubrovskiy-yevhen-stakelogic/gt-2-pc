@@ -16,6 +16,6 @@ cmake --build "%BUILD_DIR%"
 if errorlevel 1 exit /b 1
 exit /b 0
 :install_targets
-cmake --build "%BUILD_DIR%" --target gt2game gt2install gt2media gt2bootcapture gt2hdchecks gt2checks gt2wheelchecks gt2vrchecks gt2drivingchecks gt2questchecks
+cmake --build "%BUILD_DIR%" --target gt2game gt2install gt2media gt2bootcapture gt2hdchecks gt2checks gt2assetchecks gt2wheelchecks gt2vrchecks gt2drivingchecks gt2questchecks
 if errorlevel 1 exit /b 1
 exit /b 0

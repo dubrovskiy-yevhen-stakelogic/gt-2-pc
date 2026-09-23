@@ -4,7 +4,8 @@ param(
     [string]$Gradle = 'gradle',
     [string]$SigningDirectory = (Join-Path (Split-Path $PSScriptRoot) 'work/signing/release'),
     [switch]$InitializeSigningKey,
-    [switch]$Offline
+    [switch]$Offline,
+    [switch]$SkipLint
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot
@@ -36,11 +37,15 @@ if (!(Test-Path -LiteralPath $key)) {
 }
 if (!(Test-Path -LiteralPath $credentialFile)) { throw 'Missing signing credentials. Restore the matching credential backup.' }
 [IO.File]::WriteAllText((Join-Path $repo 'android/local.properties'), 'sdk.dir=' + $env:ANDROID_HOME.Replace('\','/'), [Text.UTF8Encoding]::new($false))
-$arguments = @('-p',(Join-Path $repo 'android'),'--no-daemon','assembleRelease')
+$arguments = @('-p',(Join-Path $repo 'android'),'--no-daemon','--no-problems-report','assembleRelease')
 if ($Offline) { $arguments += '--offline' }
+if ($SkipLint) {
+    Write-Warning 'Android lint is disabled for this build; record this limitation in release validation.'
+    $arguments += @('-x','lintVitalAnalyzeRelease','-x','lintVitalReportRelease','-x','lintVitalRelease')
+}
 & $Gradle @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Android release compilation failed.' }
-$out = Join-Path $repo 'dist/GT2-VR-0.4.0.apk'
+$out = Join-Path $repo 'dist/GT2-VR-0.5.0.apk'
 New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
 $unsigned = Join-Path $repo 'android/app/build/outputs/apk/release/app-release-unsigned.apk'
 $aligned = Join-Path $repo 'work/gt2-release-aligned.apk'

@@ -13,7 +13,7 @@ foreach(shader scene.vert scene.frag scene_cached.frag)
 endforeach()
 include(cmake/stereo-shaders.cmake)
 add_library(gt2vk STATIC src/gt2view/vk_context_android.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp src/gt2view/decoded_textures.cpp src/gt2view/hd_ui.cpp src/gt2view/stereo_foveation.cpp src/gt2view/hud.cpp
-  src/gt2view/particles.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp
+  src/gt2view/particles.cpp src/gt2view/procedural_cockpit.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp
   src/gt2view/panel_view.cpp src/gt2view/race_overlay_screens.cpp src/gt2view/movie_view.cpp ${GT2VK_SHADER_OUTPUTS})
 include(cmake/vr-hand-assets.cmake)
 target_include_directories(gt2vk PRIVATE "${GT2VK_SHADER_DIR}")

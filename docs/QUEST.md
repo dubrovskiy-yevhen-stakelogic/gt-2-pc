@@ -1,4 +1,4 @@
-# Quest 3 standalone — 0.4.0
+# Quest 3 standalone — 0.5.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 
@@ -34,17 +34,29 @@ Motion: hold the selected controller's grip to establish neutral, then rotate yo
 
 Intro camera lower adjusts only the height of the original starting flythrough: 0–2000 cm in 50 cm steps, default 200 cm. Zero restores original height. The horizontal path, orientation and timing retain the original grid traversal; a floor protects the transition to the driving view.
 
+## Cockpit
+
+The Driver camera starts in Cockpit mode. Open **Cockpit / driver view** to switch to Original, adjust seat height or reach, hide the decorative wheel, or disable/resize the rear-view mirror. The physical dashboard instruments work even with the instrument HUD off. The cabin, hands and interactive wheel appear when the countdown camera switches to Driver. See [cockpit controls and limits](COCKPIT.md).
+
 ## Graphics, performance and HUD
 
-VR settings save automatically and are shared between both discs. Eye resolution is 50–200% of the runtime's recommended width and height and requires a restart. Available OpenXR refresh rates are listed dynamically; accepted changes apply immediately. Initial defaults are 72 Hz, 150% resolution, MSAA 2x and the entire detailed course. Existing saved preferences are retained.
+VR settings save automatically and are shared between both discs. Eye resolution is 50–200% of the runtime's recommended width and height and requires a restart. Available OpenXR refresh rates are listed dynamically; accepted changes apply immediately. Initial defaults are 72 Hz, 130% resolution, MSAA 2x and the entire detailed course. Existing saved preferences are retained.
 
 MSAA, texture filtering, draw distance, foveation and vibration can be adjusted. Entire course extends all road and scenery to full distance and detail, including large mountains. It selects the authored nearest scenery representation, including empty near entries for distant-only course copies, so simplified asphalt and hills do not overlap the detailed course. When detailed course geometry is present, matching coarse scenery surfaces are replaced by it; independent scenery keeps the selected distance. Stereo frustum culling still skips objects outside both eyes. Foveation Off/Low/Balanced/High changes peripheral fragment shading; the centre, menus, HUD and mirror remain full rate. It is fixed foveation, not eye tracking, and falls back to full-rate shading where unsupported.
 
 The profiler shows APP FPS, average/MAX frame interval, preceding GPU render time, texture-cache coverage, slowest 1% of the last 256 frame intervals, peak interval and culling counts. It counts fresh stereo application frames; it does not count repeated compositor images or physics ticks. Physics remains 30 Hz with interpolated presentation. GPU/CPU performance requests are hints subject to the headset's thermal management.
 
+**Graphics and performance > FPS profiler** also starts CSV recording. **ON + CSV** confirms the selected mode; **LOG ERROR** reports a file write failure. Each enable creates a new `profiler-<Unix-microseconds>.csv` under `/sdcard/Android/data/io.github.gt2pc.quest/files/logs`. Turning it off flushes and closes the file; normal exit also closes it. Buffered writes flush every second, so an abrupt kill can lose the final second. Existing captures are retained.
+
+The log contains raw application frame intervals, begin-frame wait, preparation after begin-frame, renderer submission and end-frame times, previous GPU render time, rolling FPS/1% low, draw/vertex counts, mirror-source draws, texture-cache/culling counts and resolution/MSAA/foveation/settings. `gpu_previous_ms` belongs to the preceding render submission; -1 means unavailable. `build_ms` measures preparation after `BeginPresent` in the race path; ordinary theatre/menu frames have already built their draw list before that point. `overlay=1` marks the settings menu. Recorded draw/vertex counts describe submitted lists before culling and exclude the profiler's own geometry. End-frame can include GPU waiting, image copies and compositor submission. The log itself adds a small amount of CPU/file work.
+
+The log includes `cockpit_mirror_enabled` and `cockpit_mirror_scale` to distinguish the cockpit controls from the global HUD `mirror_enabled` preference. `mirror_source_draws` records whether a rear-view pass was actually submitted. Reducing the mirror's visible size retains that pass; switching the cockpit mirror off removes it while driving in the cockpit.
+
+For a comparison, enable the profiler, drive the same section for 30-60 seconds, then disable it. Repeat with one graphics option changed. Retrieve the files without deleting them using `scripts/collect-profiler-quest.ps1 -Adb <path-to-adb>`; no special launch argument or debuggable APK is required. Desktop builds put the same logs beside the executable in `logs/`.
+
 175% resolution renders about 3.06 times the pixels of 100%. Sustained 175%/90 FPS is not achieved across races in this release. Reduce resolution, MSAA or distance, or increase peripheral foveation while checking image quality and APP FPS. Loading/start hitches can still occur. See [VALIDATION.md](VALIDATION.md) for the checked build and limits.
 
-HUD elements has two pages: map, lap/times, records, gauges, turbo, tyres, mirror, countdown, warnings, messages and replay caption. Each visibility choice persists. HUD, pause panels and mirror share a head-relative plane 2 m ahead with a 4:3 layout, projected through each eye's actual frustum. Independently movable HUD panels are not implemented.
+HUD elements has two pages: map, lap/times, records, gauges, turbo, tyres, mirror, countdown, warnings, messages and replay caption. Each visibility choice persists. HUD and pause panels share a head-relative plane 2 m ahead with a 4:3 layout, projected through each eye's actual frustum. The original-view mirror uses that plane; the cockpit mirror is a physical surface inside the cabin. Independently movable HUD panels are not implemented.
 
 Trees remain flat billboards. Their horizontal axis is computed from the common viewer position, so turning your head in place does not swivel the trees. Walking/driving around a tree still changes its facing direction.
 
@@ -52,11 +64,11 @@ In **HUD elements > Speed units**, use either trigger to switch between **km/h**
 
 ## First-launch defaults
 
-Each new disc profile uses 150% eye resolution, 72 Hz, MSAA 2x, smooth perspective-correct textures, the entire course with its authored near scenery representations and medium foveation. Multiview is on, horizon lock is 60%, world scale is 100%, the near plane is 50 mm and seat offsets are zero. The stored flat frame cap is 72; VR presentation follows the selected 72 Hz headset rate.
+Each new disc profile uses 130% eye resolution, 72 Hz, MSAA 2x, smooth perspective-correct textures, the entire course with its authored near scenery representations and medium foveation. Multiview is on, horizon lock is 60%, world scale is 100%, the near plane is 50 mm and seat offsets are zero. The stored flat frame cap is 72; VR presentation follows the selected 72 Hz headset rate.
 
-Driving starts in Virtual wheel mode, with the wheel 28 cm below, 38 cm forward and 18 cm in radius. The original start flythrough is lowered by 200 cm. Automatic brake-to-reverse is on; the steering stick is left and the Motion hand is right. Bindings follow the controls table. All HUD elements are on, the profiler is off, vibration is 100%, speed units are km/h, music volume is 240/255 and effects volume is 192/255.
+Driving starts in Virtual wheel mode, with the wheel 28 cm below, 38 cm forward and 18 cm in radius. The original start flythrough is lowered by 200 cm. Automatic brake-to-reverse is on; the steering stick is left and the Motion hand is right. Bindings follow the controls table. The instrument HUD is off; other HUD elements are on. Physical cockpit gauges remain visible. The profiler is off, vibration is 100%, speed units are km/h, music volume is 240/255 and effects volume is 192/255.
 
-All cheats and unlock overrides start off on both discs; no career progress, cars, money or licences are prewritten. Both profiles remain editable in the game. Startup seeds these settings only when neither settings file exists; updates preserve existing preferences. PC also defaults to km/h; its other defaults are unchanged.
+All cheats and unlock overrides start off on both discs; no career progress, cars, money or licences are prewritten. Both profiles remain editable in the game. Startup seeds these settings only when neither settings file exists; updates preserve existing preferences. PCVR also starts at 130% eye resolution; flat desktop rendering scale remains 100%. All platforms default to km/h, the instrument HUD off and the profiler off.
 
 ## Cheats and saves
 
@@ -76,9 +88,11 @@ $env:VULKAN_SDK = 'C:\VulkanSDK\<version>'
 .\scripts\build-quest-release.ps1 -AndroidSdk 'C:\Android\Sdk' -JavaDirectory 'C:\Java\jdk-21' -Gradle 'C:\Gradle\bin\gradle.bat' -InitializeSigningKey
 ```
 
-Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.3.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
+Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.5.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
 
-The public version is 0.3.0; Android versionCode is 15 to remain above development build codes. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
+If an offline cache lacks Android lint dependencies, `-SkipLint` explicitly omits the lint tasks. Compilation, APK signing and alignment checks still run; record the missing lint coverage when validating that build.
+
+The public version is 0.5.0; Android versionCode is 23, above the cockpit development builds. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs

@@ -178,8 +178,8 @@ public:
     bool PhysicalSteering(float& value) const override {
         value = steering_; return drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
     }
-    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items) override {
-        if (stereoFrame_ && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), drivingMatrix_);
+    void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
+        if (stereoFrame_ && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), vehicleFrame ? vehicleFrame : drivingMatrix_);
     }
     bool TakeTimingReset() override { const bool reset = timingReset_; timingReset_ = false; return reset; }
     void BeginRenderFrame() override;

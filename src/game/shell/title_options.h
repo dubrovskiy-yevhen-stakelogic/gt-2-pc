@@ -132,7 +132,7 @@ struct VrSettings {
                                // (default off - on an Adreno 740 multiview was slower for few draws)
     int horizonLock = 60;      // vr_horizon_lock: percent of the camera's pitch and roll that is stripped
     int worldScale = 100;      // vr_world_scale: percent - game metres per real metre
-    int renderScale = 100;     // vr_render_scale: percent of the runtime's recommended per-eye image (50..200)
+    int renderScale = 130;     // vr_render_scale: percent of the runtime's recommended per-eye image (50..200)
     int nearMm = 50;           // vr_near_mm: the near plane in millimetres
     int seatMm[3] = {0, 0, 0}; // vr_seat_x / _y / _z: millimetres along the levelled camera's right / up / back axes
     bool operator==(const VrSettings&) const = default;

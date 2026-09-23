@@ -1,6 +1,6 @@
 # Offline HD media and PlayStation startup
 
-Neural HD preparation runs on Windows before copying data to Quest. The PC and Quest game load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; neural HD preparation remains Windows-only in 0.4.0.
+Neural HD preparation runs on Windows before copying data to Quest. The PC and Quest game load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; neural HD preparation remains Windows-only.
 
 ## Installation
 

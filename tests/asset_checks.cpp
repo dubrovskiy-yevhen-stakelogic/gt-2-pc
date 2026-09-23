@@ -1,4 +1,8 @@
 #include "gt2formats/car_model.h"
+#include "cockpit_fit_checks.h"
+#include "cockpit_camera_checks.h"
+#include "cockpit_body_checks.h"
+#include "cockpit_window_checks.h"
 #include "gt2export/car_mesh.h"
 #include "gt2view/scenery_visibility.h"
 #include "gt2view/course_texture_seams.h"
@@ -21,6 +25,10 @@ void Require(bool ok, const std::string& message) {
     if (!ok) throw std::runtime_error(message);
 }
 void Fixtures() {
+    CockpitFitChecks(Require);
+    CockpitCameraChecks(Require);
+    CockpitBodyChecks(Require);
+    CockpitWindowChecks(Require);
     {
         gt2::Track t; t.chunks.resize(1); t.uvTable.resize(1);
         auto& uv=t.uvTable[0].nearSet;
@@ -346,6 +354,7 @@ int main(int argc, char** argv) {
     try {
         Fixtures();
         if (argc==4 && std::string(argv[1])=="--music") Music(argv[2],argv[3]);
+        else if (argc==4 && std::string(argv[1])=="--cockpits") CockpitCorpus(argv[2],argv[3],Require);
         else for (int i=1; i<argc; ++i) Scan(argv[i]);
         std::cout << "PASS " << checks << " checks\n";
         return 0;

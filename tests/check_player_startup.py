@@ -39,6 +39,8 @@ def main():
     assert 'player: PlayStation intro' not in log
     text = common.read_text()
     assert 'hd_assets=1' in text and 'vr_hud_map=0' in text and 'units=mph' in text, text
+    saved = dict(line.split('=', 1) for line in text.splitlines() if '=' in line and not line.startswith('#'))
+    assert saved['vr_render_scale'] == '130' and saved['vr_hud_gauges'] == '0' and saved['profiler'] == '0', saved
     assert 'unlock_' not in text, 'Cheats leaked into shared preferences'
     assert 'unlock_courses=1' in (saves/'arcade/settings.txt.overlay').read_text()
     assert (output/'picker.png').is_file() and (output/'hud-menu.png').is_file()

@@ -1,6 +1,6 @@
 # PCVR on Windows
 
-GT2 VR 0.3.0 runs on a Windows PC through OpenXR. Menus and movies use a theatre screen; races use stereo rendering with tracked head movement. Standalone Quest remains a separate APK.
+GT2 VR 0.5.0 runs on a Windows PC through OpenXR. Menus and movies use a theatre screen; races use stereo rendering with tracked head movement. Standalone Quest remains a separate APK.
 
 1. Connect your headset to the PC using your usual PCVR connection. Start its software (SteamVR, Meta Quest Link, or Virtual Desktop's VDXR).
 2. Run **INSTALL-PCVR.bat** from the release and select your supported game discs. The installer includes the Khronos OpenXR loader; no SDK or compilation is required.
@@ -18,9 +18,13 @@ A Windows x64 PC and a Vulkan 1.3-capable graphics driver are required. An OpenX
 
 The packaged action bindings target Touch controllers. Other controller layouts may need runtime bindings or a gamepad; they have not been validated on hardware.
 
-Eye resolution and other VR preferences are saved locally. Refresh-rate requests apply only if the runtime exposes the corresponding extension; otherwise change refresh rate in your PCVR software. Runtime render scaling also affects the resulting resolution. Use the in-game profiler when adjusting settings.
+New profiles start at 130% eye resolution with the instrument HUD and profiler off. Physical cockpit gauges remain visible, and saved preferences survive updates. Eye resolution and other VR preferences are saved locally. Refresh-rate requests apply only if the runtime exposes the corresponding extension; otherwise change refresh rate in your PCVR software. Runtime render scaling also affects the resulting resolution. Use the in-game profiler when adjusting settings.
 
 Set `GT2_XR_MIRROR=1` before launching to display the headset image in the PC window (extra GPU work). Without it, the desktop window handles keyboard/gamepad input while the headset displays the game.
+
+## Cockpit
+
+The Driver camera uses a fitted cockpit by default. **Cockpit / driver view** controls seat height and reach, decorative wheel visibility, and rear-view mirror visibility/size. Hands and the interactive wheel follow the car body during suspension and impact motion. See [cockpit controls and limits](COCKPIT.md). The cockpit update has been accepted on standalone Quest; this does not replace PCVR headset and physical-wheel alignment checks.
 
 ## Saves and source builds
 

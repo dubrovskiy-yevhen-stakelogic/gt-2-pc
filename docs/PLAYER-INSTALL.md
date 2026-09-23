@@ -1,6 +1,6 @@
-# GT2 0.4.0 player installation
+# GT2 0.5.0 player installation
 
-**GT2-0.4.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
+**GT2-0.5.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
 
 ## Quest 3
 
@@ -26,9 +26,9 @@ Windows installation prepares **HD pictures, fonts and HUD for every installed d
 
 For Windows PCVR, run **INSTALL-PCVR.bat**, then use **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR). Start the selected headset connection first, then choose your disc in the game. **PLAY-PCVR.bat** retains automatic selection (running SteamVR, otherwise the system default). **L3 + R3** opens VR settings; **both grips + Menu** also remains available. See [PCVR setup and controls](PCVR.md).
 
-Version 0.3.0 adds **TRANSFER_QUEST_SAVES_TO_PC.bat** and **TRANSFER_PC_SAVES_TO_QUEST.bat** for USB transfers of both disc memory cards. Close the game on both devices, connect Quest, then run the desired helper. Each replacement is validated, backed up and verified. The public Quest APK must be updated to 0.3.0 first; see [save-transfer instructions](SAVE-TRANSFER.md).
+The release includes **TRANSFER_QUEST_SAVES_TO_PC.bat** and **TRANSFER_PC_SAVES_TO_QUEST.bat** for USB transfers of both disc memory cards. Close the game on both devices, connect Quest, then run the desired helper. Each replacement is validated, backed up and verified. The public Quest APK must be version 0.3.0 or newer; see [save-transfer instructions](SAVE-TRANSFER.md).
 
-The installer updates a compatible APK with `adb install -r`; it never uninstalls or clears app data. If Android reports `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the installed application uses a different signing key. Stop and export its saves/settings before considering a manual migration. Development and public APKs use different keys. Save export from an old development build can use `adb shell run-as io.github.gt2pc.quest`; this is unavailable on the non-debuggable public build.
+The installer updates a compatible APK with `adb install -r`; it never uninstalls or clears app data. If Android reports `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the installed application uses a different signing key. Stop and export its saves/settings before considering a manual migration. Development and public APKs use different keys. Use the save-transfer helpers for supported builds. `adb shell run-as io.github.gt2pc.quest` works only with debuggable builds, not with public releases or the recent non-debuggable cockpit test builds.
 
 Quest disc data is in `/sdcard/Android/data/io.github.gt2pc.quest/files/{arcade,simulation}`. Saves and settings are separate from the installer-managed disc files. PC saves are under the install folder's `saves/`. Reinstalling disc data retains saves. The installer does not start the game or alter your graphics preferences.
 
@@ -44,4 +44,4 @@ Use `-Adb` for an existing adb.exe and `-Serial` to choose one of multiple conne
 
 ## First run
 
-Menu pauses; both grips + Menu opens VR settings. Stick up/down selects a setting; triggers change it. Start with the saved/default graphics settings, then watch APP FPS while adjusting them. Eye resolution needs an app restart. New profiles target 72 Hz; existing saved refresh settings are retained. The refresh rate is a target, not a guarantee of sustained application FPS. See QUEST.md for all controls and cheats.
+Menu pauses; both grips + Menu opens VR settings. Stick up/down selects a setting; triggers change it. Start with the saved/default graphics settings, then watch APP FPS while adjusting them. Eye resolution needs an app restart. New Quest profiles use 130% eye resolution and target 72 Hz. PCVR also starts at 130%; flat desktop rendering scale remains 100%. The instrument HUD and profiler start off on all platforms; the physical cockpit gauges remain visible. Existing saved preferences are retained. The refresh rate is a target, not a guarantee of sustained application FPS. See QUEST.md for all controls and cheats.

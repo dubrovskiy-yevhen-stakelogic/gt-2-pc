@@ -6,6 +6,7 @@
 #include "gt2view/scenery_visibility.h"
 #include "../tools/gt2game/android_activity_state.h"
 #include "../tools/gt2game/frame_profiler.h"
+#include "frame_profiler_log_checks.h"
 #include "../tools/gt2game/xr_field_pacing.h"
 #include "../tools/gt2game/desktop_field_pacing.h"
 #include "game/audio/audio_resampler.h"
@@ -17,6 +18,7 @@ using namespace gt2::vr;
 static void Check(bool condition, const char* label) { if (!condition) throw std::runtime_error(label); }
 int main() {
     try {
+        FrameProfilerLogChecks(Check);
         gt2game::android::ActivityState activity;
         activity.resumed = true; activity.quit = true; activity.keyDowns = {13}; activity.down[13] = true;
         activity.Reset();

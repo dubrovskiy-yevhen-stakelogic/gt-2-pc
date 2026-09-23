@@ -24,6 +24,7 @@ constexpr uint32_t kTextured = 1, kRawTexture = 2, kCarPaint = 4, kOverlay = 8;
 // instead of the PS1 VRAM: page = first texel of the image, clut = width | height << 16, repeat wrapping,
 // alpha < 0.5 discards, colour = texel x vertex colour.
 constexpr uint32_t kExternalTexture = 16;
+constexpr uint32_t kMirrorTexture = 1u << 21; // Normalized UVs into the shared rear-view target.
 constexpr uint32_t kReconstructedUi = 1u << 20;
 constexpr uint32_t kUiMap = 1u << 19;
 constexpr uint32_t kSmoothUi = 1u << 18;
@@ -43,14 +44,15 @@ constexpr uint32_t kClampTextureRect = 1u << 15; // Sprite atlas edges must not 
 // PS1 semi-transparency modes (GPU tpage bits 5-6): 0 = B/2 + F/2, 1 = B + F, 2 = B - F, 3 = B + F/4.
 constexpr uint32_t kBlendOpaque = 0xFF;
 
-// Which space DrawItem::mvp leaves its vertices in (docs/research/vr_port_plan.md, M2). Only the stereo path reads
-// it: with no stereo views set (every desktop frame) the item's matrix is used exactly as it is, so the window path
-// keeps its former arithmetic to the bit.
+// Which space DrawItem::mvp leaves its vertices in (docs/research/vr_port_plan.md, M2).
+// Desktop draws use the item's matrix as-is. The mirror-source tag selects a
+// separate mono pass on both desktop and stereo; the other tags select stereo transforms.
 //   kScreen: mvp is the whole world -> clip matrix (today's 2D path and every desktop frame)
 //   kWorld:  mvp maps the object into the reference space the draw list was built in (world - refEye); the renderer
 //            applies the eye's view-projection
 //   kSky:    the same, with the eye translation dropped - the backdrop sits at infinity and is identical in both eyes
-enum DrawSpace : uint32_t { kSpaceWorld = 0, kSpaceSky = 1, kSpaceScreen = 2 };
+//   kMirrorSource: full rear-camera clip matrix, drawn only into the shared mirror texture
+enum DrawSpace : uint32_t { kSpaceWorld = 0, kSpaceSky = 1, kSpaceScreen = 2, kSpaceMirrorSource = 3 };
 
 struct DrawItem {
     uint32_t firstVertex = 0, vertexCount = 0;
@@ -128,7 +130,10 @@ public:
     static constexpr uint32_t kNativeUiVertexBase = 1 << 20, kNativeUiVertexLimit = 16384;
     static constexpr uint32_t kProfilerVertexBase = kNativeUiVertexBase + kNativeUiVertexLimit;
     static constexpr uint32_t kVrDrivingVertexBase = kProfilerVertexBase + 8192, kVrDrivingVertexLimit = 40960;
-    static constexpr uint32_t kMaxVertices = kVrDrivingVertexBase + kVrDrivingVertexLimit;
+    static constexpr uint32_t kCockpitBodyVertexBase = kVrDrivingVertexBase + kVrDrivingVertexLimit;
+    static constexpr uint32_t kCockpitBodyVertexStride = 8192, kCockpitBodyVertexLimit = 8 * kCockpitBodyVertexStride;
+    static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = 32768;
+    static constexpr uint32_t kMaxVertices = kCockpitVertexBase + kCockpitVertexLimit;
     static constexpr uint32_t kNativeFontRow = 2048, kNativeFontRows = 144;
     static constexpr uint32_t kMenuReflectionRow = kNativeFontRow + kNativeFontRows;
     static constexpr uint32_t kVramWidth = 1024, kVramRows = kMenuReflectionRow + 512;
@@ -263,6 +268,7 @@ private:
     void UploadDecodedTextures();
     // Records `items` once per eye into the stereo target (`layer` < 0 = one multiview pass).
     void RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer);
+    void RecordMirrorPass(const std::vector<DrawItem>& items, size_t sceneItems);
     void CreateSceneTargets();  // the offscreen scene target for options_ at the window's extent
     void DestroySceneTargets();
     VkSampleCountFlagBits ClampSamples(uint32_t requested) const;
@@ -312,6 +318,7 @@ private:
     VkDescriptorSetLayout setLayout_ = VK_NULL_HANDLE;
     VkDescriptorPool descPool_ = VK_NULL_HANDLE;
     VkDescriptorSet descSet_ = VK_NULL_HANDLE;
+    VkDescriptorSet mirrorSourceSet_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
     VkPipeline pipelines_[6] = {}; // [0..3] PS1 blend modes, [4] opaque, [5] UI coverage
     VkPipeline msaaPipelines_[6] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
@@ -324,6 +331,9 @@ private:
     // the MSAA colour, the scene's depth.
     VkExtent2D sceneExtent_{};
     Image sceneColor_, sceneMsaa_, sceneDepth_;
+    static constexpr VkExtent2D kMirrorExtent{480, 128};
+    Image mirrorColor_, mirrorDepth_;
+    bool mirrorInitialized_ = false, recordMirror_ = false;
     bool sceneTargets_ = false;
     // Offscreen mode (the XR path): the one colour image the frames are recorded into (also images_[0] / views_[0]).
     bool offscreen_ = false;
