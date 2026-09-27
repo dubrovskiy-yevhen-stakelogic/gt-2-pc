@@ -1,9 +1,11 @@
 * text=auto
 *.cpp text eol=lf
+*.mm text eol=lf
 *.h text eol=lf
 *.md text eol=lf
 *.ps1 text eol=crlf
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.sh text eol=lf
+*.command text eol=lf
 *.py text eol=lf

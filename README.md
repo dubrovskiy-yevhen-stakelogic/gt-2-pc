@@ -1,14 +1,28 @@
 ![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
-# Gran Turismo 2 PC & VR - 0.5.0
+# Gran Turismo 2 PC & VR - 0.6.0
 
-**0.5.0 adds cockpit driving.** A shared dashboard, seats and moving steering wheel fit inside each car's original body, retaining its hood, roof, pillars and window outlines. The cockpit includes adjustable seating and a rear-view mirror that can be resized or switched off. Open **F10 -> Cockpit / driver view**; see [cockpit controls and limits](docs/COCKPIT.md).
+**0.6.0 adds macOS desktop support.** Arcade, Simulation, movies and the cockpit
+run through SDL2 and MoltenVK. Download **GT2-0.6.0-macos.zip**, extract it and run
+**INSTALL-MACOS.command**. The archive builds and installs GT2.app on the Mac;
+see [Mac installation and controls](docs/MACOS.md). **PREPARE-HD.command** prepares
+HD interface artwork and optional full-screen movies from your installed discs.
+
+**Mac testing:** only the project author's 16-inch MacBook Pro (2021), **M1 Pro,
+16 GB RAM, macOS Tahoe 26.5.1**, has been tested. Colours, car-selection materials,
+movies, fullscreen and settings were checked there. Other Macs are untested;
+compatibility and performance on them are unknown. The new HD preparation command
+has automated checks but still needs a complete run on macOS.
+
+This release does not include multiplayer or a dedicated server. Steam Deck and
+browser versions are planned before the full cross-platform multiplayer release.
+The existing cockpit, controls, original disc support and saves remain available.
 
 Windows PC / PCVR supports wheels, pedals, USB shifters and force feedback, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
 
 **Tested hardware:** Fanatec Gran Turismo DD Pro (8 Nm) with a Thrustmaster TH8A Shifter. This setup was used for wheel-driving tests and feedback on countersteering assistance. The other embedded device profiles have not all been tested on physical hardware.
 
-**Play on a normal Windows PC without a headset, in PCVR, or directly on Quest 3. All three versions are included in one download: `GT2-0.5.0.zip`.**
+**The previous Windows PC / PCVR and Quest 3 binary release remains available as `GT2-0.5.0.zip`.** The new 0.6.0 archive is the Mac source installer; it does not relabel those older binaries.
 
 | Version included | Where the game runs | Install | Launch |
 |---|---|---|---|
@@ -47,7 +61,7 @@ Supply your own supported disc images. Game data, BIOS and saves are not include
 - Trees use position-based cylindrical billboards in VR: head rotation alone does not rotate them.
 - Developer tools for car/track export, JSON modifications, captures and reference comparisons. Arbitrary new-track geometry compilation is not implemented.
 
-## Install the 0.5.0 player release
+## Previous Windows / Quest binary release (0.5.0)
 
 Extract **GT2-0.5.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
 
@@ -106,7 +120,7 @@ Sources are published as a normal repository folder. Run `scripts/audit-source.p
 
 ## Optional offline media preparation
 
-The installer can upscale title/GT Mode backgrounds, startup pictures and full-screen movies, and prepare 4x menu-font/button/HUD atlases with palette-aware shader smoothing on a Windows GPU, then use the prepared assets on PC or Quest. It can also capture the original two-screen PlayStation startup and sound from a local BIOS dump, before the Quest disc selector; the firmware sequence cannot be skipped. Movie preparation limits neural changes against the original frames to reduce invented detail. Smooth texture filtering now includes mipmaps for distant surfaces and fences. See [HD media setup, coverage and limitations](docs/HD-MEDIA.md). BIOS is optional and used only to prepare the console startup; normal installation and gameplay do not require it. No BIOS or generated game artwork is distributed.
+The installer can upscale title/GT Mode backgrounds, startup pictures and full-screen movies, and prepare 4x menu-font/button/HUD atlases with palette-aware shader smoothing on Windows or macOS, then use the prepared assets across compatible platforms. On Mac, use **PREPARE-HD.command**; see [Mac HD preparation](docs/MACOS.md#hd-pictures-text-and-movies). It can also capture the original two-screen PlayStation startup and sound from a local BIOS dump, before the Quest disc selector; the firmware sequence cannot be skipped. Movie preparation limits neural changes against the original frames to reduce invented detail. Smooth texture filtering now includes mipmaps for distant surfaces and fences. See [HD media setup, coverage and limitations](docs/HD-MEDIA.md). BIOS is optional and used only to prepare the console startup; normal installation and gameplay do not require it. No BIOS or generated game artwork is distributed.
 
 HD resources can be switched off in **VR menu → Graphics and performance → HD textures and media**. Arcade and Simulation share VR graphics, controls and HUD preferences. Optional offline HD preparation also enhances the PlayStation startup while retaining its original version and audio; see [HD media](docs/HD-MEDIA.md).
 
@@ -119,7 +133,9 @@ HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases
 The following features are planned; no release dates are set:
 
 - Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
-- Cross-platform multiplayer between PC, PCVR and Quest.
+- A native Steam Deck / SteamOS version of the game. The current Linux script installs the Quest version; it does not run the game on Steam Deck.
+- A browser version of the game.
+- After the Steam Deck and browser ports are added and tested, a full cross-platform multiplayer release spanning Windows, PCVR, Quest, macOS, Steam Deck and browsers.
 
 The existing adaptive accelerator/brake effects for a DualSense gamepad on Windows are separate from the planned PSVR2 Sense support.
 

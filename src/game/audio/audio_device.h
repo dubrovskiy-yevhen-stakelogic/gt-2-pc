@@ -42,7 +42,7 @@ private:
     Mixer* mixer_ = nullptr;
     std::atomic<bool> running_{false};
     std::thread thread_;
-    void* waveOut_ = nullptr; // HWAVEOUT
+    [[maybe_unused]] void* waveOut_ = nullptr; // HWAVEOUT (Windows only)
     [[maybe_unused]] void* event_ = nullptr;   // HANDLE
     struct Buffer;
     std::vector<Buffer*> buffers_;

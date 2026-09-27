@@ -1,10 +1,12 @@
 #include "gt2view/vk_scene_renderer.h"
 #include "gt2view/shading_rate.h"
+#include "gt2view/surface_format.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 #include <stdexcept>
 
 #include "gt2export/png_writer.h"
@@ -85,6 +87,12 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     Check(vkCreateFence(device_, &fci, nullptr, &fence_), "vkCreateFence");
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physical_, &properties);
+    cacheMenuTextures_ = properties.vendorID == 0x106bu; // Apple: avoid dependent VRAM-buffer reads in menu fragments.
+    if (const char* cache = std::getenv("GT2_CACHE_MENU_TEXTURES")) cacheMenuTextures_ = std::strcmp(cache, "1") == 0;
+    if (cacheMenuTextures_) std::printf("graphics: hardware palette textures enabled for menus\n");
+    cachedMenuShader_ = cacheMenuTextures_;
+    if (const char* shader = std::getenv("GT2_CACHE_MENU_SHADER")) cachedMenuShader_ = cacheMenuTextures_ && std::strcmp(shader, "1") == 0;
+    if (cachedMenuShader_) std::printf("graphics: texture-only shader enabled for mono menu cars\n");
     uint32_t queueCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_, &queueCount, nullptr);
     std::vector<VkQueueFamilyProperties> queues(queueCount);
@@ -137,6 +145,7 @@ VkSceneRenderer::~VkSceneRenderer() {
     if (!device_) return;
     vkDeviceWaitIdle(device_);
     DestroyPipelineSet(pipelines_);
+    DestroyPipelineSet(cachedMenuPipelines_);
     DestroyPipelineSet(msaaPipelines_);
     DestroyPipelineSet(stereoPipelines_);
     DestroyPipelineSet(cachedPipelines_);
@@ -204,18 +213,20 @@ void VkSceneRenderer::CreateSwapchain() {
     if (extent_.width == 0 || extent_.height == 0) return; // minimized
 
     uint32_t fn = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, nullptr);
+    Check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, nullptr), "surface formats");
     std::vector<VkSurfaceFormatKHR> formats(fn);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, formats.data());
-    // PS1 colours are display-referred: write them unmodified into a UNORM target.
-    VkSurfaceFormatKHR chosen = formats[0];
-    for (const auto& f : formats)
-        if (f.format == VK_FORMAT_B8G8R8A8_UNORM) chosen = f;
+    Check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, formats.data()), "surface formats");
+    formats.resize(fn);
+    const VkSurfaceFormatKHR chosen = ChooseDisplaySurfaceFormat(formats);
     colorFormat_ = chosen.format;
 
     VkSwapchainCreateInfoKHR sci{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     sci.surface = surface_;
-    sci.minImageCount = std::max(caps.minImageCount, 2u);
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physical_, &properties);
+    const uint32_t preferredImages = properties.vendorID == 0x106bu ? 3u : 2u;
+    sci.minImageCount = std::max(caps.minImageCount, preferredImages);
+    if (caps.maxImageCount) sci.minImageCount = std::min(sci.minImageCount, caps.maxImageCount);
     sci.imageFormat = chosen.format;
     sci.imageColorSpace = chosen.colorSpace;
     sci.imageExtent = extent_;
@@ -247,6 +258,8 @@ void VkSceneRenderer::CreateSwapchain() {
     }
     sci.clipped = VK_TRUE;
     Check(vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_), "vkCreateSwapchainKHR");
+    std::printf("graphics: swapchain %ux%u, format %d, colorspace %d, present %d, requested images %u\n",
+        extent_.width, extent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(device_, swapchain_, &n, nullptr);
@@ -510,6 +523,7 @@ void VkSceneRenderer::CreatePipeline() {
     pli.pPushConstantRanges = &pcr;
     Check(vkCreatePipelineLayout(device_, &pli, nullptr, &pipelineLayout_), "vkCreatePipelineLayout");
     CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, pipelines_);
+    if (cachedMenuShader_) CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, cachedMenuPipelines_, false, 0, true);
 }
 
 void VkSceneRenderer::DestroyPipelineSet(VkPipeline set[6]) {
@@ -529,7 +543,7 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
         return m;
     };
     VkShaderModule vs;
-    if (cachedOnly) vs = viewMask ? makeModule(kCachedStereoMultiviewVertSpv, sizeof(kCachedStereoMultiviewVertSpv))
+    if (cachedOnly && stereo) vs = viewMask ? makeModule(kCachedStereoMultiviewVertSpv, sizeof(kCachedStereoMultiviewVertSpv))
                                  : makeModule(kCachedStereoVertSpv, sizeof(kCachedStereoVertSpv));
     else if (stereo) vs = viewMask ? makeModule(kStereoMultiviewVertSpv, sizeof(kStereoMultiviewVertSpv))
                                   : makeModule(kStereoVertSpv, sizeof(kStereoVertSpv));
@@ -886,9 +900,16 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         }
         const uint32_t which = item.blend < 4 ? item.blend : (i >= sceneItems ? 5u : 4u);
         const bool cached = recordStereo_ && i < cachedDraws_.size() && cachedDraws_[i];
-        const uint32_t pipelineKey = which + (cached ? (hud ? 12 : 6) : 0);
+        // Menu body/wheel ranges carry kCarPaint on their first vertex. They are
+        // single-sample screen draws even when the race scene uses MSAA. Leave
+        // 2D UI, shadows/reflections, external textures and cache misses on the
+        // general shader; the complete cached material path is shared with VR.
+        const bool cachedMenu = cachedMenuShader_ && !recordStereo_ && !recordMirror_ && i >= sceneItems &&
+            i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
+            (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
+        const uint32_t pipelineKey = which + (cachedMenu ? 18 : cached ? (hud ? 12 : 6) : 0);
         if (pipelineKey != boundPipeline) {
-            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, cached ? (hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
+            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, cachedMenu ? cachedMenuPipelines_[which] : cached ? (hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
             const float k = which == 0 ? 0.5f : 0.25f;
             const float constants[4] = {k, k, k, 1.0f};
             vkCmdSetBlendConstants(cmd_, constants);
@@ -1054,10 +1075,15 @@ void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screen
     pi.pSwapchains = &swapchain_;
     pi.pImageIndices = &imageIndex;
     VkResult pres = vkQueuePresentKHR(queue_, &pi);
-    if (pres == VK_ERROR_OUT_OF_DATE_KHR || pres == VK_SUBOPTIMAL_KHR) {
+    VkExtent2D drawable{};
+    const bool resized = pres == VK_SUBOPTIMAL_KHR && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
+                         (drawable.width != extent_.width || drawable.height != extent_.height);
+    // SUBOPTIMAL is still a successful presentation. Cocoa can report it while
+    // entering fullscreen without changing the drawable; avoid rebuilding every frame.
+    if (pres == VK_ERROR_OUT_OF_DATE_KHR || resized) {
         vkDeviceWaitIdle(device_);
         DestroySwapchain();
-    } else {
+    } else if (pres != VK_SUBOPTIMAL_KHR) {
         Check(pres, "vkQueuePresentKHR");
     }
 }

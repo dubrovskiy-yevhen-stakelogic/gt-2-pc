@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.22)
-project(gt2pc LANGUAGES C CXX)
+project(gt2pc VERSION 0.6.0 LANGUAGES C CXX)
 option(GT2_BUILD_XRSIM "Build the optional OpenXR development simulator" OFF)
+option(GT2_BUILD_MACOS_CLIENT "Build the macOS flat client (SDL2 and MoltenVK)" ${APPLE})
+if(GT2_BUILD_MACOS_CLIENT)
+  if(NOT APPLE)
+    message(FATAL_ERROR "GT2_BUILD_MACOS_CLIENT requires a macOS toolchain")
+  endif()
+  find_package(SDL2 2.26 REQUIRED CONFIG)
+endif()
 include(CTest)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -125,8 +132,13 @@ target_link_libraries(gt2gamelib PUBLIC gt2formats)
 # The game's sound (product): the ported car sound logic, the native mixer, the Windows device. Never links gt2interp.
 if(ANDROID)
   set(GT2_AUDIO_DEVICE src/game/audio/audio_device_aaudio.cpp)
-else()
+elseif(WIN32)
   set(GT2_AUDIO_DEVICE src/game/audio/audio_device_win32.cpp)
+elseif(GT2_BUILD_MACOS_CLIENT)
+  set(GT2_AUDIO_DEVICE src/game/audio/audio_device_sdl.cpp)
+else()
+  # Unix currently builds headless tools; opening a playback device is unsupported.
+  set(GT2_AUDIO_DEVICE src/game/audio/audio_device_headless.cpp)
 endif()
 add_library(gt2audio STATIC
   src/game/audio/car_sound.cpp
@@ -143,6 +155,8 @@ if(WIN32)
   target_link_libraries(gt2audio PUBLIC winmm)
 elseif(ANDROID)
   target_link_libraries(gt2audio PUBLIC aaudio)
+elseif(GT2_BUILD_MACOS_CLIENT)
+  target_link_libraries(gt2audio PRIVATE SDL2::SDL2)
 endif()
 
 # The GT-mode career (product): career state + save game, garage / money / parts rules, results, events. Never links gt2interp.
@@ -322,6 +336,14 @@ endif()
 
 if(ANDROID)
   include(cmake/android.cmake)
+endif()
+if(GT2_BUILD_MACOS_CLIENT)
+  include(cmake/macos.cmake)
+endif()
+if(BUILD_TESTING AND TARGET gt2vk AND (WIN32 OR GT2_BUILD_MACOS_CLIENT))
+  add_executable(gt2surfacechecks tests/surface_format_checks.cpp)
+  target_include_directories(gt2surfacechecks PRIVATE src ${Vulkan_INCLUDE_DIRS})
+  add_test(NAME display_surface_format_checks COMMAND gt2surfacechecks)
 endif()
 
 if(BUILD_TESTING AND NOT ANDROID)

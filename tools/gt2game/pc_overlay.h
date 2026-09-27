@@ -32,6 +32,8 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
                            bool deterministic = false, const std::string& script = {}, const std::string& shot = {}, bool sound = true,
                            bool playStartup = true);
 bool TakeGameChangeRequest();
+void SetDiscImportAvailable(bool available);
+bool TakeDiscImportRequest();
 bool ConsoleStartupHandled();
 bool PlayStationIntroEnabled();
 void PrepareNativeUi(gt2view::VkSceneRenderer& renderer);

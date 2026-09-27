@@ -1,6 +1,16 @@
 # Offline HD media and PlayStation startup
 
-Neural HD preparation runs on Windows before copying data to Quest. The PC and Quest game load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; neural HD preparation remains Windows-only.
+Neural HD preparation is available on Windows and macOS. Compatible platforms load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; native Linux HD preparation is not included.
+
+## macOS
+
+Install 0.6.0, import your discs, close the game and run **PREPARE-HD.command**.
+Choose pictures/text/HUD or also full-screen Arcade movies. The command uses the
+bundled native media tools and obtains the official Real-ESRGAN macOS release.
+It preserves original discs, saves and previously prepared movies/startup media,
+and retains a backup of the replaced HD pack. Enable HD textures and media under
+**Shift+Q > Graphics and performance**. The new Mac preparation command has
+not yet completed a physical Mac test. [Commands and paths](MACOS.md#hd-pictures-text-and-movies).
 
 ## Installation
 

@@ -1,16 +1,26 @@
 #include "game_main.h"
 #include "game_window.h"
 #include "pc_overlay.h"
+#include "../gt2mac/launch_protocol.h"
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <vector>
 
 int main(int argc, char** argv) {
     using namespace gt2game;
-    if (argc > 1 && !std::string(argv[1]).starts_with("--")) return GameMain(argc, argv);
+#ifdef __APPLE__
+    const char* launcher = std::getenv(gt2mac::kLauncherEnvironment);
+    SetDiscImportAvailable(launcher && std::string(launcher) == "1");
+#endif
+    if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
+        const int result = GameMain(argc, argv);
+        ReleaseRetainedWindow();
+        return result == 0 && TakeDiscImportRequest() ? gt2mac::kImportDiscExitCode : result;
+    }
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     if (argc > 1 && std::string(argv[1]) == "--help") {
         std::puts("gt2game [--vr] [--data-root installed-folder] [--save-root saves-folder]\n"
@@ -75,5 +85,6 @@ int main(int argc, char** argv) {
         result = 1;
     }
     ReleaseRetainedWindow();
+    if (result == 0 && TakeDiscImportRequest()) return gt2mac::kImportDiscExitCode;
     return result;
 }

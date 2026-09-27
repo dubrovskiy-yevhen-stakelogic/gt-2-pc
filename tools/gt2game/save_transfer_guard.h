@@ -5,6 +5,10 @@
 #include <vector>
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(__APPLE__)
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 namespace gt2game {
@@ -34,6 +38,30 @@ public:
             for (auto file : files_) CloseHandle(file);
             throw;
         }
+#elif defined(__APPLE__)
+        std::vector<std::filesystem::path> dirs;
+        try {
+            for (const auto& card : {first, second}) {
+                if (card.empty()) continue;
+                auto dir = std::filesystem::absolute(card).parent_path().lexically_normal();
+                std::filesystem::create_directories(dir);
+                bool duplicate = false;
+                for (const auto& old : dirs) if (std::filesystem::equivalent(old, dir)) duplicate = true;
+                if (duplicate) continue;
+                const auto lock = dir / ".transfer.lock";
+                const int file = open(lock.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+                if (file < 0) throw std::runtime_error("Cannot open save folder lock: " + dir.string());
+                if (flock(file, LOCK_EX | LOCK_NB) != 0) {
+                    close(file);
+                    throw std::runtime_error("Save folder is busy. Close the other game first: " + dir.string());
+                }
+                files_.push_back(file);
+                dirs.push_back(dir);
+            }
+        } catch (...) {
+            for (auto file : files_) close(file);
+            throw;
+        }
 #else
         (void)first; (void)second; // Android holds the app-wide lock in GT2Activity.
 #endif
@@ -41,6 +69,8 @@ public:
     ~SaveTransferGuard() {
 #ifdef _WIN32
         for (auto file : files_) CloseHandle(file);
+#elif defined(__APPLE__)
+        for (auto file : files_) close(file);
 #endif
     }
     SaveTransferGuard(const SaveTransferGuard&) = delete;
@@ -48,6 +78,8 @@ public:
 private:
 #ifdef _WIN32
     std::vector<HANDLE> files_;
+#elif defined(__APPLE__)
+    std::vector<int> files_;
 #endif
 };
 }

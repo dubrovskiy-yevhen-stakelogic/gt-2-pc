@@ -21,6 +21,7 @@ constexpr int kRight = 0x27;    // VK_RIGHT
 constexpr int kDown = 0x28;     // VK_DOWN
 constexpr int kDelete = 0x2E;   // VK_DELETE    (Square)
 constexpr int kF5 = 0x74;       // VK_F5
+constexpr int kF8 = 0x77;       // VK_F8
 constexpr int kF10 = 0x79;      // VK_F10
 
 } // namespace gt2::keys

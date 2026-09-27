@@ -28,6 +28,7 @@ bool profiler = false;
 bool playStationIntro = true;
 bool consoleStartupHandled = false;
 bool gameChangeAvailable = false, gameChangeRequested = false;
+bool discImportAvailable = false, discImportRequested = false;
 int foveation = 2;
 int metricUnits = -1;
 bool baseMetricUnits = true;
@@ -866,7 +867,15 @@ void ShowSettingsMenu(GameWindow& window) {
         auto graphics = CurrentGraphics();
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
-        if (page == 0) rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
+        if (page == 0) {
+            rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
+            if (discImportAvailable) rows.push_back("Import another game disc...");
+            rows.push_back("Quit game");
+        }
+        if (page == 11 || page == 12) {
+            title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
+            rows = {page == 11 ? "Close game and select BIN / CUE..." : "Quit game", "Back to current game"};
+        }
         if (page == 10) {
             title = "GT2 / COCKPIT";
             rows = {std::string("Driver view: ") + (cockpitSettings.enabled ? "Cockpit" : "Original"),
@@ -984,6 +993,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         else status = "Launch from the disc picker with both discs installed.";
                     }
                     else if (selected == 6) { page = 10; selected = 0; status = "Applies to Driver camera. Change view with C / your camera button."; }
+                    else if (selected >= 8) { page = discImportAvailable && selected == 8 ? 11 : 12; selected = 1; }
                     else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
                 }
@@ -999,6 +1009,14 @@ void ShowSettingsMenu(GameWindow& window) {
                     status = "Saved. Applies to Driver camera when you resume.";
                     if (page == 10 && (selected == 4 || selected == 5) && cockpitSettings.mirror && !hudVisibility.mirror)
                         status = "Saved. Enable Rear-view mirror in HUD elements to show it.";
+                }
+                else if ((page == 11 || page == 12) && accept) {
+                    if (selected == 0) {
+                        discImportRequested = page == 11;
+                        gameChangeRequested = false;
+                        std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
+                        window.Close(); done = true;
+                    } else { selected = page == 11 ? 8 : int(discImportAvailable) + 8; page = 0; }
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {
@@ -1119,7 +1137,7 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         first = false;
         window.Input().StopFeedback();
-        Panel(window, title, rows, selected, page == 9 ? "Unsaved progress will be lost. Save in the game first." : status,
+        Panel(window, title, rows, selected, (page == 9 || page == 11 || page == 12) ? "Unsaved progress will be lost. Save in the game first." : status,
               vr ? "Stick up/down: row   Triggers: value   A: open   B: back" : "Up/down: row  Left/right: value  Enter: open Esc: back");
     }
     window.Input().StopFeedback(); window.ResetPacing();
@@ -1170,6 +1188,12 @@ bool PlayStationIntroEnabled() { return playStationIntro; }
 bool TakeGameChangeRequest() {
     const bool requested = gameChangeRequested;
     gameChangeRequested = false;
+    return requested;
+}
+void SetDiscImportAvailable(bool available) { discImportAvailable = available; }
+bool TakeDiscImportRequest() {
+    const bool requested = discImportRequested;
+    discImportRequested = false;
     return requested;
 }
 std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vrMode,

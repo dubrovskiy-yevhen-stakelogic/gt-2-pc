@@ -321,6 +321,7 @@ private:
     VkDescriptorSet mirrorSourceSet_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
     VkPipeline pipelines_[6] = {}; // [0..3] PS1 blend modes, [4] opaque, [5] UI coverage
+    VkPipeline cachedMenuPipelines_[6] = {}; // Mono menu cars: the texture-only fragment path.
     VkPipeline msaaPipelines_[6] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
     VkSampleCountFlagBits msaaSamples_ = VK_SAMPLE_COUNT_1_BIT;
 
@@ -361,6 +362,8 @@ private:
     uint32_t recordLayers_ = 1;          // array layers of the target being recorded (vkCmdClearAttachments)
     StereoViews stereoViews_;
     bool decodedEnabled_ = true;
+    bool cacheMenuTextures_ = false; // Metal also decodes palette textures outside the race scene.
+    bool cachedMenuShader_ = false;
     DecodedTextureCache decoded_;
     std::unordered_map<uint64_t, std::vector<uint64_t>> materialRanges_;
     Image decodedImage_, handImage_;

@@ -74,7 +74,8 @@ Picture Movie::Frame(uint32_t index) {
 std::vector<int16_t> Movie::Audio() {
     std::vector<int16_t> result(static_cast<size_t>(samples_));file_.clear();file_.seekg(std::streamoff(audio_));
     file_.read(reinterpret_cast<char*>(result.data()),std::streamsize(samples_*2));
-    if(!file_) throw std::runtime_error("truncated HD audio");return result;
+    if (!file_) throw std::runtime_error("truncated HD audio");
+    return result;
 }
 MovieWriter::MovieWriter(const std::string& path,uint32_t w,uint32_t h,uint32_t sw,uint32_t sh,uint32_t num,uint32_t den):
     out_(path,std::ios::binary),width_(w),height_(h),sourceWidth_(sw),sourceHeight_(sh),fpsNum_(num),fpsDen_(den) {

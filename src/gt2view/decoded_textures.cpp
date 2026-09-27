@@ -7,7 +7,8 @@ namespace gt2view {
 void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items, size_t sceneItems) {
     decoded_.Begin();
     cachedDraws_.assign(items.size(), 0);
-    if (!decodedEnabled_ || !sceneItems) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
+    const size_t decodedItems = cacheMenuTextures_ ? items.size() : std::min(sceneItems, items.size());
+    if (!decodedEnabled_ || !decodedItems) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
     if (!decodedUpload_.buffer) {
         decodedUpload_ = CreateBuffer(size_t(DecodedTextureCache::kLayers) * DecodedTextureCache::kTexels * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         DestroyImage(decodedImage_);
@@ -22,7 +23,7 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
         vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr); decodedInitialized_ = false;
     }
     const auto* vertices = static_cast<const SceneVertex*>(vertexBuffer_.mapped);
-    for (size_t draw = 0; draw < std::min(sceneItems, items.size()); ++draw) {
+    for (size_t draw = 0; draw < decodedItems; ++draw) {
         const auto& item = items[draw];
         if (uint64_t(item.firstVertex) + item.vertexCount > kMaxVertices) continue;
         if (item.firstVertex >= kVrDrivingVertexBase &&

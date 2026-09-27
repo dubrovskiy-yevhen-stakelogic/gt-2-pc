@@ -28,3 +28,16 @@ Player releases include dependency notices under LICENSES/, including the Androi
 - `scripts/gt2_disc.py` implements the same ISO9660/GTFS extraction rules as this project's `DiscImage` and `GtfsVolume`, using Python's standard library. Linux installation requires no Windows executables. The optional Linux core URL and hash are recorded in `scripts/gt2_boot.py`.
 
 - Wheel input hardware facts: physical USB IDs, axes, polarity and button/action relationships were checked against locally installed BeamNG.drive factory input maps (Steam build 24617469). GT2 embeds its own normalized records; original input-map files, game scripts, assets and FFB curves/gains are not bundled. Reference filenames/hashes and exclusions are documented in `docs/wheel-profile-provenance.json` and `docs/WHEEL-PROFILES.md`.
+
+- macOS: SDL 2.32.10 (zlib licence) is built from its SHA-256-pinned release tarball.
+  Vulkan headers/loader, shaderc and MoltenVK are obtained through Homebrew.
+  The app packager retains the installed dependencies' licence files.
+- Optional macOS HD preparation uses the official Real-ESRGAN NCNN Vulkan
+  20220424 macOS archive from the v0.2.5.0 release. Upstream's macOS build includes
+  arm64 and x86_64 slices. The command validates archive paths, size and CRC,
+  records the downloaded SHA-256, and checks that hash on cache reuse. This is
+  a receipt for the downloaded bytes, not an upstream-published checksum.
+  A local executable and its models can be selected with `--upscaler`.
+  Downloaded tools, models and their licences remain outside the source archive.
+  [Release](https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0),
+  [native build recipe](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/master/.github/workflows/release.yml).

@@ -104,3 +104,6 @@ desktop.ini
 *.keystore
 __pycache__/
 *.pyc
+
+build_macos/
+.DS_Store

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 - 2026-09-27
+
+- Added the macOS desktop client with SDL2 input/audio and Vulkan rendering through MoltenVK.
+- Added source installation, bundled runtime dependencies, a native disc picker and a save-preserving application update.
+- Corrected display colour-space selection and menu-car materials on the tested M1 Pro. Fixed fullscreen performance.
+- Added Shift+Q for settings, Option+Enter for fullscreen, Quit game and Import another game disc.
+- Added PREPARE-HD.command for HD pictures, menu fonts, HUD and optional full-screen movies. Original discs and saves are retained. The new preparation command has automated checks; a complete Mac run remains unverified.
+- Tested only on the author's MacBook Pro 16-inch (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1. Other Macs have not been tested; their compatibility and performance are unknown.
+- Multiplayer and dedicated-server development are excluded. Steam Deck and browser ports are planned before the full cross-platform multiplayer release.
+
 ## 0.5.0 - 2026-09-24
 
 - Added a fitted cockpit for the live single-player Driver camera: dashboard, analogue speed/RPM needles, moving steering wheel, seats and door trim inside the selected car's original body. The cockpit appears as soon as the countdown camera switches to Driver, before GO.

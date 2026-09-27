@@ -3,14 +3,14 @@ param([string]$Repo = (Split-Path $PSScriptRoot), [switch]$FileSystem)
 $ErrorActionPreference = 'Stop'
 if ($FileSystem) {
     $root = (Get-Item -LiteralPath $Repo).FullName.TrimEnd('\', '/')
-    $rootFiles = @('.gitattributes', '.gitignore', 'build.cmd', 'CHANGELOG.md', 'CMakeLists.txt',
+    $rootFiles = @('.gitattributes', '.gitignore', 'build.cmd', 'BUILD-MACOS.command', 'INSTALL-MACOS.command', 'PLAY-MACOS.command', 'PREPARE-HD.command', 'CHANGELOG.md', 'CMakeLists.txt',
         'gt2_arcade.bat', 'gt2_race.bat', 'gt2_sim.bat', 'INSTALL-LINUX.sh', 'INSTALL.bat', 'LICENSE',
         'PREPARE-HD.bat', 'README.md', 'run_race.bat', 'THIRD_PARTY.md',
         'TRANSFER_PC_SAVES_TO_QUEST.bat', 'TRANSFER_QUEST_SAVES_TO_PC.bat')
     # Public documentation is explicit: local validation reports can contain device
     # identifiers and private diagnostic paths. New research needs a release review.
     $publicDocs = @('COCKPIT.md', 'EUROPEAN-DISCS.md', 'hardware_boundary.md', 'HD-MEDIA.md',
-        'LINUX-INSTALL.md', 'MIPMAPS.md', 'PCVR.md', 'PLAYER-INSTALL.md', 'QUEST.md',
+        'LINUX-INSTALL.md', 'MACOS.md', 'MIPMAPS.md', 'PCVR.md', 'PLAYER-INSTALL.md', 'QUEST.md',
         'RENDER_BENCHMARK.md', 'SAVE-TRANSFER.md', 'VALIDATION.md', 'wheel-profile-provenance.json',
         'WHEEL-PROFILES.md', 'WHEELS.md', 'research/arcade_disc.md', 'research/audio_video.md',
         'research/engine_tech.md', 'research/formats.md', 'research/menus_gtmode.md',
@@ -59,9 +59,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot list new source files.' }
     $approved = @($new | Where-Object {
         $_ -eq 'docs/images/cockpit-0.5.0.png' -or
-        $_ -eq 'TRANSFER_QUEST_SAVES_TO_PC.bat' -or $_ -eq 'TRANSFER_PC_SAVES_TO_QUEST.bat' -or $_ -eq 'PREPARE-HD.bat' -or $_ -eq 'INSTALL-LINUX.sh' -or $_ -eq 'LICENSE' -or $_ -eq 'CHANGELOG.md' -or
+        $_ -eq 'TRANSFER_QUEST_SAVES_TO_PC.bat' -or $_ -eq 'TRANSFER_PC_SAVES_TO_QUEST.bat' -or $_ -eq 'PREPARE-HD.bat' -or $_ -match '^(BUILD-MACOS|INSTALL-MACOS|PLAY-MACOS|PREPARE-HD)\.command$' -or $_ -eq 'INSTALL-LINUX.sh' -or $_ -eq 'LICENSE' -or $_ -eq 'CHANGELOG.md' -or
         ($_ -match '^(src|tools|tests|cmake|scripts|docs|third_party|android/app/src/main/java)/' -and
-        $_ -match '\.(java|cpp|h|hpp|c|glsl|vert|frag|cmake|ps1|py|sh|md|txt|json)$')
+        $_ -match '\.(java|cpp|mm|h|hpp|c|glsl|vert|frag|cmake|ps1|py|sh|md|txt|json)$')
     })
     @($tracked + $approved | Sort-Object -Unique)
 } finally { Pop-Location }
