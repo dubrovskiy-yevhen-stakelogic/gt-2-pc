@@ -1,5 +1,5 @@
 {
-  "version": "0.6.0",
+  "version": "0.7.0",
   "sourceCommit": null,
   "sourceDirty": null,
   "files": [
@@ -64,14 +64,19 @@
       "textSha256": "d4cb1f7bb76d32cc87847cbb6466fae4d8f604e4eb6589880be0f44af692083f"
     },
     {
+      "path": "BUILD-STEAMDECK.sh",
+      "sha256": "4e877e7b8c8ee0873f131c7bc36f055c6f74eb6545b15836c07a90aed2242496",
+      "textSha256": "4e877e7b8c8ee0873f131c7bc36f055c6f74eb6545b15836c07a90aed2242496"
+    },
+    {
       "path": "build.cmd",
       "sha256": "85f179d53b8763b0ad3d3fc4a4a2689ce7b4abfa559b17dc53285eca14ce1272",
       "textSha256": "ffb9bf16acc695b8718186bc114acef0e560d981f43d1cc6871c901785aba7ba"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "8418cc75b8d13d4aba77405af21fb0a09fa097e8c22fb62a5fd410ff142b97c6",
-      "textSha256": "8418cc75b8d13d4aba77405af21fb0a09fa097e8c22fb62a5fd410ff142b97c6"
+      "sha256": "00be6e1ffcca12208048367fd7aad68914716abc4eff4d1fa44d86184f0f2755",
+      "textSha256": "00be6e1ffcca12208048367fd7aad68914716abc4eff4d1fa44d86184f0f2755"
     },
     {
       "path": "cmake/android.cmake",
@@ -79,9 +84,19 @@
       "textSha256": "762cd7f65bdbd3b44b2a9a7eb2efcae120a8bc4e5602c6eb5b3d1020565d71f6"
     },
     {
+      "path": "cmake/linux.cmake",
+      "sha256": "5f58fa87048d10d9f79c6acdf86ef79e568c3b4116957f15e2eb26dbbd7a899d",
+      "textSha256": "5f58fa87048d10d9f79c6acdf86ef79e568c3b4116957f15e2eb26dbbd7a899d"
+    },
+    {
       "path": "cmake/macos.cmake",
-      "sha256": "0b46357eb0988a488dd78c34af261212e74fedc3651daeb1e6351d0041ee0c1a",
-      "textSha256": "0b46357eb0988a488dd78c34af261212e74fedc3651daeb1e6351d0041ee0c1a"
+      "sha256": "76013c7cc3f701a529abdd41936b7cc48a0fad7e890f3b360c9ad090a2157592",
+      "textSha256": "76013c7cc3f701a529abdd41936b7cc48a0fad7e890f3b360c9ad090a2157592"
+    },
+    {
+      "path": "cmake/sdl-client.cmake",
+      "sha256": "2aec147d0482e4c669f2c3ae129a3ec26c25e946f2004ac8968c37e6684d219a",
+      "textSha256": "2aec147d0482e4c669f2c3ae129a3ec26c25e946f2004ac8968c37e6684d219a"
     },
     {
       "path": "cmake/stereo-shaders.cmake",
@@ -95,8 +110,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "32697bbe7358e7e877696273aa3bd75421e5a1ffbbcde55da7e9e8190d940e75",
-      "textSha256": "32697bbe7358e7e877696273aa3bd75421e5a1ffbbcde55da7e9e8190d940e75"
+      "sha256": "d269c5ef74786f4352d02b3de820a3f2524cd440b9b54377bc1d939299531a1d",
+      "textSha256": "d269c5ef74786f4352d02b3de820a3f2524cd440b9b54377bc1d939299531a1d"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -125,8 +140,8 @@
     },
     {
       "path": "docs/COCKPIT.md",
-      "sha256": "d9fadcc2006147cd515412f71a70876adcb49f8c1f642a0e3a6ae0f9b7ef816b",
-      "textSha256": "2f0513ab4dddcd630e4b7eb9eb5d163c7a3b5b7de4db428fa7d9f746cff63870"
+      "sha256": "01a178941795108030d11e3797f131d7ebd569a678bc42bc46bd75294435be37",
+      "textSha256": "01a178941795108030d11e3797f131d7ebd569a678bc42bc46bd75294435be37"
     },
     {
       "path": "docs/EUROPEAN-DISCS.md",
@@ -245,8 +260,8 @@
     },
     {
       "path": "docs/formats/track_json.md",
-      "sha256": "a6ca8b1a002f098ae64c78db04cd93a57f0853644b003f858f80b5a1ac9544a9",
-      "textSha256": "a6ca8b1a002f098ae64c78db04cd93a57f0853644b003f858f80b5a1ac9544a9"
+      "sha256": "9b5a2d342e9ea0201b03d25ef39467e4eab6d191f01179a12b6ac688a384dce8",
+      "textSha256": "9b5a2d342e9ea0201b03d25ef39467e4eab6d191f01179a12b6ac688a384dce8"
     },
     {
       "path": "docs/formats/track_tro.md",
@@ -279,8 +294,8 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "4ba172d532354656d4bae6abb54ea385f2ff32239fee6f1437094b94ca49cadf",
-      "textSha256": "4ba172d532354656d4bae6abb54ea385f2ff32239fee6f1437094b94ca49cadf"
+      "sha256": "9b4c70331f1baff1a78185aa405b3a4904f77ac67f25ab73d97fb4abdf68e20d",
+      "textSha256": "9b4c70331f1baff1a78185aa405b3a4904f77ac67f25ab73d97fb4abdf68e20d"
     },
     {
       "path": "docs/MIPMAPS.md",
@@ -294,38 +309,38 @@
     },
     {
       "path": "docs/PLAYER-INSTALL.md",
-      "sha256": "8b8ec1a15189761adc77eb75a00a5ae64d50d3443e7d116d60572f0453f13dd0",
-      "textSha256": "a62060db90140796f7c85bb0c8cb03f8f72e0b81f2c67172370975dd919bd907"
+      "sha256": "b67411cc390ab3daf8948f9ad63e5c062fbdb88f1a944e81603e7788a1bc0a57",
+      "textSha256": "b67411cc390ab3daf8948f9ad63e5c062fbdb88f1a944e81603e7788a1bc0a57"
     },
     {
       "path": "docs/QUEST.md",
-      "sha256": "7fe7b32d31bb29f6a8978c799cde45e3ab96f379a15cc33ece85ac1572ff79bc",
-      "textSha256": "2143257482db82828024e1ca31b6210065b1e903d114fb1a211451a2c3395b7b"
+      "sha256": "79e277f86c8668130185e243be331ec22103eab215a9e6e8afc3f1340f2b588b",
+      "textSha256": "79e277f86c8668130185e243be331ec22103eab215a9e6e8afc3f1340f2b588b"
     },
     {
       "path": "docs/RENDER_BENCHMARK.md",
-      "sha256": "2a524d88f5478a261ffb71cbed3cbca03110c546125696020a2361d33a7167b6",
-      "textSha256": "2c6b5357765b89b953dfba30a0d18eb07d8366f8511343c1a5b988822e234d0c"
+      "sha256": "c887e0597eefb8f1e2c18fcd974820668d351cfd99c029f8daf712f6b93c4204",
+      "textSha256": "c887e0597eefb8f1e2c18fcd974820668d351cfd99c029f8daf712f6b93c4204"
     },
     {
       "path": "docs/research/arcade_disc.md",
-      "sha256": "040cf55d6f8eb9a8b49e37d67902c1a135cf544c30ad43d0b192e18388ac33dd",
-      "textSha256": "ceaa84d3e92c820c29c5edfbcf11c69fa25c400227fd91ee2e23ac13e5d708c3"
+      "sha256": "b186820f459f4db9ce67b68dee1715d0f763b75e9a5431ccf2c85a53578d95c9",
+      "textSha256": "b186820f459f4db9ce67b68dee1715d0f763b75e9a5431ccf2c85a53578d95c9"
     },
     {
       "path": "docs/research/audio_video.md",
-      "sha256": "c0189c55ee230b021e0050cb964da3e03056868f6b9b6a10bb32007894e8684c",
-      "textSha256": "22aa8ea34a8dcb891060cea4152de83fa7904b21bcfc1168554b4209ff8f6bf1"
+      "sha256": "ff89b29465233decf80f104c166b1866a33b42feb1d31a3fbbdadde7469ae950",
+      "textSha256": "ff89b29465233decf80f104c166b1866a33b42feb1d31a3fbbdadde7469ae950"
     },
     {
       "path": "docs/research/engine_tech.md",
-      "sha256": "0c2805c0c308364ce4337b67689982655128468fd911660ccaf18fe0f5787af6",
-      "textSha256": "e1ed6404508af166e4ecce3b5fe0256e6d30422c326fc78a3d3a526d90761054"
+      "sha256": "2c6831ae86d187a857fc055d3c9a1638baafaa757a8131428cb753d9223d097a",
+      "textSha256": "2c6831ae86d187a857fc055d3c9a1638baafaa757a8131428cb753d9223d097a"
     },
     {
       "path": "docs/research/formats.md",
-      "sha256": "c5f25cfb799d5369c8d08a2690d02d387945f2e1ee7c31bfaa467df823fe5e44",
-      "textSha256": "eaab19c6dea539fe024f7a460b3986fb21c713ef1095a24c3a0769b914bdd36e"
+      "sha256": "fae9c8985022ae022e4fac8803b3991dac711cf76e8b876a1d264af0c84f28d2",
+      "textSha256": "fae9c8985022ae022e4fac8803b3991dac711cf76e8b876a1d264af0c84f28d2"
     },
     {
       "path": "docs/research/menus_gtmode.md",
@@ -334,13 +349,13 @@
     },
     {
       "path": "docs/research/quest_ports.md",
-      "sha256": "0c3fecb3ec7b5fc5b8023cbd1b2b5261fb4946a0c576ab092a1213ab1763e298",
-      "textSha256": "0c3fecb3ec7b5fc5b8023cbd1b2b5261fb4946a0c576ab092a1213ab1763e298"
+      "sha256": "f7788601e2e9ad77892dce5b929e33853f0c2223a561428f3f28a37691022f1c",
+      "textSha256": "f7788601e2e9ad77892dce5b929e33853f0c2223a561428f3f28a37691022f1c"
     },
     {
       "path": "docs/research/re_state.md",
-      "sha256": "22a17a1d256aad56356b0c96b5c0a70b60ac4093899ebe9e57ec19d7b163b0a1",
-      "textSha256": "d65533f4c59286a0b2a951a611d21480b0ca7685df16b54d120dcb736f2cefe2"
+      "sha256": "aa065e9865a2c072dfff53583ce2c7749132c7303b48b1a3113f16213577047f",
+      "textSha256": "aa065e9865a2c072dfff53583ce2c7749132c7303b48b1a3113f16213577047f"
     },
     {
       "path": "docs/research/scout_disc.md",
@@ -349,28 +364,28 @@
     },
     {
       "path": "docs/research/scout_exe.md",
-      "sha256": "d7130a31c2d2ff25fdb2acc7cfd4b00e8e3b8460d8ea45823628fa5bc5cc5c2b",
-      "textSha256": "d7130a31c2d2ff25fdb2acc7cfd4b00e8e3b8460d8ea45823628fa5bc5cc5c2b"
+      "sha256": "917a77590f8e45d154d8b52b82f3bd10c7d954e2712bf8accb2ab28923d82ed0",
+      "textSha256": "917a77590f8e45d154d8b52b82f3bd10c7d954e2712bf8accb2ab28923d82ed0"
     },
     {
       "path": "docs/research/scout_vol.md",
-      "sha256": "54a8f40c313a108154c8939dbfd04f5b81472de9585df44866607475fdaf31f4",
-      "textSha256": "4a381f2efcf6c223881471d243cac92fd4a8f440c47138503f63c03cba8664ff"
+      "sha256": "d02b57e5e555ad97eecca4b48bafed82708f03d5ed97366815705875f442711a",
+      "textSha256": "d02b57e5e555ad97eecca4b48bafed82708f03d5ed97366815705875f442711a"
     },
     {
       "path": "docs/research/vr_modern.md",
-      "sha256": "8639356165cfca4f2751c59d5ee55346d982e61e9f327e9428c0210d27d61977",
-      "textSha256": "8d4a18fc34f29f49a4f606acaaddb50486b7e9d418d593e683f081ca8073cdbe"
+      "sha256": "9fc316a6d0b9cb7c8be8b6a865036f0314be6a53816fa9937d8b3ab96c242d37",
+      "textSha256": "9fc316a6d0b9cb7c8be8b6a865036f0314be6a53816fa9937d8b3ab96c242d37"
     },
     {
       "path": "docs/research/vr_port_plan.md",
-      "sha256": "dd88deb4fa2c147a7c176b4dda900cdc9489c14240d846b127528bd9dd8512cf",
-      "textSha256": "dd88deb4fa2c147a7c176b4dda900cdc9489c14240d846b127528bd9dd8512cf"
+      "sha256": "081b9015dbadaff638d6e9bb5ecc5d58abbf5cf3f86f69c9663185e90089c824",
+      "textSha256": "081b9015dbadaff638d6e9bb5ecc5d58abbf5cf3f86f69c9663185e90089c824"
     },
     {
       "path": "docs/research/xrsim.md",
-      "sha256": "bc147837bf9c60217d09133c3621f02d495e238779974bc59d5a8c8f0c181c44",
-      "textSha256": "bc147837bf9c60217d09133c3621f02d495e238779974bc59d5a8c8f0c181c44"
+      "sha256": "10f16489d899244c752627ebe0a378d140c1ae73d80097c24bb76cacbe7cab8e",
+      "textSha256": "10f16489d899244c752627ebe0a378d140c1ae73d80097c24bb76cacbe7cab8e"
     },
     {
       "path": "docs/SAVE-TRANSFER.md",
@@ -378,9 +393,14 @@
       "textSha256": "4c65ed3e19c0ddc1d85d63c997464eb5083c3043219dbb8f95a50fac95062c1a"
     },
     {
+      "path": "docs/STEAMDECK.md",
+      "sha256": "3ba0131f31baf0be04aaef1625d867fa6dc744448bca9bb950fd825518221b65",
+      "textSha256": "3ba0131f31baf0be04aaef1625d867fa6dc744448bca9bb950fd825518221b65"
+    },
+    {
       "path": "docs/VALIDATION.md",
-      "sha256": "2ecf270055758f63f95fee6b57b77cec0b247825ee32b9835d92883ce1f0f592",
-      "textSha256": "d6b3918437c328e9401a04fd0539f0e85314376666d37ff37ea70e352b71b377"
+      "sha256": "af0c8ed17edcd4cb99ca70854a215ac457bcfae9e02e6eaeae262c1c8a712923",
+      "textSha256": "af0c8ed17edcd4cb99ca70854a215ac457bcfae9e02e6eaeae262c1c8a712923"
     },
     {
       "path": "docs/wheel-profile-provenance.json",
@@ -413,6 +433,11 @@
       "textSha256": "b42fc1937621232a0745188eeb7361941a32d7c476ec56be32cbaa2ee859361a"
     },
     {
+      "path": "IMPORT-DISC-STEAMDECK.sh",
+      "sha256": "202ef2213c8f662a2abe94cda6b9568593214c2987527bfd656296b1f7109068",
+      "textSha256": "202ef2213c8f662a2abe94cda6b9568593214c2987527bfd656296b1f7109068"
+    },
+    {
       "path": "INSTALL-LINUX.sh",
       "sha256": "277eafc874bd5ceed7cd7d44c3921187666ee7c1287114d6a99768a4d2d8eb67",
       "textSha256": "277eafc874bd5ceed7cd7d44c3921187666ee7c1287114d6a99768a4d2d8eb67"
@@ -421,6 +446,11 @@
       "path": "INSTALL-MACOS.command",
       "sha256": "d4af192c4c01450ba4546222b82b6301be71ab3038fb3e2943c2a22763f33056",
       "textSha256": "d4af192c4c01450ba4546222b82b6301be71ab3038fb3e2943c2a22763f33056"
+    },
+    {
+      "path": "INSTALL-STEAMDECK.sh",
+      "sha256": "7822dc078317fca45846adfdeb9d9ed9124f414300170f775cf69154c3c8f423",
+      "textSha256": "7822dc078317fca45846adfdeb9d9ed9124f414300170f775cf69154c3c8f423"
     },
     {
       "path": "INSTALL.bat",
@@ -436,6 +466,11 @@
       "path": "PLAY-MACOS.command",
       "sha256": "769813fdf77bea0f6dc7606e288c9cbefd13d92f7f6660632b8a66c7dcaa728f",
       "textSha256": "769813fdf77bea0f6dc7606e288c9cbefd13d92f7f6660632b8a66c7dcaa728f"
+    },
+    {
+      "path": "PLAY-STEAMDECK.sh",
+      "sha256": "d712cd957fc5bdf7b4e9286a8588dfa4d558242f3a7ea10639a9178f5f3a7051",
+      "textSha256": "d712cd957fc5bdf7b4e9286a8588dfa4d558242f3a7ea10639a9178f5f3a7051"
     },
     {
       "path": "PREPARE-HD.bat",
@@ -469,8 +504,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "4864e1db062e877ee5b41ecd74bdad5c45d38040bb3af1937878d7fa6ee10df0",
-      "textSha256": "4864e1db062e877ee5b41ecd74bdad5c45d38040bb3af1937878d7fa6ee10df0"
+      "sha256": "d76065bab332cb642332f00522215d8854611f86bf893c565e6e655cf6486b04",
+      "textSha256": "d76065bab332cb642332f00522215d8854611f86bf893c565e6e655cf6486b04"
     },
     {
       "path": "run_race.bat",
@@ -479,13 +514,18 @@
     },
     {
       "path": "scripts/audit-source.ps1",
-      "sha256": "59715a129fe62db6b5fbf3be871def0275c27557f0579bfb08e37cfafc9478c3",
-      "textSha256": "59715a129fe62db6b5fbf3be871def0275c27557f0579bfb08e37cfafc9478c3"
+      "sha256": "2e57882600b329fe86e7960f916b995a245605fc75641930060d8452e5d9b9b8",
+      "textSha256": "2e57882600b329fe86e7960f916b995a245605fc75641930060d8452e5d9b9b8"
     },
     {
       "path": "scripts/audit-wheel-inputmaps.py",
       "sha256": "3b1b5705d342c41fde9b39e15586a0ed5419cd660a2b6002c3506c73a205cfaa",
       "textSha256": "3b1b5705d342c41fde9b39e15586a0ed5419cd660a2b6002c3506c73a205cfaa"
+    },
+    {
+      "path": "scripts/build-linux.sh",
+      "sha256": "10892d3714ab55fbe147b075d5d10f94255058013fbf7b5ee14bb8d36d7f81bc",
+      "textSha256": "10892d3714ab55fbe147b075d5d10f94255058013fbf7b5ee14bb8d36d7f81bc"
     },
     {
       "path": "scripts/build-macos.sh",
@@ -504,13 +544,13 @@
     },
     {
       "path": "scripts/check-macos-colour.sh",
-      "sha256": "5d818d71937a5c37467e80629d09df22c67f1ce2b684a721149e8d4623da6df6",
-      "textSha256": "5d818d71937a5c37467e80629d09df22c67f1ce2b684a721149e8d4623da6df6"
+      "sha256": "259d7220cdaf29ab783f5f84a48229d4a68aa7c304430bf5d62e7a64b09b082b",
+      "textSha256": "259d7220cdaf29ab783f5f84a48229d4a68aa7c304430bf5d62e7a64b09b082b"
     },
     {
       "path": "scripts/check-macos-render.sh",
-      "sha256": "4892985944a1c13b9e694add114ba071bc692ca6e666cd664fa29c332e14bc2b",
-      "textSha256": "4892985944a1c13b9e694add114ba071bc692ca6e666cd664fa29c332e14bc2b"
+      "sha256": "5c1efbf4e03d1db748015dcfab37fff0485e11ce2c80bb7e11d85d2e86131885",
+      "textSha256": "5c1efbf4e03d1db748015dcfab37fff0485e11ce2c80bb7e11d85d2e86131885"
     },
     {
       "path": "scripts/collect-profiler-quest.ps1",
@@ -569,8 +609,8 @@
     },
     {
       "path": "scripts/package-macos.py",
-      "sha256": "f237b9301b649ff62275e9bdf70fb40d21cbca2c8e1dcca90d982fbe92122621",
-      "textSha256": "f237b9301b649ff62275e9bdf70fb40d21cbca2c8e1dcca90d982fbe92122621"
+      "sha256": "c515822511a33568d333fd6f50c7eee3b21780cd6ae9b8a748800071fc51ff96",
+      "textSha256": "c515822511a33568d333fd6f50c7eee3b21780cd6ae9b8a748800071fc51ff96"
     },
     {
       "path": "scripts/package-player.ps1",
@@ -614,8 +654,8 @@
     },
     {
       "path": "scripts/source-files.ps1",
-      "sha256": "c0f6e0736d6170e9aa9b575d1980997624db112908d124da70d47bbf04f38fa4",
-      "textSha256": "c0f6e0736d6170e9aa9b575d1980997624db112908d124da70d47bbf04f38fa4"
+      "sha256": "b792c18c2abea6936d373cc7be8b5d4a42ea2bfd2c9eb1b34ee118621503feba",
+      "textSha256": "b792c18c2abea6936d373cc7be8b5d4a42ea2bfd2c9eb1b34ee118621503feba"
     },
     {
       "path": "scripts/transfer-saves.ps1",
@@ -714,8 +754,8 @@
     },
     {
       "path": "src/game/audio/audio_device_aaudio.cpp",
-      "sha256": "adf80b4d9269b8686abdd38259344cb491c96d214d50fd44a7a7926a9c58ecbd",
-      "textSha256": "adf80b4d9269b8686abdd38259344cb491c96d214d50fd44a7a7926a9c58ecbd"
+      "sha256": "78d7b17b6580a966e54a352d13e882ebf04424397249b4bc4a97379528b219b7",
+      "textSha256": "78d7b17b6580a966e54a352d13e882ebf04424397249b4bc4a97379528b219b7"
     },
     {
       "path": "src/game/audio/audio_device_headless.cpp",
@@ -1044,8 +1084,8 @@
     },
     {
       "path": "src/game/shell/title_options.h",
-      "sha256": "900a0412654da554f73b55eca76dad4e66a0f2f61e00537e2dcad558761c9bff",
-      "textSha256": "900a0412654da554f73b55eca76dad4e66a0f2f61e00537e2dcad558761c9bff"
+      "sha256": "00da6eeebe03b568b7c15444c8f3b234686150498dd9a421247d0315fa3f362d",
+      "textSha256": "00da6eeebe03b568b7c15444c8f3b234686150498dd9a421247d0315fa3f362d"
     },
     {
       "path": "src/game/shell/title_replay.cpp",
@@ -1179,8 +1219,8 @@
     },
     {
       "path": "src/game/sim/physics_core.cpp",
-      "sha256": "8c2310824417f554d317b4a0115953b539c071bc404720202e5cbaa2eadbe61d",
-      "textSha256": "8c2310824417f554d317b4a0115953b539c071bc404720202e5cbaa2eadbe61d"
+      "sha256": "2a9b2ceb6b9b4eeb7e0f29875f61c9ac28350ab582773d0967d3dcf0cfb6a10d",
+      "textSha256": "2a9b2ceb6b9b4eeb7e0f29875f61c9ac28350ab582773d0967d3dcf0cfb6a10d"
     },
     {
       "path": "src/game/sim/physics_core.h",
@@ -1684,8 +1724,8 @@
     },
     {
       "path": "src/gt2formats/track_json.cpp",
-      "sha256": "b4c40753bac27a3d6b4c4660d8f3c3a709167bb6db7ab6c269e0ef9c5cfa94ea",
-      "textSha256": "a5bb3a4590f6a1c49133e50da9ab9936d7dc298419f9cb6ebe0879fb21f978b4"
+      "sha256": "390d4ae8e0708f1b9327cdd93dc714c32948941f644369e2cd7fc5c2bfdeee6b",
+      "textSha256": "60be49c369519f28f0902f2e010fdc84a9608b5f69310e326fd63e687e22e3f9"
     },
     {
       "path": "src/gt2formats/track_json.h",
@@ -2019,8 +2059,8 @@
     },
     {
       "path": "src/gt2view/shaders/scene_stereo.vert",
-      "sha256": "671b6195505dee42526e74d805bcc445f1af6fada57f156e24adbcf8a680be64",
-      "textSha256": "b52bdea6823875fbb6dfd2fcdda7b8f76597c7622cf66cce4fff169a18d7ded1"
+      "sha256": "8c4ecd3b4f968b2a49e96990a51b8c97a64d867e433acbc17bfa2b94ef4467a7",
+      "textSha256": "8c4ecd3b4f968b2a49e96990a51b8c97a64d867e433acbc17bfa2b94ef4467a7"
     },
     {
       "path": "src/gt2view/shaders/scene.frag",
@@ -2069,8 +2109,8 @@
     },
     {
       "path": "src/gt2view/vk_context_sdl.cpp",
-      "sha256": "3b90eae3891ac9b8a79a7fa042d52046f8fb861ca57cf914a030883dd240043f",
-      "textSha256": "3b90eae3891ac9b8a79a7fa042d52046f8fb861ca57cf914a030883dd240043f"
+      "sha256": "5fbe5fda18b2af0cc9258b15b312fffeadb807525fc1d13967375f70f27e4c71",
+      "textSha256": "5fbe5fda18b2af0cc9258b15b312fffeadb807525fc1d13967375f70f27e4c71"
     },
     {
       "path": "src/gt2view/vk_context.cpp",
@@ -2079,18 +2119,18 @@
     },
     {
       "path": "src/gt2view/vk_context.h",
-      "sha256": "346679cde46d3cf03619d4f920eeae5c6c21da859d36f89f7c19e3814904e51f",
-      "textSha256": "346679cde46d3cf03619d4f920eeae5c6c21da859d36f89f7c19e3814904e51f"
+      "sha256": "c83fac4ee4cfbfde056cc50c5ac029db4124ef9e133a4571428964b77b374db0",
+      "textSha256": "c83fac4ee4cfbfde056cc50c5ac029db4124ef9e133a4571428964b77b374db0"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.cpp",
-      "sha256": "b32df6d5b553b7cb70bfca927030243a968e064d54498a704345116ad87219d3",
-      "textSha256": "ba8c71806e6ff1bbcf68edb1fc12a283c3fa54af97494b560eae8f50fe29315e"
+      "sha256": "84e127c52a36f305e63a984976f8532676a8d2dbe27d393adf57f63224d62f7a",
+      "textSha256": "84e127c52a36f305e63a984976f8532676a8d2dbe27d393adf57f63224d62f7a"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.h",
-      "sha256": "832beb422d7ca2484bbb68f6db06baaf8c238788127cd7641dc3f7d8168823dd",
-      "textSha256": "6676fb0c3955f1ad078939d83b264ee8bac14a85693c8e74d3ffb5b0e2f68bf6"
+      "sha256": "deb3a0da2cc3051e4452ca6771008412c6651a5876e6ea7c31ba6c65a486b7a8",
+      "textSha256": "deb3a0da2cc3051e4452ca6771008412c6651a5876e6ea7c31ba6c65a486b7a8"
     },
     {
       "path": "src/gt2view/vr_driving_visuals.cpp",
@@ -2189,8 +2229,8 @@
     },
     {
       "path": "src/platform/input/android_input.h",
-      "sha256": "3de817a167ad64d4b559ba7151bdaa271dd908168f7d59c2ae6ab9b85fa8df80",
-      "textSha256": "3de817a167ad64d4b559ba7151bdaa271dd908168f7d59c2ae6ab9b85fa8df80"
+      "sha256": "3c906464148ef0fa637f648a5ada90d94aaef980cafb58d699a31321c3fc6ae8",
+      "textSha256": "3c906464148ef0fa637f648a5ada90d94aaef980cafb58d699a31321c3fc6ae8"
     },
     {
       "path": "src/platform/input/dualsense_report.cpp",
@@ -2219,8 +2259,8 @@
     },
     {
       "path": "src/platform/input/input_system_sdl.cpp",
-      "sha256": "d59278bd992537cee45128f2abacbfe4fd0dca27497dfdc9601b6377b0294c82",
-      "textSha256": "d59278bd992537cee45128f2abacbfe4fd0dca27497dfdc9601b6377b0294c82"
+      "sha256": "268725f0aeb2dfe6ecfd5afdec61189be7e249521c3bafbe5a0f306ea268be39",
+      "textSha256": "268725f0aeb2dfe6ecfd5afdec61189be7e249521c3bafbe5a0f306ea268be39"
     },
     {
       "path": "src/platform/input/input_system_win32.cpp",
@@ -2289,8 +2329,8 @@
     },
     {
       "path": "src/platform/os/paths_android.cpp",
-      "sha256": "9ff27f41720ebddb66b476d34b19d50360d4ee3eb92cea772478412761ffb68a",
-      "textSha256": "9ff27f41720ebddb66b476d34b19d50360d4ee3eb92cea772478412761ffb68a"
+      "sha256": "d276b4b148e70965ac68a3a598154234c2fcf7535cd478ae2317a086a8facd60",
+      "textSha256": "d276b4b148e70965ac68a3a598154234c2fcf7535cd478ae2317a086a8facd60"
     },
     {
       "path": "src/platform/os/paths_sdl.cpp",
@@ -2329,8 +2369,8 @@
     },
     {
       "path": "src/platform/xr/vr_rig.h",
-      "sha256": "6c616091fbd99b5b6c8fa5680a943c48098ebea7c87b68decf7aaa282d0d605b",
-      "textSha256": "6c616091fbd99b5b6c8fa5680a943c48098ebea7c87b68decf7aaa282d0d605b"
+      "sha256": "4f0b829410f4b93f4a3f0721fa70fc7bf3e8f13dd14761ca9de960bbf5d90587",
+      "textSha256": "4f0b829410f4b93f4a3f0721fa70fc7bf3e8f13dd14761ca9de960bbf5d90587"
     },
     {
       "path": "src/platform/xr/xr_actions.cpp",
@@ -2344,13 +2384,13 @@
     },
     {
       "path": "src/platform/xr/xr_session.cpp",
-      "sha256": "59cf75173ad047e628ec5389b98fe0be698f7c98b6c9a81238c6696f9b120d59",
-      "textSha256": "59cf75173ad047e628ec5389b98fe0be698f7c98b6c9a81238c6696f9b120d59"
+      "sha256": "4570037980742aca643890b002fc9f9da7a7508e9def495b270a624d58be5652",
+      "textSha256": "4570037980742aca643890b002fc9f9da7a7508e9def495b270a624d58be5652"
     },
     {
       "path": "src/platform/xr/xr_session.h",
-      "sha256": "cd90730bf0a0d6ff57e08e4020306953d0cd54a2aae54d6fb494e1a945c128c4",
-      "textSha256": "cd90730bf0a0d6ff57e08e4020306953d0cd54a2aae54d6fb494e1a945c128c4"
+      "sha256": "15a67ed68a4f5b1c4eaacc7e3f901f36dd2f2deb5880b7e8c1cfe73f412b9794",
+      "textSha256": "15a67ed68a4f5b1c4eaacc7e3f901f36dd2f2deb5880b7e8c1cfe73f412b9794"
     },
     {
       "path": "src/scene/scene_extractor.cpp",
@@ -2483,6 +2523,11 @@
       "textSha256": "30ad15645b8468826474426fa5f4e1e8d3d290c9bb6c6e845bbaa21acecbbc31"
     },
     {
+      "path": "tests/linux_install_checks.cpp",
+      "sha256": "c6bbab6d2cee4b4a5e0af455a2160c779346e5d7d204b4f74bf92c3a9024ce6d",
+      "textSha256": "c6bbab6d2cee4b4a5e0af455a2160c779346e5d7d204b4f74bf92c3a9024ce6d"
+    },
+    {
       "path": "tests/macos_hd_checks.py",
       "sha256": "b137ca6c47c79209bf27ff90f522fc37b252d33febc99bc3305147cc293e3ccf",
       "textSha256": "b137ca6c47c79209bf27ff90f522fc37b252d33febc99bc3305147cc293e3ccf"
@@ -2491,6 +2536,11 @@
       "path": "tests/macos_package_checks.py",
       "sha256": "5b5f591eb0c1639e54e2d3b18f1958fbd6f1e8ead3ea07388b3da975e362aafa",
       "textSha256": "5b5f591eb0c1639e54e2d3b18f1958fbd6f1e8ead3ea07388b3da975e362aafa"
+    },
+    {
+      "path": "tests/menu_shortcut_checks.cpp",
+      "sha256": "24d901d9419eb2d2ffeb7481060a79fffe4d8a7ed1297d25d074ddefa5ae2bc0",
+      "textSha256": "24d901d9419eb2d2ffeb7481060a79fffe4d8a7ed1297d25d074ddefa5ae2bc0"
     },
     {
       "path": "tests/quest_features_checks.cpp",
@@ -2504,8 +2554,18 @@
     },
     {
       "path": "tests/sdl_checks.cpp",
-      "sha256": "23c2ac8c148e410532dcdd40c5c267ca1a23b8c79bcf876d872f735d4b8e2861",
-      "textSha256": "23c2ac8c148e410532dcdd40c5c267ca1a23b8c79bcf876d872f735d4b8e2861"
+      "sha256": "2c61f5a1477ee8235d4bd7cb72159984ad94fd9e8b590108745dd2d806f4907f",
+      "textSha256": "2c61f5a1477ee8235d4bd7cb72159984ad94fd9e8b590108745dd2d806f4907f"
+    },
+    {
+      "path": "tests/steamdeck_installer_checks.py",
+      "sha256": "dbaafaec617212b7cea1d4d6e73ca7e8faade10ae0e26c2b9324b235ed77526d",
+      "textSha256": "dbaafaec617212b7cea1d4d6e73ca7e8faade10ae0e26c2b9324b235ed77526d"
+    },
+    {
+      "path": "tests/steamdeck_launcher_checks.py",
+      "sha256": "17527f72ca2082760a52bf4fe8c181bfd1683ffe6ecce848726a4fdf8e54d942",
+      "textSha256": "17527f72ca2082760a52bf4fe8c181bfd1683ffe6ecce848726a4fdf8e54d942"
     },
     {
       "path": "tests/steering_feedback_checks.h",
@@ -2539,8 +2599,8 @@
     },
     {
       "path": "tests/wheel_checks.cpp",
-      "sha256": "9c76b78cdb3d7dc9d5fbfd88695c0b8fdfa34c1a6f54c7820e279d0492662864",
-      "textSha256": "9c76b78cdb3d7dc9d5fbfd88695c0b8fdfa34c1a6f54c7820e279d0492662864"
+      "sha256": "0bbb1745aa7cdaa751ee2258ee811e2646495b54aedf558ec21cb0e6284dbcd7",
+      "textSha256": "0bbb1745aa7cdaa751ee2258ee811e2646495b54aedf558ec21cb0e6284dbcd7"
     },
     {
       "path": "tests/wheel_driving_aids_checks.h",
@@ -2549,8 +2609,8 @@
     },
     {
       "path": "THIRD_PARTY.md",
-      "sha256": "cff2a849a64fe1d563bc8d907b13eddcb19c5f14c3184964132bb860df2b7eae",
-      "textSha256": "cff2a849a64fe1d563bc8d907b13eddcb19c5f14c3184964132bb860df2b7eae"
+      "sha256": "04105c13b5f3d4339c316835988af7d4eec6bbbb082bc05a5cfe0c82fe6e985f",
+      "textSha256": "04105c13b5f3d4339c316835988af7d4eec6bbbb082bc05a5cfe0c82fe6e985f"
     },
     {
       "path": "third_party/libretro/libretro.h",
@@ -2751,8 +2811,8 @@
     },
     {
       "path": "tools/gt2game/android_host.h",
-      "sha256": "60ca03fafdad6b0d74a82e1ebb7c8357d9c5167d08bf63184e3146dc30edbf8e",
-      "textSha256": "60ca03fafdad6b0d74a82e1ebb7c8357d9c5167d08bf63184e3146dc30edbf8e"
+      "sha256": "96a9cf782fd81cdb14c105f18b4aa445c92fea9bb962ff3efdf2b9d139dd6a48",
+      "textSha256": "96a9cf782fd81cdb14c105f18b4aa445c92fea9bb962ff3efdf2b9d139dd6a48"
     },
     {
       "path": "tools/gt2game/arcade_menu_check.cpp",
@@ -2866,8 +2926,8 @@
     },
     {
       "path": "tools/gt2game/game_main.cpp",
-      "sha256": "67c6a14a3381654005ddd42cdbdac49a4b6b578ccd57182fc7d51ed75180224a",
-      "textSha256": "aa279786500f9d24d55870a0390792ee7cec920090bb8c20c313a735b514edd7"
+      "sha256": "c6b2a5ba5b5c0b3279e289cb4c9169f096091556bd4dd522f13c353f673cdef9",
+      "textSha256": "c6b2a5ba5b5c0b3279e289cb4c9169f096091556bd4dd522f13c353f673cdef9"
     },
     {
       "path": "tools/gt2game/game_main.h",
@@ -2876,13 +2936,13 @@
     },
     {
       "path": "tools/gt2game/game_window_android.cpp",
-      "sha256": "8ec5fef30b5a845e210462365a7f6ee6b789640daa92d88da31de85b1555544f",
-      "textSha256": "8ec5fef30b5a845e210462365a7f6ee6b789640daa92d88da31de85b1555544f"
+      "sha256": "41fa5d5f00eb4cae3abb10780116f8a933e7f9e242574e435a088e42b1209d3e",
+      "textSha256": "41fa5d5f00eb4cae3abb10780116f8a933e7f9e242574e435a088e42b1209d3e"
     },
     {
       "path": "tools/gt2game/game_window_sdl.cpp",
-      "sha256": "dfc6791101aa26b95745912e819462cdf189b94b8a3db31ff59d02831aadc8fb",
-      "textSha256": "dfc6791101aa26b95745912e819462cdf189b94b8a3db31ff59d02831aadc8fb"
+      "sha256": "02c96ffad502112ce2bc4a687ef45ce51d77ee3a8693218d470142665a41e949",
+      "textSha256": "02c96ffad502112ce2bc4a687ef45ce51d77ee3a8693218d470142665a41e949"
     },
     {
       "path": "tools/gt2game/game_window_win32.cpp",
@@ -2891,18 +2951,18 @@
     },
     {
       "path": "tools/gt2game/game_window_xr.cpp",
-      "sha256": "4eb98a3014a177db82ea030a020fc44e174078681c606f0d60086e5c90f7deb5",
-      "textSha256": "4eb98a3014a177db82ea030a020fc44e174078681c606f0d60086e5c90f7deb5"
+      "sha256": "f467a87b5c5acd27e738e2c3071c2155f8d3f82a8b8f16e06df2e3ec4c11657a",
+      "textSha256": "f467a87b5c5acd27e738e2c3071c2155f8d3f82a8b8f16e06df2e3ec4c11657a"
     },
     {
       "path": "tools/gt2game/game_window.cpp",
-      "sha256": "cb48f2c1a6fa09fdb8d74e74f1d666a2b5a1c6e2c738a148100ae3dea0b32937",
-      "textSha256": "cb48f2c1a6fa09fdb8d74e74f1d666a2b5a1c6e2c738a148100ae3dea0b32937"
+      "sha256": "2b9699f307ef0be225201f145d75a6f35e144e53289f556490580e06772e1576",
+      "textSha256": "2b9699f307ef0be225201f145d75a6f35e144e53289f556490580e06772e1576"
     },
     {
       "path": "tools/gt2game/game_window.h",
-      "sha256": "e82d92383d4f3ee9626892234496dd71175c432a25fb4beedcf5e71c673f6cca",
-      "textSha256": "e82d92383d4f3ee9626892234496dd71175c432a25fb4beedcf5e71c673f6cca"
+      "sha256": "ad863e3cc18b37d146e050e606ce846f7660004238bc093c9ad9983c8489c3b8",
+      "textSha256": "ad863e3cc18b37d146e050e606ce846f7660004238bc093c9ad9983c8489c3b8"
     },
     {
       "path": "tools/gt2game/ghost_replay.cpp",
@@ -2936,8 +2996,8 @@
     },
     {
       "path": "tools/gt2game/main.cpp",
-      "sha256": "16bffc210f6ef14d1f75b80426bbdc542afed7c6865ba4aabd19a4a5d0c0b477",
-      "textSha256": "16bffc210f6ef14d1f75b80426bbdc542afed7c6865ba4aabd19a4a5d0c0b477"
+      "sha256": "c3f942c6fad6c5d960a4ba13f9bbbf11667f8a5a7933a09a321c68fdbbabbd8d",
+      "textSha256": "c3f942c6fad6c5d960a4ba13f9bbbf11667f8a5a7933a09a321c68fdbbabbd8d"
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
@@ -2948,6 +3008,11 @@
       "path": "tools/gt2game/menu_mode.h",
       "sha256": "31823cd89cdd57ac802b03f4becafed210335f8d1062a387d7643cebb06367db",
       "textSha256": "31823cd89cdd57ac802b03f4becafed210335f8d1062a387d7643cebb06367db"
+    },
+    {
+      "path": "tools/gt2game/menu_shortcuts.h",
+      "sha256": "24916940d6b09b8390a336ebf18d32faa28fdfde08e4dd474edd2e44a890fcb5",
+      "textSha256": "24916940d6b09b8390a336ebf18d32faa28fdfde08e4dd474edd2e44a890fcb5"
     },
     {
       "path": "tools/gt2game/mod_scene.cpp",
@@ -2991,8 +3056,8 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "520288b1cec653ce804c42d15a1f5590006807a6a6ec3eba8567622a057671dd",
-      "textSha256": "520288b1cec653ce804c42d15a1f5590006807a6a6ec3eba8567622a057671dd"
+      "sha256": "37161020eef93303fd1561189384121afadbd06ff1152a53bc6dc3ba77981f80",
+      "textSha256": "37161020eef93303fd1561189384121afadbd06ff1152a53bc6dc3ba77981f80"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
@@ -3031,8 +3096,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "e56b9115c8d03cffb3a11c400dff10e42595575fefc7ba073b893a44d3dec1d1",
-      "textSha256": "19021283d9be34102cc908291d4482d780621d6e944eef81c4c730f95748fe35"
+      "sha256": "8168616dbf38be9171713350d7b18a3f9a3ab90128a4c2f4bc29fd6462d0ff0d",
+      "textSha256": "8168616dbf38be9171713350d7b18a3f9a3ab90128a4c2f4bc29fd6462d0ff0d"
     },
     {
       "path": "tools/gt2game/race_view.h",
@@ -3041,8 +3106,8 @@
     },
     {
       "path": "tools/gt2game/save_transfer_guard.h",
-      "sha256": "c8c52cde28df4bba7b08ba8c383a34cbad31824c3c60dfa6cf7121899c9f0fe4",
-      "textSha256": "c8c52cde28df4bba7b08ba8c383a34cbad31824c3c60dfa6cf7121899c9f0fe4"
+      "sha256": "144735a0411b529e2c92d533608edb71aee5b1337d8391f3ebfee6ea757c353e",
+      "textSha256": "144735a0411b529e2c92d533608edb71aee5b1337d8391f3ebfee6ea757c353e"
     },
     {
       "path": "tools/gt2game/settings_screen.cpp",
@@ -3056,8 +3121,8 @@
     },
     {
       "path": "tools/gt2game/split_race.cpp",
-      "sha256": "3862ca97092f9cabe749758639d8ebd90084e4a7cf988e64de94af83813340da",
-      "textSha256": "e0c56f192eee503ca226d9f6298698a04ecb0f21e259be798a4bf4c853ded6e0"
+      "sha256": "048a2b73ed086b543456114703f68c32d4a5d4a3cd9b6fd5077ec052ec85cfa4",
+      "textSha256": "048a2b73ed086b543456114703f68c32d4a5d4a3cd9b6fd5077ec052ec85cfa4"
     },
     {
       "path": "tools/gt2game/split_race.h",
@@ -3113,6 +3178,31 @@
       "path": "tools/gt2install/main.cpp",
       "sha256": "fa70a5b9a7d093efc6836fbafdb8d30d9bb1287235e69a0b68bb35607638da67",
       "textSha256": "fa70a5b9a7d093efc6836fbafdb8d30d9bb1287235e69a0b68bb35607638da67"
+    },
+    {
+      "path": "tools/gt2linux/disc_store.h",
+      "sha256": "5c1b986e760e7d5ad254004709b213a1ea381131106594f9408343656ef59014",
+      "textSha256": "5c1b986e760e7d5ad254004709b213a1ea381131106594f9408343656ef59014"
+    },
+    {
+      "path": "tools/gt2linux/io.github.gt2pc.GT2.desktop",
+      "sha256": "eafd62d6340f718a662fa22907b8db8244f3a3fd5fec9fa02d01f1e785748938",
+      "textSha256": "eafd62d6340f718a662fa22907b8db8244f3a3fd5fec9fa02d01f1e785748938"
+    },
+    {
+      "path": "tools/gt2linux/io.github.gt2pc.GT2.json",
+      "sha256": "aff21c7a9b13e29e627d4a3b38a148323a8d378c017bc2e44e792f6051a7a7db",
+      "textSha256": "aff21c7a9b13e29e627d4a3b38a148323a8d378c017bc2e44e792f6051a7a7db"
+    },
+    {
+      "path": "tools/gt2linux/io.github.gt2pc.GT2.svg",
+      "sha256": "25a1bab865ecc58461ef81cb41f037857fc3f62148ecfccc62a5e5424e32f869",
+      "textSha256": "25a1bab865ecc58461ef81cb41f037857fc3f62148ecfccc62a5e5424e32f869"
+    },
+    {
+      "path": "tools/gt2linux/launcher.cpp",
+      "sha256": "aa84a310f45f7acf31b8c03fa5ca1ae3f22187d242f9bdfdb2cdba2cc2a51477",
+      "textSha256": "aa84a310f45f7acf31b8c03fa5ca1ae3f22187d242f9bdfdb2cdba2cc2a51477"
     },
     {
       "path": "tools/gt2mac/launch_protocol.h",
@@ -3530,7 +3620,5 @@
       "textSha256": "aff148fe099f06d7971d1a9a067ec6e60649a38d34c4a458a8c8094967ffa6c9"
     }
   ],
-  "sourceProvenance": "filesystem-sha256",
-  "sourcePackageRevision": "macos-release-0.6.0",
-  "basedOnSourceManifestSha256": "935d19a6be4d206a17eef263093b460409068c7b9b2fa9d6275bc02b6fa0cc77"
+  "sourceProvenance": "filesystem-sha256"
 }

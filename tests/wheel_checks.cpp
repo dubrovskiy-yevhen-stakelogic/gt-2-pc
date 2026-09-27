@@ -110,7 +110,7 @@ int main() try {
         Check(!w::AutoConfigure(automatic, {base, shifter}, status) && saved == automatic.Serialize(), "pedal disconnect never falls back to base axes");
         Check(!w::Resolve(automatic, {base, shifter}, true).ready, "disconnected USB pedals stop driving");
         automatic.gearbox = 2;
-        // The user's saved rig keeps paddles on the base and H gates on USB.
+        // The saved rig keeps paddles on the base and H gates on USB.
         automatic.buttons[w::ShiftUp] = baseButtons[w::ShiftUp];
         automatic.buttons[w::ShiftDown] = baseButtons[w::ShiftDown];
         saved = automatic.Serialize();

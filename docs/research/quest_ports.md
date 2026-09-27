@@ -1,7 +1,8 @@
-# Quest 3 standalone ports of the user (C:\Dev) - reference for the GT2 Android VR build
+# Quest 3 ports - architecture references
 
-Survey of 2026-09-19 (read-only). Target decided by the user: a STANDALONE Android build on Quest 3 (not PC VR). All of
-these ports are the user's own work (the user is their author): their code may be reused directly, no licence review needed.
+This survey compares my standalone Quest ports as references for GT2's Android,
+Vulkan, OpenXR and audio integration. Dependency licences are listed in
+[THIRD_PARTY.md](../../THIRD_PARTY.md).
 
 ## Which folders are real Quest builds
 

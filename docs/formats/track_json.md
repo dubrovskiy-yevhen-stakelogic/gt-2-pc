@@ -82,7 +82,7 @@ colours `"rrggbb"`: one (flat) or one per corner (gouraud). Polygons must stay g
 Quad corners are in ring order.
 
 Walls, the grid and the render lists reference vertices / polygons / chunks by index: moving vertices keeps them valid;
-adding or removing polygons needs the grid cells and the walls updated by the author (no generator yet).
+adding or removing polygons needs the grid cells and the walls updated manually (no generator yet).
 
 ### Scenery
 

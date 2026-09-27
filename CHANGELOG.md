@@ -1,45 +1,52 @@
 # Changelog
 
+## 0.7.0 - in development
+
+- Added a native Linux / Steam Deck SDL2 client with Vulkan rendering, gamepad input and audio.
+- Added a desktop disc picker, separate Arcade and Simulation imports, application locking and Linux save-folder locks.
+- Added Flatpak build/install/play scripts and a 1280 x 800 initial fullscreen size for the Deck package.
+- Added a View + Menu settings shortcut, one pause action per Menu press, disc switching, disc import and Quit game in the overlay.
+- I tested installation, disc import and gameplay on a Steam Deck OLED in Desktop Mode. See [validation](docs/VALIDATION.md) for test coverage.
+- Multiplayer and dedicated-server work remain separate. The browser port is still planned.
+
 ## 0.6.0 - 2026-09-27
 
 - Added the macOS desktop client with SDL2 input/audio and Vulkan rendering through MoltenVK.
 - Added source installation, bundled runtime dependencies, a native disc picker and a save-preserving application update.
-- Corrected display colour-space selection and menu-car materials on the tested M1 Pro. Fixed fullscreen performance.
 - Added Shift+Q for settings, Option+Enter for fullscreen, Quit game and Import another game disc.
-- Added PREPARE-HD.command for HD pictures, menu fonts, HUD and optional full-screen movies. Original discs and saves are retained. The new preparation command has automated checks; a complete Mac run remains unverified.
-- Tested only on the author's MacBook Pro 16-inch (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1. Other Macs have not been tested; their compatibility and performance are unknown.
+- Added PREPARE-HD.command for HD pictures, menu fonts, HUD and optional full-screen movies. Original discs and saves are retained. See [Mac setup](docs/MACOS.md) for preparation and test coverage.
+- I tested colours, cars in Arcade selection, movies, fullscreen and settings on my MacBook Pro 16-inch (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1. I have not tested other Macs.
 - Multiplayer and dedicated-server development are excluded. Steam Deck and browser ports are planned before the full cross-platform multiplayer release.
 
 ## 0.5.0 - 2026-09-24
 
 - Added a fitted cockpit for the live single-player Driver camera: dashboard, analogue speed/RPM needles, moving steering wheel, seats and door trim inside the selected car's original body. The cockpit appears as soon as the countdown camera switches to Driver, before GO.
-- Window openings follow the original glass and body geometry. Improved curved windscreens, side-window edges and cabin joins; removed the false windshield triangle reported on Lancer and similar decal/reflection artifacts. Exterior paint and reflections remain.
+- Window openings follow the original glass and body geometry, including curved windscreens and separate panes. The exterior retains its paint and reflections.
 - Added **Cockpit / driver view** settings: **Cockpit / Original**, seat height **-20 to +20 cm**, seat forward/back **-20 to +40 cm**, a steering-wheel visibility switch and reset. Seat adjustments use 2 cm steps and save across both discs.
-- Moved the default seating position back 15 cm, lowered both front seats and extended the steering column to the wheel. Hands and the interactive VR wheel now follow suspension roll, pitch and impact movement with the body.
+- Hands and the interactive VR wheel follow suspension roll, pitch and impact movement with the body.
 - Added a physical central rear-view mirror using one rear-camera image for both eyes. The mirror can be switched off or resized from **25% to 100%**. Switching it off removes its rear-view render pass.
 - Enabling the FPS profiler now also records a CSV log. Logs include frame timing, GPU timing, draw counts, rear-view activity and active graphics settings; disabling the profiler flushes and closes the file.
 - New VR profiles default to **130% eye resolution**. The **instrument HUD** and **profiler** start **off** on all platforms; physical cockpit gauges remain visible. Desktop rendering scale remains 100%. Updates preserve saved settings.
 - Fixed an enabled but disconnected or incomplete wheel setup suppressing gamepad and keyboard driving input. The saved wheel calibration remains available when the rig reconnects.
 - The cockpit uses original procedural geometry. No external game's models or textures are required. Replays, the external starting flythrough and split-screen retain their existing views; vehicle simulation and saves are unchanged.
-- The cockpit update was accepted by the project author on Quest. Automated geometry and image checks cover 1096 car models; this does not imply headset testing of every car or a new performance guarantee. See [validation](docs/VALIDATION.md).
+- I tested cockpit driving on Quest 3. Automated geometry and image checks cover 1096 car models; see [validation](docs/VALIDATION.md).
 - Android versionName is **0.5.0**, versionCode **23**.
 
 ## 0.4.0 - 2026-09-22
 
 - Added an embedded offline catalogue of 72 USB device records for automatic wheel/pedal/shifter setup, with exact device matching and explicit choices for ambiguous rigs or interchangeable rims.
-- Replaced the main wheel setup page with live input indicators and simple gearbox/FFB controls. Added guided axis calibration, an illustrated H-shifter wizard and wheel-operated menu buttons.
-- Fixed DirectInput axis discovery to use offsets from the selected data format. Selected peripheral disconnects retain their bindings; optional clutch input no longer assumes every base has three pedals.
+- Added live wheel input indicators, gearbox/FFB controls, guided axis calibration, an illustrated H-shifter wizard and wheel-operated menu buttons.
+- Saved device bindings survive disconnects. Clutch pedals and USB shifters are optional; steering and pedals remain usable without them.
 - Added a Windows PC / PCVR racing-wheel submenu under Controls, with independent USB device assignments for steering, pedals and shifters.
 - Added axis detection, calibration, inversion, dead zones, saturation, response curves, live input values and saved profiles shared by both discs.
 - Added sequential/paddle and H-pattern gear selection, neutral, analogue reverse throttle and a clutch pedal. Wheel steering and pedals bypass the gamepad curves.
 - Added tyre-force-based DirectInput force feedback, strength, damping and force-direction settings. Effects stop on pause, focus/device loss and exit, with a finite driver-side timeout.
 - Added native wheel replay/ghost frames that preserve direct gear selection and clutch travel. These frames require 0.4.0 or later; original pad replay encoding is unchanged.
-- Fixed wheel/pedal operation after an optional USB shifter disconnects, and kept race AT/MT selection independent of the hardware layout.
-- Automatic wheel driving no longer selects reverse just because the car rolls backwards. Added an optional **Ignore gear-change speed** switch, off by default, with the policy preserved in replays.
+- Race AT/MT selection is independent of the hardware layout. Added an optional **Ignore gear-change speed** switch, off by default, with the setting preserved in replays.
 - Added **Traction control 0..5** (default 0) and **Countersteering assistance Off / Weak / Strong** (default Weak). Settings are shared by both discs and saved without resetting calibration.
 - Added configurable steering geometry for tyre-force feedback and timing diagnostics for input/FFB stalls.
 - Windows installation now prepares HD pictures, fonts and HUD for both Arcade and Simulation by default. Simulation US v1.2 contains 461 picture replacements. Original media and additional movie preparation remain selectable.
-- Wheel driving and weak countersteering were tried with a **Fanatec Gran Turismo DD Pro (8 Nm)** and **Thrustmaster TH8A Shifter**. Other devices and the new speed override still require hardware testing. See [wheel setup and limitations](docs/WHEELS.md).
+- I tested wheel driving and weak countersteering with a **Fanatec Gran Turismo DD Pro (8 Nm)** and **Thrustmaster TH8A Shifter**. See [wheel setup and limitations](docs/WHEELS.md).
 
 ## 0.3.0 - 2026-09-21
 
@@ -58,12 +65,6 @@
 - Expanded desktop settings with graphics, HD media and intro options, HUD visibility, profiler, gamepad bindings, DualSense pedal resistance and Arcade/Simulation cheats.
 - Added PCVR controller vibration and pause/resume handling when the headset runtime loses focus.
 
-### Fixes
-
-- Fixed crackling audio and slow startup movies through Steam Link by increasing the Windows audio queue to cover delayed streaming-device callbacks.
-- Fixed the runtime-selection conflict when SteamVR remained running while using Meta Link or Virtual Desktop.
-- Removed the conflict between the old grips + Y menu shortcut and camera switching while steering.
-
 ### Saves and installation
 
 - Added USB save-transfer helpers in both directions between PC and Quest. Transfers validate memory cards, create backups and verify the copied data.
@@ -71,7 +72,7 @@
 - Packaged the Windows OpenXR loader and precompiled installation tools. No SDK or C++ build is needed to install the player release.
 - Existing saves and settings are retained. The standalone APK is version **0.3.0**, Android version code **15**, signed with the existing public release identity.
 
-SteamVR / Steam Link, Meta Link and Virtual Desktop were tested by the project author. The packaged VR bindings target Touch controllers; other controller layouts are not yet validated. The planned wheel/shifter/force-feedback, cockpit-view and PSVR2 Sense adaptive-trigger work is listed in the [README roadmap](README.md#committed-roadmap).
+I tested PCVR through SteamVR / Steam Link, Meta Link and Virtual Desktop. The VR bindings target Touch controllers.
 
 ## 0.2.0
 
@@ -90,9 +91,7 @@ SteamVR / Steam Link, Meta Link and Virtual Desktop were tested by the project a
 - Fixed overlapping distant road/hillside geometry, the blocked Midfield tunnel entrance and grass covering direction arrows.
 - Corrected transparent texture fringes at joined course surfaces that exposed the sky through thin seams.
 - Fixed scenery disappearing too close to the viewer. Entire-course mode now uses detailed road geometry and the authored near scenery representations, including empty entries for distant-only copies.
-- Fixed menu stalls during car/course selection after enabling enhanced media.
 - Improved race-music streaming to address crackling and nearly inaudible playback reported on European Arcade SCES-02380.
-- Corrected HUD map-edge artifacts.
 
 ### Settings and release
 

@@ -127,7 +127,7 @@ struct GraphicsSettings {
 // career's audio / view options for processes that run without a career (a plain race) and holding the settings
 // the US game does not have (speed units: the US build shows mph only; the graphics settings).
 struct VrSettings {
-    bool stereo = true;        // vr_stereo: the race as a stereo projection layer (0 = M1's mono cinema quad)
+    bool stereo = true;        // vr_stereo: the race as a stereo projection layer (0 = the mono cinema quad)
     bool multiview = false;    // vr_multiview: one pass with VkRenderingInfo::viewMask instead of one pass per eye
                                // (default off - on an Adreno 740 multiview was slower for few draws)
     int horizonLock = 60;      // vr_horizon_lock: percent of the camera's pitch and roll that is stripped

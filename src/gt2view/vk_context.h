@@ -1,8 +1,8 @@
 #pragma once
-// The Vulkan objects a renderer works with, separated from the renderer itself (docs/research/vr_port_plan.md, M0):
+// The Vulkan objects a renderer works with, separated from the renderer itself (docs/research/vr_port_plan.md):
 // instance, physical device, device, graphics queue - and, for a window, the presentation surface. VkSceneRenderer
 // takes a VkContext and creates none of this, so that the window path keeps exactly its former behaviour while the
-// XR session (M1) can hand the renderer the instance and device that the OpenXR runtime requires
+// XR session can hand the renderer the instance and device that the OpenXR runtime requires
 // (xrCreateVulkanInstanceKHR / xrCreateVulkanDeviceKHR) and the images of an XrSwapchain to render into.
 #include <vulkan/vulkan.h>
 

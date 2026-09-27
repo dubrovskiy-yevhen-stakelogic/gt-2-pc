@@ -159,5 +159,5 @@ std::string InputSystem::Port1Name() const { return active_ < 0 ? "none" : devic
 std::string InputSystem::Port2Name() const { return port2Device_ < 0 ? "none" : devices_[size_t(port2Device_)]->Name(); }
 bool InputSystem::Port1HasMotors() const { return active_ >= 0 && devices_[size_t(active_)]->HasMotors(); }
 bool InputSystem::Port1HasTriggers() const { return false; }
-void InputSystem::SetPedalResistance(uint8_t, uint8_t) {} // SDL standard rumble only; no adaptive trigger claim.
+void InputSystem::SetPedalResistance(uint8_t, uint8_t) {} // SDL exposes standard rumble, not adaptive pedal resistance.
 } // namespace gt2::input

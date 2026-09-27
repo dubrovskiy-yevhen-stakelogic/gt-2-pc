@@ -705,7 +705,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     size_t shownScene = 0;
     bool exitFade = false;
 
-    // VR (docs/research/vr_port_plan.md, M2): the race scene as a stereo projection layer. The draw list is built
+    // VR (docs/research/vr_port_plan.md): the race scene as a stereo projection layer. The draw list is built
     // ONCE per compositor frame, in the reference space "world - refEye" (DrawItem::space says what each item is),
     // and the renderer applies each eye's view-projection. The CPU work - the scenery LOD and render list, the smoke
     // billboards, the car's reflection axes, the backdrop - runs once from the rig's mid eye. HUD and panels remain
@@ -928,7 +928,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             }
         } else if (phase == Phase::kPaused) {
             // 0x80029D6C: up / down move (the selection flashes again), X / Enter chooses; Esc = Continue (ours).
-            const int chosen = (window.Pressed(keys::kEscape) || window.PadPressed(input::ps1::kStart)) ? 0 : pauseMenu.Update(window.Pressed(keys::kUp), window.Pressed(keys::kDown), enter);
+            const int chosen = window.PausePressed() ? 0 : pauseMenu.Update(window.Pressed(keys::kUp), window.Pressed(keys::kDown), enter);
             if (chosen >= 0) {
                 pauseMenu = gt2::raceui::PauseMenu{};
                 if (chosen == 0) {
@@ -1006,12 +1006,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 }
             }
         } else { // racing (keyboard keys alone: the pad drives through the logical pad below; Start = the pause)
-            if ((window.KeyPressed(keys::kEscape) || window.PadPressed(input::ps1::kStart)) && replaying && panels) {
+            if (window.PausePressed() && replaying && panels) {
                 // Start in a replay: the race overlay's pause menu 0x80029D6C / 0x80029E80 over the replay (Continue / Exit; the
                 // same function as in the race, arcade_disc.md 17.7); its Exit leaves the replay (below, Phase::kPaused).
                 phase = Phase::kPaused;
                 pauseMenu.Open();
-            } else if (window.KeyPressed(keys::kEscape) || window.PadPressed(input::ps1::kStart)) {
+            } else if (window.PausePressed()) {
                 if (config.ghostReplay) { // the mode 6 replay's pause Exit: on to the post-race views
                     result.exit = RaceExit::kExited;
                     result.steps = steps;
@@ -1806,7 +1806,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             stereoActive = false;
             if (!config.frameLog.empty()) frameLog.Presented(false, fieldAlpha, steps);
         } else if (window.XrPaced()) {
-            // VR (docs/research/vr_port_plan.md, M1): the compositor's frames are the clock. One frame per display
+            // VR (docs/research/vr_port_plan.md): the compositor's frames are the clock. One frame per display
             // period, each built AFTER xrWaitFrame for the time the runtime will show it (predictedDisplayTime), until
             // a frame reaches past the next field's time - which is 72 / 90 frames per second from 60 fields per second
             // with none of the compositor's periods skipped, while the simulation keeps the original's 30 Hz steps.

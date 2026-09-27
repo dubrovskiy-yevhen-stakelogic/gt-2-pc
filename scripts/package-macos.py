@@ -291,7 +291,7 @@ def main():
         (Path(stage) / "Applications").symlink_to("/Applications")
         (Path(stage) / "READ-ME.txt").write_text("Drag GT2 to Applications. Open it and select your own GT2 BIN/CUE images.\n"
             "No build tools or Vulkan SDK are needed. Saves: ~/Library/Application Support/GT2/saves\n"
-            + ("Apple notarization: accepted.\n" if notary else "Local test build: not notarized. Not yet a public release.\n"))
+            + ("Apple notarization: accepted.\n" if notary else "Apple notarization: not notarized.\n"))
         dmg = out / f"GT2-{version}-macos-{arch}.dmg"
         run("hdiutil", "create", "-volname", f"GT2 {version}", "-srcfolder", stage, "-format", "UDZO", dmg)
     if notary:

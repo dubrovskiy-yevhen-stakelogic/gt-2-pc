@@ -1,6 +1,12 @@
 ![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
-# Gran Turismo 2 PC & VR - 0.6.0
+# Gran Turismo 2 PC & VR - 0.7.0 development
+
+**0.7.0 adds a native Linux / Steam Deck build target.** Extract
+**GT2-0.7.0-steamdeck.zip**, double-click **INSTALL-STEAMDECK.sh** and
+choose **Execute** in Desktop Mode. The installer opens its own window, prepares
+the tools, builds the game and creates a desktop shortcut. See
+[Steam Deck setup](docs/STEAMDECK.md). I tested this on a Steam Deck OLED in Desktop Mode.
 
 **0.6.0 adds macOS desktop support.** Arcade, Simulation, movies and the cockpit
 run through SDL2 and MoltenVK. Download **GT2-0.6.0-macos.zip**, extract it and run
@@ -8,19 +14,18 @@ run through SDL2 and MoltenVK. Download **GT2-0.6.0-macos.zip**, extract it and 
 see [Mac installation and controls](docs/MACOS.md). **PREPARE-HD.command** prepares
 HD interface artwork and optional full-screen movies from your installed discs.
 
-**Mac testing:** only the project author's 16-inch MacBook Pro (2021), **M1 Pro,
-16 GB RAM, macOS Tahoe 26.5.1**, has been tested. Colours, car-selection materials,
-movies, fullscreen and settings were checked there. Other Macs are untested;
-compatibility and performance on them are unknown. The new HD preparation command
-has automated checks but still needs a complete run on macOS.
+**Mac testing:** I tested colours, car selection, movies, fullscreen and settings
+on my **16-inch MacBook Pro (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1**.
+I have not tested other Macs. HD preparation has automated checks; a complete
+macOS run remains untested.
 
-This release does not include multiplayer or a dedicated server. Steam Deck and
-browser versions are planned before the full cross-platform multiplayer release.
+This source tree does not include multiplayer or a dedicated server. Steam Deck
+support is in development; the browser port remains planned before cross-platform multiplayer.
 The existing cockpit, controls, original disc support and saves remain available.
 
 Windows PC / PCVR supports wheels, pedals, USB shifters and force feedback, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
 
-**Tested hardware:** Fanatec Gran Turismo DD Pro (8 Nm) with a Thrustmaster TH8A Shifter. This setup was used for wheel-driving tests and feedback on countersteering assistance. The other embedded device profiles have not all been tested on physical hardware.
+**Wheel testing:** I tested driving and weak countersteering with a Fanatec Gran Turismo DD Pro (8 Nm) and a Thrustmaster TH8A Shifter. The 72 device profiles do not represent 72 tested rigs.
 
 **The previous Windows PC / PCVR and Quest 3 binary release remains available as `GT2-0.5.0.zip`.** The new 0.6.0 archive is the Mac source installer; it does not relabel those older binaries.
 
@@ -133,7 +138,7 @@ HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases
 The following features are planned; no release dates are set:
 
 - Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
-- A native Steam Deck / SteamOS version of the game. The current Linux script installs the Quest version; it does not run the game on Steam Deck.
+- 0.7.0: native Steam Deck / SteamOS game, currently in development. BUILD-STEAMDECK.sh builds the game package; INSTALL-LINUX.sh still installs the Quest version.
 - A browser version of the game.
 - After the Steam Deck and browser ports are added and tested, a full cross-platform multiplayer release spanning Windows, PCVR, Quest, macOS, Steam Deck and browsers.
 
@@ -147,8 +152,8 @@ copyright and permission notice. Credit as **Gran Turismo 2 PC & VR contributors
 Third-party components retain their own licenses. The MIT license does not grant
 rights to Gran Turismo game data, Sony firmware, trademarks or extracted assets.
 
-Virtual-wheel and motion controls and hand integration are shared with MiamiVR
-Quest, a project by the same sole author.
+Virtual-wheel and motion controls and hand integration are shared with my
+MiamiVR Quest project.
 
 ## Credits and third-party components
 

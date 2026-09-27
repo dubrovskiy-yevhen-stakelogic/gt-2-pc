@@ -44,7 +44,7 @@ constexpr uint32_t kClampTextureRect = 1u << 15; // Sprite atlas edges must not 
 // PS1 semi-transparency modes (GPU tpage bits 5-6): 0 = B/2 + F/2, 1 = B + F, 2 = B - F, 3 = B + F/4.
 constexpr uint32_t kBlendOpaque = 0xFF;
 
-// Which space DrawItem::mvp leaves its vertices in (docs/research/vr_port_plan.md, M2).
+// Which space DrawItem::mvp leaves its vertices in (docs/research/vr_port_plan.md).
 // Desktop draws use the item's matrix as-is. The mirror-source tag selects a
 // separate mono pass on both desktop and stereo; the other tags select stereo transforms.
 //   kScreen: mvp is the whole world -> clip matrix (today's 2D path and every desktop frame)
@@ -86,7 +86,7 @@ struct FrameParams {
 static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 112);
 constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2, kOptionMipmaps = 8;
 
-// The two eyes of one stereo frame (docs/research/vr_port_plan.md, M2; src/platform/xr/vr_rig.h builds them). The
+// The two eyes of one stereo frame (docs/research/vr_port_plan.md; src/platform/xr/vr_rig.h builds them). The
 // renderer uploads them into a uniform buffer the stereo vertex shader indexes by gl_ViewIndex (multiview) or by the
 // eye push constant (two passes).
 struct StereoViews {
@@ -120,8 +120,8 @@ struct RenderOptions {
 // One frame in flight.
 //
 // The instance / surface / device belong to the VkContext handed in (gt2view/vk_context.h): this class owns the
-// window's swapchain and records the frame into a RenderTarget. The XR path (M1 / M2) will build a context from the
-// runtime's instance and device and supply the RenderTargets of an XrSwapchain (colour, optional depth, two array
+// window's swapchain and records the frame into a RenderTarget. The XR path builds a context from the
+// runtime's instance and device and supplies the RenderTargets of an XrSwapchain (colour, optional depth, two array
 // layers) instead of the swapchain, which is the only piece of this class tied to a window.
 class VkSceneRenderer {
 public:
@@ -145,7 +145,7 @@ public:
     static constexpr uint32_t kExternalTexels = kHdUiTexelBase + kHdUiSlots * kHdUiPageTexels;
 
     explicit VkSceneRenderer(VkContext& context);
-    // Offscreen (the XR path, M1): no window swapchain - every frame is recorded into one image of `extent` and
+    // Offscreen (the XR cinema path): no window swapchain - every frame is recorded into one image of `extent` and
     // `format` (a *_UNORM format: the frame's bytes are the window path's, see SaveScreenshot), which Draw leaves in
     // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL for the caller to copy into an XrSwapchain image. Present does not exist
     // here; the caller submits the frame to the compositor.
@@ -197,7 +197,7 @@ public:
     void SaveCapture(const std::string& path, const std::vector<DrawItem>& items, size_t sceneItems);
     void LoadCapture(const std::string& path, std::vector<DrawItem>& items, size_t& sceneItems);
 
-    // ---- stereo (docs/research/vr_port_plan.md, M2) ----
+    // ---- stereo (docs/research/vr_port_plan.md) ----
     // Creates the two-layer colour and depth images the race is rendered into in VR, of `extent` per eye and
     // `format` (the *_UNORM twin of the compositor's swapchain format, as in offscreen mode). `multiview` = one pass
     // with VkRenderingInfo::viewMask 0b11 instead of one pass per eye. Call once (it recreates on a change).
@@ -339,7 +339,7 @@ private:
     // Offscreen mode (the XR path): the one colour image the frames are recorded into (also images_[0] / views_[0]).
     bool offscreen_ = false;
     Image offscreenTarget_;
-    // Stereo (M2): the two-layer colour / depth the race is rendered into in VR, plus the multisampled colour when
+    // Stereo: the two-layer colour / depth the race is rendered into in VR, plus the multisampled colour when
     // the graphics options ask for MSAA (resolved into stereoColor_ in the pass).
     bool stereoReady_ = false, stereoMultiview_ = true;
     VkExtent2D stereoExtent_{};

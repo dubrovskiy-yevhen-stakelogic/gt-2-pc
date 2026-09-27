@@ -723,7 +723,7 @@ void TyreForces(const PhysicsContext& context, Car* cars, int count, DriveStepWo
     for (int car = 0; car < count; car++) LateralForces(BodyOf(cars, car), context.curves[car].axles);
     for (int car = 0; car < count; car++) IntegrateLongitudinal(BodyOf(cars, car), work, car);
     {
-        CarBody* bodies[kMaxCars];
+        CarBody* bodies[kMaxCars]{};
         for (int car = 0; car < count; car++) bodies[car] = &BodyOf(cars, car);
         auto drivetrain = context.drivetrain;
         for (int car = 0; car < count; ++car) drivetrain.wheelClutch[car] = WheelClutch(requests[car]);
@@ -800,7 +800,7 @@ void PhysicsCore(const PhysicsContext& context, Car* cars, int count, const PadR
     }
     for (int car = 0; car < count; car++) SteerWheels(context, BodyOf(cars, car), TyreBlockOf(work, car));
     {
-        CarBody* bodies[kMaxCars];
+        CarBody* bodies[kMaxCars]{};
         for (int car = 0; car < count; car++) bodies[car] = &BodyOf(cars, car);
         UpdateSlipRatios(bodies, uint32_t(count), &TyreBlockOf(work, 0)); // 0x80039778
     }

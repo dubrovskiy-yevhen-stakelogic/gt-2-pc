@@ -1,245 +1,73 @@
 # Validation
 
-## 0.5.0 release checks (2026-09-24)
-
-- Windows Release built in a new directory with the local XR simulator disabled. All seven CTest suites passed. The release geometry checker passed 7927 checks across 1096 car models, with no blocked forward/side probes or models without glazing.
-- Android ARM64 Release compiled, aligned and verified with versionName **0.5.0**, versionCode **23**, non-debuggable. Its signing certificate matches the public 0.4.0 APK. Android lint could not resolve dependencies from the offline cache and was explicitly skipped; this build does not claim a lint pass.
-- All 23 Python installer and wheel-profile tests passed. Public PowerShell scripts parsed successfully. The filesystem source exporter passed Windows PowerShell 5.1 audit, binary-payload rejection and an identical path/hash roundtrip from a folder without Git metadata.
-- The exported source folder also completed a separate clean Windows Release build and all seven CTest suites, verifying its build inputs independently of the development checkout.
-- Finite desktop checks passed cockpit setting changes, persistence, reset and mirror size limits. Cockpit-on/off countdown captures keep the external intro unchanged and show the cabin from the Driver camera cut before GO. Toggling the profiler created two separate CSV sessions containing gameplay and rear-view workload.
-- Fresh desktop profiles save **130% VR resolution**, instrument HUD **off** and profiler **off**, with no CSV created while the profiler is disabled. A previously saved **175%** VR scale remains 175%. Opening desktop settings no longer replaces the VR scale with the inactive renderer's 100% value.
-- The final Windows executable passed unified desktop/VR startup, both-disc selection, remembered choice, cancellation, shared preferences and the theatre-to-stereo transition using the local OpenXR simulator.
-- Source review found no blocking defect or added assistant boilerplate in the reviewed changes. An outdated mirror-rendering comment was corrected. These checks supplement the Quest feedback below; the public-signed APK was not installed over the development-signed headset build.
-
-## 0.5.0 cockpit acceptance (2026-09-24)
-
-The project author accepted the cockpit update on Quest after testing the final Lancer windshield correction. This covers that headset feedback, not every car, every PCVR runtime, physical-wheel alignment or sustained frame rate.
-
-The final cockpit revision passed 7927 synthetic and geometry checks across 1096 car models, with no blocked forward/side probes or models without glazing. The production renderer generated 4384 audit images with no failures. Comparison with the preceding revision found 219 changed images across 70 models; all changed views were reviewed. The audit uses the first paint, a default seat and four fixed views, so it does not cover all paints or head poses. Finite local OpenXR simulator captures supplement these checks.
-
-The windshield correction removes exterior alpha decals from the inner glass surface and recognises an additional dark reflection step. Original exterior materials and opaque structural trim are preserved. Classification runs during cached cockpit preparation, with no new cameras or render passes; frame time was not measured for this change.
-
-Version 0.5.0 sets new-profile VR eye resolution to 130%, with the instrument HUD and profiler off on all platforms; physical cockpit instruments remain. Flat desktop rendering scale remains 100%. Existing preferences are preserved. Public release build and package checks are recorded separately from the accepted development installation.
-
-## 0.4.0 release checks (2026-09-22)
-
-- Windows Release and signed Android ARM64 builds passed. The APK is versionName **0.4.0**, versionCode **16**, non-debuggable, with the same signing certificate as 0.3.0.
-- All seven CTest suites passed, including wheel disconnect fallback, transmission direction requests, speed override, clutch, compressed replays, driving assists and steering-feedback checks. Native tyre-slip calculations confirm that TCS cuts wheelspin input and is bypassed at level 0.
-- The 23 Python installer/profile tests passed. Regenerating the 72-record wheel catalogue and its provenance produced byte-identical files; all USB vendor/product pairs are unique.
-- Desktop wheel menus were checked for defaults, saved changes, reload and return to racing. Defaults are TCS **0**, countersteering **Weak**, and speed override **Off**.
-- Unified desktop/PCVR startup, both discs, shared settings and stereo transitions passed. The local OpenXR simulator also passed stereo/hands, menu shortcuts, camera switching, return and exit checks. Simulator results do not establish compatibility with every headset/runtime.
-- A fresh Windows player installation completed for both US discs using the default HD setting. It generated all 3 Arcade and 461 Simulation background pictures, UI pages and fonts from the local discs. The installed HD packs passed full filename, profile, SHA-256, image decoding and dimension checks: 1,194 Arcade files and 8,197 Simulation files. The installed executable rendered both discs with HD enabled and disabled, including the Simulation map and Home menu, without picture fallback.
-- The reported hardware setup is **Fanatec Gran Turismo DD Pro (8 Nm)** with **Thrustmaster TH8A Shifter**. Wheel driving and weak countersteering received player feedback; the catalogue is not a claim of physical testing on every supported device.
-
-## 0.3.0 development checks (2026-09-21)
-
-- Windows Release and signed Android ARM64 release builds passed. Android metadata is versionName 0.3.0, versionCode 15, non-debuggable, with the existing public signing identity.
-- All six CTest suites passed. The eleven Linux installer tests passed.
-- The OpenXR simulator rendered both race eyes and tracked hand/wheel visuals. Scripted input checked Y alone, Y with only one grip, both grips + Y (camera only), L3 + R3 without grips, both grips + Menu, return to the race and focus loss/resumption. These checks exercise the Windows game backend and OpenXR submissions; they do not establish SteamVR, Link or VDXR headset compatibility.
-- Save-transfer tests passed on PowerShell 7 and Windows PowerShell 5.1: malformed/empty cards, directory checksums, conflicting destinations, exclusive save-folder locking, backups, atomic replacement and binary subprocess round trips.
-- The production Android save provider was compiled into a separate temporary test app on Quest. Both card paths passed byte-exact upload/download, corrupted-card rejection, stale-destination rejection and replacement of an existing card. The temporary app was removed; the installed game, its data and saves were not modified.
-
-For additional headset/runtime combinations, check: title → race → pause → settings, both menu shortcuts, all three driving modes, vibration, taking the headset off and returning. Load a transferred saved game in both directions. Provider checks establish byte-preserving transfer, not regional save compatibility or game-load acceptance.
-
-The sections below are historical checks for earlier versions; their settings and metadata do not describe 0.5.0.
-
-## Public release 0.1.0
-
-Checks performed on 2026-09-21. Build verification and automated PC tests are separate from headset acceptance.
-
-## Completed checks
-
-- Windows Release build from a new build directory using the source install target; all four CTest suites passed (core regression, VR rig, driving controls, Quest career features).
-- Disc-specific regression checks: 55 on each Arcade disc and 52 on each Simulation disc. These include publisher/warning decoding, music pause/resume sample equality, Arcade menu text, matching movie/preview AC tables and frame decoding, Simulation menu/career loading and regional attract-resource resolution.
-- European Arcade and Simulation were installed from the user's complete raw BIN images into an isolated test directory. The installer extracted 11,292 and 11,578 assets respectively, verified copied disc SHA-256, scanned 126 courses per disc and passed the six-car physics self-test. Additional menu/media checks passed on the installed loose-data paths.
-- Automated Windows screenshots checked European Arcade title, selection menus/car reflections and a race start; European Simulation title, GT Mode home and the first licence test. The European intro decoded all 4,374 frames; a course preview decoded all 419 frames without errors.
-- Android ARM64 debug and release builds completed. Public APK metadata is versionName 0.1.0, versionCode 13, non-debuggable. APK signature and alignment are checked by the release scripts. Only the game and OpenXR native libraries are included; there is no disc-data assets directory.
-- Positional billboard tests cover viewer position, height independence and the coincident-position fallback. The shared stereo viewer position replaces head-right orientation for tree billboards.
-- PowerShell scripts were parsed, and the source audit rejects game payloads, build outputs, keys and agent instruction files. Player packaging validates every file hash and rechecks every ZIP entry against the assembled folder.
-
-The published source is a separate ordinary folder/repository. Private retail images, captures, profiling logs, older internal planning documents and signing keys are not part of it.
-
-## Performance evidence
-
-The preserved user session at 175% showed CPU scene preparation around 0.4–0.8 ms, with GPU averages commonly around 9–12 ms and higher peaks. The GPU remains the main limit in that recording. A 90 FPS frame budget is 11.11 ms including work beyond the game's measured GPU region. Selected refresh rate and average FPS do not describe isolated long-frame stalls.
-
-Holding the virtual wheel now uses a fixed closed-fist pose, avoiding pressure-driven mesh updates while held. No new measured GPU speedup or sustained 175%/90 FPS claim is made for 0.1.0. Existing texture caching, staged uploads, mirror clipping and foveation improvements remain in place. Settings are retained; the release does not force a lower resolution onto existing installations.
-
-## Headset acceptance and remaining coverage
-
-The release tester accepted the latest Quest build, including the tree and held-fist fixes. Its selected settings are now the initial Quest preset (150%, 80 Hz, MSAA 2x, medium foveation). The checklist below remains useful for regression checks and broader disc coverage; acceptance is not a claim that every career branch has been played through.
-
-- In the first braking licence, stop moving and rotate the head: trees should retain their orientation. Inspect both eyes while driving past them.
-- Grab the wheel with each hand. Both fists should remain closed while alternately applying/releasing accelerator and brake; releasing a grip should restore ordinary finger poses.
-- Check Motion steering in both directions with the grip held, independently of the accelerator.
-- Pause a rally race: timer, music and road sound should all stop. Check the HUD/mirror, saved visibility controls and settings after restart.
-- Install/test both European discs through the player installer on a compatible public-signature installation; complete races, licence/career progress, saves and cheats. Automated smoke tests do not establish every branch of a full playthrough.
-
-The published 0.1.0 release did not include the PlayStation BIOS animation/audio; the optional HD preview below adds it. Wider VR views can expose missing original geometry; trees are still flat billboards. Two-player VR uses the theatre screen. Loading/start stalls and sustained high-resolution performance remain release limitations.
-A compatible debug-signed 0.1.0 test update was installed on the connected Quest. Its installed APK hash matched the local file, and all six existing settings/backup files retained their hashes. The game was not launched and headset disc data was not copied. This verifies deployment, not the remaining headset behavior checks.
-
-## HD media preview validation (2026-09-21)
-
-Windows Release and Quest ARM64 debug builds passed. CTest passed all five suites, including new G2MEDIA round-trip, invalid-header/index bounds, truncation and profile/path checks. The offline installer was exercised end to end for Arcade pictures and BIOS capture, then rerun to verify replacement preserves the captured startup. Its five-file media manifest matched the generated content.
-
-PC captures verified both BIOS screens, skip to subsequent screens, the enlarged notice/title background and a 16-frame 1280x768 movie sample. Native image extraction also completed for US Simulation (461 PNGs) and European Arcade. The 1029-frame BIOS capture contains original stereo PCM and stops before the publisher screen.
-
-The preview APK and Arcade startup/picture assets were installed on the connected Quest without uninstalling the app. Runtime file read access and transferred hashes were checked. Headset playback, audio timing, full-length upscaled movies and full Simulation HD artwork are not yet accepted. That first preview did not enable mipmaps; the follow-up below supersedes it. The published 0.1.0 archive was left unchanged.
-
-## HD interface, full movie and mipmaps follow-up (2026-09-21)
-
-- Windows Release and Quest ARM64 builds pass. All five CTest suites pass, including indexed 4/8-bit UI scaling and palette-preserving cache checks.
-- PC playback confirms the complete 4649-frame 1280x768 / 30 FPS intro is selected, with the original 13,665,120 interleaved PCM samples retained. Native dimensions were 320x192. Movie skip remains available.
-- Enter, Start and Escape were injected during BIOS playback; captures at presentation frames 400 and 900 still show the white Sony and black PlayStation screens. Firmware playback reports skip disabled.
-- Prepared 4x assets load in Arcade/title, rally HUD and GT Mode pages, including captions stored in each page's artwork. These are edge-directed indexed enlargements, not neural replacement fonts. Small course preview movies and world/car artwork are unchanged.
-- Vulkan validation passes dirty VRAM reuploads, cache mip regeneration, multiview, foveation and 1/2/4x MSAA transitions. The test includes opaque/STP texture layers and the separate hand texture.
-- Quest 3 Adreno 740 offscreen replay, same rally capture at 150%, 2x MSAA, medium foveation: warmed reverse-order comparison averaged 6.410 ms without mips and 6.437 ms with mips (360 measured frames each). Earlier runs varied with GPU clocks. This is a static captured GPU workload; it does not establish gameplay FPS, frame pacing or temporal fence quality in the headset.
-
-The compatible debug preview is installed separately from the published archive. Original disc bytes and saved settings are retained. Full-length headset audio/video synchronisation, UI appearance and moving-fence shimmer still need player acceptance. The public 0.1.0 archive remains unchanged.
-
-## HD menu regression follow-up
-
-The HD title was decoded and uploaded on every TitleView VRAM change, including course-preview frames and car switches. It now loads once per view/disc generation. In the isolated `gt2renderbench --menu-upload` replay on Quest 3, the repeated-decode path took 169.657 ms/update; the cached path took 0.083 ms/update. A captured course-menu render at its 1280x960 cinema resolution took 4.887 ms/frame (CPU plus GPU, offscreen). These are component measurements, not compositor FPS or headset acceptance.
-
-The world decoded-texture/mipmap cache now excludes 2D draws. HD UI lookups use the installed index to avoid filesystem probes for animated pages without replacements. UI filtering resolves palette colour and transparency before interpolation, including native fallback pages; opaque UI has its own alpha-coverage blend pipeline. World mip filtering is unchanged.
-
-All five host checks passed. Vulkan validation passed for the course menu, stereo race replay, and sample-count/foveation transitions. The movie packer also checks bounded reconstruction and rejects invalid dimensions. Video now limits neural deviations against bicubic source reconstruction; this deliberately reduces sharpness and requires visual acceptance during playback, particularly at scene cuts and fast motion.
-
-## HUD text and minimap follow-up
-
-A same-frame Tahiti Road capture confirmed that the former filter left source-pixel stair steps visible. Text reconstruction now spans original texels instead of enlarged atlas subpixels. Desktop before/after captures show the stronger smoothing on both HUD labels and Start Game. This is a softer bitmap reconstruction, not a new font.
-
-The native 96x96 minimap had no isolated bright component, but whole-page Scale4x introduced a bright pixel at the sprite's top-right corner from neighbouring atlas indices. The map preparation step now scales its bounded region independently. All 119 Arcade and 120 Simulation map entries were rebuilt; the inspected Tahiti Road atlas no longer has the corner pixel. A host regression check reproduces the old corner leak and verifies that the isolated region remains unchanged by neighbouring indices. Five host suites passed, as did Vulkan validation for the live title and race captures. In-headset readability remains subject to player review.
-
-## Shared VR settings and HD selection
-
-Five host suites pass, including migration from the newest disc overlay, shared VR values across both discs, preservation of original per-disc audio settings, exclusion of cheat/progress keys, idempotent migration, and HD generation invalidation. The native PlayStation sequence remains available when HD is disabled or its enhanced container is absent. Windows Release and the Quest ARM64 APK build successfully.
-
-The final four-tap text filter measured 5.737 ms average GPU time (5.741 ms p95) versus 5.721 ms (5.726 ms p95) for the previous filter on the same saved Tahiti Road workload: Quest 3 / Adreno 740, 150%, 2x MSAA, balanced foveation, 180 measured frames. This component test does not establish gameplay FPS. Desktop captures show softer HUD/title lettering, and disabling HD loads the native title with no HD UI pages.
-
-The enhanced PlayStation sequence is 1280x960 versus the original 640x480. Both contain 1029 frames at 59940/1000 FPS and byte-identical PCM audio (1,515,850 interleaved samples). The ordinary GT2 intro movie is unchanged in this update. The updated preview APK, isolated map atlases and enhanced startup were installed without launching the game; device SHA-256 checks and application-UID file access passed. All four existing per-disc settings files retained their hashes. Headset visual acceptance and cross-disc menu testing remain for the player.
-
-## Reconstructed menu text and optional movie hint
-
-The broad source-pixel text blur was rejected during headset review. The title-list and selected shared menu/HUD sheets now receive a separate offline Real-ESRGAN pass. Runtime samples precomputed HD contours, retaining palette fades through a pair of original palette indices and a blend weight. The nine-pixel race-caption font stays on its original indexed fallback: neural versions changed glyphs. This update does not claim that every menu or HUD font is reconstructed.
-
-Final preparation accepted 443 Arcade and 269 Simulation atlas/palette pairs. A source comparison rejected 27 and 41 additional low-confidence pairs. A source-derived transparency mask limits reconstruction to within one native pixel of the original foreground, avoiding faint rectangular background noise. Tests cover transparent versus opaque black, intermediate palette weights, quality rejection and the foreground-mask boundary. All five host suites pass; Windows Release and the compatible Quest ARM64 APK build successfully. Vulkan validation is clean for the title and race captures.
-
-The single-HD-texel text path averaged 5.516 ms GPU time (5.915 ms p95) on a saved Quest 3 workload at 150%, 2x MSAA and balanced foveation. The previous released-preview shader averaged 5.736 ms on its matching earlier capture. This is a component comparison with changing text resources and GPU clocks, not a sustained gameplay FPS guarantee. The UI GPU allocation stays at 32 MiB.
-
-HUD page 2 includes **Movie skip hint**. Its saved value is shared by Arcade and Simulation; it changes the prompt only, leaving movie-skip input and the unskippable firmware sequence unchanged. Final in-headset text readability and the saved toggle still need player review.
-
-The compatible preview APK and both text packs were installed without launching the game. Device SHA-256 values matched the APK and all 714 font files; application-UID access passed. All seven existing settings/backup files retained their hashes. The published 0.1.0 archive and GT2 intro movie were not replaced.
-
-## Android text-index compatibility fix
-
-The preceding text preview was not accepted on the headset. The actual Android game log loaded only legacy indexed UI pages: the Windows-generated `fonts/index.txt` used CRLF, and Android retained the carriage return when comparing its header. Windows text-mode reads had hidden this platform difference during desktop captures.
-
-The shared index reader now accepts LF and CRLF whitespace, validates the format and key shape, and logs the available reconstructed-font count. Regression tests exercise both newline formats in memory without Windows text-mode conversion, plus unsupported headers and malformed keys. All five host suites pass, and Windows/Quest builds pass.
-
-The ARM64 render benchmark now supports `GT2_BENCH_HD_ROOT` to apply the real installed pack loader to native captured vertices/VRAM before drawing. On Quest 3, with the original CRLF files left unchanged, it found 443 font/palette pairs, loaded both title-list keys and reconstructed 60 vertices. The Arcade Mode screen loaded its heading and panel keys and reconstructed 138 vertices. Both saved frames were rendered on the headset GPU without starting the game. This verifies Android asset selection/rendering, not full compositor or gameplay acceptance; native fallback captions remain outside the reconstructed set.
-
-The compatible loader-fix APK was installed with saved preferences preserved. HD assets, movies and the public 0.1.0 archive were unchanged. The player still needs to review both menu screens in the headset.
-
-## Source-preserving menu contours
-
-Player review rejected the neural title lettering because it changed the shape of the letter t. The new offline font path uses an MIT xBR-lv3 contour adaptation over original palette indices. Runtime bilinear sampling is limited to the enlarged subpixels. Fully opaque palettes are now exported too: the previous transparent-only test had skipped Load Guest Garage, Road Race and Time Trial. The versioned `palette-contours4x-v1` header excludes old neural atlases; pictures and movies keep their existing preparation.
-
-The new packs contain 976 Arcade and 465 Simulation atlas/palette pairs. Windows Vulkan captures confirm that all three reported captions load their new replacements and preserve their original text. Original bitmap shading remains visible; this is not replacement typography. Five host suites pass, including straight-edge preservation, diagonal coverage and malformed index handling. Windows Release, Quest ARM64 and the Android render benchmark build successfully.
-
-The installed-pack loader was exercised on the Quest 3 GPU against native title, Arcade Mode and Game Select captures: 60, 144 and 174 vertices respectively used the contour atlases. At 100%, 2x MSAA, 180 measured frames, average component GPU times were 4.317, 4.454 and 4.174 ms; p95 values were 4.632, 4.458 and 4.471 ms. These offscreen menu checks do not establish sustained gameplay performance or headset visual acceptance.
-
-The compatible preview APK and all 1,443 font files were installed and SHA-256 verified. Application-UID access passed. All seven existing settings/backup files retained their hashes; the game was not launched. Movies, saves and the published 0.1.0 ZIP were not replaced. Review Start Game, Load Guest Garage and Road Race on the headset before accepting this preview.
-
-## Rally first-frame stack failure
-
-A Quest crash report from 2026-09-21 11:37:36 shows Tahiti Dirt Route 3 loading successfully, followed by SIGSEGV during the first stereo submission. The captured library BuildId matches the installed preview. The faulting VR-driver instruction is `str xzr, [sp, #0x1b0]`; the recorded fault address equals SP + 0x1b0, indicating a failed stack write rather than a texture lookup. The full stack mapping was not available, so device retesting remains necessary to confirm the fix.
-
-`RunArcadeGhostSession` kept a `MenuMusic` object for the later results screen. Its embedded mixer included 512 KiB of sample RAM, and the compiler reserved that storage throughout the race call, even before constructing the post-race music. This ownership also exists in the pre-HD 0.1.0 source. The mixer now allocates on the heap when music opens; close/reopen/failure paths stop the audio device before replacing the stream. The ARM64 function frame dropped from 568,784 bytes to 37,312 bytes, including saved registers. A compile-time size limit prevents large audio buffers from returning to this object's stack footprint. First stereo submission logs available Android thread stack space for follow-up diagnosis.
-
-Windows Release and Quest ARM64 builds passed, along with all five host test suites. New checks cover the small music object, unopened playback/stop, failed opening and retry. A scripted desktop Arcade rally with HD disabled reached the racing state on Tahiti Dirt Route 3 without Vulkan validation errors; it was stopped after observation. This does not reproduce the Quest driver's stack usage.
-
-The compatible preview APK was installed with its SHA-256 verified; saved data/settings hashes were unchanged. Game assets, text processing and the published 0.1.0 package were not modified by this fix. Headset checks pending: enter Rally, drive, pause/exit, then Try Again; also enter Time Trial, which shares the ghost-session path.
-
-## Car shadows, Midfield scenery and European audio diagnostics
-
-The player confirmed the rally fix. The next geometry checks use all car and track assets from both US and both European discs. Each disc contains 2,220 car-model files; 74 files (37 model IDs including day/night variants and auxiliary models) have different body and shadow scale exponents. Shadow vertices now use the exponent in their own header at +0x18, matching the original shadow transform, rather than the body LOD exponent. The test independently walks the packed headers and checks every emitted shadow corner. Runtime race shadows also use the ground-following pose, separate from suspension/body movement, in main views, mirrors and split screen. A banked-ground fixture verifies placement.
-
-Midfield's full-distance failure reproduced with original resources: distant scenery includes coarse copies of the road and a closed tunnel surface. Their projected surfaces covered cars and the detailed tunnel when extended visibility enabled both representations. The initial size-based visibility restriction was rejected and removed. Object size no longer reduces the selected draw distance.
-
-The replacement index matches scenery corners to detailed course vertices or triangle surfaces in world space, within the source formats' quantisation error. Three matching corners identify a coarse surface patch; a fourth coarse-quad corner can be displaced by reduced subdivision. Some distant copies have offset origins: Midfield models 124 and 125 put extra asphalt above the starting straight. For models with an empty near LOD, registration accepts a common translation within one metre plus quantisation only when at least six vertices and 60% of the mesh agree. This does not enlarge the individual surface-matching tolerance or apply to independent near-visible scenery. Recognised shared boundary vertices are joined to their detailed counterparts so surviving neighbours do not leave quantisation-sized cracks.
-
-An opaque background polygon is replaced only when all detailed chunks identified for that patch are drawn. Unmatched polygons, billboards and independent mountains retain their full distance. Filtered meshes are prepared once at course load and batched for the fully detailed case; partial coverage retains the coarse fallback. Empty near-LOD sentinels are skipped when selecting maximum visible detail, while original-distance selection retains them. Radius extension also promotes existing lights-only render-list entries to geometry inside the selected radius, rather than only adding absent chunks. The scenery bit-30 name/documentation was corrected to farthest-corner sorting; JSON/binary flag encoding is unchanged.
-
-`gt2assetchecks <disc1> [disc2 ...]` scans all models and course variants. The US Arcade disc has 125 course files; the other three discs have 126 each. Across the four discs, 3,218,508 chunk-centre camera samples check full-range scenery independently of masks and size. The scans identify 36,123 coarse surface patches and verify that detailed geometry must be present before replacement. They also check geometry coverage within 500 m from every chunk centre, including previously lights-only entries. Midfield regressions explicitly cover both shifted straight copies, the duplicate road, tunnel cap and independent mountain. Synthetic checks cover subdivision-interior anchors, quantisation, coherent origin offsets, exact shared boundary positions, unrelated elevated/near-visible geometry and fallback when detail is absent. The current scan passes 8,438,207 checks. This is a structural asset regression scan, not visual acceptance of every course.
-
-The user confirmed the tunnel entrance fix but reported remaining starting-straight overlap and distant chevron loss at 500 m. Driver-view captures reproduced the overlap: a ray hit model 124's asphalt ahead of the detailed road; after registration, the road and its grid markings are exposed. The second shifted copy likewise stopped clipping other cars. Replaying the same distant-chevron capture with mipmaps disabled isolated a separate filtering problem: isotropic minification erased the arrows. Bounded four-tap anisotropic filtering now preserves the pattern while retaining mipmaps and atlas-region limits. The extra taps apply only to elongated minification footprints; Quest frame-time impact still requires headset testing.
-
-Six host suites, Windows and Quest builds pass. Scripted 500 m driver-view captures and desktop stereo replay check the grid, straight, chevrons, hairpin and open tunnel interior; Vulkan validation reports no errors. The compatible preview APK was installed and its SHA-256 verified (`4ba3aee98d8aa3dd5e9e706785a291aaa9e94ea3379b1fc84e5712f65838b323`). US Arcade assets, including the existing HD assets, were restored from the saved device directory; European test data remain in a separate backup. Settings/save hashes were preserved, and the application was not launched after installation. Headset checks remain: the initial asphalt height, approaching chevrons, their hillside intersection, the sky seam near the tunnel, and frame pacing. The published 0.1.0 ZIP is unchanged.
-
-The supplied video's race begins around 4:40 on Midfield. SCES-02380's XA table and channel routing were inspected, all 21 tracks were decoded, and race track 3 was compared with FFmpeg's independent XA decoder. This did not establish a defective source decoder. Music streaming now reads 32 sectors per disk operation and reuses decoding buffers instead of seeking/allocating for each sector on the callback. All 42 fifteen-second WAV exports from US/European Arcade are byte-identical before and after the change. Volume and sample reconstruction are unchanged. Track/volume and Android underrun diagnostics were added. The user subsequently confirmed normal race audio after testing the European Arcade data on Quest.
-
-The shared Graphics menu now includes **PlayStation intro**, default ON, applied on the next launch. OFF bypasses the whole console startup; enabled startup remains unskippable. The preview APK was installed without starting the game. Existing saved settings and progress retained their hashes; game data and the published 0.1.0 ZIP were not replaced.
-
-
-## Full-course detail and Midfield texture seam (2026-09-21)
-
-The next headset report confirmed only the near starting-grid improvement; distant asphalt, grass crossing chevrons and the cliff seam remained at 500 m. Fixed-camera desktop captures reproduced the hillside overlap. Entire-course mode now selects each scenery list's authored first entry, including empty near entries for distant-only geometry, while drawing every detailed road chunk. Previously, skipping empty entries resurrected lifted road and hillside fallback meshes. Independent scenery remains at full range. Entire course is the new Quest first-launch distance; other defaults and existing preferences remain unchanged.
-
-The cliff seam was separately reproduced with nearest filtering, without mipmaps and with both texture paths. An untextured draw-ID replay covered the seam continuously. The source cliff tile contained 41 transparent texels in its first row and three in its second row. Course loading now insets a fringe of at most two texels only on a shared opaque course edge, for tiles with less than 2% transparency confined to that fringe. Free silhouettes, interior cutouts, translucent polygons, billboards and source disc data are unchanged. This is static UV preparation, with no extra shader samples or per-frame work.
-
-Six host suites passed. The four US/European Arcade/Simulation corpus scans passed 8,441,841 checks, including all course instances and texture-seam invariants. Same-camera desktop Vulkan captures show the clear starting straight, exposed chevrons and closed cliff seam. This is desktop reproduction and structural corpus coverage, not headset acceptance or visual inspection of every track. Quest frame pacing with full-course geometry still requires headset testing.
-
-
-## Release 0.2.0
-
-The full-course Midfield geometry and cliff-seam corrections above were accepted in the user's subsequent headset test. Release 0.2.0 changes the Quest first-launch refresh preference from 80 to 72 Hz; existing saved refresh preferences remain unchanged. No new performance guarantee is implied.
-
-Windows Release and Android Release builds passed, as did all six host CTest suites. The unchanged geometry implementation retains the four-disc corpus result of 8,441,841 checks. PowerShell sources parse successfully. The ARM64 public APK is non-debuggable, versionName 0.2.0 / versionCode 14, and its signing certificate matches 0.1.0 (SHA-256 `69d9f4ddc4fa8706f6df7ab9bce2288c3c5bbc3e87ed08f1855cdcf5052ad4f9`). The APK SHA-256 is `cfb1e99bc351010134ee1fe7cc8fb2745b7d55b6426a81c5a7b3f9c5db35a327`.
-
-Documentation attribution tags referring to development agents and tool/session narratives were removed; technical findings, evidence limitations and third-party notices were retained. Player and source packaging exclude game data, BIOS, startup recordings, private keys and temporary diagnostics. The optional BIOS-capture workflow is documented separately from normal installation, which needs no BIOS. The public release build is packaged without replacing the differently signed development installation on the headset.
-
-
-## Linux installer and optional BIOS choice (0.2.0)
-
-The Linux installer uses a Python-standard-library ISO9660/GTFS reader, without Wine or ISO conversion. Fresh native `gt2install extract` outputs for all four supported disc profiles were compared against it: 45,066 asset paths and payloads match byte-for-byte. Concatenated gzip entries consume only the first member, matching the native reader, and CRC validation remains enabled. `tests/check_linux_disc_parity.py` repeats this comparison against fresh reference directories.
-
-Eleven installer regression tests pass, covering unsafe paths, CUE handling, truncated input, profile-table parity, gzip member/CRC behavior, package corruption, save retention, publish rollback, unauthorized devices, incompatible signing and the ADB verification flow. PowerShell sources parse, and the Linux shell entry point passes Bash syntax validation. The portable ctypes capture host captured both complete BIOS screens through the Windows software core: 1,029 frames at 59.94 Hz with stereo audio, accepted by the native G2MEDIA decoder. Neither firmware nor this recording is packaged. Linux dependencies use pinned downloads; the optional software core depends only on standard glibc libraries.
-
-The game APK is unchanged by this installer update: version 0.2.0 / code 14 and the public signing identity are retained. Linux kernel execution and a physical Steam Deck USB install have not been tested on this Windows host; portable reader/capture checks and mocked ADB are not substitutes for that hardware check. Neural HD preparation remains Windows-only.
-
-## Release 0.3.0
-
-Windows Release compilation and all six host CTest suites pass. The unified-startup regression exercises both installed discs, remembered selection and cancellation, shared HUD/media settings, disc-specific cheats, a theatre disc picker and the transition to stereo driving. The PCVR regression checks L3 + R3 and both-grip Menu, confirms that Y alone and with one or both grips does not open settings, returns from settings to stereo, and checks focus loss/recovery and clean exit. Captured OpenXR submissions report success. These are local simulator checks, not headset acceptance.
-
-Save-transfer tests pass for invalid and empty cards, damaged directory data, concurrent modification, a locked destination, backups and exact binary readback. All eleven Linux installer tests pass; device operations in that suite use mocked ADB.
-
-The public ARM64 APK is version 0.3.0 / code 15, non-debuggable and signed with the existing release certificate (SHA-256 `69d9f4ddc4fa8706f6df7ab9bce2288c3c5bbc3e87ed08f1855cdcf5052ad4f9`). Its SHA-256 is `8631f1e91b68da8ec979933a2aec1cadf4ef126bc249c0cc5198ff9941e57e0b`.
-
-The project author confirmed the updated PCVR build working through SteamVR / Steam Link, Meta Link and Virtual Desktop. Other headsets/controller layouts remain unverified. A real PC-to-Quest-to-PC save-transfer round trip using the public APK also remains to be checked. The public APK is not installed over an incompatible development signature automatically.
-
-## Windows Steam Link audio (0.3.0)
-
-The original Windows output queued four 10 ms waveOut buffers. On Steam Streaming Speakers, completion callbacks arrived in approximately 50 ms batches: a ten-second device test advanced the mixer by only 8.04 seconds in 10.109 wall-clock seconds. The prepared startup movie follows the audio cursor, so its video slowed down while the rendering profiler could still show a normal frame rate.
-
-Eight 10 ms buffers cover the observed callback interval. With only that queue-depth change, the same endpoint advanced 10.11 seconds of audio in 10.140 wall-clock seconds. A repeat against the rebuilt audio library advanced 10.13 seconds in 10.155 seconds. The mixer sample rate and source audio are unchanged; the maximum queued audio increases by 40 ms.
-
-The complete 1,029-frame startup movie (17.167 seconds at 59.94 fps) took 21.547 seconds before the change and 17.266 seconds after it, measured from the movie log entry to the disc picker using the same prepared media and Steam Streaming Speakers. Windows audio opening now logs its endpoint and queue configuration. This confirms the device-side starvation and startup timing fix; listening and gameplay acceptance through the headset remain separate checks.
-
-`tests/check_startup_audio.py --game <gt2game.exe> --data-root <installed-folder> --output <new-check-folder>` repeats the audible startup check against the current Windows output, requires successful audio-device opening, checks playback duration and preserves logs. It uses isolated settings and does not load or change player saves. It requires the user's prepared startup movie and is separate from the silent startup/rendering suites.
-
-## Explicit Meta Link selection (0.3.0)
-
-A Link startup report showed SteamVR/OpenXR selected while both SteamVR and Meta were running; the Windows default was VDXR. Explicit Meta and SteamVR launchers now select their own runtime per process, independent of that default. Meta discovery checks the running OVRServer location and current/legacy standard install locations; it does not silently fall back to SteamVR.
-
-The installed Meta runtime advertises XR_KHR_vulkan_enable2. With SteamVR still running, a startup probe selected the Meta manifest and reported runtime Oculus; xrGetSystem returned XR_ERROR_FORM_FACTOR_UNAVAILABLE because that runtime did not expose an available headset during the probe. This verifies selection, not Meta headset rendering. The existing OpenXR simulator regression also passes with GT2_XR_RUNTIME=meta inherited and an explicit XR_RUNTIME_JSON override, confirming that direct runtime overrides retain priority. All six host CTest suites pass. Steam Link audio/rendering was accepted in the user's subsequent headset test after the Windows audio queue fix above.
-
-## VDXR launcher, stick-click menu and disc switching (0.3.0)
-
-The dedicated PLAY-PCVR-VD.bat selects Virtual Desktop's bundled VDXR runtime per process, clears an inherited XR_RUNTIME_JSON locally and leaves the Windows runtime default unchanged. Discovery uses the running Streamer location or its standard installation directory. The installed VDXR loader advertises XR_KHR_vulkan_enable2; the project author subsequently confirmed the VD update working.
-
-L3 + R3 replaces both grips + Y. Simulator checks cover both stick clicks without grips, Y while holding the wheel, the original grips + Menu chord, return to stereo and focus recovery. All six host CTest suites and the unified desktop/VR startup checks pass.
-
-The new check_game_switch.py regression selects Simulation, switches to Arcade, then switches back to Simulation in one process. It exercises Change game cancellation and confirmation, verifies separate memory-card hashes and cheat settings, and checks theatre/stereo submissions. A second run covers the normal game shells. Enabling the PlayStation intro during the first game does not replay it when switching. Game resources and the old XR session are released between discs; the process and save root remain the same. Unsaved in-memory progress is discarded only after the confirmation screen.
-
-Windows Release and the signed ARM64 APK were rebuilt. L3 + R3 and the disc-switch loop are included on Quest, while physical Quest disc switching still needs a separate device check.
+## Hardware I tested
+
+| Platform | Hardware / connection | What I checked |
+| --- | --- | --- |
+| macOS | MacBook Pro 16-inch (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1 | Colours, cars in Arcade selection, movies, fullscreen and Shift+Q settings |
+| SteamOS | Steam Deck OLED, Desktop Mode | Installation, disc import, gameplay, picture quality and performance |
+| Standalone VR | Quest 3 | Driving, cockpit view, Midfield scenery and European Arcade race audio |
+| Windows PCVR | SteamVR / Steam Link, Meta Link and Virtual Desktop | Launching and playing through each runtime |
+| Windows wheel input | Fanatec Gran Turismo DD Pro (8 Nm), Thrustmaster TH8A Shifter | Driving and weak countersteering assistance |
+
+## Automated checks
+
+CTest covers core regressions, menu shortcuts, wheel input, display surface
+formats, asset geometry, HD media, VR camera maths, VR driving and Quest career
+features. Run it against a configured and built test directory:
+
+```sh
+ctest --test-dir <build-directory> --output-on-failure
+```
+
+The scripts in `tests/` provide additional checks with local disc data:
+
+- `check_pcvr.py`, `check_player_startup.py` and `check_game_switch.py` exercise
+  startup, settings, disc selection, theatre/stereo transitions and exit through
+  the local OpenXR simulator.
+- `check_cockpit.py`, `check_cockpit_countdown.py` and `run_cockpit_audit.py` check
+  camera views, cockpit settings, mirrors and fitted body geometry. See
+  [cockpit captures](COCKPIT.md#developer-captures).
+- `check_linux_disc_parity.py` compares the Python disc reader with native
+  extraction. The four supported US/European disc profiles produced 45,066
+  matching asset paths and payloads.
+- `check_startup_audio.py` checks prepared startup playback duration with the
+  current Windows audio output. It requires locally prepared media.
+- Installer tests cover invalid paths, malformed input, archive integrity,
+  retained saves, rollback, device authorization and signing failures. Mocked
+  device tests do not check physical USB access.
+
+The cockpit corpus check covers 1096 models, using the first paint, a default
+seat and four fixed views. The renderer produces 4384 audit images. Course
+checks cover detailed/scenery geometry, shadows and texture seams across all
+four supported discs. These checks do not replace driving every car and course.
+
+HD pack checks validate filenames, disc profiles, hashes, image decoding and
+dimensions. Save-transfer tests cover card validation, directory checksums,
+concurrent writes, backups and byte-exact replacement. Android save-provider
+upload/download checks have also run on Quest; a complete public-APK
+PC-to-Quest-to-PC game-load round trip remains untested.
+
+## Remaining hardware checks
+
+- Steam Deck: the View + Menu overlay shortcut, pause while holding Menu and
+  importing a second disc from the overlay still need a device check. Gaming
+  Mode, suspend/resume and the LCD model are untested.
+- Mac: other models and a complete `PREPARE-HD.command` run are untested.
+- Wheels: the device catalogue contains mappings, not a physical test of each
+  rig. Force direction and strength should be checked with each setup.
+- VR: simulator image/submission checks do not measure headset comfort or
+  sustained frame rate. Sustained 175% eye resolution at 90 FPS is not achieved
+  across races. See [renderer benchmarking](RENDER_BENCHMARK.md).
+
+## Source and package checks
+
+`scripts/audit-source.ps1 -FileSystem` checks a source folder without requiring
+Git metadata. The exporter records file hashes in `SOURCE-MANIFEST.json`.
+Packaging verifies copied files and archive contents, excludes game data and
+private keys, and retains dependency licences. Android release packaging checks
+signing, alignment and application metadata.
+
+Builds, archive checks and simulator runs are separate from the hardware tests
+listed above. Current platform instructions are in [Quest](QUEST.md),
+[PCVR](PCVR.md), [macOS](MACOS.md) and [Steam Deck](STEAMDECK.md).

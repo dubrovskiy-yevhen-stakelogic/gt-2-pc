@@ -15,6 +15,9 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
     const char* launcher = std::getenv(gt2mac::kLauncherEnvironment);
     SetDiscImportAvailable(launcher && std::string(launcher) == "1");
+#elif defined(__linux__) && !defined(__ANDROID__)
+    const char* launcher = std::getenv("GT2_LINUX_LAUNCHER");
+    SetDiscImportAvailable(launcher && std::string(launcher) == "1");
 #endif
     if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
         const int result = GameMain(argc, argv);

@@ -1,12 +1,12 @@
 #pragma once
 #include "platform/input/ps1_pad.h"
 // The Android events the game's window backend receives (tools/gt2game/game_window_android.cpp) on their way to the
-// virtual PS1 controller of input_system.h (docs/research/vr_port_plan.md, M6).
+// virtual PS1 controller of input_system.h (docs/research/vr_port_plan.md).
 //
 // A NativeActivity gets its input through the looper's AInputQueue: key events from a Bluetooth gamepad, a Bluetooth
 // keyboard or the headset's own buttons, and motion events of the gamepad's sticks and triggers. The window backend
 // decodes them and calls these two functions; input_system_android.cpp keeps the state and presents it as a DualShock
-// (type 7, the XInput mapping of the PC build). The Touch controllers are not here - they are XR actions (M5).
+// (type 7, the XInput mapping of the PC build). The Touch controllers are not here - they are XR actions.
 //
 // Both functions may be called from the looper thread while the game polls from its own; the state is atomic.
 #include <cstdint>

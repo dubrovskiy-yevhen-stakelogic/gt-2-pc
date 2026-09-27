@@ -1,5 +1,6 @@
 #pragma once
 #include "frame_profiler.h"
+#include "menu_shortcuts.h"
 #include "frame_profiler_log.h"
 #include "platform/os/keys.h"
 // The one window of gt2game: the platform's window, the Vulkan renderer on it, the keyboard, the scripted input of
@@ -19,7 +20,7 @@
 // R1 = W): Held / Pressed / PressedKeys include them. KeyHeld / KeyPressed are the keyboard (and key script) alone -
 // the race drives from the pad through the original's logical pad (race_view.cpp) and must not see them twice.
 //
-// Platforms (docs/research/vr_port_plan.md, M0): everything above the operating system - the input latching, the key
+// Platforms (docs/research/vr_port_plan.md): everything above the operating system - the input latching, the key
 // script, the field clock, the screenshots and the pacing - is in game_window.cpp; the window itself, its renderer,
 // the keyboard and the frame timing are a WindowBackend, today game_window_win32.cpp.
 #include <chrono>
@@ -72,7 +73,7 @@ void SetWindowedMode(bool on);
 bool WindowedMode();
 
 // The operating system's half of the window: the window itself, the Vulkan renderer on it, the keyboard and the
-// frame timing. One implementation per platform (game_window_win32.cpp; the XR session of M1 adds its own).
+// frame timing. One implementation per platform (game_window_win32.cpp; the XR backends provide their own).
 class WindowBackend {
 public:
     virtual ~WindowBackend() = default;
@@ -119,7 +120,7 @@ public:
     // The display's refresh timing (GameWindow::VBlankTiming); false when the system does not report it.
     virtual bool VBlankTiming(std::chrono::steady_clock::time_point& vblank, std::chrono::steady_clock::duration& period) const = 0;
 
-    // ---- stereo (docs/research/vr_port_plan.md, M2; only the XR backend) ----
+    // ---- stereo (docs/research/vr_port_plan.md; only the XR backend) ----
     // True when the race can be drawn as an XrCompositionLayerProjection instead of the mono cinema quad.
     virtual bool StereoAvailable() const { return false; }
     // Width / height of one eye image, used by the stereo scene builders.
@@ -148,7 +149,7 @@ std::unique_ptr<WindowBackend> CreateWindowBackend(const std::string& title, int
 // The same window, its keyboard and its timing, but without a renderer (Renderer() throws): the XR backend keeps it
 // as the desktop window that the keyboard and the controllers are read from.
 std::unique_ptr<WindowBackend> CreateInputWindowBackend(const std::string& title, int clientWidth, int clientHeight);
-// --vr (docs/research/vr_port_plan.md, M1): every window of the program is an OpenXR session showing the game on the
+// --vr (docs/research/vr_port_plan.md): every window of the program is an OpenXR session showing the game on the
 // cinema quad (game_window_xr.cpp). `deterministic` = --xr-deterministic: one field per compositor frame and no
 // pacing of its own, so that a run is reproducible frame by frame. Call before the first GameWindow.
 void SetVrMode(bool on, bool deterministic);
@@ -158,10 +159,10 @@ bool VrDeterministic();
 // The XR backend (game_window_xr.cpp); throws with the reason when there is no OpenXR loader or runtime.
 std::unique_ptr<WindowBackend> CreateXrWindowBackend(const std::string& title, int clientWidth, int clientHeight);
 
-// The VR options in effect (docs/research/vr_port_plan.md, M2): settings.txt's vr_* keys with the command line on
+// The VR options in effect (docs/research/vr_port_plan.md): settings.txt's vr_* keys with the command line on
 // top. game_main.cpp sets them before the first GameWindow; the XR backend and the VR rig read them.
 struct VrOptions {
-    bool stereo = true;        // the race as a stereo projection layer (--vr-mono / vr_stereo=0: M1's cinema quad)
+    bool stereo = true;        // the race as a stereo projection layer (--vr-mono / vr_stereo=0: the cinema quad)
     bool multiview = false;    // one pass with a view mask instead of one pass per eye
     float horizonLock = 0.6f;  // 0..1
     float worldScale = 1.0f;   // game metres per real metre
@@ -230,7 +231,7 @@ public:
     std::chrono::steady_clock::time_point DisplayTime() const { return backend_->DisplayTime(); }
     void FinishPresent(const std::vector<gt2view::DrawItem>& items, size_t sceneItems);
 
-    // Stereo (M2). The race view asks for it once per compositor frame, between BeginPresent and the frame's build;
+    // Stereo. The race view asks for it once per compositor frame, between BeginPresent and the frame's build;
     // the next FinishPresent / EndFrame then records the list into the stereo target instead of the mono image.
     bool StereoAvailable() const { return backend_->StereoAvailable(); }
     float StereoAspect() const { return backend_->StereoAspect(); }
@@ -281,6 +282,9 @@ public:
     gt2::input::InputSystem& Input() { return input_; }
     const gt2::input::Ps1PadFrame& Pad() const { return input_.Port1(); }
     bool PadHeld(uint16_t ps1Buttons) const { return (input_.Port1().buttons & ps1Buttons) != 0; }
+    bool PausePressed() const { return menuShortcuts_.pause; }
+    bool MenuPressed() const { return menuShortcuts_.menu; }
+    bool SettingsPressed() const { return menuShortcuts_.settings; }
     bool PadPressed(uint16_t ps1Buttons) const { return (padPressed_ & ps1Buttons) != 0; }
     // Port 2 of this field: the second controller (InputSystem::Port2) merged with player 2's keyboard (kPlayer2Keys; a
     // digital pad when no controller is in port 2), and its newly pressed buttons.
@@ -314,11 +318,12 @@ private:
     size_t lastScene_ = 0;
     bool focused_ = false;
     bool pacing_ = true;
-    bool stereo_ = false; // a stereo frame was begun and is waiting for its draw list (M2)
+    bool stereo_ = false; // a stereo frame was begun and is waiting for its draw list
     int field_ = 0;
     uint64_t clockRevision_ = 0;
     Clock::time_point next_ = Clock::now();
     gt2::input::InputSystem input_;
+    MenuShortcutState menuShortcuts_;
     uint16_t padPrevious_ = 0, padPressed_ = 0;
     gt2::input::Ps1PadFrame pad2_;
     uint16_t pad2Previous_ = 0, pad2Pressed_ = 0;

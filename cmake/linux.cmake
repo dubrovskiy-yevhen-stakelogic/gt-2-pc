@@ -1,0 +1,22 @@
+include(cmake/sdl-client.cmake)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
+add_executable(gt2linuxlauncher tools/gt2linux/launcher.cpp)
+target_link_libraries(gt2linuxlauncher PRIVATE gt2formats PkgConfig::GTK3 Threads::Threads)
+set_target_properties(gt2linuxlauncher PROPERTIES OUTPUT_NAME gt2launcher)
+include(GNUInstallDirs)
+install(TARGETS gt2game gt2install gt2media gt2linuxlauncher RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES tools/gt2linux/io.github.gt2pc.GT2.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES tools/gt2linux/io.github.gt2pc.GT2.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+install(FILES LICENSE THIRD_PARTY.md DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/gt2)
+install(DIRECTORY third_party/ DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/gt2/third_party
+  FILES_MATCHING PATTERN "*LICENSE*" PATTERN "SOURCE.md")
+if(BUILD_TESTING)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(NAME steamdeck_installer_checks
+    COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/steamdeck_installer_checks.py")
+  add_test(NAME steamdeck_launcher_checks
+    COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/steamdeck_launcher_checks.py")
+  add_executable(gt2linuxinstallchecks tests/linux_install_checks.cpp)
+  add_test(NAME linux_disc_install_checks COMMAND gt2linuxinstallchecks)
+endif()

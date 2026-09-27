@@ -17,7 +17,7 @@ Settings save automatically across Arcade and Simulation. **Reset cockpit settin
 
 ## Seating and visibility
 
-The base seating position is 15 cm farther back than the initial cockpit, with both front seats and console accessories repositioned. The cushions are lowered by up to 15 cm and the backrests/headrests by 13 cm, within the available floor clearance. Seat lowering does not lower the camera. User seat offsets remain relative to this base, and the interactive VR wheel has its own reach calibration.
+The seats fit within the available floor clearance. Camera height and fore/aft position are adjusted independently of the seat meshes. Seat offsets are relative to the fitted driving position, and the interactive VR wheel has its own reach calibration.
 
 The instrument pod sits below the bonnet/cowl. The dashboard follows the curved windscreen base, with closed joins to the door trim. Door cards follow the lower edge of the actual side-window openings. Inner body lining, dashboard and door edges use a common neutral dark colour. The steering column reaches the wheel hub, including its saved height, distance and world scale.
 
@@ -40,7 +40,7 @@ Side-mirror views are not implemented. The central mirror remains a fixed rear c
 - The cockpit applies to live single-player driving, including look-back. Replays, the external starting flythrough and two-player split-screen retain their existing views.
 - Fitting follows the available low-polygon body geometry. It cannot add detail absent from the original model, and unusual bodies or extreme seat positions can still need adjustment.
 - Cockpit settings change presentation; vehicle simulation and save formats remain unchanged.
-- The project author accepted this cockpit revision on Quest after the Lancer windshield fix. The corpus audit covers 1096 models at the first paint, default seat and four fixed views. It is not an in-headset test of every model or head pose.
+- I tested cockpit driving on Quest 3. The automated audit covers 1096 models with the first paint, default seat and four fixed views; I have not driven every model in VR.
 - Desktop and OpenXR simulator checks do not establish PCVR comfort, physical-wheel alignment or sustained headset performance. See [validation](VALIDATION.md).
 
 ## Developer captures

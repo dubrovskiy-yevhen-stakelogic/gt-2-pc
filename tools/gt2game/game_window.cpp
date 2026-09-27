@@ -153,6 +153,7 @@ bool GameWindow::BeginFrame() {
     const uint16_t buttons = input_.Port1().buttons;
     padPressed_ = uint16_t(buttons & ~padPrevious_);
     padPrevious_ = buttons;
+    menuShortcuts_.Update(buttons, KeyHeld(keys::kEscape), KeyPressed(keys::kEscape), focused_ || !script_.empty() || FakePadGiven());
     for (const auto& [bit, key] : kPadKeys)
         if ((padPressed_ & bit) && std::find(pressedNow_.begin(), pressedNow_.end(), key) == pressedNow_.end()) pressedNow_.push_back(key);
     // Port 2: the second controller and player 2's keys (a digital pad when no controller is there).
@@ -165,7 +166,7 @@ bool GameWindow::BeginFrame() {
     if (pad2_.type == gt2::input::kTypeNone) pad2_.type = gt2::input::kTypeDigital; // the keyboard is always there
     pad2Pressed_ = uint16_t(pad2_.buttons & ~pad2Previous_);
     pad2Previous_ = pad2_.buttons;
-    if (nativeMenuEnabled_ && !overlayActive_ && (input_.Wheel().Pressed(gt2::input::wheel::Menu) || Pressed(gt2::keys::kF10) || (PadHeld(ps1::kSelect) && PadPressed(ps1::kStart)))) {
+    if (nativeMenuEnabled_ && !overlayActive_ && (input_.Wheel().Pressed(gt2::input::wheel::Menu) || Pressed(gt2::keys::kF10) || SettingsPressed())) {
         overlayActive_ = true;
         backend_->SetVrMenuActive(true);
         ShowPcOverlay(*this, VrMode() ? std::vector<gt2view::DrawItem>{} : lastItems_, VrMode() ? 0 : lastScene_);
@@ -173,8 +174,10 @@ bool GameWindow::BeginFrame() {
         backend_->SetVrMenuActive(false);
         pressedNow_.clear(); keyPressedNow_.clear(); scriptHeld_.clear();
         padPressed_ = pad2Pressed_ = 0;
+        menuShortcuts_.pause = menuShortcuts_.settings = menuShortcuts_.menu = false;
         if (gamePauseRequested_) {
             gamePauseRequested_ = false;
+            menuShortcuts_.pause = true;
             padPressed_ = ps1::kStart;
             pressedNow_.push_back('S');
         }

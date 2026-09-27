@@ -1,5 +1,5 @@
 #pragma once
-// The VR rig of the race (docs/research/vr_port_plan.md, section 2 and M2): where the player's two eyes are in the
+// The VR rig of the race (docs/research/vr_port_plan.md): where the player's two eyes are in the
 // game's world, and the matrices the draw list is rendered with.
 //
 //   world_from_eye[v] = C . H . S . local_from_eye[v]

@@ -347,7 +347,7 @@ private:
     bool frameOpen_ = false;  // a compositor frame is between xrBeginFrame and xrEndFrame
     bool everDrawn_ = false;  // the offscreen image holds a frame (idle frames may resubmit it)
 
-    // Stereo (docs/research/vr_port_plan.md, M2)
+    // Stereo (docs/research/vr_port_plan.md)
     bool stereo_ = false;        // the projection layer exists (vr_stereo / --vr-mono)
     bool stereoFrame_ = false;   // this compositor frame is a stereo one: EndRenderFrame submits the projection layer
     bool lastStereo_ = false;    // the last submitted frame was the projection layer (what an idle frame repeats)

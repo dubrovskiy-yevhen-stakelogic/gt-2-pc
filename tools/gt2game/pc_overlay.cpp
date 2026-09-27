@@ -874,7 +874,7 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 11 || page == 12) {
             title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
-            rows = {page == 11 ? "Close game and select BIN / CUE..." : "Quit game", "Back to current game"};
+            rows = {page == 11 ? "Close game and select disc image..." : "Quit game", "Back to current game"};
         }
         if (page == 10) {
             title = "GT2 / COCKPIT";
@@ -968,8 +968,8 @@ void ShowSettingsMenu(GameWindow& window) {
         if (!vr && title.starts_with("GT2 VR")) title.replace(0, 6, "GT2");
         if (!first) {
             if (!window.BeginFrame()) break;
-            if (window.PadPressed(gt2::input::ps1::kStart) || window.Pressed(gt2::keys::kF10)) break;
-            if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape)) {
+            if (window.MenuPressed() || window.SettingsPressed() || window.Pressed(gt2::keys::kF10)) break;
+            if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape) || (!vr && window.PadPressed(gt2::input::ps1::kCircle))) {
                 if (page == 0) break;
                 page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : 0; selected = 0; continue;
             }
@@ -1138,7 +1138,7 @@ void ShowSettingsMenu(GameWindow& window) {
         first = false;
         window.Input().StopFeedback();
         Panel(window, title, rows, selected, (page == 9 || page == 11 || page == 12) ? "Unsaved progress will be lost. Save in the game first." : status,
-              vr ? "Stick up/down: row   Triggers: value   A: open   B: back" : "Up/down: row  Left/right: value  Enter: open Esc: back");
+              vr ? "Stick up/down: row   Triggers: value   A: open   B: back" : "D-pad: row/value  A/Enter: open  B/Esc: back  Menu: resume");
     }
     window.Input().StopFeedback(); window.ResetPacing();
     std::printf("overlay: closed at field %d\n", window.Field());

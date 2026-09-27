@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=GT2
+Comment=Native desktop racing game
+Exec=gt2launcher
+Icon=io.github.gt2pc.GT2
+Terminal=false
+Categories=Game;SportsGame;
+StartupNotify=false
+Actions=ImportDisc;
+
+[Desktop Action ImportDisc]
+Name=Import game disc
+Exec=gt2launcher --import

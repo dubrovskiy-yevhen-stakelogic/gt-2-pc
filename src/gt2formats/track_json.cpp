@@ -9,6 +9,7 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
+#include <string_view>
 
 #include "gt2formats/backdrop.h"
 #include "gt2formats/gltf_reader.h"
@@ -34,7 +35,9 @@ Value Metres12(int32_t v) { return Value::Double(v / 4096.0); }
 // Angles: 4096 = one turn <-> degrees (360 / 4096 = 45 / 512, exact).
 Value Degrees(int32_t a) { return Value::Double(a * (360.0 / 4096.0)); }
 
-[[noreturn]] void Fail(const std::string& where, const std::string& what) { throw std::runtime_error(where + ": " + what); }
+[[noreturn]] void Fail(std::string_view where, std::string_view what) {
+    throw std::runtime_error(std::string(where) + ": " + std::string(what));
+}
 
 int64_t RoundChecked(double d, int64_t lo, int64_t hi, const std::string& where) {
     if (!std::isfinite(d)) Fail(where, "not a finite number");
@@ -58,12 +61,12 @@ int64_t IntIn(const Value& v, int64_t lo, int64_t hi, const std::string& where) 
     if (i < lo || i > hi) Fail(where, "value " + std::to_string(i) + " out of range " + std::to_string(lo) + ".." + std::to_string(hi));
     return i;
 }
-const Value& Req(const Value& obj, const char* key, const std::string& where) {
+const Value& Req(const Value& obj, const char* key, std::string_view where) {
     const Value* v = obj.Get(key);
     if (!v) Fail(where, std::string("missing key \"") + key + "\"");
     return *v;
 }
-const Value& ArrayOf(const Value& v, const std::string& where, size_t minSize = 0) {
+const Value& ArrayOf(const Value& v, std::string_view where, size_t minSize = 0) {
     if (!v.IsArray()) Fail(where, "expected an array");
     if (v.Size() < minSize) Fail(where, "array too short");
     return v;

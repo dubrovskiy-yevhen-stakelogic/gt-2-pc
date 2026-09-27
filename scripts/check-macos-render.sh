@@ -37,7 +37,7 @@ gt2_check() {
     GT2_RENDER_CAPTURE="$out/arcade.capture" "$game" "${common[@]}" --title --no-movies \
         --script '60:enter,180:enter,300:enter,420:enter,540:enter,660:enter' --shot-at 810 "$out/arcade.png" \
         --arcade-frames 820 > "$out/arcade.log" 2>&1 || status=1
-    echo 'Comparing car selection with the general shader (r6 diagnostic)...'
+    echo 'Comparing car selection with the general shader...'
     GT2_CACHE_MENU_SHADER=0 "$game" "${common[@]}" --title --no-movies \
         --script '60:enter,180:enter,300:enter,420:enter,540:enter,660:enter' --shot-at 810 "$out/arcade-general-shader.png" \
         --arcade-frames 820 > "$out/arcade-general-shader.log" 2>&1 || status=1

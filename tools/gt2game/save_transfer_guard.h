@@ -5,7 +5,7 @@
 #include <vector>
 #ifdef _WIN32
 #include <windows.h>
-#elif defined(__APPLE__)
+#elif (defined(__APPLE__) || (defined(__linux__) && !defined(__ANDROID__)))
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
@@ -38,7 +38,7 @@ public:
             for (auto file : files_) CloseHandle(file);
             throw;
         }
-#elif defined(__APPLE__)
+#elif (defined(__APPLE__) || (defined(__linux__) && !defined(__ANDROID__)))
         std::vector<std::filesystem::path> dirs;
         try {
             for (const auto& card : {first, second}) {
@@ -69,7 +69,7 @@ public:
     ~SaveTransferGuard() {
 #ifdef _WIN32
         for (auto file : files_) CloseHandle(file);
-#elif defined(__APPLE__)
+#elif (defined(__APPLE__) || (defined(__linux__) && !defined(__ANDROID__)))
         for (auto file : files_) close(file);
 #endif
     }
@@ -78,7 +78,7 @@ public:
 private:
 #ifdef _WIN32
     std::vector<HANDLE> files_;
-#elif defined(__APPLE__)
+#elif (defined(__APPLE__) || (defined(__linux__) && !defined(__ANDROID__)))
     std::vector<int> files_;
 #endif
 };

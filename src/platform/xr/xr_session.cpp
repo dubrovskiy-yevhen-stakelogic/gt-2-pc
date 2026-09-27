@@ -1,4 +1,4 @@
-// The OpenXR session of the game (xr_session.h; docs/research/vr_port_plan.md, M1).
+// The OpenXR session of the game (xr_session.h; docs/research/vr_port_plan.md).
 //
 // Order of the start-up, which is the order the specification requires: load the loader -> instance with the
 // extensions the runtime offers -> system (HMD) -> graphics requirements -> VkInstance and VkDevice through
@@ -126,7 +126,7 @@ struct Session::Impl {
     uint32_t quadIndex = 0;
     bool quadAcquired = false;
 
-    // The stereo projection layer (M2): one colour swapchain of arraySize 2 and, when the runtime offers
+    // The stereo projection layer: one colour swapchain of arraySize 2 and, when the runtime offers
     // XR_KHR_composition_layer_depth, a depth swapchain of the same shape.
     XrSwapchain stereo = XR_NULL_HANDLE, stereoDepth = XR_NULL_HANDLE;
     std::vector<VkImage> stereoImages, stereoDepthImages;
@@ -318,7 +318,7 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     if (info_.refreshRateExtension) extensions.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
     info_.performanceExtension = has(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME);
     if (info_.performanceExtension) extensions.push_back(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME);
-    info_.depthLayer = has(XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME); // M2: the stereo layer's depth image
+    info_.depthLayer = has(XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME); // the stereo layer's depth image
     if (info_.depthLayer) extensions.push_back(XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME);
 
     XrInstanceCreateInfo ici{XR_TYPE_INSTANCE_CREATE_INFO};
@@ -442,7 +442,7 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     f13.dynamicRendering = VK_TRUE;
     VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    f11.multiview = VK_TRUE; // M2's stereo array target
+    f11.multiview = VK_TRUE; // stereo array target
     f11.pNext = &f13;
     VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     features.pNext = &f11;
@@ -741,7 +741,7 @@ void Session::SubmitFrame(VkImage image) {
         if (CopyToQuad(image)) {
             quad.layerFlags = 0;
             quad.space = s.localSpace;
-            quad.eyeVisibility = XR_EYE_VISIBILITY_BOTH; // mono: M2 replaces this with the stereo projection layer
+            quad.eyeVisibility = XR_EYE_VISIBILITY_BOTH; // mono: stereo frames use the projection layer
             quad.subImage.swapchain = s.quad;
             quad.subImage.imageRect = {{0, 0}, {int32_t(options_.quadWidth), int32_t(options_.quadHeight)}};
             quad.subImage.imageArrayIndex = 0;

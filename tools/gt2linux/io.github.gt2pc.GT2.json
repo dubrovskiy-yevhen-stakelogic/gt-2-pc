@@ -1,0 +1,35 @@
+{
+  "app-id": "io.github.gt2pc.GT2",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "25.08",
+  "sdk": "org.freedesktop.Sdk",
+  "command": "gt2launcher",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--socket=pulseaudio",
+    "--device=all",
+    "--filesystem=/run/udev:ro",
+    "--env=GT2_STEAMDECK=1"
+  ],
+  "modules": [
+    {
+      "name": "gt2",
+      "buildsystem": "cmake-ninja",
+      "builddir": true,
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DGT2_WARNINGS_AS_ERRORS=OFF",
+        "-DGT2_BUILD_LINUX_CLIENT=ON",
+        "-DGT2_BUILD_MACOS_CLIENT=OFF",
+        "-DGT2_BUILD_XRSIM=OFF",
+        "-DBUILD_TESTING=ON"
+      ],
+      "run-tests": true,
+      "test-rule": "",
+      "test-commands": ["ctest --output-on-failure"],
+      "sources": [{"type": "dir", "path": "../..", "skip": [".git", "work", "dist", "build_linux", "build_macos", ".flatpak-builder"]}]
+    }
+  ]
+}

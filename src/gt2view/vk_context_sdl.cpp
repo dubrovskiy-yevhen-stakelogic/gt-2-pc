@@ -1,4 +1,4 @@
-// SDL supplies the native Metal surface; MoltenVK runs the shared Vulkan renderer.
+// SDL supplies the window-system surface for the shared Vulkan renderer.
 #include "gt2view/vk_context.h"
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -83,7 +83,7 @@ VkContext::VkContext(void*, void* window) : window_(window) {
                 break;
             }
         }
-        if (!physical_) throw std::runtime_error("No presenting Vulkan 1.3 GPU with dynamic rendering. Install a current Vulkan SDK / MoltenVK.");
+        if (!physical_) throw std::runtime_error("No presenting Vulkan 1.3 GPU with dynamic rendering. Update the graphics driver/runtime (MoltenVK on macOS).");
         const float priority = 1.0f;
         VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
         qci.queueFamilyIndex = queueFamily_;

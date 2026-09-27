@@ -92,7 +92,7 @@ Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public releas
 
 If an offline cache lacks Android lint dependencies, `-SkipLint` explicitly omits the lint tasks. Compilation, APK signing and alignment checks still run; record the missing lint coverage when validating that build.
 
-The public version is 0.5.0; Android versionCode is 23, above the cockpit development builds. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
+The public version is 0.5.0; Android versionCode is 23. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs

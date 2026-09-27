@@ -1,9 +1,8 @@
 # xrsim - OpenXR simulator runtime for automated tests (development tool)
 
-xrsim is our own OpenXR runtime for Windows that simulates a stereo HMD with two Touch controllers, so agents (and the
-user) can run and check Vulkan OpenXR apps on this PC without a headset, fully scripted and headless. It is a development
-tool (`tools\xrsim\`), not part of the game, and generic: any Vulkan OpenXR app (the user's other VR ports too) can run on
-it.
+xrsim is a Windows OpenXR runtime for scripted, headless testing without a headset.
+It simulates a stereo HMD and two Touch controllers, and can run Vulkan OpenXR
+applications. Its source is in `tools/xrsim/`; it is not included in the player game.
 
 What it gives an automated check:
 
@@ -19,7 +18,7 @@ What it gives an automated check:
 
 Own code; the OpenXR headers in `third_party\openxr\include` are Khronos (`Apache-2.0 OR MIT`, SPDX lines kept, licence
 text in `third_party\openxr\LICENSE`). The PNG compressor is our `src\gt2export\png_deflate.cpp`. The MIT
-"OpenXR-Simulator" project (the user's download) was consulted as a reference for the loader negotiation and the
+"OpenXR-Simulator" project was consulted as a reference for the loader negotiation and the
 Vulkan interop; no code was copied from it.
 
 ## Build
@@ -27,7 +26,7 @@ Vulkan interop; no code was copied from it.
 Part of the main CMake project (optional targets, need the Vulkan SDK with glslc, Windows):
 
 ```
-cmd /c C:\Dev\gran-turismo2-pc\build.cmd build_xrsim
+build.cmd build_xrsim
 ```
 
 Outputs in `build_xrsim\tools\xrsim\`:
@@ -40,7 +39,7 @@ Outputs in `build_xrsim\tools\xrsim\`:
 | `openxr_loader.dll` | copy of a local Khronos loader build (see below), used by xrsim_test's loader path |
 
 The loader is not vendored. CMake copies an existing local x64 build next to the test: the cache variable
-`XRSIM_OPENXR_LOADER` (path to an `openxr_loader.dll`) or, when empty, the first one found among the user's own builds
+`XRSIM_OPENXR_LOADER` (path to an `openxr_loader.dll`) or, when empty, the first one found at the configured local build locations
 (`C:\Dev\witcher-vr\vendor\OpenXR-SDK-Source-1.1.58\build-win64\src\loader\Release`, then
 `C:\Dev\fighting-force-vr\openxr-sdk\build\...`, `C:\Dev\re3-miami-vr\vendor\openxr-1.1.58\x64\bin`). Without one the
 self-test still runs, through the direct path only, and says so.

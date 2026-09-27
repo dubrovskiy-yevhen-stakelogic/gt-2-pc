@@ -1,8 +1,8 @@
-// The Android implementation of the OS services of paths.h (docs/research/vr_port_plan.md, M6).
+// The Android implementation of the OS services of paths.h (docs/research/vr_port_plan.md).
 //
 // Android gives an application two directories and no working directory worth the name:
 //   - the app-specific EXTERNAL files directory (/sdcard/Android/data/<package>/files) - readable and writable over
-//     adb without any permission, which is where the user's disc image (and later the prepared pack) is pushed. It is
+//     adb without any permission, which is where the disc image and extracted assets are pushed. It is
 //     the game's DataRoot.
 //   - the INTERNAL data directory (/data/data/<package>/files) - not visible to the shell, which is where the memory
 //     cards, settings.txt and the log belong (SavesDir / LogPath).

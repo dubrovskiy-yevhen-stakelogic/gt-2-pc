@@ -1,6 +1,6 @@
 #pragma once
 // What android_main (android/app/src/main/cpp/android_main.cpp) tells the game's window backend
-// (game_window_android.cpp) about the application it lives in (docs/research/vr_port_plan.md, M6).
+// (game_window_android.cpp) about the application it lives in (docs/research/vr_port_plan.md).
 //
 // The looper thread of the NativeActivity owns the lifecycle and the input queue; the game runs on its own thread
 // (GameMain). Everything below is written by the looper thread and read by the game's thread.

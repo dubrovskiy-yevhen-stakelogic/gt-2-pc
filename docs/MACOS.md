@@ -4,12 +4,10 @@ This release adds the macOS desktop game. It includes Arcade, Simulation,
 movies, sound, controller support and the cockpit view. Multiplayer and the
 dedicated server are not included in this release.
 
-Tested by the project author on a **16-inch MacBook Pro (2021), Apple M1 Pro,
-16 GB RAM, macOS Tahoe 26.5.1**. The author confirmed correct colours, textured
-cars in Arcade selection, movie playback, fullscreen performance and the
-Shift+Q settings shortcut. Other Macs have not been tested; their behaviour
-and performance are unknown. The new HD preparation command still needs a
-complete run on macOS.
+I tested this on my **16-inch MacBook Pro (2021), Apple M1 Pro, 16 GB RAM,
+macOS Tahoe 26.5.1**: colours, cars in Arcade selection, movie playback,
+fullscreen and the Shift+Q settings shortcut work correctly. I have not tested
+other Macs or a complete HD preparation run on macOS.
 
 ## Install
 

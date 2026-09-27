@@ -1,4 +1,4 @@
-// The window backend of the Quest build (game_window.h WindowBackend; docs/research/vr_port_plan.md, M6).
+// The window backend of the Quest build (game_window.h WindowBackend; docs/research/vr_port_plan.md).
 //
 // It is the Android twin of game_window_xr.cpp: the same OpenXR session (src/platform/xr/xr_session.h), the same
 // offscreen renderer and the same cinema quad / stereo projection layer. What the Windows file gets from a desktop

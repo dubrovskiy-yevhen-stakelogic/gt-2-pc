@@ -23,7 +23,7 @@ const uint32_t kCachedFragSpv[] =
 const uint32_t kFragSpv[] =
 #include "scene.frag.inc"
     ;
-// The stereo variants of the vertex shader (docs/research/vr_port_plan.md, M2): the eye from gl_ViewIndex (one
+// The stereo variants of the vertex shader (docs/research/vr_port_plan.md): the eye from gl_ViewIndex (one
 // multiview pass) or from the eye push constant (one pass per array layer).
 const uint32_t kStereoVertSpv[] =
 #include "scene_stereo.vert.inc"
@@ -129,7 +129,7 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     *static_cast<uint32_t*>(handUpload_.mapped) = 0xffffffffu; handPending_ = true;
     externalBuffer_ = CreateBuffer(sizeof(uint32_t) * kExternalTexels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(externalBuffer_.mapped, 0, static_cast<size_t>(externalBuffer_.size));
-    viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes (M2)
+    viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes
     std::memset(viewBuffer_.mapped, 0, static_cast<size_t>(viewBuffer_.size));
 
     if (offscreen_) CreateOffscreen(offscreenExtent, offscreenFormat);
@@ -300,7 +300,7 @@ void VkSceneRenderer::CreateSwapchain() {
     CreateSceneTargets();
 }
 
-// The XR path (docs/research/vr_port_plan.md, M1): one colour image instead of a window swapchain. Everything else -
+// The XR path (docs/research/vr_port_plan.md): one colour image instead of a window swapchain. Everything else -
 // the pipelines, the scene targets of the graphics options, the screenshots - works exactly as on the window, because
 // the frame is recorded through the same RenderTarget; Draw leaves the image in TRANSFER_SRC_OPTIMAL so that the
 // session can copy it into the compositor's quad swapchain image.
@@ -434,7 +434,7 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
         return;
     }
     if (swapchain_ || offscreen_) CreateSceneTargets();
-    // The stereo target carries its own MSAA images and pipelines (M2): rebuild them when the sample count changed.
+    // The stereo target carries its own MSAA images and pipelines: rebuild them when the sample count changed.
     if (stereoReady_ && ClampSamples(options_.msaa) != stereoSamples_) CreateStereoTarget(stereoExtent_, stereoFormat_, stereoMultiview_);
 }
 
@@ -457,7 +457,7 @@ void VkSceneRenderer::DestroySwapchain() {
 
 void VkSceneRenderer::CreatePipeline() {
     // Binding 0: the PS1 VRAM words; binding 1: the external RGBA8 texture store (kExternalTexture); binding 2: the
-    // two eyes of a stereo frame (M2; only scene_stereo.vert reads it, the desktop shaders ignore it).
+    // two eyes of a stereo frame (only scene_stereo.vert reads it, the desktop shaders ignore it).
     VkDescriptorSetLayoutBinding bindings[7]{};
     for (uint32_t i = 0; i < 2; i++) {
         bindings[i].binding = i;
@@ -1104,7 +1104,7 @@ void VkSceneRenderer::SaveReadback(const std::string& path, VkExtent2D extent, V
     gt2::WritePngRgba(path, int(extent.width), int(extent.height), rgba);
 }
 
-// ---------------------------------------------------------------- stereo (docs/research/vr_port_plan.md, M2)
+// ---------------------------------------------------------------- stereo (docs/research/vr_port_plan.md)
 
 void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, bool multiview) {
     if (extent.width == 0 || extent.height == 0) throw std::runtime_error("CreateStereoTarget: empty extent");

@@ -595,7 +595,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
         }
         bool leave = false;
         const bool enter = window.Pressed(gt2::keys::kReturn) || window.Pad2Pressed(input::ps1::kCross);
-        const bool startPressed = window.KeyPressed(gt2::keys::kEscape) || window.PadPressed(input::ps1::kStart);
+        const bool startPressed = window.PausePressed();
         if (replaying && splitPads.ended) { // the stream ran out (0x800A8D68): the replay is over
             if (!replayEndLogged) std::printf("2 player replay: end of a stream after %d steps\n", steps);
             replayEndLogged = true;

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="24" fill="#17243b"/>
+  <path d="M16 92h96v8H16z" fill="#f6af39"/>
+  <text x="64" y="77" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="43" fill="white">GT2</text>
+</svg>

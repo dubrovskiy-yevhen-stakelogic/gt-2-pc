@@ -1,4 +1,4 @@
-// Runs without game assets, a display or physical controllers. Real Mac acceptance is separate.
+// Uses virtual gamepads and the SDL dummy audio driver.
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include "platform/input/input_system.h"

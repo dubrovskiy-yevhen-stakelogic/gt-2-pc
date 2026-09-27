@@ -1,4 +1,4 @@
-// The Android implementation (AAudio) of the AudioDevice of audio_device.h (docs/research/vr_port_plan.md, M6;
+// The Android implementation (AAudio) of the AudioDevice of audio_device.h (docs/research/vr_port_plan.md;
 // model: C:\Dev\harry-potter-vr\android\app\src\main\cpp\quest_audio.cpp).
 //
 // AAudio calls back on its own high-priority thread, so this device has no thread of its own: the callback runs the

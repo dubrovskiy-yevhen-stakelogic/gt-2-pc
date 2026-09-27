@@ -1,5 +1,5 @@
 #version 450
-// The stereo variant of scene.vert (docs/research/vr_port_plan.md, M2). The draw list is built once, in the space
+// The stereo variant of scene.vert (docs/research/vr_port_plan.md). The draw list is built once, in the space
 // "world - refEye" (DrawItem::mvp), and this shader applies the eye's own view-projection:
 //   space 0 (kWorld)  worldVP[v] . mvp . pos
 //   space 1 (kSky)    skyVP[v]   . mvp . pos   - the eye translation is removed, so the backdrop sits at infinity

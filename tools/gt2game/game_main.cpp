@@ -147,8 +147,8 @@ int GameMain(int argc, char** argv) {
         std::string globalScript;      // --script: keys for every windowed screen (game_window.h)
         std::vector<std::pair<int, std::string>> anyShots; // --shot-at <field> <png>
         bool fast = false;             // --fast: no frame pacing
-        bool vr = false, vrDeterministic = false; // --vr / --xr-deterministic (game_window.h, vr_port_plan.md M1)
-        // The VR options (M2): settings.txt's vr_* keys, each overridden by its flag.
+        bool vr = false, vrDeterministic = false; // --vr / --xr-deterministic (game_window.h, vr_port_plan.md)
+        // The VR options: settings.txt's vr_* keys, each overridden by its flag.
         shell::VrSettings vrFile;
         bool vrMonoFlag = false, vrOriginalFov = false;
         int vrMultiview = -1, vrHorizon = -1, vrWorldScale = -1, vrRenderScale = -1, vrNearMm = -1;
@@ -233,7 +233,7 @@ int GameMain(int argc, char** argv) {
             // --vr: every screen of every mode on the cinema quad of an OpenXR session (game_window_xr.cpp).
             if (a == "--vr") { vr = true; continue; }
             if (a == "--xr-deterministic") { vr = true; vrDeterministic = true; continue; }
-            // VR options (docs/research/vr_port_plan.md, M2); the last five exist for the checks in tests\xr.
+            // VR options (docs/research/vr_port_plan.md); the last five exist for the checks in tests\xr.
             if (a == "--vr-mono") { vrMonoFlag = true; continue; }
             if (a == "--vr-multiview" && i + 1 < argc) { vrMultiview = std::atoi(argv[++i]) != 0 ? 1 : 0; continue; }
             if (a == "--vr-horizon" && i + 1 < argc) { vrHorizon = std::clamp(std::atoi(argv[++i]), 0, 100); continue; }
@@ -369,11 +369,11 @@ int GameMain(int argc, char** argv) {
         }
 
         SaveTransferGuard saveGuard(titleOptions.card1Path, titleOptions.card2Path);
-        if (vr) { // the OpenXR cinema quad instead of the desktop window (docs/research/vr_port_plan.md, M1)
+        if (vr) { // the OpenXR cinema quad instead of the desktop window (docs/research/vr_port_plan.md)
             SetVrMode(true, vrDeterministic);
             windowWidth = kCinemaWidth; // every screen is built for the quad's 4:3 image
             windowHeight = kCinemaHeight;
-            // The VR options: settings.txt (the same file the graphics settings come from) under the flags (M2).
+            // The VR options: settings.txt (the same file the graphics settings come from) under the flags.
             vrFile = shell::PcSettings::Load(titleOptions.settingsPath).vr;
             VrOptions o;
             o.stereo = vrFile.stereo && !vrMonoFlag;

@@ -26,7 +26,7 @@ gt2_colour_check() {
     local game="$app/Contents/MacOS/gt2game" status=0 name code
     local original_saves="${GT2_SAVE_ROOT:-$data/saves}"
     sw_vers > system.txt
-    printf '\nDiagnostic: colour/materials, r6 or newer app expected\n' >> system.txt
+    printf '\nGT2 colour and material diagnostics\n' >> system.txt
     shasum -a 256 "$game" >> system.txt
     printf 'Six automatic checks will run. Do not press keys or change fullscreen.\n'
     printf 'Each check closes itself. Your installed saves/settings are not changed.\n\n'
@@ -46,7 +46,7 @@ gt2_colour_check() {
             --shot-at 620 "$out/$name.png" --arcade-frames 630)
         if [ "$name" = notice ]; then
             # Force the boot screens in an automated run; field 260 is at full
-            # brightness, outside both fade ramps. Exit through the r6 menu.
+            # brightness, outside both fade ramps. Exit through the settings menu.
             run=(--title --movies --shot-at 260 "$out/$name.png"
                 --script '360:escape,370:f10,380:up,390:enter,400:up,410:enter' --title-frames 440)
         fi

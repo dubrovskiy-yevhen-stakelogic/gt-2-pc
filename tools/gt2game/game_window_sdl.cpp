@@ -60,6 +60,13 @@ public:
             Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
             if (render) flags |= SDL_WINDOW_VULKAN;
             if (render && !noFocus && !WindowedMode()) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+#if defined(__linux__) && !defined(__ANDROID__)
+            const char* deck = SDL_getenv("GT2_STEAMDECK");
+            if (render && !noFocus && !WindowedMode() && deck && std::string(deck) == "1") {
+                width = 1280;
+                height = 800;
+            }
+#endif
             window_ = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
             if (!window_) throw std::runtime_error(SDL_GetError());
             if (render) {
@@ -147,6 +154,6 @@ std::unique_ptr<WindowBackend> CreateInputWindowBackend(const std::string& title
     return std::make_unique<SdlWindow>(title, w, h, false);
 }
 std::unique_ptr<WindowBackend> CreateXrWindowBackend(const std::string&, int, int) {
-    throw std::runtime_error("This macOS build supports flat play only. Remove --vr.");
+    throw std::runtime_error("This desktop SDL build supports flat play only. Remove --vr.");
 }
 } // namespace gt2game
