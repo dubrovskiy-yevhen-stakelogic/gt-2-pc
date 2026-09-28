@@ -1,4 +1,4 @@
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_types.h"
 #include "gt2formats/hd_media.h"
 #include "gt2formats/hd_ui.h"
 #include "gt2formats/png_reader.h"
@@ -7,7 +7,7 @@
 #include <fstream>
 
 namespace gt2view {
-void VkSceneRenderer::ApplyHdUi(std::vector<SceneVertex>& vertices) {
+void SceneRendererState::ApplyHdUi(std::vector<SceneVertex>& vertices) {
     if(hdUiGeneration_ != gt2::hd::Generation()) {
         hdUiGeneration_=gt2::hd::Generation(); hdUiPages_.clear(); hdUiSlots_.clear();
         hdUiAssets_.clear(); hdFontAssets_.clear();

@@ -197,7 +197,7 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
             q.u[k]=right ? float(hdSize_&65535) : 0.f; q.v[k]=bottom ? float(hdSize_>>16) : 0.f;
             q.colour[k][0]=q.colour[k][1]=q.colour[k][2]=1;
         }
-        q.page=VkSceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
+        q.page=SceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
         quads_.push_back(q);
     }
     size_t splitQuad = SIZE_MAX; // quads before it are drawn at the far depth, before the 3D layer
@@ -262,14 +262,14 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
 
 // ---------------------------------------------------------------- the car view
 
-MenuCarView::MenuCarView(VkSceneRenderer& renderer, const gt2::GtfsVolume& vol) : renderer_(renderer), vol_(vol) {}
+MenuCarView::MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol) : renderer_(renderer), vol_(vol) {}
 MenuCarView::~MenuCarView() = default;
 void MenuCarView::LoadMenuReflection() {
     gt2::MenuVram map;
     map.UploadTimToPage(vol_.Read("arcade/gt_cursor.tim"), 9);
-    renderer_.UploadVram(VkSceneRenderer::kMenuReflectionRow, gt2::MenuVram::kHeight, map.Words().data());
+    renderer_.UploadVram(SceneRenderer::kMenuReflectionRow, gt2::MenuVram::kHeight, map.Words().data());
     envPage_ = 9; envClut_ = uint16_t((576 / 16) | (152 << 6)); envColour_ = 0x40;
-    envRowBase_ = VkSceneRenderer::kMenuReflectionRow;
+    envRowBase_ = SceneRenderer::kMenuReflectionRow;
 }
 
 bool MenuCarView::Use(uint32_t modelId) {

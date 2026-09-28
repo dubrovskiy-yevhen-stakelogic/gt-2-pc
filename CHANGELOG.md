@@ -1,22 +1,27 @@
 # Changelog
 
-## 0.7.0 - in development
+## 0.8.0
+
+- Added browser play through WebAssembly and WebGL2, compiled from the same C++ game as the native platforms.
+- Added local BIN selection, browser audio, persistent saves and save backup import/export.
+- Added automatic brake-to-reverse for keyboard controls without requiring a connected gamepad.
+- Changed desktop resolution scaling to 5% steps between 50% and 200%.
+- Added the ready-to-host browser site to the complete release alongside Windows, PCVR, Quest, macOS and Steam Deck installation files.
+- Updated the English interface and installation guide for one complete release.
+
+## 0.7.0
 
 - Added a native Linux / Steam Deck SDL2 client with Vulkan rendering, gamepad input and audio.
 - Added a desktop disc picker, separate Arcade and Simulation imports, application locking and Linux save-folder locks.
 - Added Flatpak build/install/play scripts and a 1280 x 800 initial fullscreen size for the Deck package.
 - Added a View + Menu settings shortcut, one pause action per Menu press, disc switching, disc import and Quit game in the overlay.
-- I tested installation, disc import and gameplay on a Steam Deck OLED in Desktop Mode. See [validation](docs/VALIDATION.md) for test coverage.
-- Multiplayer and dedicated-server work remain separate. The browser port is still planned.
 
 ## 0.6.0 - 2026-09-27
 
 - Added the macOS desktop client with SDL2 input/audio and Vulkan rendering through MoltenVK.
 - Added source installation, bundled runtime dependencies, a native disc picker and a save-preserving application update.
 - Added Shift+Q for settings, Option+Enter for fullscreen, Quit game and Import another game disc.
-- Added PREPARE-HD.command for HD pictures, menu fonts, HUD and optional full-screen movies. Original discs and saves are retained. See [Mac setup](docs/MACOS.md) for preparation and test coverage.
-- I tested colours, cars in Arcade selection, movies, fullscreen and settings on my MacBook Pro 16-inch (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1. I have not tested other Macs.
-- Multiplayer and dedicated-server development are excluded. Steam Deck and browser ports are planned before the full cross-platform multiplayer release.
+- Added PREPARE-HD.command for HD pictures, menu fonts, HUD and optional full-screen movies. Original discs and saves are retained. See [Mac setup](docs/MACOS.md) for installation instructions.
 
 ## 0.5.0 - 2026-09-24
 
@@ -29,8 +34,6 @@
 - New VR profiles default to **130% eye resolution**. The **instrument HUD** and **profiler** start **off** on all platforms; physical cockpit gauges remain visible. Desktop rendering scale remains 100%. Updates preserve saved settings.
 - Fixed an enabled but disconnected or incomplete wheel setup suppressing gamepad and keyboard driving input. The saved wheel calibration remains available when the rig reconnects.
 - The cockpit uses original procedural geometry. No external game's models or textures are required. Replays, the external starting flythrough and split-screen retain their existing views; vehicle simulation and saves are unchanged.
-- I tested cockpit driving on Quest 3. Automated geometry and image checks cover 1096 car models; see [validation](docs/VALIDATION.md).
-- Android versionName is **0.5.0**, versionCode **23**.
 
 ## 0.4.0 - 2026-09-22
 
@@ -46,7 +49,6 @@
 - Added **Traction control 0..5** (default 0) and **Countersteering assistance Off / Weak / Strong** (default Weak). Settings are shared by both discs and saved without resetting calibration.
 - Added configurable steering geometry for tyre-force feedback and timing diagnostics for input/FFB stalls.
 - Windows installation now prepares HD pictures, fonts and HUD for both Arcade and Simulation by default. Simulation US v1.2 contains 461 picture replacements. Original media and additional movie preparation remain selectable.
-- I tested wheel driving and weak countersteering with a **Fanatec Gran Turismo DD Pro (8 Nm)** and **Thrustmaster TH8A Shifter**. See [wheel setup and limitations](docs/WHEELS.md).
 
 ## 0.3.0 - 2026-09-21
 
@@ -70,9 +72,7 @@
 - Added USB save-transfer helpers in both directions between PC and Quest. Transfers validate memory cards, create backups and verify the copied data.
 - Added save-folder locking to prevent the game and transfer tool from writing the same card at once. Transfers copy complete cards; they do not convert saves between regions.
 - Packaged the Windows OpenXR loader and precompiled installation tools. No SDK or C++ build is needed to install the player release.
-- Existing saves and settings are retained. The standalone APK is version **0.3.0**, Android version code **15**, signed with the existing public release identity.
 
-I tested PCVR through SteamVR / Steam Link, Meta Link and Virtual Desktop. The VR bindings target Touch controllers.
 
 ## 0.2.0
 
@@ -101,7 +101,6 @@ I tested PCVR through SteamVR / Steam Link, Meta Link and Virtual Desktop. The V
 - VR graphics, controls and HUD preferences are shared between Arcade and Simulation; progression remains separate.
 - New Quest profiles default to **72 Hz**, **150% resolution**, **MSAA 2x**, **medium foveation** and the **entire detailed course**. Existing saved preferences are preserved.
 - Updated source documentation, dependency credits and MIT licensing notices. Player packages retain third-party notices.
-- Android version code: **14**. Release APKs use the same signing identity as 0.1.0.
 
 ### Known limits
 

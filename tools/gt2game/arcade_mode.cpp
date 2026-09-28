@@ -781,7 +781,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     window.SetPacing(options.pacing);
     if (!options.globalScript.empty()) window.AddScript(options.globalScript);
     for (const auto& s : options.anyShots) window.AddShot(s.first, s.second);
-    gt2view::VkSceneRenderer* renderer = &window.Renderer();
+    gt2view::SceneRenderer* renderer = &window.Renderer();
     const MenuCanvas::Rules rules = options.compare.empty() ? MenuCanvas::Rules::kPs1 : MenuCanvas::Rules::kInterpreter;
     auto view = std::make_unique<gt2view::TitleView>(*renderer);
     view->SetRasterRules(rules);

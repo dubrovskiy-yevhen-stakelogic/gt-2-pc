@@ -30,7 +30,7 @@ gt2::RaceMenuAssets MenuAssetsOf(const gt2::DiscImage& disc, const gt2::GtfsVolu
 }
 } // namespace
 
-Panels::Panels(gt2view::VkSceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol)
+Panels::Panels(gt2view::SceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol)
     : view_(renderer), arcade_(ArcadeDisc(disc)), fonts_(arcade_ ? gt2::MenuFonts{} : gt2::LoadMenuFonts(gt2::LoadOverlayImage(disc, 4))),
       overlayAssets_(gt2::raceui::RaceOverlayAssets::Load(disc, vol)), licenceAssets_(MenuAssetsOf(disc, vol, gt2::RaceMenuAssets::Pictures::kLicence)),
       settingsAssets_(arcade_ ? licenceAssets_ : MenuAssetsOf(disc, vol, gt2::RaceMenuAssets::Pictures::kSettings)), renderer_(renderer), vol_(vol), disc_(disc) {

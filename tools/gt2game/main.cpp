@@ -10,6 +10,10 @@
 #include <fstream>
 #include <vector>
 
+#ifdef __EMSCRIPTEN__
+extern "C" void gt2_web_game_exit(int code);
+#endif
+
 int main(int argc, char** argv) {
     using namespace gt2game;
 #ifdef __APPLE__
@@ -22,6 +26,9 @@ int main(int argc, char** argv) {
     if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
         const int result = GameMain(argc, argv);
         ReleaseRetainedWindow();
+#ifdef __EMSCRIPTEN__
+        gt2_web_game_exit(result);
+#endif
         return result == 0 && TakeDiscImportRequest() ? gt2mac::kImportDiscExitCode : result;
     }
     std::setvbuf(stdout, nullptr, _IONBF, 0);

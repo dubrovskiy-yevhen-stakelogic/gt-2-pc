@@ -24,7 +24,7 @@ V Blend(const float poses[4][3],float grip,float trigger){
 }
 SceneVertex Colored(V p,V color){SceneVertex v{};v.pos[0]=p.x;v.pos[1]=p.y;v.pos[2]=p.z;v.color[0]=color.x;v.color[1]=color.y;v.color[2]=color.z;return v;}
 }
-VrDrivingVisuals::VrDrivingVisuals(VkSceneRenderer& renderer):renderer_(renderer){
+VrDrivingVisuals::VrDrivingVisuals(SceneRenderer& renderer):renderer_(renderer){
     static_assert(sizeof(Vertex)==104);
     for(int h=0;h<2;++h){
         auto bytes=VrHandAsset(h);uint32_t header[4]{};
@@ -46,7 +46,7 @@ VrDrivingVisuals::VrDrivingVisuals(VkSceneRenderer& renderer):renderer_(renderer
     }
     auto image=gt2::DecodePng(VrHandAsset(2));textureWidth_=uint32_t(image.width);textureHeight_=uint32_t(image.height);
     const size_t texels=size_t(textureWidth_)*textureHeight_;
-    if(texels>VkSceneRenderer::kExternalTexels-VkSceneRenderer::kVrHandTexelBase)throw std::runtime_error("hand texture too large");
+    if(texels>SceneRenderer::kExternalTexels-SceneRenderer::kVrHandTexelBase)throw std::runtime_error("hand texture too large");
     std::vector<uint32_t> rgba(texels);std::memcpy(rgba.data(),image.rgba.data(),texels*4);
     renderer_.UploadHandTexture(textureWidth_,textureHeight_,rgba.data());
     vertices_.reserve(32768);
@@ -56,7 +56,7 @@ void VrDrivingVisuals::Append(std::vector<DrawItem>& items,const gt2::vr::Tracke
     if(settings.mode==0)return;
     auto draw=[&](uint32_t offset,uint32_t count,V right,V up,V back,V position){
         float local[16] = {right.x,right.y,right.z,0,up.x,up.y,up.z,0,back.x,back.y,back.z,0,position.x,position.y,position.z,1};
-        DrawItem item;item.firstVertex=VkSceneRenderer::kVrDrivingVertexBase+offset;item.vertexCount=count;item.space=kSpaceWorld;
+        DrawItem item;item.firstVertex=SceneRenderer::kVrDrivingVertexBase+offset;item.vertexCount=count;item.space=kSpaceWorld;
         for(int c=0;c<4;++c)for(int r=0;r<4;++r)for(int k=0;k<4;++k)item.mvp[c*4+r]+=matrix[k*4+r]*local[c*4+k];
         items.push_back(item);
     };

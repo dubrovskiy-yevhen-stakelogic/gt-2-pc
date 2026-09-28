@@ -342,7 +342,7 @@ RaceMenuAssets LoadArcadeRaceMenuAssets(const DiscImage& disc, const GtfsVolume&
     return a;
 }
 
-std::unique_ptr<Panels> LoadArcadeRacePanels(gt2view::VkSceneRenderer& renderer, const DiscImage& disc, const GtfsVolume& vol) {
+std::unique_ptr<Panels> LoadArcadeRacePanels(gt2view::SceneRenderer& renderer, const DiscImage& disc, const GtfsVolume& vol) {
     try {
         return std::make_unique<Panels>(renderer, disc, vol);
     } catch (const std::exception& e) {
@@ -562,7 +562,7 @@ ArcadePostRaceChoice RunArcadePostRace(GameWindow& window, const RaceMenuAssets&
         return false;
     };
 
-    gt2view::VkSceneRenderer& renderer = window.Renderer();
+    gt2view::SceneRenderer& renderer = window.Renderer();
     gt2view::MenuView view(renderer, 0);
     view.SetFrameSize(RaceMenuAssets::kScreenWidth, RaceMenuAssets::kScreenHeight);
     view.SetInterpolatedPolygons(true);
@@ -706,7 +706,7 @@ ArcadeSessionOutcome RunArcadeSessionViews(GameWindow& window, const RaceMenuAss
     screens::SessionViewStack stack;
     stack.Start(std::make_unique<SessionWaitView>(a, raceRun, in.newRecord == 1)); // 0x800471F4(M, 0x8005B00C)
 
-    gt2view::VkSceneRenderer& renderer = window.Renderer();
+    gt2view::SceneRenderer& renderer = window.Renderer();
     gt2view::MenuView view(renderer, 0);
     view.SetFrameSize(RaceMenuAssets::kScreenWidth, RaceMenuAssets::kScreenHeight);
     view.SetInterpolatedPolygons(true);

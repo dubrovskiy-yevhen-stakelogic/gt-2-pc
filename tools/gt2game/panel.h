@@ -28,7 +28,7 @@ namespace gt2game {
 
 class Panels {
 public:
-    Panels(gt2view::VkSceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol);
+    Panels(gt2view::SceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol);
     // (Re)uploads the layers' VRAM into the panel rows.
     void Upload();
 
@@ -97,7 +97,7 @@ private:
     std::vector<gt2::MenuPrim> prims_;
     std::vector<gt2::raceui::Gp0Prim> overlay_;
     // FullScreenModel: the frame through a MenuView on the panel rows (the far / 3D / front split), the model by MenuCarView.
-    gt2view::VkSceneRenderer& renderer_;
+    gt2view::SceneRenderer& renderer_;
     const gt2::GtfsVolume& vol_;
     const gt2::DiscImage& disc_;
     std::unique_ptr<gt2::audio::MenuAudio> sfx_;

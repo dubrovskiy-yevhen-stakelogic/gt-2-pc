@@ -55,10 +55,10 @@ constexpr HudSetting hudSettings[] = {
     {"Replay caption", "vr_hud_replay", &gt2view::HudVisibility::replay},
     {"Movie skip hint", "vr_hud_movie_hint", &gt2view::HudVisibility::movieHint}
 };
-constexpr uint32_t vertexBase = gt2view::VkSceneRenderer::kNativeUiVertexBase, fontRow = gt2view::VkSceneRenderer::kNativeFontRow;
+constexpr uint32_t vertexBase = gt2view::SceneRenderer::kNativeUiVertexBase, fontRow = gt2view::SceneRenderer::kNativeFontRow;
 
 // A system-font atlas is generated at runtime: the source kit carries no game font or artwork.
-void UploadFont(gt2view::VkSceneRenderer& renderer) {
+void UploadFont(gt2view::SceneRenderer& renderer) {
 #ifdef _WIN32
     HDC dc = CreateCompatibleDC(nullptr);
     BITMAPINFO info{};
@@ -283,8 +283,8 @@ struct NativeCanvas {
             x += 12 * scale;
         }
     }
-    void Append(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, uint32_t base = vertexBase) {
-        const size_t limit = base == vertexBase ? gt2view::VkSceneRenderer::kNativeUiVertexLimit : 8192;
+    void Append(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, uint32_t base = vertexBase) {
+        const size_t limit = base == vertexBase ? gt2view::SceneRenderer::kNativeUiVertexLimit : 8192;
         if (vertices.size() > limit) throw std::runtime_error("Native overlay vertex range exceeded");
         renderer.SetVertices(base, vertices);
         gt2view::DrawItem layer; layer.firstVertex = base; layer.vertexCount = uint32_t(vertices.size());
@@ -1039,7 +1039,8 @@ void ShowSettingsMenu(GameWindow& window) {
                         } else status = "Headset does not offer refresh-rate selection.";
                     }
                     if (!vr && selected == 0) {
-                        const int resolutions[] = {50,75,100,125,150,175,200,-720,-1080,-1440,-2160};
+                        const int resolutions[] = {50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,
+                            130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,-720,-1080,-1440,-2160};
                         const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
                         graphics.renderHeight = choice < 0 ? -choice : 0;
                         if (choice > 0) graphics.renderScale = choice;
@@ -1149,9 +1150,9 @@ void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career:
     cheatSave = save; cheatData = data; cheatPath = path;
     if (!data) catalogueData = nullptr;
 }
-void PrepareNativeUi(gt2view::VkSceneRenderer& renderer) { UploadFont(renderer); }
+void PrepareNativeUi(gt2view::SceneRenderer& renderer) { UploadFont(renderer); }
 bool FrameProfilerEnabled() { return profiler; }
-void AppendFrameProfiler(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, const FrameProfiler& stats) {
+void AppendFrameProfiler(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, const FrameProfiler& stats) {
     NativeCanvas canvas;
     canvas.Quad(492, 4, 284, 101, 0x101c2a);
     char fps[48], timing[64];
@@ -1176,9 +1177,9 @@ void AppendFrameProfiler(gt2view::VkSceneRenderer& renderer, std::vector<gt2view
     char low[64];
     std::snprintf(low, sizeof(low), "1%% LOW %.0f / PEAK %.0f MS", stats.lowFps, stats.recentMaxMs);
     canvas.Text(504, 83, low, stats.recentMaxMs > 22.3 ? 0xff9866 : 0xe2e8f0, 0.65f);
-    canvas.Append(renderer, items, gt2view::VkSceneRenderer::kProfilerVertexBase);
+    canvas.Append(renderer, items, gt2view::SceneRenderer::kProfilerVertexBase);
 }
-void AppendSkipHint(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items) {
+void AppendSkipHint(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items) {
     if (!hudVisibility.movieHint) return;
     NativeCanvas canvas; canvas.Quad(244, 550, 312, 34, 0x101c2a);
     canvas.Text(256, 555, VrMode() ? "A / B : SKIP MOVIE" : "START / ENTER : SKIP"); canvas.Append(renderer, items);

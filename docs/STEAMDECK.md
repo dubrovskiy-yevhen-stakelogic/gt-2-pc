@@ -1,17 +1,12 @@
-# Steam Deck / SteamOS - 0.7.0 development
+# Steam Deck / SteamOS
 
-This is the native Linux game, using SDL2 and Vulkan. It is separate from
-`INSTALL-LINUX.sh`, which installs the Quest game from a Linux computer.
-Multiplayer and a dedicated server are not included in this port.
-
-I tested installation, disc import and gameplay on my **Steam Deck OLED in
-Desktop Mode**. Picture quality and performance were good. Gaming Mode,
-suspend/resume and the LCD model remain untested. See [validation](VALIDATION.md)
-for the remaining checks.
+The native Linux game uses SDL2 and Vulkan. Install in Desktop Mode using the
+included Flatpak scripts. `INSTALL-LINUX.sh` installs the Quest game from a Linux
+computer; use `INSTALL-STEAMDECK.sh` for the desktop game.
 
 ## Install on Steam Deck
 
-1. Switch to **Desktop Mode** and extract **GT2-0.7.0-steamdeck.zip**
+1. Switch to **Desktop Mode** and extract **GT2-0.8.0.zip**
    into a writable folder. Open the extracted folder, not the ZIP preview.
 2. Double-click **INSTALL-STEAMDECK.sh** and select **Execute**. A terminal window
    opens automatically and stays open after completion or an error.
@@ -29,9 +24,9 @@ Build files and the package cache live in `~/.cache/gt2/steamdeck-build` (or und
 No FUSE setup is required. Installed Flatpak tools and runtimes remain available
 for subsequent builds.
 
-If a prebuilt **GT2-0.7.0-steamdeck.flatpak** is included beside the installer,
+If a prebuilt **GT2-0.8.0-steamdeck.flatpak** is included beside the installer,
 it installs that package directly without downloading build tools or compiling.
-This development archive contains source, so its first installation builds locally.
+The complete release contains source, so its first installation builds locally.
 
 If installation stops, the window shows the failed step. The full log is
 **GT2-SteamDeck-install.log**, beside **INSTALL-STEAMDECK.sh**. Send that file
@@ -143,7 +138,7 @@ For bug reports, include your Deck model, Desktop or Gaming Mode, the selected
 disc and a log. For performance problems, also include the graphics settings
 and a profiler recording.
 
-## Other Linux development systems
+## Other Linux systems
 
 Install a C++20 compiler, CMake 3.22+, Ninja, SDL2 2.26+ development files, GTK3
 development files and Vulkan 1.3 development files including `glslc`. Then run

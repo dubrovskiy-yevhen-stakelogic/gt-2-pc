@@ -1,21 +1,15 @@
-# GT2 0.6.0 for macOS
+# GT2 for macOS
 
-This release adds the macOS desktop game. It includes Arcade, Simulation,
-movies, sound, controller support and the cockpit view. Multiplayer and the
-dedicated server are not included in this release.
-
-I tested this on my **16-inch MacBook Pro (2021), Apple M1 Pro, 16 GB RAM,
-macOS Tahoe 26.5.1**: colours, cars in Arcade selection, movie playback,
-fullscreen and the Shift+Q settings shortcut work correctly. I have not tested
-other Macs or a complete HD preparation run on macOS.
+The native desktop game includes Arcade, Simulation, movies, sound, controller
+support and the cockpit view. Installation builds from the included source.
 
 ## Install
 
-Extract **GT2-0.6.0-macos.zip** into Downloads. Close an existing GT2 instance,
+Extract **GT2-0.8.0.zip** into Downloads. Close an existing GT2 instance,
 then open **INSTALL-MACOS.command**, or run in Terminal:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.6.0-macos/INSTALL-MACOS.command"
+bash "$HOME/Downloads/GT2-0.8.0/INSTALL-MACOS.command"
 ```
 
 This archive installs from source. The first run prepares Apple Command Line
@@ -28,7 +22,6 @@ The build requires macOS 14+ and a native arm64 or x86_64 terminal session.
 Rosetta builds are not supported. The actual app minimum OS version is recorded
 from its bundled libraries and may be higher than 14.
 
-Successful installation prints **Installed source revision: macos-release-0.6.0**.
 If installation stops, the previous app may remain installed. Logs are under
 `~/Library/Caches/GT2/build-arm64` or `build-x86_64`. Updates retain installed
 discs and saves, and keep the previous application as a backup.
@@ -61,7 +54,7 @@ Install the release and import your discs first. Close GT2, then open
 **PREPARE-HD.command**, or run:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.6.0-macos/PREPARE-HD.command"
+bash "$HOME/Downloads/GT2-0.8.0/PREPARE-HD.command"
 ```
 
 Choose pictures, menu text and HUD, or also full-screen Arcade movies.

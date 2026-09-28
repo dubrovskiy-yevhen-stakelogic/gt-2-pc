@@ -1,47 +1,61 @@
-# GT2 0.5.0 player installation
+# Player installation
 
-**GT2-0.5.0.zip includes all three versions:** Windows PC on a normal monitor, Windows PCVR and Quest 3 standalone. Choose the installer for how you want to play; you do not need a headset for the flat PC version.
+Extract the complete **GT2-0.8.0.zip** into a writable folder. It contains shared
+source, all platform scripts, compiled Windows/Quest files under `native/` and
+compiled browser files under `web/`. Keep the directory structure intact.
 
-## Quest 3
+| Platform | Installer / entry point |
+|---|---|
+| Windows monitor | `INSTALL-PC.bat` |
+| Windows PCVR | `INSTALL-PCVR.bat` |
+| Quest standalone, from Windows | `INSTALL-QUEST.bat` |
+| Quest standalone, from Linux | `bash native/INSTALL-LINUX.sh` |
+| macOS | `INSTALL-MACOS.command` |
+| Steam Deck / Linux desktop | `INSTALL-STEAMDECK.sh` |
+| Browser | Serve the contents of `web/` over HTTP(S) |
 
-1. Extract the complete release ZIP into a writable folder on Windows.
-2. Enable Quest developer mode, connect USB and accept USB debugging inside the headset.
-3. Run **INSTALL.bat**. Select your supported Arcade and/or Simulation image. You can select both at once; select either its BIN or CUE, not both copies of the same disc.
-4. The installer validates package hashes, finds/downloads ADB, extracts and validates your disc data, installs the signed APK and verifies the headset's raw-disc hash and application access.
-5. Open **GT2 VR** in Unknown Sources. Select a disc with the stick and A. A/B skips movies.
+Windows and Quest installation uses precompiled tools. Mac and Steam Deck
+installation builds from the included source. The root `INSTALL.bat` remains the
+Windows source-build entry point; the platform-specific wrappers above use the
+precompiled package. No old release is needed for a different platform.
 
-The installation wizard asks whether to prepare the original PlayStation startup from your own BIOS. Choose **No** to play without a BIOS or that sequence. Choose **Yes** and select a matching 512 KiB BIOS dump to capture both screens and sound. The BIOS is not copied to Quest. `-NoBios` skips the question; `-Bios 'path'` enables capture explicitly. Command-line installs with `-DiscImage` do not prompt for BIOS unless it is supplied.
+Supply your supported complete BIN/CUE images. See [disc support](EUROPEAN-DISCS.md).
+A 2048-byte ISO lacks required audio/video sectors. Game data and firmware are not
+bundled or downloaded. Select one image per disc, not both its BIN and CUE.
 
-For **Linux / Steam Deck**, use `bash INSTALL-LINUX.sh` from the same extracted release. The complete [Linux instructions](LINUX-INSTALL.md) require no Wine or SteamOS system changes.
+## Windows and PCVR
 
-The headset runs independently of the PC after installation. The default PC staging folder is `%LOCALAPPDATA%\GT2-VR\runtime`; keep it to speed up later updates. Allow several GB per disc for raw data, extracted assets, temporary staging and previous-install backups. A 7z input requires 7-Zip; the installer can install it through WinGet. ADB's pinned download comes from Google; its terms are at https://developer.android.com/studio/terms.
+Run the chosen installer and select your disc images. It verifies package hashes,
+prepares data and creates launchers in the installed game folder. Use `PLAY.bat`
+for monitor play, or the META, STEAMVR or VD launcher for your OpenXR runtime.
+See [PCVR setup](PCVR.md). The headset software must be installed separately.
+Settings open with F10; in the browser use Shift+Q.
 
-## Windows PC
+## Quest
 
-Run **INSTALL-PC.bat** with the same images. It uses the included Windows executables and needs no build toolchain. Open **PLAY.bat**, or **gt2game.exe** directly, in the install folder. After the optional PlayStation intro, choose your installed disc. Press F10 for graphics, controls, HUD, media and Arcade/Simulation cheats. A Vulkan 1.3 graphics driver is required. DualSense adaptive pedals and vibration are supported through the native physical USB/Bluetooth device.
+Enable developer mode, connect by USB and accept USB debugging inside the headset.
+Run `INSTALL-QUEST.bat`. Installation updates the app in place, preserves saves,
+verifies copied disc data and does not launch the game. Open **GT2 VR** under
+**Unknown Sources** yourself. If signatures differ, export your saves and resolve
+the signing identity before replacing the installed application.
 
-Windows installation prepares **HD pictures, fonts and HUD for every installed disc**, including Simulation. A Vulkan-capable GPU and time for offline preparation are required. No game pictures are bundled: they are generated from your own disc. Use `-HdMedia Original` to skip this step, or `-HdMedia MenusAndMovies` for additional full-screen movies.
+For Linux-to-Quest setup use the bundled `native/INSTALL-LINUX.sh` and the
+[Linux instructions](LINUX-INSTALL.md). Steam Deck desktop play uses a different
+entry point, `INSTALL-STEAMDECK.sh`.
 
-## Existing installations and saves
+## Mac, Steam Deck and browser
 
-For Windows PCVR, run **INSTALL-PCVR.bat**, then use **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR). Start the selected headset connection first, then choose your disc in the game. **PLAY-PCVR.bat** retains automatic selection (running SteamVR, otherwise the system default). **L3 + R3** opens VR settings; **both grips + Menu** also remains available. See [PCVR setup and controls](PCVR.md).
+Follow [macOS](MACOS.md), [Steam Deck](STEAMDECK.md) or [browser](WEB.md) instructions.
+To deploy the browser game, upload the contents of `web/` together. HTML requires
+its adjacent JS and Wasm files. Saves stay in the browser's storage for the site
+address; export a backup before clearing storage or moving to another address.
 
-The release includes **TRANSFER_QUEST_SAVES_TO_PC.bat** and **TRANSFER_PC_SAVES_TO_QUEST.bat** for USB transfers of both disc memory cards. Close the game on both devices, connect Quest, then run the desired helper. Each replacement is validated, backed up and verified. The public Quest APK must be version 0.3.0 or newer; see [save-transfer instructions](SAVE-TRANSFER.md).
+## Optional media and saves
 
-The installer updates a compatible APK with `adb install -r`; it never uninstalls or clears app data. If Android reports `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the installed application uses a different signing key. Stop and export its saves/settings before considering a manual migration. Development and public APKs use different keys. Use the save-transfer helpers for supported builds. `adb shell run-as io.github.gt2pc.quest` works only with debuggable builds, not with non-debuggable APKs, including public releases.
+Native installers can prepare HD media from your disc; see [HD media](HD-MEDIA.md).
+A BIOS is optional and only used to prepare the PlayStation startup. Skip it for
+normal gameplay. The game never needs a bundled BIOS.
 
-Quest disc data is in `/sdcard/Android/data/io.github.gt2pc.quest/files/{arcade,simulation}`. Saves and settings are separate from the installer-managed disc files. PC saves are under the install folder's `saves/`. Reinstalling disc data retains saves. The installer does not start the game or alter your graphics preferences.
-
-## Command line
-
-```powershell
-.\scripts\install-player.ps1 -Target Quest -DiscImage 'D:\Arcade.bin','D:\Simulation.bin'
-.\scripts\install-player.ps1 -Target PC -DiscImage 'D:\Arcade.bin' -InstallDir 'D:\Games\GT2'
-.\scripts\install-player.ps1 -VerifyOnly
-```
-
-Use `-Adb` for an existing adb.exe and `-Serial` to choose one of multiple connected headsets. Unsupported disc hashes and incomplete 2048-byte ISO images are rejected. The full supported-disc list and features are in README.md.
-
-## First run
-
-Menu pauses; both grips + Menu opens VR settings. Stick up/down selects a setting; triggers change it. Start with the saved/default graphics settings, then watch APP FPS while adjusting them. Eye resolution needs an app restart. New Quest profiles use 130% eye resolution and target 72 Hz. PCVR also starts at 130%; flat desktop rendering scale remains 100%. The instrument HUD and profiler start off on all platforms; the physical cockpit gauges remain visible. Existing saved preferences are retained. The refresh rate is a target, not a guarantee of sustained application FPS. See QUEST.md for all controls and cheats.
+Use the supplied transfer scripts for [PC/Quest save exchange](SAVE-TRANSFER.md).
+Close the game on both devices before transferring. Browser backups use Export
+saves and Import saves. Keep backups before changing devices or clearing storage.

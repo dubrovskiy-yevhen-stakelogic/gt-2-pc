@@ -1,50 +1,41 @@
 ![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
-# Gran Turismo 2 PC & VR - 0.7.0 development
+# Gran Turismo 2 PC, VR & Browser
 
-**0.7.0 adds a native Linux / Steam Deck build target.** Extract
-**GT2-0.7.0-steamdeck.zip**, double-click **INSTALL-STEAMDECK.sh** and
-choose **Execute** in Desktop Mode. The installer opens its own window, prepares
-the tools, builds the game and creates a desktop shortcut. See
-[Steam Deck setup](docs/STEAMDECK.md). I tested this on a Steam Deck OLED in Desktop Mode.
+A native C++ port with Arcade and Simulation, cockpit driving, desktop and VR
+support. The browser compiles the same game code to WebAssembly and renders with
+WebGL2. Gameplay fixes belong to the shared C++ code and reach each platform when
+it is rebuilt.
 
-**0.6.0 adds macOS desktop support.** Arcade, Simulation, movies and the cockpit
-run through SDL2 and MoltenVK. Download **GT2-0.6.0-macos.zip**, extract it and run
-**INSTALL-MACOS.command**. The archive builds and installs GT2.app on the Mac;
-see [Mac installation and controls](docs/MACOS.md). **PREPARE-HD.command** prepares
-HD interface artwork and optional full-screen movies from your installed discs.
+**[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
-**Mac testing:** I tested colours, car selection, movies, fullscreen and settings
-on my **16-inch MacBook Pro (2021), M1 Pro, 16 GB RAM, macOS Tahoe 26.5.1**.
-I have not tested other Macs. HD preparation has automated checks; a complete
-macOS run remains untested.
+**Download the current complete release: `GT2-0.8.0.zip`.** It contains the common
+source, all platform installation/build scripts, precompiled Windows tools, a signed Quest APK, and a ready-to-deploy `web/`
+folder. You do not need an older release for VR, macOS or Steam Deck.
 
-This source tree does not include multiplayer or a dedicated server. Steam Deck
-support is in development; the browser port remains planned before cross-platform multiplayer.
-The existing cockpit, controls, original disc support and saves remain available.
+| Platform | Start here | Where the game runs |
+|---|---|---|
+| Windows desktop | `INSTALL-PC.bat`, then `PLAY.bat` in the installed folder | Windows PC |
+| Windows PCVR / OpenXR | `INSTALL-PCVR.bat`, then `PLAY-PCVR-META.bat`, `PLAY-PCVR-STEAMVR.bat` or `PLAY-PCVR-VD.bat` | PC with a connected headset |
+| Quest standalone | `INSTALL-QUEST.bat`; see [Quest installation](docs/QUEST.md) | On the headset |
+| macOS | `INSTALL-MACOS.command` | Mac, flat screen |
+| Steam Deck / desktop Linux | `INSTALL-STEAMDECK.sh` | Linux, flat screen |
+| Browser | Serve `web/`, open `index.html` over HTTP(S), select your BIN and press Start | Browser, flat screen |
 
-Windows PC / PCVR supports wheels, pedals, USB shifters and force feedback, with 72 embedded device profiles and guided setup. Driving assists include optional traction control, weak countersteering by default and an optional forward/reverse speed override. See [wheel setup](docs/WHEELS.md).
+Windows and Quest installers use the compiled files under `native/` and prepare
+your local disc data. Mac and Steam Deck installers build from the included source.
+The browser files are already compiled. This is one release with different
+platform entry points. Native applications retain their platform-specific VR,
+controller and graphics features; the browser runs in flat-screen mode.
 
-**Wheel testing:** I tested driving and weak countersteering with a Fanatec Gran Turismo DD Pro (8 Nm) and a Thrustmaster TH8A Shifter. The 72 device profiles do not represent 72 tested rigs.
-
-**The previous Windows PC / PCVR and Quest 3 binary release remains available as `GT2-0.5.0.zip`.** The new 0.6.0 archive is the Mac source installer; it does not relabel those older binaries.
-
-| Version included | Where the game runs | Install | Launch |
-|---|---|---|---|
-| **Windows PC (flat / monitor)** | On your PC; no VR headset required | `INSTALL-PC.bat` | `PLAY.bat` |
-| **Windows PCVR (OpenXR)** | On your PC, displayed in your connected headset | `INSTALL-PCVR.bat` | `PLAY-PCVR-STEAMVR.bat`, `PLAY-PCVR-META.bat` or `PLAY-PCVR-VD.bat` |
-| **Quest 3 standalone VR** | On the headset; no streaming PC required to play | `INSTALL.bat` | **GT2 VR** under **Unknown Sources** |
-
-The PLAY launchers are created in your installed game folder. The Quest APK inside the archive is named `GT2-VR-0.5.0.apk`; it is only the standalone component of the complete release.
-
-This is a native C++ port with Vulkan rendering and ported game simulation. Arcade and Simulation are available in all three versions. See [CHANGELOG.md](CHANGELOG.md) for the release notes.
-
-Supply your own supported disc images. Game data, BIOS and saves are not included. The screenshot above illustrates gameplay.
+Supply your own supported disc images. Game data, BIOS and saves are not included.
+The screenshot above illustrates gameplay. Release history belongs in
+[CHANGELOG.md](CHANGELOG.md); the feature list below describes the current project.
 
 ## Features
 
 - A fitted cockpit for live single-player Driver view, with moving steering wheel and hands, speed/RPM needles, seat adjustments and a central rear-view mirror. Replays and split-screen retain their existing views. See [cockpit controls](docs/COCKPIT.md).
-- Unified PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, DualSense pedals and both Arcade/Simulation cheats.
+- Native PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, DualSense pedals and both Arcade/Simulation cheats.
 - Windows PCVR through OpenXR, with theatre menus/movies, stereo races, tracked head movement and Touch controls. See [PCVR setup](docs/PCVR.md).
 - USB save transfer in both directions between PC and Quest, with card validation, backups and verified copying. Desktop and PCVR share PC saves. See [save transfer](docs/SAVE-TRANSFER.md).
 - Arcade and Simulation discs, with a startup disc picker on PC and Quest, shared preferences and separate saves for each mode.
@@ -66,105 +57,105 @@ Supply your own supported disc images. Game data, BIOS and saves are not include
 - Trees use position-based cylindrical billboards in VR: head rotation alone does not rotate them.
 - Developer tools for car/track export, JSON modifications, captures and reference comparisons. Arbitrary new-track geometry compilation is not implemented.
 
-## Previous Windows / Quest binary release (0.5.0)
+- Native macOS support through SDL2 and Vulkan/MoltenVK, with disc import and optional HD media preparation.
+- Steam Deck / Linux support through SDL2 and Vulkan, with a graphical disc importer and Desktop Mode installer.
+- Browser play through WebAssembly/WebGL2, local BIN selection, keyboard/gamepad input, audio, persistent saves and save backup import/export.
+- Desktop render scale from 50% to 200% in 5% steps, plus fixed output resolutions.
+- Automatic brake-to-reverse for keyboard and supported controller bindings: hold Down to stop and then reverse; Up brakes reverse motion before driving forward.
 
-Extract **GT2-0.5.0.zip** into a normal writable folder. Run **INSTALL.bat** for Quest, **INSTALL-PC.bat** for Windows desktop or **INSTALL-PCVR.bat** for Windows VR, then select one or both of your disc images. The package contains precompiled installation tools; no Visual Studio or C++ compilation is needed.
+## Install and play
 
-Start **PLAY-PCVR-META.bat** for Meta Quest Link / Air Link, **PLAY-PCVR-STEAMVR.bat** for SteamVR / Steam Link, or **PLAY-PCVR-VD.bat** for Virtual Desktop (VDXR), and **PLAY.bat** (also **gt2game.exe** directly) for desktop. All use one application: the optional PlayStation intro, then the same disc picker as Quest. **PLAY-PCVR.bat** retains automatic selection: running SteamVR, otherwise the system default. Runtime choices affect only the game process. The package includes the Khronos loader; the headset software must be installed separately. Use **TRANSFER_QUEST_SAVES_TO_PC.bat** or **TRANSFER_PC_SAVES_TO_QUEST.bat** to move saved cards after closing the game on both devices. Quest save exchange requires the 0.3.0 APK or newer.
+Extract the complete ZIP into a writable folder. Keep the source and scripts
+together. Native installation may download build prerequisites; no game images
+are downloaded. Existing data and saves are preserved by the normal update path.
 
-On **Linux / Steam Deck**, extract the same ZIP, open a terminal in its folder and run `bash INSTALL-LINUX.sh`. It prepares discs and installs the standalone Quest game without Wine or modifying the SteamOS system partition. See the [Steam Deck step-by-step guide](docs/LINUX-INSTALL.md).
+- **Windows / PCVR:** run `INSTALL-PC.bat` or `INSTALL-PCVR.bat`. Open settings with F10. Select the PLAY launcher for your installed OpenXR runtime; see [PCVR setup](docs/PCVR.md).
+- **Quest:** run `INSTALL-QUEST.bat`; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.
+- **macOS:** run `INSTALL-MACOS.command`, then the installed `GT2.app`. See [macOS setup](docs/MACOS.md).
+- **Steam Deck:** switch to Desktop Mode, extract the ZIP, run `INSTALL-STEAMDECK.sh` and open the installed GT2 shortcut. See [Steam Deck setup](docs/STEAMDECK.md).
+- **Browser:** run `python web/serve-web.py --directory web --port 8080`, then open `http://127.0.0.1:8080/`. For deployment, upload the contents of `web/` to a static HTTPS host. Keep `index.html`, `launcher.js`, `gt2.js` and `gt2.wasm` together; serve Wasm as `application/wasm`. Opening the HTML through `file://` does not work. See [browser build and hosting](docs/WEB.md).
 
-Windows installers prepare **HD pictures, fonts and HUD for both Arcade and Simulation by default**. Use `-HdMedia Original` to skip HD preparation, or `-HdMedia MenusAndMovies` to also prepare full-screen movies. Linux installs original media and can copy previously prepared HD packs.
+Supported disc revisions and image requirements are listed in
+[European disc support](docs/EUROPEAN-DISCS.md) and [player installation](docs/PLAYER-INSTALL.md).
+Use complete 2352-byte-sector BIN/CUE images. The browser accepts a single full
+BIN directly; native importers also support the formats documented for their
+platform. A 2048-byte ISO omits XA audio/video sectors.
 
-Both Windows and Linux installers offer an **optional PlayStation startup**. Skip the BIOS prompt to play normally without it, or select your own matching 512 KiB BIOS dump to prepare the original white and dark screens with sound. Firmware is never downloaded or sent to Quest. Existing prepared intros can be disabled in the VR menu.
+## Controls and saves
 
-For Quest, enable developer mode, connect USB and accept USB debugging in the headset. The installer locates ADB or downloads a pinned Google Platform Tools archive, prepares the disc data, updates the APK, copies the assets and verifies the disc hashes and application read access. It does not launch the game. Open **GT2 VR** under **Unknown Sources**. See [player installation](docs/PLAYER-INSTALL.md).
+Menus use arrows/D-pad, Enter to select and Space to go back. Driving uses Up to
+accelerate, Down to brake and reverse after stopping with automatic transmission,
+Left/Right to steer, Space for the handbrake, C to change camera and Esc to pause.
+Brake-to-reverse can be disabled in controls settings; manual transmission keeps
+its explicit reverse binding. Desktop graphics settings offer 5% scale steps.
+In the browser, Shift+Q opens settings without using the browser's F10 shortcut.
 
-## Supported discs
+PCVR and Quest offer stick, virtual-wheel and motion steering. Open VR settings
+with both stick clicks or both grips plus Menu. See [Quest controls](docs/QUEST.md),
+[cockpit adjustments](docs/COCKPIT.md) and [wheel setup](docs/WHEELS.md).
+Windows supports native DualSense controls and adaptive pedal resistance.
+Physical wheels use the native Windows input backend; browser force feedback is
+not available.
 
-| Disc | Executable | Executable SHA-1 |
-|---|---|---|
-| US Arcade v1.1 | SCUS_944.55 | `231f9dba7191b9ef915621662afdc40a7c66df95` |
-| US Simulation v1.2 | SCUS_944.88 | `3030aa271c0a4022fc69ce09d76a6bc75e69a32a` |
-| Europe Arcade (En,Fr,De,Es,It) | SCES_023.80 | `2b59ad844a4dbb934fc1d8ef955c63038f54e932` |
-| Europe Simulation (En,Fr,De,Es,It) | SCES_123.80 | `5172a19c1d0fe07a2a61966653b755afe26d9e69` |
+Native desktop/PCVR saves share the installed save directory. Use the supplied
+transfer scripts for [PC/Quest save exchange](docs/SAVE-TRANSFER.md). Browser saves
+use IndexedDB for the current site origin; Export saves creates a backup and
+Import saves restores it before starting. Export before clearing browser data or
+moving to a different address. Disc contents stay local and are never uploaded.
 
-European media currently use the port's English UI. Other language selections and other revisions are not claimed as supported. Revisions are checked by executable hash, not by the image filename. Single-track MODE2/2352 BIN/CUE, raw 2352-byte ISO, ZIP and 7z inputs are accepted. A 2048-byte ISO omits required XA sectors and is rejected. The installer never downloads game images.
+## Graphics and optional media
 
-## Controls
+Cockpit seating and mirrors, draw distance, texture filtering, MSAA, HUD visibility
+and the frame profiler are configurable. VR additionally offers eye resolution,
+headset refresh selection and supported foveation. Higher settings increase GPU
+load; use the profiler to choose settings appropriate for the device.
 
-On PC, **F10** or **Create/Select + Options/Start** opens settings. Arrows/D-pad navigate and change values; Escape/Triangle closes. DualSense R2 accelerates and L2 brakes in the pedal profile. Native HID effects require the physical controller, rather than a virtual Xbox controller exposed by a mapper.
+Native installers can prepare HD menus, fonts, HUD and movies from local game
+assets. See [HD media](docs/HD-MEDIA.md). An optional locally supplied BIOS can
+prepare the PlayStation startup sequence; a BIOS is not required for normal play.
+No firmware or generated game artwork is distributed.
 
-Choose **Cockpit / driver view** to change the Driver camera. **C** still cycles Driver, Chase 1 and Chase 2. Seat height adjusts from **-20 to +20 cm** and **Seat forward / back** from **-20 to +40 cm**. The decorative steering wheel can be hidden for physical-wheel play. The recessed dashboard stays below the cowl, and a central cabin mirror shares one small rear-view image between both eyes. Its size adjusts from **25% to 100%**, and **OFF** removes its rear-view pass. Settings save automatically across both discs; **Original** restores the original Driver view.
+## Requirements and limits
 
-On PCVR and Quest, **L3 + R3** (press both sticks) or **both grips + Menu** opens VR settings. **Menu** alone pauses the race. **Y** still changes the camera while you hold the virtual wheel. Use **Change game (Arcade / Simulation)** to return to the disc picker after saving progress. Stick up/down selects rows; **left/right triggers decrease/increase values**. A confirms/opens, B goes back. Grips and horizontal stick drift cannot change menu values. See [Quest controls and settings](docs/QUEST.md).
+Browser play requires WebGL2, an 8192-pixel texture limit and at least 512 array
+texture layers. The complete BIN is held in memory. One disc is available per
+page session; reload after graphics-context loss. Browser VR and physical-wheel
+force feedback are not supported. See [browser setup](docs/WEB.md) and
+[platform compatibility](docs/VALIDATION.md).
 
-See [PCVR controls and runtime requirements](docs/PCVR.md) for SteamVR / Steam Link, Meta Quest Link / Air Link and Virtual Desktop setup.
-
-## Performance and limits
-
-New Quest profiles start at **130% resolution, 72 Hz, MSAA 2x, the entire detailed course and medium foveation**, with smooth textures, virtual-wheel driving and 100% vibration. PCVR also starts at **130% eye resolution**; flat desktop rendering scale remains 100%. The instrument HUD and profiler start **OFF** on all platforms; the physical cockpit instruments remain visible. All cheats and unlock overrides start off on both discs. Existing saved preferences are preserved. See [the full default settings](docs/QUEST.md#first-launch-defaults).
-
-175% eye resolution means about **3.06 times as many pixels** as 100%. Sustained 175% at 90 FPS is not achieved across races. Select resolution, MSAA, foveation and distance to suit the scene; the profiler reports actual application frames, not the selected display refresh rate.
-
-Two-player split-screen remains on the theatre screen in VR. Wider VR views can reveal gaps in original geometry. Billboards remain flat artwork; the fix prevents gaze-following rotation and does not turn trees into 3D models. Public release signing differs from development signing: never uninstall a development build merely to bypass a signature mismatch without exporting its saves first.
+Cross-platform multiplayer and PSVR2 Sense adaptive triggers are planned for a
+future release.
 
 ## Build from source
 
-Run the source folder's **INSTALL.bat** to install missing CMake, MSVC C++ Build Tools and Vulkan SDK dependencies through WinGet, build, run checks and prepare your discs. Optional 7z extraction installs 7-Zip. Windows driver installation remains the GPU vendor's responsibility. Runtime requires Windows x64 and Vulkan 1.3.
+The release contains the same C++ source used by all targets. Platform adapters
+handle windows, graphics APIs, devices and file storage.
 
 ```powershell
-.\scripts\install.ps1 -DiscImage 'D:\Discs\Arcade.bin','D:\Discs\Simulation.bin'
 cmd /c build.cmd build_local
 ctest --test-dir build_local --output-on-failure
+./scripts/build-web.ps1 -Emsdk C:/path/to/emsdk
 ```
 
-`-InstallDir`, `-BuildDir`, `-SkipDependencies` and `-NoBuild` support custom/offline preparations. Loose assets are stored under `runtime/{arcade,simulation}/assets`, with raw sectors retained for audio, movies and overlay data. Source installation preserves previous data and saves. Android build/signing instructions are in [QUEST.md](docs/QUEST.md).
+macOS uses `BUILD-MACOS.command`; Linux uses `BUILD-STEAMDECK.sh` or
+`scripts/build-linux.sh`. Android instructions are in [QUEST.md](docs/QUEST.md).
+Browser build instructions and the pinned toolchain are documented in [WEB.md](docs/WEB.md).
+Run `scripts/audit-source.ps1 -FileSystem` before packaging a source snapshot.
+Retail data, private research notes, credentials and build directories are excluded.
 
-Sources are published as a normal repository folder. Run `scripts/audit-source.ps1` before publication, or `scripts/audit-source.ps1 -FileSystem` for a source archive without Git metadata. The source and player packagers accept the same switch and record SHA-256 snapshots without claiming a commit. Retail data, private diagnostics, signing keys and build outputs are excluded. See [validation](docs/VALIDATION.md) and [third-party provenance](THIRD_PARTY.md).
+## License and credits
 
-## Optional offline media preparation
+Project code is available under the [MIT License](LICENSE). Retain its copyright
+and permission notice when redistributing. Credit: **Gran Turismo 2 PC & VR contributors**.
+The license does not grant rights to game data, firmware, trademarks or extracted assets.
 
-The installer can upscale title/GT Mode backgrounds, startup pictures and full-screen movies, and prepare 4x menu-font/button/HUD atlases with palette-aware shader smoothing on Windows or macOS, then use the prepared assets across compatible platforms. On Mac, use **PREPARE-HD.command**; see [Mac HD preparation](docs/MACOS.md#hd-pictures-text-and-movies). It can also capture the original two-screen PlayStation startup and sound from a local BIOS dump, before the Quest disc selector; the firmware sequence cannot be skipped. Movie preparation limits neural changes against the original frames to reduce invented detail. Smooth texture filtering now includes mipmaps for distant surfaces and fences. See [HD media setup, coverage and limitations](docs/HD-MEDIA.md). BIOS is optional and used only to prepare the console startup; normal installation and gameplay do not require it. No BIOS or generated game artwork is distributed.
+- **Khronos Group:** OpenXR headers/loaders, Apache-2.0; bundled JsonCpp retains its own license.
+- **VRMADA / UltimateXR:** virtual hand meshes, poses and skin texture, MIT.
+- **Sean Barrett and stb contributors:** image decoding/encoding, MIT.
+- **Hyllian:** xBR contour processing, MIT.
+- **Emscripten and SDL contributors:** browser toolchain and platform support; notices are included.
+- **RetroArch team:** libretro API header for optional offline boot capture, MIT.
 
-HD resources can be switched off in **VR menu → Graphics and performance → HD textures and media**. Arcade and Simulation share VR graphics, controls and HUD preferences. Optional offline HD preparation also enhances the PlayStation startup while retaining its original version and audio; see [HD media](docs/HD-MEDIA.md).
-
-HD preparation includes offline xBR contour smoothing of shared menu/HUD atlases with original glyphs and live palette colours. Opaque menu captions are included. Pictures and movies use a separate neural upscaler. The HUD submenu can hide the movie-skip reminder; its visibility is saved across both discs.
-
-**VR menu → Graphics and performance → PlayStation intro** enables or disables the prepared console startup on the next launch. It defaults to ON and is shared by both discs. When enabled, the sequence plays completely before disc selection.
-
-## Committed roadmap
-
-The following features are planned; no release dates are set:
-
-- Adaptive trigger support for PlayStation VR2 Sense controllers in PCVR.
-- 0.7.0: native Steam Deck / SteamOS game, currently in development. BUILD-STEAMDECK.sh builds the game package; INSTALL-LINUX.sh still installs the Quest version.
-- A browser version of the game.
-- After the Steam Deck and browser ports are added and tested, a full cross-platform multiplayer release spanning Windows, PCVR, Quest, macOS, Steam Deck and browsers.
-
-The existing adaptive accelerator/brake effects for a DualSense gamepad on Windows are separate from the planned PSVR2 Sense support.
-
-## License
-
-Project code is available under the [MIT License](LICENSE). You may use, modify
-and redistribute it, including commercially, provided that you retain the
-copyright and permission notice. Credit as **Gran Turismo 2 PC & VR contributors**.
-Third-party components retain their own licenses. The MIT license does not grant
-rights to Gran Turismo game data, Sony firmware, trademarks or extracted assets.
-
-Virtual-wheel and motion controls and hand integration are shared with my
-MiamiVR Quest project.
-
-## Credits and third-party components
-
-- **Khronos Group** — OpenXR headers and the Android/Windows OpenXR loaders, Apache-2.0. The Windows loader also includes JsonCpp under its bundled licence.
-- **VRMADA / UltimateXR** — virtual hand meshes, poses and skin texture, MIT.
-- **Sean Barrett and stb contributors** — image decoding/encoding libraries, used under MIT.
-- **Hyllian** — xBR contour algorithm adapted for offline UI processing, MIT.
-- **RetroArch team** — libretro API header used by the optional offline boot-capture helper, MIT.
-
-The optional installer also downloads **Real-ESRGAN** (Xintao Wang, BSD-3-Clause)
-and **Beetle PSX libretro** (GPL-2.0) for offline media preparation and local BIOS
-capture respectively. They are separate tools, not linked into the game.
-See [THIRD_PARTY.md](THIRD_PARTY.md) for source links, exact provenance and license
-locations; player packages retain the dependency notices under `LICENSES/`.
+Optional offline media tools include Real-ESRGAN (BSD-3-Clause) and Beetle PSX
+libretro (GPL-2.0); these are separate tools and are not linked into the game.
+See [THIRD_PARTY.md](THIRD_PARTY.md) for full provenance and license locations.

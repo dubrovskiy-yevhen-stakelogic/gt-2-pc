@@ -91,5 +91,13 @@ int main(){try{
     p={};p.analog=12;p.throttle=190;reverse.Apply(p,-.1f,true);Check(p.throttle==190 && !(p.buttons & gt2::kPadReverse),"gas selects forward near rest");
     p={};p.buttons=gt2::kPadReverse;reverse.Apply(p,-2,true);Check((p.buttons & gt2::kPadReverse)!=0,"explicit reverse binding remains available");
     p={};p.brake=100;reverse.Apply(p,0,false);Check(p.brake==100 && !(p.buttons & gt2::kPadReverse),"manual transmission retains original reverse behavior");
+    reverse.Reset();p={};p.buttons=gt2::kPadBrake;p.throttle=200;
+    reverse.Apply(p,8,true);Check(p.buttons==gt2::kPadBrake,"keyboard brakes at speed; inactive throttle axis ignored");
+    reverse.Apply(p,0,true);Check((p.buttons & gt2::kPadReverse) && !p.brake,"Down selects reverse at rest without a controller");
+    p={};p.buttons=gt2::kPadBrake;reverse.Apply(p,-3,true);Check((p.buttons & gt2::kPadReverse)!=0,"holding Down keeps reverse engaged");
+    p={};reverse.Apply(p,-3,true);Check(!p.buttons && !p.throttle && !p.brake,"releasing Down coasts without unintended acceleration");
+    p={};p.buttons=gt2::kPadThrottle;reverse.Apply(p,-3,true);Check(p.brake==255 && !p.throttle && (p.analog & 8),"Up brakes before returning from reverse");
+    p={};p.buttons=gt2::kPadThrottle;reverse.Apply(p,0,true);Check(p.buttons==gt2::kPadThrottle,"Up restores forward at rest");
+    p={};p.buttons=gt2::kPadBrake;reverse.Apply(p,0,false);Check(p.buttons==gt2::kPadBrake,"manual keyboard brake remains brake");
     std::printf("%d driving/menu checks passed\n",checks);return 0;
 }catch(const std::exception& e){std::fprintf(stderr,"%s\n",e.what());return 1;}}

@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "gt2formats/overlay_data.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 namespace gt2view {
 

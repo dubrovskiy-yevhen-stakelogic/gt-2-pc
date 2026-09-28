@@ -29,7 +29,7 @@ add_library(gt2_native_glue STATIC "${ANDROID_NDK}/sources/android/native_app_gl
 target_compile_options(gt2_native_glue PRIVATE -Wno-unused-parameter)
 target_include_directories(gt2_native_glue PUBLIC "${ANDROID_NDK}/sources/android/native_app_glue")
 file(GLOB GT2GAME_CPP CONFIGURE_DEPENDS tools/gt2game/*.cpp)
-list(FILTER GT2GAME_CPP EXCLUDE REGEX "/(main|game_window_win32|game_window_xr)\\.cpp$")
+list(FILTER GT2GAME_CPP EXCLUDE REGEX "/(main|game_window_win32|game_window_xr|game_window_sdl|game_window_web)\\.cpp$")
 add_library(gt2game SHARED ${GT2GAME_CPP} ${GT2_DEV_DUMP_SOURCES} android/app/src/main/cpp/android_main.cpp)
 target_include_directories(gt2game PRIVATE tools/gt2game)
 target_link_libraries(gt2game PRIVATE gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career gt2menu gt2shell

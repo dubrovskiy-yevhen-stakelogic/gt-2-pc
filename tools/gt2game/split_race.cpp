@@ -316,7 +316,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
     const RaceViewConfig& config = splitConfig.view;
     const ReplayFile* replay = splitConfig.replay;
     const bool replaying = replay != nullptr;
-    VkSceneRenderer& renderer = window.Renderer();
+    SceneRenderer& renderer = window.Renderer();
     const std::string& trackName = data.trackName;
     SplitRaceResult result;
     if (data.params.size() < 2) throw std::runtime_error("2 player race: two cars are needed");

@@ -46,7 +46,7 @@
 #include "ghost_replay.h"
 #include "gt2view/race_record_screens.h"
 #include "gt2view/title_view.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 using namespace gt2;
 namespace pad = gt2::menu_list_pad;
@@ -322,7 +322,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
         !options.shots.empty() || !options.anyShots.empty() || !options.compare.empty() || options.quitAfter > 0;
     if (!options.noMovies && (options.forceMovies || !automatedBoot) &&
         !gt2game::PlayBootScreens(window, disc, !options.noSound)) return 0;
-    gt2view::VkSceneRenderer* renderer = &window.Renderer();
+    gt2view::SceneRenderer* renderer = &window.Renderer();
     renderer->clearColor[0] = renderer->clearColor[1] = renderer->clearColor[2] = 0.0f;
     auto view = std::make_unique<gt2view::TitleView>(*renderer);
     const MenuCanvas::Rules rules = options.compare.empty() ? MenuCanvas::Rules::kPs1 : MenuCanvas::Rules::kInterpreter;

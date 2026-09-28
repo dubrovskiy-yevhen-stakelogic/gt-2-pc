@@ -139,10 +139,11 @@ MovieResult PlayPreparedMovie(GameWindow& window, const std::string& path, const
     auto& renderer = window.Renderer();
     const float oldClear[] = {renderer.clearColor[0], renderer.clearColor[1], renderer.clearColor[2]};
     struct Restore {
-        gt2view::VkSceneRenderer& renderer; const float* value;
+        gt2view::SceneRenderer& renderer; const float* value;
         ~Restore() { std::copy(value, value + 3, renderer.clearColor); }
     } restore{renderer, oldClear};
     renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0;
+#ifndef __EMSCRIPTEN__
     std::mutex mutex;
     std::condition_variable changed;
     std::deque<std::pair<uint32_t, hd::Picture>> queue;
@@ -167,6 +168,9 @@ MovieResult PlayPreparedMovie(GameWindow& window, const std::string& path, const
         std::mutex& mutex; std::condition_variable& changed; bool& stop; std::thread& thread;
         ~Join() { { std::lock_guard lock(mutex); stop = true; } changed.notify_all(); thread.join(); }
     } join{mutex, changed, stop, decoder};
+#else
+    uint32_t decodedFrame = 0;
+#endif
     // Device dies before the mixer/PCM source and decoder on every exit path.
     audio::Mixer mixer;
     audio::AudioDevice device;
@@ -188,13 +192,18 @@ MovieResult PlayPreparedMovie(GameWindow& window, const std::string& path, const
         const double seconds = audioClock ? double(pcm.position.load()) / audio::kSampleRate : elapsed;
         const uint32_t target = uint32_t(seconds * movie.fpsNum / movie.fpsDen);
         if (target >= movie.frames) break;
-        wanted.store(target, std::memory_order_relaxed);
         hd::Picture picture;
+#ifdef __EMSCRIPTEN__
+        // Browser callbacks share one thread. Decode the requested frame only.
+        if (target != decodedFrame) { picture = movie.Frame(target); decodedFrame = target; }
+#else
+        wanted.store(target, std::memory_order_relaxed);
         { std::lock_guard lock(mutex);
             if (failure) std::rethrow_exception(failure);
             while (!queue.empty() && queue.front().first <= target) { picture = std::move(queue.front().second); queue.pop_front(); }
         }
         changed.notify_one();
+#endif
         if (!picture.rgb.empty()) view.Upload(picture.rgb.data(), int(picture.width), int(picture.height), int(movie.sourceWidth), int(movie.sourceHeight));
         std::vector<gt2view::DrawItem> items;
         view.Append(items, spec.displayWidth, spec.displayHeight, spec.x, spec.y, renderer.AspectRatio());

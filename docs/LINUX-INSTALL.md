@@ -1,14 +1,14 @@
 # Install GT2 VR on Quest from Linux or Steam Deck
 
-This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.5.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
+This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.8.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
 
 ## Steam Deck: step by step
 
 1. Switch the Deck to **Desktop Mode**.
-2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-0.5.0`. Do not run a script from inside the ZIP viewer.
+2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-0.8.0`. Do not run a script from inside the ZIP viewer.
 3. Extract your own GT2 disc archives with Ark too. Keep each `.cue` beside its matching `.bin`. The installer reads BIN/CUE directly; do not convert the disc to a 2048-byte ISO. That conversion loses race music and movie sectors.
 4. Enable developer mode on Quest, connect it by a USB data cable, put it on and accept **Allow USB debugging**. Leave the headset connected and awake during copying.
-5. In Dolphin, open the extracted release folder and choose **Open Terminal Here** (Konsole). Run:
+5. In Dolphin, open the `native` folder inside the extracted complete release and choose **Open Terminal Here** (Konsole). Run:
 
    ```sh
    bash INSTALL-LINUX.sh
@@ -48,7 +48,3 @@ This Linux installer prepares **original game assets** and optional original con
 - **No device**: check developer mode, a data-capable cable and the Deck's USB host connection. Close other installers that may be using the headset.
 - **No permissions**: this is Linux USB device access, not the read-only system partition. The installer stops without changing OS configuration. If your existing Quest installation tool already has a working ADB connection, pass that tool's native ADB with `--adb`. On systems lacking suitable USB permissions, an administrator must grant device access; the installer does not silently run as root or alter udev rules. An already configured, authorized network ADB connection can also be selected with `--serial ADDRESS:PORT`.
 - **INSTALL_FAILED_UPDATE_INCOMPATIBLE**: the installed app uses another signing key. Do not uninstall just to bypass this error: export saves/settings before a deliberate manual migration. Public releases use the release signing key; development APKs use a different key.
-
-## Verification status
-
-The portable reader is checked against Windows extraction of all four supported US/European disc profiles. Automated tests cover path validation, malformed input, retained saves, rollback after file-move failure, unauthorized ADB, signing failure and the device-copy verification flow. The ctypes BIOS host is also checked with the Windows software core and the native G2MEDIA reader. A physical Steam Deck installation remains a separate hardware check; mock ADB tests do not establish USB driver permissions on every Linux distribution.

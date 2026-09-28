@@ -15,7 +15,7 @@
 
 #include "game/menu/menu_car.h"
 #include "gt2formats/gt_menu_images.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 namespace gt2 {
 class GtfsVolume;
@@ -29,7 +29,7 @@ public:
 
     // `rowBase` = the first renderer VRAM row of the menu's 512 console rows (0: the menus own the console rows
     // while no course is loaded).
-    explicit MenuView(VkSceneRenderer& renderer, uint32_t rowBase = 0) : renderer_(renderer), rowBase_(rowBase) {}
+    explicit MenuView(SceneRenderer& renderer, uint32_t rowBase = 0) : renderer_(renderer), rowBase_(rowBase) {}
 
     // Uploads the VRAM of a page (call when the page, i.e. its pictures, changed).
     void UploadVram(const gt2::MenuVram& vram);
@@ -66,7 +66,7 @@ private:
     void EmitRasterised(const gt2::MenuPrim& p);
     void EmitInterpolated(const gt2::MenuPrim& p);
 
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     uint32_t rowBase_;
     std::vector<Quad> quads_;
     gt2::MenuCanvas coverA_, coverB_;   // two backgrounds (black / white): a pixel equal in both is covered
@@ -86,7 +86,7 @@ class SceneAssets;
 // colour 0x40 as 0x8001A8A4 sets it.
 class MenuCarView {
 public:
-    MenuCarView(VkSceneRenderer& renderer, const gt2::GtfsVolume& vol);
+    MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol);
     ~MenuCarView();
     // Loads the car of `modelId` (packed id) when it is not the one loaded; false when it cannot be loaded.
     bool Use(uint32_t modelId);
@@ -110,7 +110,7 @@ public:
     void AppendPair(std::vector<DrawItem>& items, int which, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect, bool squarePixels);
 
 private:
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     const gt2::GtfsVolume& vol_;
     std::unique_ptr<SceneAssets> assets_;
     uint32_t model_ = 0;

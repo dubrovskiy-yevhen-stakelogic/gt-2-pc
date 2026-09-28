@@ -37,7 +37,7 @@ std::array<uint8_t, 3> ColorOf(uint32_t w) { return {uint8_t(w & 0xFF), uint8_t(
 
 // ---------------------------------------------------------------- setup
 
-Hud::Hud(VkSceneRenderer& renderer, const gt2::GtfsVolume& vol, const gt2::GuestImage& exe, const gt2::GuestImage& raceOverlay)
+Hud::Hud(SceneRenderer& renderer, const gt2::GtfsVolume& vol, const gt2::GuestImage& exe, const gt2::GuestImage& raceOverlay)
     : renderer_(renderer), vol_(vol), font_(gt2::LoadRaceFont(vol, exe)), text_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kSmallFont))),
       large_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kLargeFont))), start_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kStartFont))),
       sheet_(gt2::LoadHudSheet(vol)), strings_(gt2::LoadHudStrings(vol)), tables_(gt2::LoadHudTables(raceOverlay)), block_(size_t(1024) * 512, 0) {

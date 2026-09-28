@@ -251,7 +251,7 @@ private:
     std::array<int, 11> barResult_{};
     int state_ = 0, slot_ = 0, delay_ = 0;
     uint32_t line1_ = 0, line2_ = 0, error_ = 0;
-    int16_t headerAnim_ = -1;      // mgr + 0x34 band anim (the "Memory Card N" header)
+    [[maybe_unused]] int16_t headerAnim_ = -1; // mgr + 0x34 band anim (the "Memory Card N" header)
     Band headerBand_;
     std::array<Bar, 11> bars_;     // mgr + 0x50 + k * 0x98 (BarIndex in title_screens.cpp)
     int transferLeft_ = 0;         // sectors of the running write / read
@@ -259,7 +259,7 @@ private:
     int16_t progressVisible_ = -1;
     std::array<int8_t, 32> progress_{};
     bool loaded_ = false, saved_ = false, exited_ = false;
-    int leaving_ = 0;
+    [[maybe_unused]] int leaving_ = 0;
     // Mode 1 (replays): the file read by state 7, the list 0x80091FE4 (row callback 0x8006F060) and its rows
     // (mgr + 0x890 + i * 4: {entry, kind, enabled, playable}), the chosen row (mgr + 0x930), the loaded payload.
     struct ReplayRow { int8_t entry = 0, kind = 0; bool enabled = true, playable = true; };

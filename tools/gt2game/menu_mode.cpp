@@ -30,7 +30,7 @@
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
 #include "gt2view/menu_view.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "panel.h"
 
 using namespace gt2;
@@ -171,7 +171,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
                         menu::MakeCareerPopupList(MenuListKind::kUsedCars, assets, data, actions));
     runtime.Start(options.startPage);
 
-    gt2view::VkSceneRenderer& renderer = window.Renderer();
+    gt2view::SceneRenderer& renderer = window.Renderer();
     renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0.0f;
     gt2view::MenuView view(renderer);
     auto carView = std::make_unique<gt2view::MenuCarView>(renderer, vol);

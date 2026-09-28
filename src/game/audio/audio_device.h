@@ -36,8 +36,8 @@ private:
     // The AAudio data callback of audio_device_aaudio.cpp (AAudio's own thread); returns aaudio_data_callback_result_t.
     int Callback(void* audioData, int32_t frames);
 #endif
-    std::FILE* record_ = nullptr;
-    uint32_t recordedFrames_ = 0;
+    [[maybe_unused]] std::FILE* record_ = nullptr;
+    [[maybe_unused]] uint32_t recordedFrames_ = 0;
 
     Mixer* mixer_ = nullptr;
     std::atomic<bool> running_{false};

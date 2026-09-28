@@ -1,4 +1,4 @@
-# Quest 3 standalone — 0.5.0
+# Quest 3 standalone — 0.8.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 
@@ -88,11 +88,11 @@ $env:VULKAN_SDK = 'C:\VulkanSDK\<version>'
 .\scripts\build-quest-release.ps1 -AndroidSdk 'C:\Android\Sdk' -JavaDirectory 'C:\Java\jdk-21' -Gradle 'C:\Gradle\bin\gradle.bat' -InitializeSigningKey
 ```
 
-Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.5.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
+Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.8.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
 
 If an offline cache lacks Android lint dependencies, `-SkipLint` explicitly omits the lint tasks. Compilation, APK signing and alignment checks still run; record the missing lint coverage when validating that build.
 
-The public version is 0.5.0; Android versionCode is 23. Development and public signing identities differ. An incompatible signature must never be handled by automatically uninstalling the installed application.
+The public version is 0.8.0. APKs signed with different keys cannot replace each other in place. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs

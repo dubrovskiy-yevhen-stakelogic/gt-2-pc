@@ -14,7 +14,7 @@
 
 #include "gt2formats/gt_menu_images.h"
 #include "gt2view/race_overlay_screens.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 namespace gt2view {
 
@@ -23,7 +23,7 @@ public:
     static constexpr uint32_t kVertexBase = 1'040'128, kVertexLimit = 8'400; // Build: the first 6000, BuildOverlay: the rest
     static constexpr uint32_t kRowBase = 1024;
 
-    explicit PanelView(VkSceneRenderer& renderer) : renderer_(renderer) {}
+    explicit PanelView(SceneRenderer& renderer) : renderer_(renderer) {}
     // A console VRAM image (1024 x 512 words) into rows 1024..1535.
     void UploadVram(const gt2::MenuVram& vram);
     void UploadVram(const std::vector<uint16_t>& words);
@@ -42,7 +42,7 @@ private:
         uint32_t page = 0, clut = 0, flags = 0, blend = kBlendOpaque, stpPass = 0;
     };
     void Submit(std::vector<Quad>& quads, int frameWidth, int frameHeight, float windowAspect, uint32_t base, uint32_t limit, std::vector<DrawItem>& items);
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
 };
 
 } // namespace gt2view

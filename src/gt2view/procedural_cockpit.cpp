@@ -14,7 +14,7 @@ constexpr uint32_t kCabinLimit = 24576;
 constexpr uint32_t kWheelOffset = kCabinLimit, kWheelLimit = 4096;
 constexpr uint32_t kInstrumentOffset = kWheelOffset + kWheelLimit, kInstrumentLimit = 4000;
 constexpr uint32_t kMirrorOffset = kInstrumentOffset + kInstrumentLimit, kMirrorLimit = 96;
-static_assert(kMirrorOffset + kMirrorLimit <= VkSceneRenderer::kCockpitVertexLimit);
+static_assert(kMirrorOffset + kMirrorLimit <= SceneRenderer::kCockpitVertexLimit);
 
 struct V {
     float x, y, z;
@@ -239,7 +239,7 @@ void Gauge(Mesh& mesh, V center, bool tachometer) {
 }
 } // namespace
 
-ProceduralCockpit::ProceduralCockpit(VkSceneRenderer& renderer) : renderer_(renderer) {}
+ProceduralCockpit::ProceduralCockpit(SceneRenderer& renderer) : renderer_(renderer) {}
 
 void ProceduralCockpit::Build(const CockpitFit& fit) {
     Mesh cabin;
@@ -482,8 +482,8 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         throw std::runtime_error("procedural cockpit exceeds its vertex range");
     cabinCount_=uint32_t(cabin.vertices.size()); wheelCount_=uint32_t(wheel.vertices.size());
     mirrorCenter_=fit.mirror; mirrorScale_=0;
-    renderer_.SetVertices(VkSceneRenderer::kCockpitVertexBase,cabin.vertices);
-    renderer_.SetVertices(VkSceneRenderer::kCockpitVertexBase+kWheelOffset,wheel.vertices);
+    renderer_.SetVertices(SceneRenderer::kCockpitVertexBase,cabin.vertices);
+    renderer_.SetVertices(SceneRenderer::kCockpitVertexBase+kWheelOffset,wheel.vertices);
     fitKey_=FitKey(fit); built_=true;
     speedStep_=rpmStep_=-1; gear_=-100;
 }
@@ -507,7 +507,7 @@ void ProceduralCockpit::BuildMirror(float scale) {
     }
     if (mirror.vertices.size()>kMirrorLimit) throw std::runtime_error("cockpit mirror exceeds its vertex range");
     mirrorCount_=uint32_t(mirror.vertices.size());
-    renderer_.SetVertices(VkSceneRenderer::kCockpitVertexBase+kMirrorOffset,mirror.vertices);
+    renderer_.SetVertices(SceneRenderer::kCockpitVertexBase+kMirrorOffset,mirror.vertices);
     mirrorScale_=scale;
 }
 
@@ -530,7 +530,7 @@ void ProceduralCockpit::UpdateInstruments(float speedKph, float rpm, int gear) {
     mesh.Text(gear<0?"N":gear==0?"R":std::to_string(gear),display,.017f,kAmber);
     mesh.Text(std::to_string((speedStep+5)/10),{dialX_[0],dialY_-.042f,dialZ_+.004f},.010f,kIvory);
     if (mesh.vertices.size()>kInstrumentLimit) throw std::runtime_error("cockpit instruments exceed their vertex range");
-    renderer_.SetVertices(VkSceneRenderer::kCockpitVertexBase+kInstrumentOffset,mesh.vertices);
+    renderer_.SetVertices(SceneRenderer::kCockpitVertexBase+kInstrumentOffset,mesh.vertices);
     instrumentCount_=uint32_t(mesh.vertices.size());
     speedStep_=speedStep; rpmStep_=rpmStep; gear_=gear;
 }
@@ -549,7 +549,7 @@ void ProceduralCockpit::Append(std::vector<DrawItem>& items, const CockpitFit& f
     }
     UpdateInstruments(speedKph,rpm,gear);
     auto append=[&](uint32_t offset,uint32_t count) {
-        DrawItem item; item.firstVertex=VkSceneRenderer::kCockpitVertexBase+offset; item.vertexCount=count;
+        DrawItem item; item.firstVertex=SceneRenderer::kCockpitVertexBase+offset; item.vertexCount=count;
         std::memcpy(item.mvp,carMvp,sizeof(item.mvp)); items.push_back(item);
     };
     append(0,cabinCount_);
@@ -560,7 +560,7 @@ void ProceduralCockpit::Append(std::vector<DrawItem>& items, const CockpitFit& f
     const float c=std::cos(angle),s=std::sin(angle),ct=std::cos(tilt),st=std::sin(tilt);
     const float local[16]={c,s*ct,-s*st,0, -s,c*ct,-c*st,0, 0,st,ct,0,
                            wheelCenter_[0],wheelCenter_[1],wheelCenter_[2],1};
-    DrawItem wheel; wheel.firstVertex=VkSceneRenderer::kCockpitVertexBase+kWheelOffset; wheel.vertexCount=wheelCount_;
+    DrawItem wheel; wheel.firstVertex=SceneRenderer::kCockpitVertexBase+kWheelOffset; wheel.vertexCount=wheelCount_;
     for (int col=0;col<4;++col) for (int row=0;row<4;++row) for (int k=0;k<4;++k)
         wheel.mvp[col*4+row]+=carMvp[k*4+row]*local[col*4+k];
     items.push_back(wheel);
@@ -571,7 +571,7 @@ void ProceduralCockpit::AppendMirror(std::vector<DrawItem>& items, const float* 
     scale=std::clamp(scale,.25f,1.f);
     if (scale!=mirrorScale_) BuildMirror(scale);
     DrawItem item;
-    item.firstVertex=VkSceneRenderer::kCockpitVertexBase+kMirrorOffset;
+    item.firstVertex=SceneRenderer::kCockpitVertexBase+kMirrorOffset;
     item.vertexCount=mirrorCount_;
     std::memcpy(item.mvp,carMvp,sizeof(item.mvp));
     items.push_back(item);

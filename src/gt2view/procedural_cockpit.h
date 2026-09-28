@@ -1,13 +1,13 @@
 #pragma once
 #include "gt2view/cockpit_fit.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include <array>
 
 namespace gt2view {
 
 class ProceduralCockpit {
 public:
-    explicit ProceduralCockpit(VkSceneRenderer& renderer);
+    explicit ProceduralCockpit(SceneRenderer& renderer);
     void Append(std::vector<DrawItem>& items, const CockpitFit& fit, const float* carMvp,
                 float steeringRadians, float speedKph, float rpm, int gear, bool showWheel = true,
                 float seatHeight = 0, float seatBack = 0, const std::array<float,3>* steeringHub = nullptr);
@@ -18,7 +18,7 @@ private:
     void BuildMirror(float scale);
     void UpdateInstruments(float speedKph, float rpm, int gear);
 
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     std::array<float, 203> fitKey_{};
     bool built_ = false;
     uint32_t cabinCount_ = 0, wheelCount_ = 0, instrumentCount_ = 0;

@@ -45,7 +45,7 @@ void TitleView::Emit(const gt2::MenuPrim& p, int frameWidth) {
                 q.v[k] = q.y[k] * float(hdSize_ >> 16) / 480.f;
                 for (int c=0;c<3;++c) q.colour[k][c] *= 255.f/128.f;
             }
-            q.page=VkSceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
+            q.page=SceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
         }
 
         if (p.semi) { // PS1: only the texels with the STP bit blend

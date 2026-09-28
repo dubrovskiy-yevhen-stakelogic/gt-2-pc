@@ -264,8 +264,7 @@ def main():
     info = {"CFBundleExecutable": "GT2", "CFBundleIdentifier": "io.github.gt2pc.macos", "CFBundleName": "GT2",
             "CFBundleDisplayName": "GT2", "CFBundlePackageType": "APPL", "CFBundleShortVersionString": version,
             "CFBundleVersion": version, "LSMinimumSystemVersion": minimum, "NSHighResolutionCapable": True,
-            "LSApplicationCategoryType": "public.app-category.racing-games",
-            "NSLocalNetworkUsageDescription": "GT2 connects to your local multiplayer races."}
+            "LSApplicationCategoryType": "public.app-category.racing-games"}
     (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
     bundler.verify()
     sign(app, bundler.binaries, args.identity)

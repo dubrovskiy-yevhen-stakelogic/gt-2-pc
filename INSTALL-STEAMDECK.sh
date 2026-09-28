@@ -27,7 +27,7 @@ gt2_fail() {
 trap 'gt2_fail "$?"' ERR
 touch "$gt2_log"
 exec > >(tee -a "$gt2_log") 2>&1
-printf '\nGT2 0.7.0 - Steam Deck installer\n%s\n\n' "$(date)"
+printf '\nGT2 0.8.0 - Steam Deck installer\n%s\n\n' "$(date)"
 echo 'Keep this window open. Downloads and compilation may take a while.'
 echo 'The installer does not need a sudo password or changes to the SteamOS system partition.'
 
@@ -50,7 +50,7 @@ if command -v flock >/dev/null; then
         gt2_fail 1
     fi
 fi
-gt2_bundle="${1:-$gt2_root/GT2-0.7.0-steamdeck.flatpak}"
+gt2_bundle="${1:-$gt2_root/GT2-0.8.0-steamdeck.flatpak}"
 if [ "$#" -gt 0 ] && [ ! -s "$gt2_bundle" ]; then
     echo "Package not found: $gt2_bundle"
     gt2_fail 1

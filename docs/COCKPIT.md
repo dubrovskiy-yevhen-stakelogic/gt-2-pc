@@ -1,4 +1,4 @@
-# Cockpit view - 0.5.0
+# Cockpit view
 
 The Driver camera has a three-dimensional cabin fitted inside the selected car's original body. Its hood, roof, pillars and window outlines retain the original geometry. Window openings follow the glass textures; the inner frames receive dark trim while the exterior keeps its paint and reflections. Cockpit view is enabled by default.
 
@@ -35,26 +35,9 @@ The exterior retains its additive environment-map reflections using the existing
 
 Side-mirror views are not implemented. The central mirror remains a fixed rear camera rather than a physically traced reflection.
 
-## Scope and validation
+## Limits
 
 - The cockpit applies to live single-player driving, including look-back. Replays, the external starting flythrough and two-player split-screen retain their existing views.
 - Fitting follows the available low-polygon body geometry. It cannot add detail absent from the original model, and unusual bodies or extreme seat positions can still need adjustment.
 - Cockpit settings change presentation; vehicle simulation and save formats remain unchanged.
-- I tested cockpit driving on Quest 3. The automated audit covers 1096 models with the first paint, default seat and four fixed views; I have not driven every model in VR.
-- Desktop and OpenXR simulator checks do not establish PCVR comfort, physical-wheel alignment or sustained headset performance. See [validation](VALIDATION.md).
 
-## Developer captures
-
-`tests/check_cockpit.py` prepares isolated settings and a finite capture plan for Viper GTS, Pajero Mini, Mini Cooper, Skyline GT-R and Lotus Elise data from the installed Arcade disc. It covers cockpit on/off, the camera cycle, look-back, steering animation and wheel visibility. With `--with-xr`, it also captures both eyes while turning, leaning and looking down in the local OpenXR simulator. The script requires Python with Pillow and does not download tools or launch the game unless `--run` is given.
-
-```powershell
-python tests/check_cockpit.py --game build_update/gt2game.exe --disc runtime/arcade --output work/cockpit-check --with-xr --run
-```
-
-The output folder must be new. Settings, logs and screenshots stay there; existing game saves are not used. `report.json` records process/image checks and `gallery.html` groups the captures for visual inspection. Successful image and submission checks still require inspection of the actual cabin, hood and dashboard.
-
-`gt2assetchecks --cockpits runtime/simulation work/cockpit-corpus.csv` checks the fitted body meshes against all suitable cars in a local disc and reports window counts, vertex budgets and forward visibility. These geometric checks complement the captures; they do not establish every car's appearance or comfort.
-
-`tests/run_cockpit_audit.py runtime/simulation work/cockpit-audit` runs the Windows `gt2cockpitaudit` tool against every suitable model, rendering its front, left, right and seat views. A checker background exposes blocked openings without a track. `tests/cockpit_audit_sheets.py work/cockpit-audit` groups these images for visual review. The audit records its executable hash and uses the first paint, a fixed default seat and four viewing directions; it is a geometry review, not a headset or performance benchmark.
-
-`tests/check_cockpit_countdown.py` checks the native camera cut before GO using finite cockpit-on/off desktop and XR runs. The mirror cases in `tests/check_cockpit.py` also compare CSV draw counts at 100%, 25% and OFF, including the saved cockpit mirror preferences.

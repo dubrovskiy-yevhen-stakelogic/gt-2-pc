@@ -7,7 +7,7 @@
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/hud_assets.h"
 #include "gt2formats/overlay_data.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "gt2view/hud_visibility.h"
 
 namespace gt2view {
@@ -107,7 +107,7 @@ public:
     static constexpr uint32_t kRowBase = 1536; // our VRAM rows 1536..2047 = console rows 0..511 of the HUD's data
     static constexpr int kFrameWidth = 320, kFrameHeight = 240;
 
-    Hud(VkSceneRenderer& renderer, const gt2::GtfsVolume& vol, const gt2::GuestImage& exe, const gt2::GuestImage& raceOverlay);
+    Hud(SceneRenderer& renderer, const gt2::GtfsVolume& vol, const gt2::GuestImage& exe, const gt2::GuestImage& raceOverlay);
 
     const gt2::HudStrings& Strings() const { return strings_; }
 
@@ -190,7 +190,7 @@ private:
     void UploadBlock();
     int DialIndexFor(int revLimitRpm) const;               // 0x8002BD84's face choice
 
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     const gt2::GtfsVolume& vol_;
     std::array<int16_t, 5120> sinTable_{}; // the executable's 0x80093150 (sine; cosine at + 0x400)
     gt2::RaceFont font_;

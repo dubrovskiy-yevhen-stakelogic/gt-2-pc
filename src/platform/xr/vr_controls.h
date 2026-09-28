@@ -61,12 +61,17 @@ public:
     void Apply(LogicalPad& pad, float speed, bool automatic) {
         if (!automatic) { Reset(); return; }
         if (pad.buttons & kPadReverse) { reverse_ = true; return; }
-        const bool gas = pad.throttle > 30, brake = pad.brake > 30;
+        // Keyboard/replay buttons are digital; stale axis values are ignored
+        // whenever their analog flag is clear.
+        const uint16_t throttle = (pad.analog & 4) ? pad.throttle : ((pad.buttons & kPadThrottle) ? 255 : 0);
+        const uint16_t braking = (pad.analog & 8) ? pad.brake : ((pad.buttons & kPadBrake) ? 255 : 0);
+        const bool gas = throttle > 30, brake = braking > 30;
         if (!reverse_ && brake && !gas && std::abs(speed) < .30f) reverse_ = true;
         if (reverse_ && gas && speed > -.30f) reverse_ = false;
         if (!reverse_) return;
+        pad.analog |= 4|8;
         pad.buttons &= ~(kPadThrottle|kPadBrake|kPadReverse);
-        if (gas) { pad.brake = pad.throttle; pad.throttle = 0; pad.buttons |= kPadBrake; }
+        if (gas) { pad.brake = throttle; pad.throttle = 0; pad.buttons |= kPadBrake; }
         else {
             pad.throttle = 0; pad.brake = 0;
             if (brake) pad.buttons |= kPadReverse;

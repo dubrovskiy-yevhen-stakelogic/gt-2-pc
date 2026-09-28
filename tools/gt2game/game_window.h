@@ -30,7 +30,7 @@
 #include <utility>
 #include <vector>
 
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "platform/input/input_system.h"
 #include "platform/xr/vr_rig.h"
 
@@ -78,7 +78,7 @@ class WindowBackend {
 public:
     virtual ~WindowBackend() = default;
 
-    virtual gt2view::VkSceneRenderer& Renderer() = 0;
+    virtual gt2view::SceneRenderer& Renderer() = 0;
     // The platform's window handle (HWND on Windows) for the input devices; null when there is none.
     virtual void* NativeHandle() const = 0;
     virtual void SetTitle(const std::string& title) = 0;
@@ -194,7 +194,7 @@ public:
 
     // The window's caption (the screens name themselves).
     void SetTitle(const std::string& title) { backend_->SetTitle(title); }
-    gt2view::VkSceneRenderer& Renderer() { return backend_->Renderer(); }
+    gt2view::SceneRenderer& Renderer() { return backend_->Renderer(); }
 
     // Adds scripted presses (may be called several times; all use the global field numbering).
     void AddScript(const std::string& script);
@@ -207,7 +207,7 @@ public:
     bool BeginFrame();
     // Presents `items`; `shotPath` non-empty = also save the frame as PNG. Then waits for the frame's time slot
     // (`frameTime`, unless pacing is off) and advances the field counter.
-    // `sceneItems`: items[0, sceneItems) are the 3D scene (VkSceneRenderer::Draw: the graphics options' render scale /
+    // `sceneItems`: items[0, sceneItems) are the 3D scene (SceneRenderer::Draw: the graphics options' render scale /
     // MSAA / texture options apply to them).
     void EndFrame(const std::vector<gt2view::DrawItem>& items, const std::string& shotPath = {},
                   std::chrono::nanoseconds frameTime = std::chrono::nanoseconds(16'666'667), size_t sceneItems = 0);

@@ -160,7 +160,7 @@ gt2::raceui::RaceEndState RaceEndOf(const sim::RaceSim& race, const RaceFlow& fl
 
 RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& disc, const GtfsVolume& vol, RaceData& data, size_t carCount,
                            const RaceOptions& raceOptions, const RaceViewConfig& config, RaceFlow* flow) {
-    VkSceneRenderer& renderer = window.Renderer();
+    SceneRenderer& renderer = window.Renderer();
     const std::string& trackName = data.trackName;
     const std::string carId = data.carIds.empty() ? std::string() : data.carIds[0];
     RaceViewResult result;
@@ -1155,9 +1155,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     vrControlsHeld = padLogicalHeld;
                     vrBrakeReverse.Apply(merged,race.CarAt(0).body.forwardSpeed / 4096.f,!activeOptions.manual && bindings.brakeReverse);
                 }
-                if (!replaying && !VrMode() && window.Pad().type != input::kTypeNone) {
+                if (!replaying && !VrMode()) {
                     const auto& bindings = OverlayDesktopBindings();
-                    if (OverlayDesktopCustomBindings()) {
+                    if (OverlayDesktopCustomBindings() && window.Pad().type != input::kTypeNone) {
                         gt2::vr::ApplyDesktopControlBindings(merged,padLogicalHeld,window.Pad(),bindings);
                         logicalPressed = padLogicalHeld & ~vrControlsHeld;
                         vrControlsHeld = padLogicalHeld;

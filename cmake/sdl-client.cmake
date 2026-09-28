@@ -31,7 +31,7 @@ target_link_libraries(gt2inputdev PUBLIC gt2input PRIVATE SDL2::SDL2)
 add_library(gt2flatcamera STATIC src/platform/xr/vr_rig.cpp src/platform/xr/vr_driving.cpp)
 target_include_directories(gt2flatcamera PUBLIC src)
 file(GLOB GT2GAME_CPP CONFIGURE_DEPENDS tools/gt2game/*.cpp)
-list(FILTER GT2GAME_CPP EXCLUDE REGEX "/game_window_(win32|xr|android)\\.cpp$")
+list(FILTER GT2GAME_CPP EXCLUDE REGEX "/game_window_(win32|xr|android|web)\\.cpp$")
 add_executable(gt2game ${GT2GAME_CPP} ${GT2_DEV_DUMP_SOURCES})
 target_link_libraries(gt2game PRIVATE gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career
   gt2menu gt2shell gt2screens gt2camera gt2arcade gt2vk gt2inputdev gt2os gt2flatcamera SDL2::SDL2)

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 // RGB movie frames use a reserved external-texture range. Source dimensions keep
 // the original framing and letterboxing when a prepared HD frame is larger.
@@ -12,9 +12,9 @@ class MovieView {
 public:
     static constexpr uint32_t kVertexBase = 1'048'560, kVertexLimit = 12; // above PanelView's range
     static constexpr uint32_t kTexels = 2048 * 2048;
-    static constexpr uint32_t kTexelBase = VkSceneRenderer::kMovieTexelBase;
+    static constexpr uint32_t kTexelBase = SceneRenderer::kMovieTexelBase;
 
-    explicit MovieView(VkSceneRenderer& renderer) : renderer_(renderer) {}
+    explicit MovieView(SceneRenderer& renderer) : renderer_(renderer) {}
 
     // `rgb`: width * height * 3 bytes; each dimension is at most 2048.
     void Upload(const uint8_t* rgb, int width, int height, int sourceWidth = 0, int sourceHeight = 0);
@@ -23,7 +23,7 @@ public:
     bool HasPicture() const { return width_ > 0; }
 
 private:
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     int width_ = 0, height_ = 0, sourceWidth_ = 0, sourceHeight_ = 0;
     std::vector<uint32_t> texels_;
 };

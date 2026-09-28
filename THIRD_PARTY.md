@@ -15,7 +15,7 @@ The existing reverse-engineering provenance is recorded in `db/`, `re/` and `doc
 Windows HID report padding was checked against [HIDAPI's Windows backend](https://github.com/libusb/hidapi/blob/master/windows/hid.c); DualSense USB/Bluetooth descriptor sizes were checked against [nondebug's device descriptors](https://github.com/nondebug/dualsense). These are protocol references; their source is not included.
 
 - `third_party/vrhands`: the same UltimateXR hand meshes and four authored finger poses used by MiamiVR Quest, plus its skin-colour texture. Copyright VRMADA, MIT License; see `ULTIMATEXR_LICENSE.txt` and `SOURCE.md`. These are redistributable VR assets, not GT2 or GTA assets. The build embeds them in the executable so an APK update needs no game-data replacement.
-- Virtual-wheel and motion steering, hand basis and pose blending are shared with my MiamiVR Quest project (`QuestDrivingVR.cpp`, `VRHandModel.cpp`, `vrhands_quest.cpp`), under the MIT License recorded in `third_party/vrhands/MIAMIVR_LICENSE.txt`. GT2 supplies its own camera, rendering and original vehicle physics/replay integration.
+- Virtual-wheel and motion steering, hand basis and pose blending use MIT-licensed MiamiVR Quest code (`QuestDrivingVR.cpp`, `VRHandModel.cpp`, `vrhands_quest.cpp`); see `third_party/vrhands/MIAMIVR_LICENSE.txt`. GT2 supplies its own camera, rendering and original vehicle physics/replay integration.
 
 Player releases include dependency notices under LICENSES/, including the Android NDK/runtime and OpenXR loader licences. The installer can download Google's pinned Platform Tools 36.0.2 archive; it retains Google's NOTICE.txt and source.properties in its tool cache. These tools are not bundled in the source folder.
 
@@ -41,3 +41,18 @@ Player releases include dependency notices under LICENSES/, including the Androi
   Downloaded tools, models and their licences remain outside the source archive.
   [Release](https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0),
   [native build recipe](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/master/.github/workflows/release.yml).
+
+## Browser build dependencies
+
+The 0.8.0 browser build is built with official Emscripten 6.0.10, release
+revision `666337b525e673e769121856d175f6f52b8ead64`. The SDK archive came from
+`https://github.com/emscripten-core/emsdk/archive/refs/tags/6.0.10.zip`, SHA-256
+`2e9327441cd8734a26a12938051655f343dc38245deedae156223fe908a069fc`.
+The SDK downloads its pinned LLVM/Binaryen runtime from the official
+`storage.googleapis.com/webassembly/emscripten-releases-builds` distribution.
+SDL 2.32.10 is built through Emscripten's hash-verified SDL2 port (zlib license).
+The web packager includes the Emscripten, musl, libc++, libc++abi, compiler-rt and
+SDL notices alongside notices for the project libraries linked into Wasm.
+Compiler/SDK binaries and caches stay under ignored `work/toolchains` and are
+not part of the source or browser distribution. The browser package contains
+no disc data, BIOS, screenshots or player saves.

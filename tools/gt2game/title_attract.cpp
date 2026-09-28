@@ -13,7 +13,7 @@
 #include "gt2formats/replay.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "race_common.h"
 #include "race_view.h"
 #include "split_race.h"
@@ -40,7 +40,7 @@ TitleAttractDemos::Kind TitleAttractDemos::Next(ReplayPayload& payload, std::str
 }
 
 void PlayTitleExitFade(GameWindow& window, const std::vector<gt2view::DrawItem>& shown, size_t sceneCount) {
-    gt2view::VkSceneRenderer& renderer = window.Renderer();
+    gt2view::SceneRenderer& renderer = window.Renderer();
     constexpr uint32_t kFadeVertexBase = 1'048'536; // between PanelView's range and MovieView's
     for (int j = 0; j < kExitFadeFields; j++) {
         if (!window.BeginFrame()) return;

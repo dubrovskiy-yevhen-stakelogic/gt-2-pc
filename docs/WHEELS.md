@@ -60,7 +60,7 @@ Feedback uses the moment from each front tyre: the native lateral force acts thr
 
 **Steering model** exposes saved parameters: wheel rotation (match the driver's total angle/SEN), mechanical trail, reference contact half-length and torque reference. Defaults are 900 degrees, 30 mm, 80 mm and 40 Nm. GT2 supplies loads, forces, tyre curves and road-wheel lock; its current port does not supply measured caster geometry or contact-patch dimensions for every car. The trail and patch defaults are generic model parameters, not recovered vehicle specifications. Torque reference is the calculated handwheel torque corresponding to maximum requested FFB, not the motor's advertised torque. Lowering it strengthens feedback and increases clipping; the existing FFB strength remains the output cap.
 
-The model runs from the game's 30 Hz physics, with elapsed-time damping and output slew limiting. It does not reproduce detailed steering-linkage compliance, static tyre twist, caster jacking or power-assistance maps. See [steering model derivation and validation](formats/steering_feedback.md).
+The model runs from the game's 30 Hz physics, with elapsed-time damping and output slew limiting. It does not reproduce detailed steering-linkage compliance, static tyre twist, caster jacking or power-assistance maps.
 
 Forces stop in menus, on pause, focus loss, device loss and exit. Each driver effect expires after 200 ms unless the game refreshes it. Other programs holding exclusive access to the wheel can prevent FFB; close them and rescan. There is no motor test in the settings menu, so assigning axes cannot start an unexpected force effect.
 

@@ -106,7 +106,7 @@ exec /bin/bash "$@"'''
         self.assertIn('--filesystem=', calls)
         self.assertIn('--disable-rofiles-fuse', calls)
         self.assertFalse((self.root / 'work').exists())
-        self.assertTrue(list((self.root / 'internal cache/gt2/steamdeck-build').glob('run.*/GT2-0.7.0-steamdeck.flatpak')))
+        self.assertTrue(list((self.root / 'internal cache/gt2/steamdeck-build').glob('run.*/GT2-0.8.0-steamdeck.flatpak')))
 
     def test_native_builder_fallback_also_disables_fuse(self):
         self.env['GT2_TEST_BUILDER_INFO_STATUS'] = '1'
@@ -114,7 +114,7 @@ exec /bin/bash "$@"'''
         self.assertIn('run org.flatpak.Builder --disable-rofiles-fuse', self.calls())
 
     def test_existing_bundle_skips_sdk_and_compilation(self):
-        (self.root / 'GT2-0.7.0-steamdeck.flatpak').write_bytes(b'test package')
+        (self.root / 'GT2-0.8.0-steamdeck.flatpak').write_bytes(b'test package')
         self.assertEqual(self.run_installer(), 0, self.output)
         self.assertNotIn('org.flatpak.Builder', self.calls())
         self.assertNotIn('build-bundle', self.calls())
@@ -140,7 +140,7 @@ exec /bin/bash "$@"'''
         self.assertNotIn('GT2 INSTALLED', self.output)
 
     def test_install_failure_never_creates_shortcut(self):
-        (self.root / 'GT2-0.7.0-steamdeck.flatpak').write_bytes(b'test package')
+        (self.root / 'GT2-0.8.0-steamdeck.flatpak').write_bytes(b'test package')
         self.env['GT2_TEST_INSTALL_STATUS'] = '25'
         self.assertEqual(self.run_installer(), 25, self.output)
         self.assertIn('Installing GT2', self.output)

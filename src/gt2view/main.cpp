@@ -21,7 +21,7 @@
 #include "gt2formats/car_texture.h"
 #include "gt2formats/psx_vram.h"
 #include "gt2formats/track.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
 
@@ -37,7 +37,7 @@ constexpr uint32_t kCarFirstVertex = 0, kCarMaxVertices = 1 << 15, kTrackFirstVe
 struct App {
     std::unique_ptr<GtfsVolume> vol;
     std::unique_ptr<VkContext> context; // the Vulkan instance / surface / device (gt2view/vk_context.h)
-    std::unique_ptr<VkSceneRenderer> renderer;
+    std::unique_ptr<SceneRenderer> renderer;
     std::unique_ptr<CarInfo> carInfo;
     std::string carName, trackName;
     std::vector<std::string> carIds;
@@ -327,7 +327,7 @@ int main(int argc, char** argv) {
         if (!hwnd) throw std::runtime_error("CreateWindow failed");
 
         g.context = std::make_unique<VkContext>(hinst, hwnd);
-        g.renderer = std::make_unique<VkSceneRenderer>(*g.context);
+        g.renderer = std::make_unique<SceneRenderer>(*g.context);
         if (!trackName.empty()) LoadTrack(trackName, gridSlot);
         LoadCar();
         TargetCar();

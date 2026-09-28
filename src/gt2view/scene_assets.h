@@ -25,7 +25,7 @@
 #include "gt2view/scenery_replacements.h"
 #include "gt2view/course_texture_seams.h"
 #include "gt2view/particles.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "gt2vfs/gtfs.h"
 
 namespace gt2view {
@@ -55,7 +55,7 @@ public:
     // One vertex range of the backdrop with its PS1 blend mode (kBlendOpaque for the opaque polygons).
     struct BackdropRange { uint32_t first, count, blend; };
 
-    SceneAssets(VkSceneRenderer& renderer, const GtfsVolume& vol) : renderer_(renderer), vol_(vol), ownRows_(size_t(512) * 1024, 0) {}
+    SceneAssets(SceneRenderer& renderer, const GtfsVolume& vol) : renderer_(renderer), vol_(vol), ownRows_(size_t(512) * 1024, 0) {}
 
     // The car reflection map of a course (0x800274D4 at race load): crstim.arc entry 3, entry 5 when bit 0 of the
     // course's .crsinfo flags is set, entry 4 when bit 1 is set (bit 1 wins).
@@ -502,7 +502,7 @@ public:
             RefineCockpitEye(slots_.back().cockpit, body.vertices, slots_.back().texture, body.glassMasks);
             FitCockpitMirror(slots_.back().cockpit, slots_.back().model);
             slots_.back().cockpitExterior = body.exteriorPolygons;
-            if (body.vertices.size() > VkSceneRenderer::kCockpitBodyVertexStride)
+            if (body.vertices.size() > SceneRenderer::kCockpitBodyVertexStride)
                 throw std::runtime_error("scene: cockpit body exceeds reserved vertex range");
             const auto& paints = slots_.back().texture.paints;
             for (size_t p = 0; p < paints.size() && p < 16; ++p)
@@ -528,7 +528,7 @@ public:
                 bodyVertices.push_back(o);
             }
             slots_.back().cockpitBodyCount = uint32_t(bodyVertices.size());
-            renderer_.SetVertices(VkSceneRenderer::kCockpitBodyVertexBase + slot * VkSceneRenderer::kCockpitBodyVertexStride, bodyVertices);
+            renderer_.SetVertices(SceneRenderer::kCockpitBodyVertexBase + slot * SceneRenderer::kCockpitBodyVertexStride, bodyVertices);
         }
         renderer_.UploadVram(kOwnRowsBase, 512, ownRows_.data());
         if (wheelRanges[3][0] + wheelRanges[3][1] <= bodyCount && wheelRanges[0][1] != 0) {
@@ -596,8 +596,8 @@ public:
             const PngImage& img = mesh.images[size_t(index)];
             if (img.width <= 0 || img.height <= 0 || img.width > 0xFFFF || img.height > 0xFFFF) return UINT32_MAX;
             const uint32_t count = uint32_t(img.width) * uint32_t(img.height);
-            if (uint64_t(externalTexelsUsed_) + count > VkSceneRenderer::kMovieTexelBase)
-                throw std::runtime_error("external textures: the store is full (" + std::to_string(VkSceneRenderer::kMovieTexelBase) + " texels)");
+            if (uint64_t(externalTexelsUsed_) + count > SceneRenderer::kMovieTexelBase)
+                throw std::runtime_error("external textures: the store is full (" + std::to_string(SceneRenderer::kMovieTexelBase) + " texels)");
             std::vector<uint32_t> texels(count);
             for (uint32_t i = 0; i < count; i++) {
                 const uint8_t* p = &img.rgba[size_t(i) * 4];
@@ -764,9 +764,9 @@ public:
             }
         }
         if (cockpit) {
-            if (s.cockpitBodyCount + vertices.size() > VkSceneRenderer::kCockpitBodyVertexStride)
+            if (s.cockpitBodyCount + vertices.size() > SceneRenderer::kCockpitBodyVertexStride)
                 throw std::runtime_error("scene: cockpit body and reflection exceed reserved vertex range");
-            renderer_.SetVertices(VkSceneRenderer::kCockpitBodyVertexBase + uint32_t(slot)*VkSceneRenderer::kCockpitBodyVertexStride +
+            renderer_.SetVertices(SceneRenderer::kCockpitBodyVertexBase + uint32_t(slot)*SceneRenderer::kCockpitBodyVertexStride +
                                   s.cockpitBodyCount, vertices);
             s.cockpitReflectionCount=uint32_t(vertices.size());
             return;
@@ -837,7 +837,7 @@ public:
         const Slot& s = slots_[size_t(slot)];
         if (!s.cockpitBodyCount) return;
         DrawItem item;
-        item.firstVertex = VkSceneRenderer::kCockpitBodyVertexBase + uint32_t(slot) * VkSceneRenderer::kCockpitBodyVertexStride;
+        item.firstVertex = SceneRenderer::kCockpitBodyVertexBase + uint32_t(slot) * SceneRenderer::kCockpitBodyVertexStride;
         item.vertexCount = s.cockpitBodyCount;
         item.paint = paint;
         std::copy(mvp, mvp + 16, item.mvp);
@@ -1366,7 +1366,7 @@ private:
         renderer_.SetVertices(kBackdropVertexBase, all);
     }
 
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     const GtfsVolume& vol_;
     std::vector<uint16_t> ownRows_;
     std::vector<Slot> slots_;

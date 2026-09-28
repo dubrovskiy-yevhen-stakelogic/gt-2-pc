@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "gt2formats/gt_menu_images.h"
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 
 namespace gt2view {
 
@@ -15,7 +15,7 @@ class TitleView {
 public:
     static constexpr uint32_t kVertexBase = 880'000, kVertexLimit = 110'000;
 
-    explicit TitleView(VkSceneRenderer& renderer, uint32_t rowBase = 0) : renderer_(renderer), rowBase_(rowBase) {}
+    explicit TitleView(SceneRenderer& renderer, uint32_t rowBase = 0) : renderer_(renderer), rowBase_(rowBase) {}
 
     void UploadVram(const gt2::MenuVram& vram);
     // Appends the draw items of `prims` (GPU order) for a frame `frameWidth` x 480 pixels shown at 4:3, or with square
@@ -34,7 +34,7 @@ private:
     void Emit(const gt2::MenuPrim& p, int frameWidth);
     void EmitRasterised(const gt2::MenuPrim& p, int frameWidth);
 
-    VkSceneRenderer& renderer_;
+    SceneRenderer& renderer_;
     uint32_t rowBase_;
     uint32_t hdSize_ = 0;
     uint64_t hdGeneration_ = ~uint64_t(0);

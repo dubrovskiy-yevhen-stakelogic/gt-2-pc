@@ -1,4 +1,5 @@
 #pragma once
+#include "gt2view/scene_renderer.h"
 // After an arcade race on the US Arcade v1.1 disc (EXE SCUS_944.55 SHA-1 231f9dba7191b9ef915621662afdc40a7c66df95; ARCADE
 // addresses unless marked): the race overlay's arcade loop (member 0 0x80016F14 -> 0x80015ED4 -> state 0x80016CC0, mode 4)
 // runs, after the race-end display's X and the automatic replay, the view manager (0x800471F4) with the wait view 0x8005B710
@@ -34,7 +35,7 @@ class DiscImage;
 class GtfsVolume;
 } // namespace gt2
 namespace gt2view {
-class VkSceneRenderer;
+
 }
 
 namespace gt2game {
@@ -48,7 +49,7 @@ gt2::RaceMenuAssets LoadArcadeRaceMenuAssets(const gt2::DiscImage& disc, const g
 // The race overlay's screens over the arcade race (panel.h Panels on the arcade disc: the pause menu 0x80029E2C = Simulation
 // 0x80029E80 and the race-end display 0x8002B11C = Simulation 0x8002B170, sub-mode 4; arcade_disc.md 17.7). Null (with the
 // reason printed) when the assets cannot be loaded: the race then runs without them.
-std::unique_ptr<Panels> LoadArcadeRacePanels(gt2view::VkSceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol);
+std::unique_ptr<Panels> LoadArcadeRacePanels(gt2view::SceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol);
 // The names of the race-end display's rows: the race slots' names of the race block (Arcade 0x801D52BC + 0xEC + car x 0xD0 =
 // Simulation 0x801D5948 + car x 0xD0, the .carinfoa names the build wrote), `count` cars.
 std::vector<std::string> ArcadeRaceSlotNames(const std::array<uint8_t, 0x58C>& raceBlock, size_t count);

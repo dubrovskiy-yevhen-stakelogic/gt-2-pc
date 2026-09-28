@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>GT2 · 0.8.0 · Browser</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101217;color:#e9edf5;font:16px system-ui,sans-serif}
+main{max-width:1280px;margin:auto;padding:24px}h1{margin:0 0 8px;font-size:28px}p{color:#b6bfcd;line-height:1.55}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0}button,select,input{font:inherit}
+button,select{padding:10px 15px;border:1px solid #596578;border-radius:6px;background:#242c39;color:inherit}
+button:disabled{opacity:.45}button:not(:disabled){cursor:pointer}button.primary{background:#245ec5}
+label{display:flex;gap:8px;align-items:center}canvas{display:block;width:100%;aspect-ratio:16/9;background:#000;outline:none}
+canvas:fullscreen{width:100vw;height:100vh;object-fit:contain}#status{min-height:1.5em;color:#e9edf5}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:250px;overflow:auto;font-size:12px;color:#a8b9cd}
+.error{color:#ffb8ad!important}small{color:#a9b2c1}a{color:#9fc2ff}
+</style>
+<main>
+<h1>GT2 <small>0.8.0 · Browser</small></h1>
+<p>Select your full BIN disc image (2352 bytes per sector). Your disc stays on this computer and is never uploaded.
+Play Arcade or Simulation on a flat screen, using your own local disc image.</p>
+<h1>made by Yevhen Dubrovskyi <a href="https://github.com/dubrovskiy-yevhen-stakelogic">GitHub</a></h1>
+<div class="controls" id="setup">
+<button id="choose-disc" type="button">Choose disc</button><input id="disc" type="file" accept=".bin,.raw2352" hidden>
+<span id="disc-name" aria-live="polite">No disc selected</span>
+<label>Save slot <select id="mode"><option value="simulation">Simulation</option><option value="arcade">Arcade</option></select></label>
+<button id="start" class="primary" disabled>Start</button>
+<button id="import" disabled>Import saves</button><input id="save-file" type="file" accept=".json" hidden>
+</div>
+<div class="controls"><button id="fullscreen">Fullscreen</button><button id="export" disabled>Export saves</button>
+<button id="sync" disabled>Save to browser</button><button id="stop" disabled>Exit game</button></div>
+<p id="status" role="status" aria-live="polite">Loading engine…</p>
+<canvas id="canvas" width="1280" height="720" tabindex="0" aria-label="GT2 game screen"></canvas>
+<p>Menus: arrow keys, Enter to select, Space to go back. Driving: ↑ accelerate, ↓ brake and reverse after stopping (automatic transmission),
+← → steer, Space handbrake, C camera, Esc pause. Shift+Q opens settings. Browser gamepads are supported.</p>
+<p>Saves are stored in this browser for the current site address. Export a backup before clearing browser data.
+Reload the page to choose another disc or start again.</p>
+<details><summary>Diagnostics</summary><pre id="log"></pre></details>
+</main>
+<script src="gt2.js"></script><script src="launcher.js"></script>
+</html>

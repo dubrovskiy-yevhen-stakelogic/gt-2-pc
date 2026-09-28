@@ -30,7 +30,7 @@ cd "$gt2_root"
 "${gt2_builder[@]}" --disable-rofiles-fuse --user --arch=x86_64 --jobs="${GT2_BUILD_JOBS:-4}" \
     --state-dir="$gt2_output/builder-state" --repo="$gt2_output/repo" \
     "$gt2_run/app" tools/gt2linux/io.github.gt2pc.GT2.json
-gt2_bundle="$gt2_run/GT2-0.7.0-steamdeck.flatpak"
+gt2_bundle="$gt2_run/GT2-0.8.0-steamdeck.flatpak"
 flatpak build-bundle --arch=x86_64 "$gt2_output/repo" "$gt2_bundle" io.github.gt2pc.GT2 \
     --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
 sha256sum "$gt2_bundle" > "$gt2_bundle.sha256"

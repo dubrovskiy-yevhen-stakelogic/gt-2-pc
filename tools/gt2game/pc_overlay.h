@@ -2,7 +2,7 @@
 #include "platform/xr/vr_controls.h"
 #include <string>
 #include <vector>
-#include "gt2view/vk_scene_renderer.h"
+#include "gt2view/scene_renderer.h"
 #include "gt2view/hud_visibility.h"
 #include "platform/xr/vr_driving.h"
 #include "cockpit_camera.h"
@@ -11,7 +11,7 @@ namespace gt2game {
 class GameWindow;
 class FrameProfiler;
 bool FrameProfilerEnabled();
-void AppendFrameProfiler(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, const FrameProfiler& stats);
+void AppendFrameProfiler(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, const FrameProfiler& stats);
 void LoadOverlaySettings(const std::string& baseSettingsPath);
 int AdaptivePedalStrength();
 int OverlayRefreshRate();
@@ -36,6 +36,6 @@ void SetDiscImportAvailable(bool available);
 bool TakeDiscImportRequest();
 bool ConsoleStartupHandled();
 bool PlayStationIntroEnabled();
-void PrepareNativeUi(gt2view::VkSceneRenderer& renderer);
-void AppendSkipHint(gt2view::VkSceneRenderer& renderer, std::vector<gt2view::DrawItem>& items);
+void PrepareNativeUi(gt2view::SceneRenderer& renderer);
+void AppendSkipHint(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items);
 }
