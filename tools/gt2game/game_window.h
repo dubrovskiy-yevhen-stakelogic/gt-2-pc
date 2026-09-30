@@ -268,6 +268,7 @@ public:
     int Field() const { return field_; }
     uint64_t ClockRevision() const { return clockRevision_; }
     bool Closed() const { return backend_->Closed(); }
+    bool Focused() const { return focused_; }
     void Close() { backend_->Close(); }
 
     bool Held(int key) const;

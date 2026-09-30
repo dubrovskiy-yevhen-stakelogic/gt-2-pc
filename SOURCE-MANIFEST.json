@@ -1,5 +1,5 @@
 {
-  "version": "0.8.0",
+  "version": "0.8.1",
   "sourceCommit": null,
   "sourceDirty": null,
   "files": [
@@ -15,8 +15,8 @@
     },
     {
       "path": "android/app/build.gradle",
-      "sha256": "332bd30a5628d66d8e13679915c96b1089362bd74d057dab4c9e2b78f7acb430",
-      "textSha256": "77ef64433a248452aac40b7bdf86161d854c6d398db40188dda59e3d11ba4a72"
+      "sha256": "9f02d15d7eaf7e907cdb4094ec389a98330e789d626577cecb8cd1cde1d25307",
+      "textSha256": "3147e216f9b20a91fbe3e5df7ae469320c260d051171f163415aacb0c77f99b4"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -75,8 +75,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "3c979f8d6b320ee19d6e0b4271a80a01655cb31f7972618cb372ebdaaf994f63",
-      "textSha256": "3c979f8d6b320ee19d6e0b4271a80a01655cb31f7972618cb372ebdaaf994f63"
+      "sha256": "55ef3c63ce3de7206ccbafc57f12189f5d31abb5f3f5efa9bd2d092cccbc24b0",
+      "textSha256": "55ef3c63ce3de7206ccbafc57f12189f5d31abb5f3f5efa9bd2d092cccbc24b0"
     },
     {
       "path": "cmake/android.cmake",
@@ -115,8 +115,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "3497761d897f9bf9b4e388b165e982d6468c59b275c2adb77ea71be77a64585c",
-      "textSha256": "3497761d897f9bf9b4e388b165e982d6468c59b275c2adb77ea71be77a64585c"
+      "sha256": "cfa07a1d437cd850047a6992f3ded86a9e2ffee42e29c7d74267d6aee41b0bfd",
+      "textSha256": "cfa07a1d437cd850047a6992f3ded86a9e2ffee42e29c7d74267d6aee41b0bfd"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -155,8 +155,8 @@
     },
     {
       "path": "docs/HD-MEDIA.md",
-      "sha256": "0622341f78932fbd1380ce454ff8c852b97e1d49b57cf2cb18df9d1b0f6a3db1",
-      "textSha256": "0622341f78932fbd1380ce454ff8c852b97e1d49b57cf2cb18df9d1b0f6a3db1"
+      "sha256": "9bcb0d2544c547038dfc6af66b5bd7f29c728f51c39a09ddcadeae4ee156e379",
+      "textSha256": "9bcb0d2544c547038dfc6af66b5bd7f29c728f51c39a09ddcadeae4ee156e379"
     },
     {
       "path": "docs/images/cockpit-0.5.0.png",
@@ -184,18 +184,18 @@
     },
     {
       "path": "docs/PLAYER-INSTALL.md",
-      "sha256": "88d46312d3ead9f61f9fd713efd0785bfc9c81b97a601d6e1a652712a398c7a1",
-      "textSha256": "934a9e783762aebd2bb0a9c17429f5e68f5828eec8d7f819a8523ba123b66af3"
+      "sha256": "b461f2052853ce8aaf37fc095bb2e0e7680fc13c64417bb52bb28bd762217f09",
+      "textSha256": "34225eafaeb9f0589762c9b79a3f38eaf66dc344d50c43daed83257c60c55eeb"
     },
     {
       "path": "docs/QUEST.md",
-      "sha256": "b4002be8a2875bd3c04b96df64f5998a38d4c2f114d8de922454f367cb34a325",
-      "textSha256": "b4002be8a2875bd3c04b96df64f5998a38d4c2f114d8de922454f367cb34a325"
+      "sha256": "d124bcc35d33541ad8c969893cf126a1a5c923e5b85d1600d34e235bdc67834a",
+      "textSha256": "d124bcc35d33541ad8c969893cf126a1a5c923e5b85d1600d34e235bdc67834a"
     },
     {
       "path": "docs/SAVE-TRANSFER.md",
-      "sha256": "4c65ed3e19c0ddc1d85d63c997464eb5083c3043219dbb8f95a50fac95062c1a",
-      "textSha256": "4c65ed3e19c0ddc1d85d63c997464eb5083c3043219dbb8f95a50fac95062c1a"
+      "sha256": "cfe39780e9fe08048dc1934ff74843ed60c2097c87983c934cce7961b9878048",
+      "textSha256": "cfe39780e9fe08048dc1934ff74843ed60c2097c87983c934cce7961b9878048"
     },
     {
       "path": "docs/STEAMDECK.md",
@@ -314,8 +314,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "fd646c0e8f314d7b1cc5848c8d3907559b12328f3874d07812ec615efa933fd4",
-      "textSha256": "fd646c0e8f314d7b1cc5848c8d3907559b12328f3874d07812ec615efa933fd4"
+      "sha256": "414c6e43b34cd4f4e9801d5ecd21f1ae9429d365c85e55683e01cb208e3a36ba",
+      "textSha256": "414c6e43b34cd4f4e9801d5ecd21f1ae9429d365c85e55683e01cb208e3a36ba"
     },
     {
       "path": "run_race.bat",
@@ -344,8 +344,8 @@
     },
     {
       "path": "scripts/build-quest-release.ps1",
-      "sha256": "c6b08bdfde0ffa17e37637bcc3076effec3642d3742155abd0f019a8264e4127",
-      "textSha256": "fb8aab448c4f1ec8c213f40e62b95cfba54913476d4197ae14a77e5453f5da01"
+      "sha256": "01871dbad367e9a8f5fca8207ca81ebe3cc98a2a325f4ebf841da3a8ec499f03",
+      "textSha256": "3c59d2bf490928f0ca41cbdd6824237065e87c4c8705125281d146325141cb9f"
     },
     {
       "path": "scripts/build-quest.ps1",
@@ -399,8 +399,8 @@
     },
     {
       "path": "scripts/install-player.ps1",
-      "sha256": "8b5423a070b7998d3adbf3b40b411e7b3892b29be523bb6bfdeb752e13955d00",
-      "textSha256": "3d9db2b1ffbfb9c7e66e558064a95c5cabd900569aba0ca6c998d66e44a62599"
+      "sha256": "ac2b25e68d151f9ae1a1f01a1b7e50443f8fddd02483fa4a4b8a7b3a7e37ff31",
+      "textSha256": "d2724085ecdc17122193b6df24dfb4271a46dde77ea97ce970df58912af6fbba"
     },
     {
       "path": "scripts/install-quest.ps1",
@@ -424,8 +424,13 @@
     },
     {
       "path": "scripts/package-complete.ps1",
-      "sha256": "b58619e3a23e69f8af467ba2d109ff7e18619bdaff577f990b9a840d7e4d0636",
-      "textSha256": "b58619e3a23e69f8af467ba2d109ff7e18619bdaff577f990b9a840d7e4d0636"
+      "sha256": "990eafb124d5916ee1d26340aa21828efaa3cf9130d3a722def3a20cfa72c8b6",
+      "textSha256": "990eafb124d5916ee1d26340aa21828efaa3cf9130d3a722def3a20cfa72c8b6"
+    },
+    {
+      "path": "scripts/package-installer-update.ps1",
+      "sha256": "bdbc57be4c2a6c360c784fb304b061b867055c40b95a4cfa7fad0543836d6892",
+      "textSha256": "bdbc57be4c2a6c360c784fb304b061b867055c40b95a4cfa7fad0543836d6892"
     },
     {
       "path": "scripts/package-macos.py",
@@ -434,8 +439,8 @@
     },
     {
       "path": "scripts/package-player.ps1",
-      "sha256": "e46c4a4723496efc72c72ac814811635965ccab28182a560fa8bb020e986ba5e",
-      "textSha256": "e46c4a4723496efc72c72ac814811635965ccab28182a560fa8bb020e986ba5e"
+      "sha256": "b81a89de329e68cedeed12b3b201041655b2e9d2d62e598485540a78387d6276",
+      "textSha256": "b81a89de329e68cedeed12b3b201041655b2e9d2d62e598485540a78387d6276"
     },
     {
       "path": "scripts/package-source.ps1",
@@ -444,8 +449,8 @@
     },
     {
       "path": "scripts/package-web.ps1",
-      "sha256": "b832066ca80f0ecbf1ea05a668b99f3ef39a6c404da5eeff364cd719c0bfa350",
-      "textSha256": "b832066ca80f0ecbf1ea05a668b99f3ef39a6c404da5eeff364cd719c0bfa350"
+      "sha256": "596ebed6827eab0361bc3d5537accaa110d006360ef813badda903be1e3cbc1b",
+      "textSha256": "596ebed6827eab0361bc3d5537accaa110d006360ef813badda903be1e3cbc1b"
     },
     {
       "path": "scripts/platform-tools.ps1",
@@ -474,8 +479,8 @@
     },
     {
       "path": "scripts/prepare-hd.ps1",
-      "sha256": "2a46a784e642bfdede3eed0162815fbdb454cb9df905e304d41e017593e00646",
-      "textSha256": "97a798831734ba635901d1c299ee813296140838e4b28c145a3cd51b432c5054"
+      "sha256": "811d6b1a7a3e1be68364deb1136519edb0f43ec7fb5fe7ba75bdb2bbdc587ce5",
+      "textSha256": "d9af237568f4fc9e65558efc1ff9af8736925c2564f744e6fdbbc3435633317d"
     },
     {
       "path": "scripts/serve-web.py",
@@ -726,6 +731,11 @@
       "path": "src/game/camera/race_camera.h",
       "sha256": "6c3da7b92c20af406cacdc75fff58fae6a4bb51e33b8c0ced71f8f084c5aff48",
       "textSha256": "a8a3e118e24b3aaf8fc6fb1a9a0c7c5713783846193223f12925e935fdf967b7"
+    },
+    {
+      "path": "src/game/career/campaign_storage.h",
+      "sha256": "5d929b6b8793cf28e9cb01baa6164c93dc179ac90fece6f077d791e21628f568",
+      "textSha256": "5d929b6b8793cf28e9cb01baa6164c93dc179ac90fece6f077d791e21628f568"
     },
     {
       "path": "src/game/career/career_state.cpp",
@@ -1429,8 +1439,8 @@
     },
     {
       "path": "src/gt2formats/overlay_data.cpp",
-      "sha256": "5ff81c841e80f2d42483e2f28d4769dda5648c13b3aa19de3cf79d15630ab318",
-      "textSha256": "5ff81c841e80f2d42483e2f28d4769dda5648c13b3aa19de3cf79d15630ab318"
+      "sha256": "7f7a867fe4acfa501e1eab951b2346519c2b2d68d02c3c31e600571b6980ecc8",
+      "textSha256": "7f7a867fe4acfa501e1eab951b2346519c2b2d68d02c3c31e600571b6980ecc8"
     },
     {
       "path": "src/gt2formats/overlay_data.h",
@@ -1554,8 +1564,8 @@
     },
     {
       "path": "src/gt2formats/title_assets.cpp",
-      "sha256": "95126cc3a54a2db0192907effd869f06d8ed6d8b44a28cd3b9336f642e31b9a8",
-      "textSha256": "95126cc3a54a2db0192907effd869f06d8ed6d8b44a28cd3b9336f642e31b9a8"
+      "sha256": "3d4ce75d8043ef2cc163a93abcb781111e3bd2fbfbc653131d12a89142f646ff",
+      "textSha256": "3d4ce75d8043ef2cc163a93abcb781111e3bd2fbfbc653131d12a89142f646ff"
     },
     {
       "path": "src/gt2formats/title_assets.h",
@@ -1809,8 +1819,8 @@
     },
     {
       "path": "src/gt2view/race_card_screens.cpp",
-      "sha256": "439d0806cfea447bc48559b08fa2e225382d2db31463466e1396a6b4a0874ac2",
-      "textSha256": "439d0806cfea447bc48559b08fa2e225382d2db31463466e1396a6b4a0874ac2"
+      "sha256": "105d59332404c574654cf68024f42e0b28f0bd31b8a7aadb6ac5a8aa63f46c9f",
+      "textSha256": "105d59332404c574654cf68024f42e0b28f0bd31b8a7aadb6ac5a8aa63f46c9f"
     },
     {
       "path": "src/gt2view/race_card_screens.h",
@@ -2273,6 +2283,16 @@
       "textSha256": "ca6beb80be87e3f2b3e40cee9808c65758b31d242f4637bc589cfe744048c17b"
     },
     {
+      "path": "tests/campaign_checks.h",
+      "sha256": "0d05ab6125530cd89c34fdd2bf1d5471decc19ca6613201115053aa7a8358436",
+      "textSha256": "0d05ab6125530cd89c34fdd2bf1d5471decc19ca6613201115053aa7a8358436"
+    },
+    {
+      "path": "tests/check_campaign_menu.py",
+      "sha256": "3da422de87f63e0866cf17383a4588ad42114e04d31d779a8c10117656e868cf",
+      "textSha256": "3da422de87f63e0866cf17383a4588ad42114e04d31d779a8c10117656e868cf"
+    },
+    {
       "path": "tests/check_cockpit_countdown.py",
       "sha256": "64e8242bf9de384d26cd93042b4c9c03d9e9b111e9327bc3d32699a249733670",
       "textSha256": "64e8242bf9de384d26cd93042b4c9c03d9e9b111e9327bc3d32699a249733670"
@@ -2334,8 +2354,8 @@
     },
     {
       "path": "tests/checks.cpp",
-      "sha256": "70f768fc88394367d520e8b79962cb70687288cb95169083741db28cc6676465",
-      "textSha256": "70f768fc88394367d520e8b79962cb70687288cb95169083741db28cc6676465"
+      "sha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540",
+      "textSha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540"
     },
     {
       "path": "tests/cockpit_audit_sheets.py",
@@ -2409,8 +2429,8 @@
     },
     {
       "path": "tests/quest_features_checks.cpp",
-      "sha256": "147011015761cad0face7d61bb790a2272e46222002780b5d147779382e2a42e",
-      "textSha256": "147011015761cad0face7d61bb790a2272e46222002780b5d147779382e2a42e"
+      "sha256": "6d53bba609ab679f45e8c1b7c77ed38cc3304abc823d6aa3b0f4c438bb321366",
+      "textSha256": "6d53bba609ab679f45e8c1b7c77ed38cc3304abc823d6aa3b0f4c438bb321366"
     },
     {
       "path": "tests/run_cockpit_audit.py",
@@ -2451,6 +2471,11 @@
       "path": "tests/test_wheel_inputmap_audit.py",
       "sha256": "15c837475e69949410ba20ac569178e9d4f8179966dedfbe7f2acde6eba60ab2",
       "textSha256": "15c837475e69949410ba20ac569178e9d4f8179966dedfbe7f2acde6eba60ab2"
+    },
+    {
+      "path": "tests/test-hd-download.ps1",
+      "sha256": "657d358cfc7607416ee5b3dc0448b7755d5bbfb08a0a1501ca5a84f2c3b3e4a1",
+      "textSha256": "657d358cfc7607416ee5b3dc0448b7755d5bbfb08a0a1501ca5a84f2c3b3e4a1"
     },
     {
       "path": "tests/test-save-transfer.ps1",
@@ -2750,9 +2775,14 @@
       "textSha256": "8d022fe5b73ec578bacd8bab380ec0225b3e8597fa3b1b12d4c43865e5e60516"
     },
     {
+      "path": "tools/gt2game/campaign_confirmation.h",
+      "sha256": "0eda1cabef558f00c0725f8e7afb7fcaba26b19ff823568acfd2e7b5a8136552",
+      "textSha256": "0eda1cabef558f00c0725f8e7afb7fcaba26b19ff823568acfd2e7b5a8136552"
+    },
+    {
       "path": "tools/gt2game/career_race.cpp",
-      "sha256": "377adeb03052e29cf78d4cb23b60fc1dcaa9ce9a5bdde85b3850734d9a5ef5a8",
-      "textSha256": "377adeb03052e29cf78d4cb23b60fc1dcaa9ce9a5bdde85b3850734d9a5ef5a8"
+      "sha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114",
+      "textSha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114"
     },
     {
       "path": "tools/gt2game/career_race.h",
@@ -2841,8 +2871,8 @@
     },
     {
       "path": "tools/gt2game/game_window.h",
-      "sha256": "5693bd3fdc207aff0a9d2ca812e87129f501647f32e0f9662289ba7172558d0b",
-      "textSha256": "5693bd3fdc207aff0a9d2ca812e87129f501647f32e0f9662289ba7172558d0b"
+      "sha256": "33e98698bbcbc6060ec7b40cb08f1665b5b904cb81b79d87358408b92c1797fb",
+      "textSha256": "33e98698bbcbc6060ec7b40cb08f1665b5b904cb81b79d87358408b92c1797fb"
     },
     {
       "path": "tools/gt2game/ghost_replay.cpp",
@@ -2881,8 +2911,8 @@
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
-      "sha256": "b4c30ede0382a68fabb54513e76ba2c5206dfacec6dfc266c78bb9472b03d9c3",
-      "textSha256": "b4c30ede0382a68fabb54513e76ba2c5206dfacec6dfc266c78bb9472b03d9c3"
+      "sha256": "71b37a0148f0f2304837021bfc3133ace3036f71b1d7d063663ad052436ec105",
+      "textSha256": "71b37a0148f0f2304837021bfc3133ace3036f71b1d7d063663ad052436ec105"
     },
     {
       "path": "tools/gt2game/menu_mode.h",
@@ -2936,13 +2966,13 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "218b5a16d33c324a87083135eb87712093a76d5db44181696afe1191adb50ba0",
-      "textSha256": "218b5a16d33c324a87083135eb87712093a76d5db44181696afe1191adb50ba0"
+      "sha256": "87312b65cd84c8506b6bbd429136550826cd413ab406fdb8ea4113c16cbdbe8a",
+      "textSha256": "87312b65cd84c8506b6bbd429136550826cd413ab406fdb8ea4113c16cbdbe8a"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
-      "sha256": "bc8f078975e05675666c04ffe02162c9d8f0a41d4d723e2de98794c02df63ba2",
-      "textSha256": "bc8f078975e05675666c04ffe02162c9d8f0a41d4d723e2de98794c02df63ba2"
+      "sha256": "397f7b500b9f3511ce0ce6507abbb7cd56bc5559ca538aff696e2d57b3002536",
+      "textSha256": "397f7b500b9f3511ce0ce6507abbb7cd56bc5559ca538aff696e2d57b3002536"
     },
     {
       "path": "tools/gt2game/race_common.cpp",
@@ -3021,8 +3051,8 @@
     },
     {
       "path": "tools/gt2game/title_mode.cpp",
-      "sha256": "85449a12ece1b86dd8c39f85007d56cf703bc1e9ba7b661c426dc9ae5207ba5d",
-      "textSha256": "85449a12ece1b86dd8c39f85007d56cf703bc1e9ba7b661c426dc9ae5207ba5d"
+      "sha256": "fde4b4e20728f6dac43dc7a9daf06fee387a241abd9c5fc94375177e2c08924e",
+      "textSha256": "fde4b4e20728f6dac43dc7a9daf06fee387a241abd9c5fc94375177e2c08924e"
     },
     {
       "path": "tools/gt2game/title_mode.h",

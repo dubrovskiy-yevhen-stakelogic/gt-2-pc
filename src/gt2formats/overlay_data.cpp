@@ -50,9 +50,16 @@ GuestImage UiLayout(GuestImage image, bool arcade) {
         return image;
     const auto ranges = arcade ? ArcadeEuUiRanges() : image.profile->ranges;
     uint32_t end = image.base;
-    for (const auto &r : ranges)
-        if (r.scope == image.module && r.kind == ProfileRange::kAligned)
-            end = std::max(end, r.simEnd);
+    // Reference runs can cover UI data after the final aligned code range
+    // (EU Simulation's event menu is one such tail). Include every mapped
+    // byte present in this image, without allocating ranges for external RAM.
+    for (const auto &r : ranges) {
+        if (r.scope != image.module) continue;
+        const int64_t first = std::max<int64_t>(r.simStart, int64_t(image.base) - r.delta);
+        const int64_t last = std::min<int64_t>(r.simEnd, int64_t(image.End()) - r.delta);
+        if (first < last && first >= image.base)
+            end = std::max(end, uint32_t(last));
+    }
     if (end <= image.base || end - image.base > 0x100000)
         throw std::runtime_error("invalid UI layout bounds");
     GuestImage out;

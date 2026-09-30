@@ -6,7 +6,7 @@
 #include "gt2view/hud_visibility.h"
 #include "platform/xr/vr_driving.h"
 #include "cockpit_camera.h"
-namespace gt2::career { struct CareerSave; struct CareerData; }
+namespace gt2::career { struct CareerSave; struct CareerData; struct NewGameDefaults; }
 namespace gt2game {
 class GameWindow;
 class FrameProfiler;
@@ -27,7 +27,8 @@ bool OverlayMetricUnits(bool fallback);
 int OverlayVrScale(); // -1 unless the player saved an eye scale
 int OverlayRumbleStrength(); // 0..100 percent
 void ShowPcOverlay(GameWindow& window, const std::vector<gt2view::DrawItem>& background, size_t sceneCount);
-void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path = {});
+void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path = {}, const gt2::career::NewGameDefaults* defaults = nullptr);
+bool TakeCampaignChangeRequest();
 std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vr = true,
                            bool deterministic = false, const std::string& script = {}, const std::string& shot = {}, bool sound = true,
                            bool playStartup = true);

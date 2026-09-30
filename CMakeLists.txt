@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(gt2pc VERSION 0.8.0 LANGUAGES C CXX)
+project(gt2pc VERSION 0.8.1 LANGUAGES C CXX)
 option(GT2_BUILD_XRSIM "Build the optional OpenXR development simulator" OFF)
 option(GT2_BUILD_MACOS_CLIENT "Build the macOS flat client (SDL2 and MoltenVK)" ${APPLE})
 if(GT2_BUILD_MACOS_CLIENT)

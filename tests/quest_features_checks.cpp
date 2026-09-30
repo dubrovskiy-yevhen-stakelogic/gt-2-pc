@@ -9,6 +9,7 @@
 using namespace gt2;
 using namespace gt2::career;
 static void Check(bool ok, const char* what) { if (!ok) throw std::runtime_error(what); }
+#include "campaign_checks.h"
 int main(int argc, char** argv) {
     try {
         CareerSave before; before.state = NewCareer({}); before.header.resize(0x200);
@@ -32,7 +33,9 @@ int main(int argc, char** argv) {
         Check(ReadFileBytes(path + ".before-cheats.bak") == original, "backup contains exact original card");
         SaveCheat(path, candidate, candidate);
         Check(ReadFileBytes(path + ".before-cheats.bak") == original, "second action preserves first backup");
-        std::filesystem::remove(path); std::filesystem::remove(path + ".before-cheats.bak"); std::filesystem::remove(dir);
+        CampaignChecks(before, dir);
+        // Only this test's uniquely created temporary directory is removed.
+        std::filesystem::remove_all(dir);
         std::cout << "Career cheat persistence and backup checks passed\n";
         if (argc > 1) {
             DiscImage disc(argv[1]); GtfsVolume vol(disc);

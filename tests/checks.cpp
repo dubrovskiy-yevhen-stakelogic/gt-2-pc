@@ -19,6 +19,8 @@
 #include "game/audio/music_player.h"
 #include "game/audio/menu_music.h"
 #include "game/shell/title_options.h"
+#include "game/shell/title_screens.h"
+#include <chrono>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -29,6 +31,84 @@
 
 static int checks = 0;
 static void Check(bool ok, const char* what) { ++checks; if (!ok) throw std::runtime_error(what); }
+
+static void CheckRegionalUiTail() {
+    using namespace gt2;
+    constexpr uint32_t base = 0x80010000;
+    const std::array<ProfileRange, 4> ranges{{
+        {0, ProfileRange::kAligned, base, base + 0x20, 0},
+        {0, ProfileRange::kRefRun, base + 0x20, base + 0x80, 0x10},
+        {0, ProfileRange::kFact, base + 0x80, base + 0xA0, 0x10},
+        {0, ProfileRange::kRefRun, 0x80100000, 0x80200000, 0},
+    }};
+    ExeProfile profile;
+    profile.build = ExeBuild::kSimEu;
+    profile.ranges = ranges;
+    GuestImage original;
+    original.base = base;
+    original.module = 0;
+    original.profile = &profile;
+    original.bytes.resize(0xA0, 0x5A);
+    const uint32_t pointer = base + 0x80;
+    std::memcpy(original.bytes.data() + 0x40, &pointer, sizeof(pointer));
+    const auto mapped = UiLayout(original);
+    Check(mapped.End() == base + 0x90, "regional UI includes data tails and clips to available source bytes");
+    Check(mapped.Get<uint8_t>(base + 0x8F) == 0x5A, "regional UI copies facts beyond aligned code");
+    Check(mapped.Get<uint32_t>(base + 0x30) == base + 0x70, "regional UI relocates pointers into reference-only tails");
+    original.profile = &SimProfile();
+    Check(UiLayout(original).bytes == original.bytes, "reference UI remains byte-identical");
+}
+
+static void CheckRegionalCareerScreens(const char* discPath) {
+    if (!discPath) return;
+    using namespace gt2;
+    DiscImage disc(discPath);
+    const auto& profile = ProfileOf(disc);
+    if (profile.arcade) return;
+    GtfsVolume vol(disc);
+    const auto race = UiLayout(LoadOverlayImage(disc, 0));
+    const auto list = MenuListWidget::Read(race, 0x8005D284);
+    Check(list.count == 7 && list.visible == 7 && list.width == 128,
+          "career event menu retains its complete widget template");
+    const auto assets = TitleAssets::Load(disc, vol).SimLayoutScreens();
+    const auto bar = shell::CardManager::ReadBar(assets.exe, 0x800920D8);
+    Check(bar.x > 0 && bar.x < TitleAssets::kScreenWidth && bar.y > 0 && bar.y < TitleAssets::kScreenHeight,
+          "save confirmation is positioned inside the screen");
+    Check(assets.Text(bar.label0) == "Yes" && assets.Text(bar.label1) == "No",
+          "save confirmation has readable yes and no labels");
+    Check(!assets.Text(0x801EF8DC).empty(), "save prompt survives regional widget relocation");
+
+    const auto dir = std::filesystem::temp_directory_path() /
+        ("gt2-regional-card-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    Check(std::filesystem::create_directory(dir), "regional card test gets a new isolated directory");
+    const auto path = (dir / "test.mcd").string();
+    auto state = career::NewCareer(career::ReadNewGameDefaults(disc));
+    state.garage.money = 9876;
+    career::WriteFileBytes(path, career::FormatMemoryCard());
+    auto drive = [&](shell::CardManager& manager, bool save) {
+        for (int f = 0; f < 500 && !(save ? manager.Saved() : manager.Loaded()); ++f) {
+            MenuListPad pad;
+            if (f % 40 == 20) pad.pressed = menu_list_pad::kLeft;
+            if (f % 40 == 30) pad.pressed = menu_list_pad::kCross;
+            manager.Update(&pad);
+            (void)manager.Frame();
+        }
+        Check(save ? manager.Saved() : manager.Loaded(), "regional card manager completes the requested operation");
+    };
+    {
+        shell::CardManager manager(assets, shell::CardManager::kSaveGame, state, {{{path}, {}}});
+        drive(manager, true);
+    }
+    const auto saved = career::LoadCareer(path);
+    Check(saved.CrcOk() && saved.state.garage.money == 9876, "regional save has a valid CRC and the expected career");
+    state.garage.money = 1234;
+    {
+        shell::CardManager manager(assets, shell::CardManager::kLoadGame, state, {{{path}, {}}});
+        drive(manager, false);
+    }
+    Check(state.garage.money == 9876, "regional load restores the saved career");
+    Check(std::filesystem::remove(path) && std::filesystem::remove(dir), "regional card test releases its temporary files");
+}
 
 static void CheckPcChanges(const char* discPath) {
     using namespace gt2;
@@ -184,6 +264,8 @@ static void CheckPcChanges(const char* discPath) {
 }
 int main(int argc, char** argv) {
     try {
+        CheckRegionalUiTail();
+        CheckRegionalCareerScreens(argc > 1 ? argv[1] : nullptr);
         {
             // An indexed row validates nibble order and PS1 BGR555 conversion.
             std::vector<uint8_t> tim(66, 0);

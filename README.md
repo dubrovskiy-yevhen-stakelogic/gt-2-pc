@@ -9,7 +9,7 @@ it is rebuilt.
 
 **[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
-**Download the current complete release: `GT2-0.8.0.zip`.** It contains the common
+**Download the current complete release: `GT2-0.8.1.zip`.** It contains the common
 source, all platform installation/build scripts, precompiled Windows tools, a signed Quest APK, and a ready-to-deploy `web/`
 folder. You do not need an older release for VR, macOS or Steam Deck.
 

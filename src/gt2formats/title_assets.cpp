@@ -237,6 +237,13 @@ TitleAssets TitleAssets::SimLayoutScreens() const {
     TitleAssets a = *this;
     const ExeProfile* p = ovl1.profile;
     if (!p || p->reference) return a;
+    if (p->build == ExeBuild::kSimEu) {
+        // European Simulation shares the native text blocks. Relocate its
+        // widgets and RAM pointers together, retaining the text resolver.
+        a.ovl1 = UiLayout(ovl1);
+        a.exe = UiLayout(exe);
+        return a;
+    }
     std::vector<uint32_t> ovl1Source, exeSource;
     a.ovl1 = CopyToSimLayout(ovl1, *p, 1, kOverlayLoadAddress, SimEnd(*p, 1, kOverlayLoadAddress), ovl1Source);
     a.exe = CopyToSimLayout(exe, *p, -1, exe.base, SimEnd(*p, -1, exe.base), exeSource);

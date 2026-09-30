@@ -1,4 +1,4 @@
-param([string]$Build='build_web', [string]$Output='dist/GT2-Web-0.8.0', [string]$Emsdk='work/toolchains/emsdk-6.0.10')
+param([string]$Build='build_web', [string]$Output='dist/GT2-Web-0.8.1', [string]$Emsdk='work/toolchains/emsdk-6.0.10')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $site=Join-Path (Join-Path $root $Build) 'site'
@@ -25,7 +25,7 @@ foreach($name in @('LICENSE','THIRD_PARTY.md')) { Copy-Item -LiteralPath (Join-P
 foreach($name in $licenses.Keys) { Copy-Item -LiteralPath $licenses[$name] -Destination (Join-Path $destination "LICENSES/$name") }
 Copy-Item -LiteralPath (Join-Path $root 'scripts/serve-web.py') -Destination $destination
 @'
-GT2 0.8.0 browser
+GT2 0.8.1 browser
 
 Run: python serve-web.py --directory . --port 8080
 Open: http://127.0.0.1:8080/
@@ -56,7 +56,7 @@ Compiler/toolchain files are not part of this archive.
 $manifest=@(Get-ChildItem -LiteralPath $destination -Recurse -File | ForEach-Object {
     [ordered]@{path=$_.FullName.Substring($destination.Length+1).Replace('\','/');sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
 })
-[ordered]@{version='0.8.0';emscripten='6.0.10';sdl='2.32.10';files=$manifest} | ConvertTo-Json -Depth 5 |
+[ordered]@{version='0.8.1';emscripten='6.0.10';sdl='2.32.10';files=$manifest} | ConvertTo-Json -Depth 5 |
     Set-Content -LiteralPath (Join-Path $destination 'BUILD-MANIFEST.json') -Encoding UTF8
 Compress-Archive -Path (Join-Path $destination '*') -DestinationPath ($destination+'.zip') -CompressionLevel Optimal
 Get-FileHash -LiteralPath ($destination+'.zip') -Algorithm SHA256

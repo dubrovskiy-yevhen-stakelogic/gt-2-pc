@@ -1,4 +1,4 @@
-param([string]$Output='dist/GT2-0.8.0', [string]$Web='dist/GT2-Web-0.8.0', [string]$Native='dist/GT2-native-0.8.0')
+param([string]$Output='dist/GT2-0.8.1', [string]$Web='dist/GT2-Web-0.8.1', [string]$Native='dist/GT2-native-0.8.1')
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
 $destination=[IO.Path]::GetFullPath((Join-Path $root $Output))

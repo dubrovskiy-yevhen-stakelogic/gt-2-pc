@@ -21,17 +21,32 @@ function Run([string]$Exe, [string[]]$Arguments) {
     & $Exe @Arguments
     if ($LASTEXITCODE -ne 0) { throw "Asset preparation failed ($LASTEXITCODE): $Exe. Work is retained in $Cache." }
 }
-function Fetch([string]$Url, [string]$Hash, [string]$Name) {
-    $zip = Join-Path $Cache ($Name + '.zip')
+function Fetch([string]$Url, [string]$Hash, [string]$Name, [string]$ArchiveMember) {
+    $extension = if ($ArchiveMember) { '.7z' } else { '.zip' }
+    $zip = Join-Path $Cache ($Name + $extension)
     if (!(Test-Path -LiteralPath $zip) -or (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $Hash) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest $Url -OutFile ($zip + '.download') -UseBasicParsing
-        if ((Get-FileHash -LiteralPath ($zip + '.download') -Algorithm SHA256).Hash -ne $Hash) { throw "The upstream $Name download changed. No downloaded program was executed. Update the installer or supply the verified local tool." }
+        $actual = (Get-FileHash -LiteralPath ($zip + '.download') -Algorithm SHA256).Hash
+        if ($actual -ne $Hash) { throw "The $Name download failed SHA-256 verification. Expected: $Hash. Received: $actual. URL: $Url. The downloaded archive was not extracted or executed. Retry with the current installer or supply a verified local tool." }
         Move-Item -LiteralPath ($zip + '.download') -Destination $zip -Force
     }
     # Re-extract verified bytes rather than trusting an executable left in the cache.
     $folder = Join-Path $Cache ($Name + '-' + [guid]::NewGuid().ToString('N'))
-    Expand-Archive -LiteralPath $zip -DestinationPath $folder
+    if ($ArchiveMember) {
+        # The versioned core bundle is 7z. Extract only the software PSX core.
+        $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+        $seven = Join-Path $env:ProgramFiles '7-Zip/7z.exe'
+        New-Item -ItemType Directory -Path $folder | Out-Null
+        if (Test-Path -LiteralPath $seven) {
+            & $seven x $zip "-o$folder" $ArchiveMember -y | Out-Null
+        } elseif (Test-Path -LiteralPath $tar) {
+            & $tar -xf $zip -C $folder $ArchiveMember
+        } else { throw 'BIOS startup capture requires Windows tar.exe or 7-Zip to extract the core bundle. Install 7-Zip or supply -CaptureCore.' }
+        if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath (Join-Path $folder $ArchiveMember) -PathType Leaf)) {
+            throw 'Could not extract the BIOS capture core. Install current 7-Zip or supply -CaptureCore.'
+        }
+    } else { Expand-Archive -LiteralPath $zip -DestinationPath $folder }
     return $folder
 }
 function Publish([string]$Source, [string]$Destination) {
@@ -162,8 +177,10 @@ if ($Bios) {
     $Bios = (Resolve-Path -LiteralPath $Bios).Path
     if ((Get-Item -LiteralPath $Bios).Length -ne 524288) { throw 'Select a 512 KiB PS1 BIOS dump.' }
     if (!$CaptureCore) {
-        $coreDir = Fetch 'https://buildbot.libretro.com/nightly/windows/x86_64/latest/mednafen_psx_libretro.dll.zip' '3C47127EEDD07DD0B77B3DA3C6904088DC9F5BAE6B2100D8EADE09E3AD885E67' 'beetle-psx-20260921'
-        $CaptureCore = Join-Path $coreDir 'mednafen_psx_libretro.dll'
+        # Pin a release archive: nightly/latest changes independently of this installer.
+        $coreMember = 'RetroArch-Win64/cores/mednafen_psx_libretro.dll'
+        $coreDir = Fetch 'https://buildbot.libretro.com/stable/1.22.2/windows/x86_64/RetroArch_cores.7z' '86B871E11B9B4772AC644B40A38F2C8E9449DA1F355EAE7DA08AA061148547B0' 'beetle-psx-retroarch-1.22.2' $coreMember
+        $CaptureCore = Join-Path $coreDir $coreMember
     }
     $boot = Join-Path $Cache ('boot-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $boot | Out-Null

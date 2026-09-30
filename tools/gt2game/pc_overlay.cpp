@@ -10,6 +10,9 @@
 #include "game/pc_features.h"
 #include "game/audio/pause.h"
 #include "game/career/cheats.h"
+#include "game/career/campaign_storage.h"
+#include "campaign_confirmation.h"
+#include <chrono>
 #include <cstring>
 #include <algorithm>
 #include <array>
@@ -298,7 +301,7 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.Quad(28, 24, 744, 552, 0x101c2a); canvas.Quad(28, 24, 744, 5, 0x42b6f5);
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * (rows.size()>9 ? 35.f : 40.f);
+        const float y = 112 + float(i) * (rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
         if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
     }
@@ -310,6 +313,8 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
 gt2::career::CareerSave* cheatSave = nullptr;
 const gt2::career::CareerData* cheatData = nullptr;
 std::string cheatPath;
+const gt2::career::NewGameDefaults* campaignDefaults = nullptr;
+bool campaignChanged = false;
 std::vector<size_t> catalogue;
 const gt2::career::CareerData* catalogueData = nullptr;
 
@@ -324,6 +329,79 @@ std::string ApplySimulationCheat(int action, size_t carIndex = 0) {
         *cheatSave = std::move(candidate);
         return action == 0 ? "All licences: GOLD. Saved." : action == 1 ? "99,999,999 credits. Saved." : "Car added to garage. Saved.";
     } catch (const std::exception& e) { return std::string("Cheat failed: ") + e.what(); }
+}
+
+bool ShowCampaignManager(GameWindow& window) {
+    using namespace gt2::career;
+    int selected = 2, operation = -1;
+    bool changed = false;
+    CampaignConfirmation hold;
+    auto last = std::chrono::steady_clock::now();
+    std::string message = "Simulation progress only. Other card files are kept.";
+    while (!window.Closed()) {
+        if (!window.BeginFrame()) break;
+        const auto now = std::chrono::steady_clock::now();
+        const double seconds = std::chrono::duration<double>(now - last).count(); last = now;
+        if (window.MenuPressed() || window.SettingsPressed() || window.Pressed(gt2::keys::kF10)) break;
+        const bool back = window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape) ||
+            (!VrMode() && window.PadPressed(gt2::input::ps1::kCircle));
+        if (back) {
+            if (operation < 0 || changed) break;
+            operation = -1; selected = 2; hold = {}; continue;
+        }
+        if (changed) {
+            if (window.Pressed(gt2::keys::kReturn)) break;
+            Panel(window, "GT2 / CAMPAIGN SAVED", {"Continue to title", "Backup kept on this device.", "Restore it from Campaign / saves in GT Mode."}, 0,
+                message, "A / Enter / Back: continue");
+            continue;
+        }
+        const int count = operation < 0 ? 3 : 2;
+        if ((VrMode() && window.PadPressed(gt2::input::ps1::kSquare)) || window.Pressed(gt2::keys::kUp)) selected = (selected + count - 1) % count;
+        if ((VrMode() && window.PadPressed(gt2::input::ps1::kR1)) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % count;
+        if (operation < 0) {
+            if (window.Pressed(gt2::keys::kReturn)) {
+                if (selected == 2) break;
+                if (!cheatSave || !campaignDefaults || cheatPath.empty()) message = "Enter Simulation GT Mode first. Unavailable in races.";
+                else {
+                    try {
+                        if (selected == 1) (void)campaign::ReadPrevious(cheatPath);
+                        operation = selected; selected = 0; hold = {};
+                        continue; // The press opening this dialog cannot confirm or cancel it.
+                    } catch (const std::exception& e) { message = e.what(); }
+                }
+            }
+            if (operation < 0) Panel(window, "GT2 / CAMPAIGN / SAVES", {"Start a new campaign...", "Restore previous campaign...", "Back"}, selected, message,
+                "Up/down: choose   A / Enter: open   Back: cancel");
+        }
+        if (operation >= 0) {
+            if (selected == 0 && window.Pressed(gt2::keys::kReturn)) { operation = -1; selected = 2; hold = {}; continue; }
+            // Explicit --script runs use synthetic input even in the background,
+            // matching GameWindow's menu shortcuts. Physical input needs focus.
+            if (hold.Update(selected == 1, window.Held(gt2::keys::kReturn), window.Focused() || window.Scripted(), seconds)) {
+                try {
+                    auto candidate = operation == 1 ? campaign::ReadPrevious(cheatPath) : *cheatSave;
+                    if (operation == 0) {
+                        candidate.state = NewCareer(*campaignDefaults);
+                    }
+                    std::memcpy(candidate.state.options, cheatSave->state.options, sizeof(candidate.state.options));
+                    campaign::Replace(cheatPath, *cheatSave, candidate);
+                    *cheatSave = std::move(candidate);
+                    campaignChanged = changed = true;
+                    gt2::pc::unlockSimulationEvents = false;
+                    message = operation == 0 ? "New campaign saved. Event unlock is OFF." : "Previous campaign restored. Current one backed up.";
+                    try { Save(); } catch (...) { message = "Campaign saved. Check cheat settings on next launch."; }
+                } catch (const std::exception& e) { message = e.what(); operation = -1; selected = 2; hold = {}; }
+                continue;
+            }
+            Panel(window, operation == 0 ? "GT2 / START NEW CAMPAIGN?" : "GT2 / RESTORE PREVIOUS CAMPAIGN?",
+                {"Cancel - keep playing", "Hold A / Enter for 3 seconds: " + std::to_string(hold.Percent()) + "%",
+                 operation == 0 ? "Cars, credits, licences and records will reset." : "Progress before the last reset/restore will return.",
+                 "Current progress will be backed up first.", "If backup fails, your campaign stays unchanged.",
+                 "Controls and graphics settings are kept.", "Returns to title after saving."}, selected,
+                "Select the hold row, release A, then hold to confirm.", "Up/down: choose   Release: stop   Back: cancel");
+        }
+    }
+    return changed;
 }
 
 #ifdef _WIN32
@@ -870,6 +948,7 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 0) {
             rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
             if (discImportAvailable) rows.push_back("Import another game disc...");
+            rows.push_back("Campaign / saves...");
             rows.push_back("Quit game");
         }
         if (page == 11 || page == 12) {
@@ -993,6 +1072,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         else status = "Launch from the disc picker with both discs installed.";
                     }
                     else if (selected == 6) { page = 10; selected = 0; status = "Applies to Driver camera. Change view with C / your camera button."; }
+                    else if (selected == 8 + int(discImportAvailable)) { done = ShowCampaignManager(window); }
                     else if (selected >= 8) { page = discImportAvailable && selected == 8 ? 11 : 12; selected = 1; }
                     else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
@@ -1016,7 +1096,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         gameChangeRequested = false;
                         std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
                         window.Close(); done = true;
-                    } else { selected = page == 11 ? 8 : int(discImportAvailable) + 8; page = 0; }
+                    } else { selected = page == 11 ? 8 : int(discImportAvailable) + 9; page = 0; }
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {
@@ -1146,8 +1226,10 @@ void ShowSettingsMenu(GameWindow& window) {
 }
 }
 
-void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path) {
+bool TakeCampaignChangeRequest() { const bool changed = campaignChanged; campaignChanged = false; return changed; }
+void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path, const gt2::career::NewGameDefaults* defaults) {
     cheatSave = save; cheatData = data; cheatPath = path;
+    campaignDefaults = defaults;
     if (!data) catalogueData = nullptr;
 }
 void PrepareNativeUi(gt2view::SceneRenderer& renderer) { UploadFont(renderer); }

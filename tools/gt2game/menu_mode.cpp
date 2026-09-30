@@ -119,6 +119,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
         if (bytes.size() == 128 * 1024 && bytes[0] == 'M' && bytes[1] == 'C') inputCard = std::move(bytes);
     }
     const menu::MenuData data = menu::MenuData::Load(disc, vol);
+    const auto newGameDefaults = career::ReadNewGameDefaults(disc);
     const MenuPages pages = MenuPages::Load(vol);
     const MenuAssets assets = MenuAssets::Load(disc, vol);
     menu::CareerMenuActions actions(save.state, data);
@@ -195,9 +196,11 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
     const auto fieldTime = std::chrono::nanoseconds(16'683'333); // the menus run one view update per field (NTSC 59.94 Hz)
     window.ResetPacing();
     for (;;) {
-        gt2game::SetSimulationCheatContext(&save, &data.career, options.saveOut);
+        gt2game::SetSimulationCheatContext(&save, &data.career, options.saveOut, &newGameDefaults);
         const bool keepRunning = window.BeginFrame();
         gt2game::SetSimulationCheatContext(nullptr, nullptr);
+        // Leave all menu/garage caches behind. The title owns this same live save.
+        if (gt2game::TakeCampaignChangeRequest()) break;
         if (!keepRunning) break;
         const int field = window.Field();
         // Pad: keyboard / script (held + presses since the last field; directions auto-repeat - our choice: after 20

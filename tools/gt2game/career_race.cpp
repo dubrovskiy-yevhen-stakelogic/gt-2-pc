@@ -398,7 +398,7 @@ career::TimeRecord LicenceLapRecord(uint32_t time) {
 // the race overlay's own header 0x80047024 "SAVE GAME" is not composed with it). Returns true when the career was written.
 bool RunSaveGameScreen(GameWindow& window, Panels& panels, const DiscImage& disc, const GtfsVolume& vol, career::CareerState& state, const std::string& card1,
                        const std::string& card2) {
-    const TitleAssets assets = TitleAssets::Load(disc, vol);
+    const TitleAssets assets = TitleAssets::Load(disc, vol).SimLayoutScreens();
     gt2view::TitleView view(window.Renderer(), gt2view::PanelView::kRowBase);
     view.UploadVram(assets.vram);
     shell::CardManager card(assets, shell::CardManager::kSaveGame, state, {shell::CardSlot{card1}, shell::CardSlot{card2}});

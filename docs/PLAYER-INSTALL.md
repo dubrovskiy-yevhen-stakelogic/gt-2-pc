@@ -1,6 +1,6 @@
 # Player installation
 
-Extract the complete **GT2-0.8.0.zip** into a writable folder. It contains shared
+Extract the complete **GT2-0.8.1.zip** into a writable folder. It contains shared
 source, all platform scripts, compiled Windows/Quest files under `native/` and
 compiled browser files under `web/`. Keep the directory structure intact.
 

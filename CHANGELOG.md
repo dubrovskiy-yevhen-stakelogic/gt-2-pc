@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1
+
+- Fixed European Simulation career races failing to start from the GO! button when event tables lay beyond the main UI data range.
+- Fixed European Simulation memory-card screens and confirmation buttons for saving, loading and replay management.
+
+- Added Campaign / saves to the overlay on Quest standalone and desktop. In Simulation GT Mode, start a new campaign or restore the previous one without reinstalling.
+- Campaign replacement defaults to Cancel and requires a fresh three-second hold. Releasing the button, leaving the confirmation row, losing focus or suspending cancels the hold.
+- Each reset or restore first verifies a separate backup of the memory card and live progress, including unsaved changes. Failed backups prevent replacement; older backups are retained.
+- Controls, graphics settings, other memory-card entries and slot 2 are preserved. New campaigns reset cars, credits, licences and records, disable Simulation event unlock and return to the title.
+
 ## 0.8.0
 
 - Added browser play through WebAssembly and WebGL2, compiled from the same C++ game as the native platforms.

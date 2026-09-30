@@ -1,5 +1,27 @@
 # PC and Quest save transfer
 
+## Start over without reinstalling
+
+On Quest standalone or PC, enter **Simulation > GT Mode**, open the GT2 overlay,
+then choose **Campaign / saves > Start a new campaign**. The confirmation defaults
+to **Cancel**. Select the hold row, release A/Enter, then hold it for three seconds.
+Releasing the button, moving off the row or losing focus cancels the hold.
+
+This resets the Simulation garage, credits, licences and records to a new game.
+Controls, graphics settings, other files on the memory card and slot 2 are kept.
+Simulation event unlock is switched off. After saving, continue to the title and
+enter GT Mode to play the new campaign. The operation is unavailable during races
+or in Arcade mode.
+
+**Restore previous campaign** in the same menu recovers the progress from before
+the most recent reset or restore, including progress that was not yet saved.
+Restoring also backs up the campaign it replaces. A failed or damaged backup
+prevents replacement. Numbered backups are retained beside the active card in
+`card1.mcd.campaign-backups/`: `original.bin` is the exact old card when one existed,
+and `campaign.sav` contains the live campaign at the time of the operation.
+These local backups are not included in the USB transfer below; uninstalling the
+Quest app can remove them along with its saves.
+
 GT2 VR 0.3.0 can copy progress in either direction over USB, including from the non-debuggable public Quest APK. The two platforms use identical PS1 memory card images, so no conversion is required. Desktop and PCVR already share the same PC saves.
 
 1. Save in the game's original Save Game menu, then fully close GT2 on both devices.

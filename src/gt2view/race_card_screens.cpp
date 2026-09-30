@@ -10,7 +10,7 @@
 namespace gt2::screens {
 
 TitleAssets RaceCardAssets(const RaceMenuAssets& race, const TitleAssets& text) {
-    TitleAssets a = text;
+    TitleAssets a = text.SimLayoutScreens();
     a.fonts = race.fonts;
     a.vram = race.vram;
     return a;

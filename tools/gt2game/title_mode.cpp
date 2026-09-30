@@ -280,6 +280,7 @@ std::filesystem::path ExecutableDirectory() { return gt2::os::ExecutableDir(); }
 
 int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOptions& options, const TitleGtModeHook& gtMode) {
     const TitleAssets assets = TitleAssets::Load(disc, vol);
+    const TitleAssets cardAssets = assets.SimLayoutScreens();
     const input::PadTables padTables = input::PadTables::Load(assets.exe); // the controller's buttons as the menus' generic bits
     // The career: a save given on the command line, else the new game of 0x800104A0 (boot); the first-boot view may
     // replace it with the save on card 1.
@@ -617,7 +618,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
                     break;
                 case shell::kSaveGame:
                 case shell::kLoadGame:
-                    card = std::make_unique<shell::CardManager>(assets, result == shell::kSaveGame ? shell::CardManager::kSaveGame : shell::CardManager::kLoadGame,
+                    card = std::make_unique<shell::CardManager>(cardAssets, result == shell::kSaveGame ? shell::CardManager::kSaveGame : shell::CardManager::kLoadGame,
                                                                 save.state, slots);
                     music->Play(7, uint8_t(shell::OptionValue(save.state, shell::kMusicVolume)));
                     screen = Screen::kCard;
@@ -770,14 +771,14 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
                 std::printf("replay theater f%d: row %d\n", field, theater->choice);
                 switch (theater->choice) {
                 case shell::ReplayTheaterMenu::kLoadReplay: // view 0x8004B3C8: the card manager in mode 1
-                    card = std::make_unique<shell::CardManager>(assets, shell::CardManager::kLoadReplay, save.state, slots);
+                    card = std::make_unique<shell::CardManager>(cardAssets, shell::CardManager::kLoadReplay, save.state, slots);
                     card->SetReplayText(replayText.get());
                     screen = Screen::kCard;
                     break;
                 case shell::ReplayTheaterMenu::kRenameDelete: // view 0x8004B41C: the card manager in mode 2 (0x80072F20)
-                    card = std::make_unique<shell::CardManager>(assets, shell::CardManager::kRenameReplay, save.state, slots);
+                    card = std::make_unique<shell::CardManager>(cardAssets, shell::CardManager::kRenameReplay, save.state, slots);
                     card->SetReplayText(replayText.get());
-                    card->SetKeyboard(gt2::screens::MakeTitleCardKeyboard(assets));
+                    card->SetKeyboard(gt2::screens::MakeTitleCardKeyboard(cardAssets));
                     screen = Screen::kCard;
                     break;
                 case shell::ReplayTheaterMenu::kDemonstration: // view 0x8004B224
