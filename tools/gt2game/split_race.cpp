@@ -832,7 +832,8 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     else ModelMatrix(groundPose, ground);
                     GroundShadowMatrix(ground, assets.SlotShadowHeight(slot));
                     Multiply(vp, ground, shadowMvp);
-                    assets.AppendCarItems(items, slot, mvp, car < data.paints.size() ? data.paints[car] : 0u, 0, true, &wheelModels, shadowMvp);
+                    const uint32_t brakeLit = race.CarAt(car).body.brake > 0 ? 1u : 0u; // both players' brake pedals, CLUT 14 -> 15
+                    assets.AppendCarItems(items, slot, mvp, car < data.paints.size() ? data.paints[car] : 0u, brakeLit, true, &wheelModels, shadowMvp);
                 }
                 if (particles) {
                     const float right[3] = {p.right[0], p.right[1], p.right[2]}, up[3] = {p.up[0], p.up[1], p.up[2]}, fwd[3] = {p.forward[0], p.forward[1], p.forward[2]};
