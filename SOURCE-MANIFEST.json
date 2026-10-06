@@ -339,8 +339,8 @@
     },
     {
       "path": "scripts/build-macos.sh",
-      "sha256": "25ed3cfbf1edceb1766657205901b15863870dd5a1b696d9984dd9b68be77ca4",
-      "textSha256": "25ed3cfbf1edceb1766657205901b15863870dd5a1b696d9984dd9b68be77ca4"
+      "sha256": "ead9f34cde154a6d74e49a9c94f455fa531be3995b5f7700eb7f32c3c259c217",
+      "textSha256": "ead9f34cde154a6d74e49a9c94f455fa531be3995b5f7700eb7f32c3c259c217"
     },
     {
       "path": "scripts/build-quest-release.ps1",

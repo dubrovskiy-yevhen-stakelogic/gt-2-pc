@@ -32,6 +32,6 @@ cmake -S "$gt2_root" -B "$gt2_build" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_PREFIX_PATH="$gt2_prefix" "${gt2_cmake_args[@]}"
 cmake --build "$gt2_build" --parallel "$(sysctl -n hw.logicalcpu)" --target \
     gt2game gt2install gt2media gt2maclauncher gt2checks gt2assetchecks gt2hdchecks gt2wheelchecks \
-    gt2vrchecks gt2drivingchecks gt2questchecks gt2sdlchecks gt2surfacechecks
+    gt2vrchecks gt2drivingchecks gt2questchecks gt2sdlchecks gt2surfacechecks gt2menushortcutchecks
 ctest --test-dir "$gt2_build" --output-on-failure
 printf '\nBuild and automated checks passed (%s). Launch PLAY-MACOS.command.\n' "$gt2_arch"
