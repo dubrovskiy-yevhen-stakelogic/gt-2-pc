@@ -1984,13 +1984,13 @@
     },
     {
       "path": "src/gt2view/vk_scene_renderer.cpp",
-      "sha256": "84e127c52a36f305e63a984976f8532676a8d2dbe27d393adf57f63224d62f7a",
-      "textSha256": "84e127c52a36f305e63a984976f8532676a8d2dbe27d393adf57f63224d62f7a"
+      "sha256": "9c1e7109a64c33ec6cee30a41a0dd712d1e6d81f1eaa5cae5652378b3946dbbb",
+      "textSha256": "9c1e7109a64c33ec6cee30a41a0dd712d1e6d81f1eaa5cae5652378b3946dbbb"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.h",
-      "sha256": "fec8756c819398d0305df34f930f903fd424ca6d77387eee737a7ac47e6092cf",
-      "textSha256": "fec8756c819398d0305df34f930f903fd424ca6d77387eee737a7ac47e6092cf"
+      "sha256": "21450c8c88b7e4dc63a548b85f010a14f69c1628153254b0ba880cf1fefb6416",
+      "textSha256": "21450c8c88b7e4dc63a548b85f010a14f69c1628153254b0ba880cf1fefb6416"
     },
     {
       "path": "src/gt2view/vr_driving_visuals.cpp",

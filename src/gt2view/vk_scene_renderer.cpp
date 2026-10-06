@@ -209,7 +209,8 @@ void VkSceneRenderer::CreateSwapchain() {
     VkSurfaceCapabilitiesKHR caps;
     Check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_, surface_, &caps), "surface capabilities");
     extent_ = caps.currentExtent;
-    if (extent_.width == 0xFFFFFFFFu) context_.WindowExtent(extent_);
+    extentFromWindow_ = extent_.width == 0xFFFFFFFFu;
+    if (extentFromWindow_) context_.WindowExtent(extent_);
     if (extent_.width == 0 || extent_.height == 0) return; // minimized
 
     uint32_t fn = 0;
@@ -755,6 +756,13 @@ void VkSceneRenderer::UploadExternalTexture(uint32_t firstTexel, uint32_t count,
 void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string& screenshotPath, size_t sceneItems) {
     if (!screenshotPath.empty())
         if (const char* path = std::getenv("GT2_RENDER_CAPTURE")) SaveCapture(path, items, sceneItems);
+    // Wayland's WSI never reports OUT_OF_DATE/SUBOPTIMAL on resize, so compare the window ourselves.
+    VkExtent2D drawable{};
+    if (swapchain_ && extentFromWindow_ && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
+        (drawable.width != extent_.width || drawable.height != extent_.height)) {
+        vkDeviceWaitIdle(device_);
+        DestroySwapchain();
+    }
     if (!swapchain_ && !offscreen_) {
         CreateSwapchain();
         if (!swapchain_) return;
