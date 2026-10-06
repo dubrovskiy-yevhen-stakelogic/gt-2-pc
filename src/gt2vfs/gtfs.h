@@ -24,6 +24,7 @@ public:
     const std::vector<GtfsEntry>& Files() const { return files_; }
     const GtfsEntry* Find(const std::string& path) const;
     bool IsExpansionAsset(const std::string& path) const { return expansionFiles_.contains(path) || expansionFiles_.contains(path + ".gz"); }
+    bool Has(const std::string& path) const { return Find(path) || Find(path + ".gz"); }
 
     std::vector<uint8_t> ReadStored(const GtfsEntry& e) const;
     // Transparently gunzips when the stored payload is a gzip stream.

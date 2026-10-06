@@ -112,6 +112,21 @@ void Fixtures() {
     Require(gt2::BuildCarShadowMesh(car, 0.04f)[0].pos[0] == -1, "body LOD changes cannot resize shadow");
     car.shadow.scale = 17;
     Require(gt2::BuildCarShadowMesh(car, 0.04f)[0].pos[0] == -2, "shadow exponent is applied");
+    gt2::CarModel lights;
+    lights.lods.resize(1);
+    lights.lods[0].scale = 28; // 2^(28 - 16) / 4096 = 1 metre per unit
+    lights.lods[0].vertices = {{0,0,0,0}, {1,0,0,0}, {0,1,0,0}, {2,0,0,0}, {3,0,0,0}, {2,1,0,0}};
+    gt2::CarPolygon housing, lamp;
+    housing.primCode = lamp.primCode = 0x20;
+    housing.vertex = {0,1,2,0};
+    lamp.vertex = {3,4,5,0};
+    lights.lods[0].polygons = {housing, lamp};
+    gt2::CarMeshOptions plain;
+    plain.wheels = false;
+    gt2::CarMeshOptions reversed = plain;
+    reversed.reverseDrawOrder = true;
+    Require(gt2::BuildCarMesh(lights, plain)[0].pos[0] == 0 && gt2::BuildCarMesh(lights, reversed)[0].pos[0] == 2,
+        "reverse draw order puts the later lamp face under its earlier housing");
     // 30-degree bank; a shadow stored 0.4 m below the body must land 4 cm
     // above the ground, independent of the suspension's body-space height.
     float ground[16] = {0.8660254f,0.5f,0,0, -0.5f,0.8660254f,0,0, 0,0,1,0, 10,20,30,1};
