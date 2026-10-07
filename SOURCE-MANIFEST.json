@@ -919,8 +919,8 @@
     },
     {
       "path": "src/game/shell/title_menu.cpp",
-      "sha256": "7ddd4dc8d4a4e7882d8f86b6ce099ac71a5118b200e45ff99d8c1f4b77c34d86",
-      "textSha256": "b5f10ee7b80f0a3a335ef68c395b3e8389ff3236058ba98257781b0f78397fc3"
+      "sha256": "5188b8f231217c3f134f2e85323f7bf5310e5c339661674fed0da5608941a662",
+      "textSha256": "5188b8f231217c3f134f2e85323f7bf5310e5c339661674fed0da5608941a662"
     },
     {
       "path": "src/game/shell/title_menu.h",
@@ -1994,8 +1994,8 @@
     },
     {
       "path": "src/gt2view/vr_driving_visuals.cpp",
-      "sha256": "b7162cecb3abe40ab43caab894596f13fe0161d15a0b657ce9378ee9d8bc1430",
-      "textSha256": "b7162cecb3abe40ab43caab894596f13fe0161d15a0b657ce9378ee9d8bc1430"
+      "sha256": "cf389e0779165584ef24333836a64851500fd39348a5ca2f939b2c823daab61a",
+      "textSha256": "cf389e0779165584ef24333836a64851500fd39348a5ca2f939b2c823daab61a"
     },
     {
       "path": "src/gt2view/vr_driving_visuals.h",
@@ -3131,8 +3131,8 @@
     },
     {
       "path": "tools/gt2media/main.cpp",
-      "sha256": "a384121a832b881dbd4cb22c66cc34091d74cf7bd3662002aef395c6a57cbf0d",
-      "textSha256": "ca860dd70aa999303d9ea93a616f9383e530b5df9ac2e66a601f8aad77eee8a0"
+      "sha256": "5586bca393df562253f220b4d6dd87dc303a89a3b28003a07641b0f83f8421be",
+      "textSha256": "5586bca393df562253f220b4d6dd87dc303a89a3b28003a07641b0f83f8421be"
     },
     {
       "path": "tools/gt2media/ui_export.h",
@@ -3276,8 +3276,8 @@
     },
     {
       "path": "tools/gt2verify/main.cpp",
-      "sha256": "2587e2edf17abc964610f30d29f4dd1a3787e342a7e6a0984f81e6951bc4d4a4",
-      "textSha256": "b30060721a2b45eeb42699755577f29540d874f8075ce9c1f91f4f177847eac4"
+      "sha256": "ad98002d2b49e4da234cc8e610015d08d5c64813faac64ddc1a0bff2395ff212",
+      "textSha256": "ad98002d2b49e4da234cc8e610015d08d5c64813faac64ddc1a0bff2395ff212"
     },
     {
       "path": "tools/gt2verify/verify_ai.cpp",

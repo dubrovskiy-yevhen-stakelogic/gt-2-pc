@@ -119,7 +119,7 @@ int TitleMenu::Update(const MenuListPad* pad, uint32_t held) {
     MenuListClose(widget_);
     state_ = 2;
     startHeld = pad && (pad->held & menu_list_pad::kStart) != 0;
-    result = r >= 0 && r < kRows ? results_[size_t(r)] : kTitleNone;
+    result = r >= 0 && r < kRows ? int(results_[size_t(r)]) : int(kTitleNone);
     return ret;
 }
 

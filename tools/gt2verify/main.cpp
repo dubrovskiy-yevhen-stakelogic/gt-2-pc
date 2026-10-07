@@ -110,7 +110,8 @@ int main(int argc, char** argv) {
         // The dump's build (gt2formats/exe_profile.h) from the SHA-1 of its disc's executable: data addresses (D) and guest
         // calls are translated by its facts (identity for US Simulation v1.2).
         if (argc >= 3) {
-            const ExeProfile& profile = ProfileOf(DiscImage(argv[2]));
+            const DiscImage dumpDisc(argv[2]);
+            const ExeProfile& profile = ProfileOf(dumpDisc);
             SetActiveProfile(profile);
             kCarBase = D(0x800A9688u);
             if (!profile.reference) {
@@ -206,7 +207,7 @@ int main(int argc, char** argv) {
                 cases++;
                 const uint32_t lo = uint32_t(guest.Call(0x80086084, uint32_t(uint64_t(n)), uint32_t(uint64_t(n) >> 32), uint32_t(uint64_t(d)), uint32_t(uint64_t(d) >> 32)));
                 const int64_t original = int64_t((uint64_t(guest.V1()) << 32) | lo), ours = sim::Div64(n, d);
-                if (original != ours && bad++ < 3) std::printf("    MISMATCH Div64(%lld, %lld): original %lld, ours %lld\n", n, d, original, ours);
+                if (original != ours && bad++ < 3) std::printf("    MISMATCH Div64(%lld, %lld): original %lld, ours %lld\n", (long long)n, (long long)d, (long long)original, (long long)ours);
             };
             const int64_t edges64[] = {0, 1, -1, 2, -2, 0x7FFFFFFF, int64_t(0x80000000), -int64_t(0x80000000), 0xFFFFFFFFll, 0x100000000ll, -0x100000000ll,
                                        0x7FFFFFFFFFFFFFFFll, int64_t(0x8000000000000000ull), 0x123456789ABCDll, -0x123456789ABCDll, 0x1000, -0x1000};
