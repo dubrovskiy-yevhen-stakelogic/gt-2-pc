@@ -2439,8 +2439,8 @@
     },
     {
       "path": "tests/sdl_checks.cpp",
-      "sha256": "2c61f5a1477ee8235d4bd7cb72159984ad94fd9e8b590108745dd2d806f4907f",
-      "textSha256": "2c61f5a1477ee8235d4bd7cb72159984ad94fd9e8b590108745dd2d806f4907f"
+      "sha256": "f0fccc063bdcfeed1c6e1e0d2a8ced89c1d9b4552e5f62bab32e7cb160e01b1d",
+      "textSha256": "f0fccc063bdcfeed1c6e1e0d2a8ced89c1d9b4552e5f62bab32e7cb160e01b1d"
     },
     {
       "path": "tests/steamdeck_installer_checks.py",
