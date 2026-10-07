@@ -2966,8 +2966,8 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "87312b65cd84c8506b6bbd429136550826cd413ab406fdb8ea4113c16cbdbe8a",
-      "textSha256": "87312b65cd84c8506b6bbd429136550826cd413ab406fdb8ea4113c16cbdbe8a"
+      "sha256": "e0486fc3a02d52582beadd830205917ed8537c0b38c5f90bd05e1a8ec799f839",
+      "textSha256": "e0486fc3a02d52582beadd830205917ed8537c0b38c5f90bd05e1a8ec799f839"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
