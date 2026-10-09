@@ -70,8 +70,8 @@
     },
     {
       "path": "build.cmd",
-      "sha256": "ffeabd87fec934b41b246af5fb448e03d6f0971d08622491eb386398f6e1a94d",
-      "textSha256": "40f745135e5eef8afc79c33debcad7a9f570f3204f03cb3cef989251f074736e"
+      "sha256": "60264677416a8347007d15d9dd41715cb92b96837e321310713a50a5898f9d98",
+      "textSha256": "ee1827923ddc915c4076c0785898b7f6581c066b2b90ac8d2132a7e7ebaed3c8"
     },
     {
       "path": "CHANGELOG.md",
