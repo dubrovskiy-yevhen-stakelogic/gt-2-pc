@@ -479,8 +479,8 @@
     },
     {
       "path": "scripts/prepare-hd.ps1",
-      "sha256": "811d6b1a7a3e1be68364deb1136519edb0f43ec7fb5fe7ba75bdb2bbdc587ce5",
-      "textSha256": "d9af237568f4fc9e65558efc1ff9af8736925c2564f744e6fdbbc3435633317d"
+      "sha256": "db978fb3d3d7d15d8602ec08eb29fd72a29640035eb96ec8b1a095f4ac8d61bd",
+      "textSha256": "cded7930a5d251a4931f684d78e69c904bd7f67d1a7807f88c2ed81815a7226f"
     },
     {
       "path": "scripts/serve-web.py",

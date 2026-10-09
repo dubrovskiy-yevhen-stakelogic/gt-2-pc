@@ -37,6 +37,11 @@ function Fetch([string]$Url, [string]$Hash, [string]$Name, [string]$ArchiveMembe
         # The versioned core bundle is 7z. Extract only the software PSX core.
         $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
         $seven = Join-Path $env:ProgramFiles '7-Zip/7z.exe'
+        # 7-Zip may be installed elsewhere (e.g. Scoop); Windows 10 tar.exe cannot decode the archive's LZMA.
+        if (!(Test-Path -LiteralPath $seven)) {
+            $found = Get-Command 7z.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $seven = $found.Source }
+        }
         New-Item -ItemType Directory -Path $folder | Out-Null
         if (Test-Path -LiteralPath $seven) {
             & $seven x $zip "-o$folder" $ArchiveMember -y | Out-Null
