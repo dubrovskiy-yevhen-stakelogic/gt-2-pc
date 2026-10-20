@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "game/audio/menu_music.h"
 #include "game/career/career_state.h"
 #include "game/career/championship.h"
 #include "game/career/events.h"
@@ -593,9 +594,11 @@ enum class PostRaceChoice { kContinue, kExit, kClosed, kReplay };
 // 24 fields, pre-bonus 0x8005D558 / 0x8005D4C8 / 0x8005D510 16, pre-menu 0x8005AE0C 16, leave 0x8005AE30 20) draw only
 // the header. Pad from the window (RecordScreenPad; Esc = triangle). "Save" of the bars runs SAVE GAME (show.saveGame), the
 // menu's "Save Replay ..." the card manager (show.saveReplay) and back to the menu; "Replay" returns kReplay. Returns kExit
-// when the post-race menu's Exit was confirmed ("Exit?" -> Yes). `autoAdvance` (--auto-race, a
-// dev aid of automated runs): cross every 40 fields, down while the menu's selected row is disabled.
-PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRaceShow& show, bool autoAdvance) {
+// when the post-race menu's Exit was confirmed ("Exit?" -> Yes). `music` receives the views' CD requests (0x800481C8:
+// track 8 from RESULTS to the menu, 0x800481E8 (-1) at the leave view), like arcade_post_race's ViewMusic.
+// `autoAdvance` (--auto-race, a dev aid of automated runs): cross every 40 fields, down while the menu's selected row is disabled.
+PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRaceShow& show, bool autoAdvance,
+                                const std::function<void(int)>& music = {}) {
     const RaceMenuAssets& a = panels.MenuAssets(Panels::Screen::kSettings);
     enum class Stage { kWaitResults, kResults, kWaitBonus, kBonus, kWaitMenu, kMenu, kLeave };
     screens::PostRaceFlow flow;
@@ -603,6 +606,7 @@ PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRa
     if (!show.results && !show.bonus && show.menu) { // after the menu's Replay: 0x8001728C with + 0x5D1 = 0 pushes the menu's wait view
         stage = Stage::kWaitMenu;
         flow.Start(std::make_unique<screens::WaitView>(a, 0x8005AE0Cu, 16), false);
+        if (music) music(8); // 0x80049C68: 0x800481C8(8)
     } else {
         flow.Start(std::make_unique<screens::WaitView>(a, 0x8005B7A0u, 24), false);
     }
@@ -624,6 +628,7 @@ PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRa
             case Stage::kWaitResults:
                 stage = Stage::kResults;
                 if (!show.results) continue;
+                if (music) music(8); // 0x80050EE4 (the end of the wait): 0x800481C8(8)
                 {
                     auto v = std::make_unique<screens::ResultsView>(a);
                     v->Setup(*show.results);
@@ -654,6 +659,7 @@ PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRa
                 if (!show.menu) {
                     stage = Stage::kLeave;
                     flow.Switch(std::make_unique<screens::WaitView>(a, 0x8005AE30u, 20));
+                    if (music) music(-1); // 0x80049D28: 0x800481E8
                     return true;
                 }
                 flow.Switch(std::make_unique<screens::WaitView>(a, 0x8005AE0Cu, 16));
@@ -686,6 +692,7 @@ PostRaceChoice RunPostRaceViews(GameWindow& window, Panels& panels, const PostRa
                 }
                 stage = Stage::kLeave;
                 flow.Switch(std::make_unique<screens::WaitView>(a, 0x8005AE30u, 20));
+                if (music) music(-1); // 0x80049D28: 0x800481E8
                 return true;
             case Stage::kLeave:
                 return false;
@@ -1470,6 +1477,24 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
         }
         if (ctx.panels && !ctx.window->Closed()) { // the race overlay's post-race views (race mode 0x801D5866 = 2)
             PostRaceShow show;
+            // The views' CD music (0x800481C8(8) / 0x800481E8): after the race's finish jingle, until the leave view. Its
+            // own output, opened lazily and closed before the replay (the replay race opens its own).
+            std::unique_ptr<audio::MenuMusic> postMusic;
+            auto playPostMusic = [&](int track) {
+                if (!view.sound || !view.music) return;
+                if (track < 0) {
+                    if (postMusic) postMusic->Stop();
+                    return;
+                }
+                if (!postMusic) {
+                    postMusic = std::make_unique<audio::MenuMusic>();
+                    if (!postMusic->Open(view.discPath, LoadExeImage(disc))) {
+                        postMusic.reset();
+                        return;
+                    }
+                }
+                if (postMusic->Current() != track) postMusic->Play(track, uint8_t(shell::OptionValue(s, shell::kMusicVolume)));
+            };
             screens::ResultsInput results;
             results.place = r.position;                             // s16 0x801D5E88
             results.totalTime = uint32_t(r.finishTime);             // 0x801D5F80
@@ -1511,8 +1536,9 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
                     RunSaveReplayScreen(*ctx.window, *ctx.panels, disc, vol, Panels::Screen::kSettings, *replay, rd.params[0], raceResults, ctx.card1Path, ctx.card2Path,
                                         &eventTail, lent);
                 };
-            PostRaceChoice choice = RunPostRaceViews(*ctx.window, *ctx.panels, show, ctx.view.autoAdvance);
+            PostRaceChoice choice = RunPostRaceViews(*ctx.window, *ctx.panels, show, ctx.view.autoAdvance, playPostMusic);
             while (choice == PostRaceChoice::kReplay && replay) { // the replay, then the menu again (without RESULTS / BONUS)
+                postMusic.reset(); // the replay race opens its own output
                 RaceData replayData;
                 BuildEventRace(disc, vol, data, *plan, race, replayData);
                 RaceViewConfig replayView = ctx.view;
@@ -1528,7 +1554,7 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
                 }
                 show.results.reset();
                 show.bonus.reset();
-                choice = RunPostRaceViews(*ctx.window, *ctx.panels, show, ctx.view.autoAdvance);
+                choice = RunPostRaceViews(*ctx.window, *ctx.panels, show, ctx.view.autoAdvance, playPostMusic);
             }
             if (choice != PostRaceChoice::kContinue && race + 1 < plan->races) {
                 completed = false;

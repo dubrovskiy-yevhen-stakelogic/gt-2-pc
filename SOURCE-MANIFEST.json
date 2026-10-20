@@ -2781,8 +2781,8 @@
     },
     {
       "path": "tools/gt2game/career_race.cpp",
-      "sha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114",
-      "textSha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114"
+      "sha256": "b1e1159e029d7e53d10f1ac6e5442a9b0ace22e1e71861ac28fdf9744a92f3a2",
+      "textSha256": "b1e1159e029d7e53d10f1ac6e5442a9b0ace22e1e71861ac28fdf9744a92f3a2"
     },
     {
       "path": "tools/gt2game/career_race.h",
