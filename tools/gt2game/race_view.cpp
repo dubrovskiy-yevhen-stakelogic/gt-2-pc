@@ -1719,6 +1719,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.splitA = uint32_t(body.hudCompare);
             hf.splitB = uint32_t(body.hudGap);
             hf.visibility = OverlayHudVisibility();
+            hf.visibility.gauges = gt2view::GaugesVisible(hf.visibility, inCockpit); // the cabin replaces the 2D cluster
             hud->Build(hf, hudAspect, items);
         }
 

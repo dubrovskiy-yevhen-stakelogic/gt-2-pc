@@ -4,6 +4,7 @@
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/str_video.h"
 #include "gt2vfs/gtfs.h"
+#include "gt2view/hud_visibility.h"
 #include "game/arcade/arcade_menus.h"
 #include "game/menu/menu_runtime.h"
 #include "game/shell/title_attract.h"
@@ -31,6 +32,16 @@
 
 static int checks = 0;
 static void Check(bool ok, const char* what) { ++checks; if (!ok) throw std::runtime_error(what); }
+
+static void CheckHudGauges() {
+    using gt2view::GaugesVisible;
+    gt2view::HudVisibility v;
+    v.gauges = false;
+    Check(!GaugesVisible(v, true), "gauges stay hidden with the cockpit on screen");
+    Check(GaugesVisible(v, false), "gauges show without the cockpit");
+    v.gauges = true;
+    Check(GaugesVisible(v, true), "gauges can be shown in the cockpit");
+}
 
 static void CheckRegionalUiTail() {
     using namespace gt2;
@@ -265,6 +276,7 @@ static void CheckPcChanges(const char* discPath) {
 int main(int argc, char** argv) {
     try {
         CheckRegionalUiTail();
+        CheckHudGauges();
         CheckRegionalCareerScreens(argc > 1 ? argv[1] : nullptr);
         {
             // An indexed row validates nibble order and PS1 BGR555 conversion.

@@ -145,8 +145,8 @@
     },
     {
       "path": "docs/COCKPIT.md",
-      "sha256": "55de624f7d2db1db4a27d06d72b7d2681459f84d532fe8a9e4d5240bd9b4a45b",
-      "textSha256": "55de624f7d2db1db4a27d06d72b7d2681459f84d532fe8a9e4d5240bd9b4a45b"
+      "sha256": "d014a6c543f52ba549ee27dc98d68186a04e26447fd5a5cb3c1a945b76619533",
+      "textSha256": "d014a6c543f52ba549ee27dc98d68186a04e26447fd5a5cb3c1a945b76619533"
     },
     {
       "path": "docs/EUROPEAN-DISCS.md",
@@ -1724,8 +1724,8 @@
     },
     {
       "path": "src/gt2view/hud_visibility.h",
-      "sha256": "012323f26b9f38c73309c3745d56344d32fbfdffb0d352663c66a9869c41a93a",
-      "textSha256": "012323f26b9f38c73309c3745d56344d32fbfdffb0d352663c66a9869c41a93a"
+      "sha256": "cef165e454bb36ba9c19a8ff5eeb90fa55985a88a854df2ebfa3d6a8f93ffaec",
+      "textSha256": "cef165e454bb36ba9c19a8ff5eeb90fa55985a88a854df2ebfa3d6a8f93ffaec"
     },
     {
       "path": "src/gt2view/hud.cpp",
@@ -2354,8 +2354,8 @@
     },
     {
       "path": "tests/checks.cpp",
-      "sha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540",
-      "textSha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540"
+      "sha256": "a0b9be488b3d2ace6f7c5d7450cfa13d0cad7dc4d43ce911e59861ca89a16c9d",
+      "textSha256": "a0b9be488b3d2ace6f7c5d7450cfa13d0cad7dc4d43ce911e59861ca89a16c9d"
     },
     {
       "path": "tests/cockpit_audit_sheets.py",
@@ -3006,8 +3006,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "02b7f71979fe294d50bc3effea87d00e1511b37acad90d9d37c49ccfb9897cc2",
-      "textSha256": "02b7f71979fe294d50bc3effea87d00e1511b37acad90d9d37c49ccfb9897cc2"
+      "sha256": "cbff867ea133c9d7572d372aaedffe16a0911b97b2d6c1f16e1f654654083057",
+      "textSha256": "cbff867ea133c9d7572d372aaedffe16a0911b97b2d6c1f16e1f654654083057"
     },
     {
       "path": "tools/gt2game/race_view.h",

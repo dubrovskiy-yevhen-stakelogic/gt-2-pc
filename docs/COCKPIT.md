@@ -13,7 +13,7 @@ The dashboard, steering wheel, seats and lower door panels use shared procedural
 5. Turn **Steering wheel** off when using a physical wheel if it obstructs your view. This changes the decorative wheel only; steering input and force feedback remain active. In VR virtual-wheel mode, the interactive wheel takes its place.
 6. Set **Rear-view mirror** to **OFF** to remove the cockpit mirror and its rear-view pass. **Mirror size** adjusts both dimensions from **25% to 100%**, in 5% steps, around its fitted centre. **HUD elements > Rear-view mirror** also controls its visibility.
 
-Settings save automatically across Arcade and Simulation. **Reset cockpit settings** restores the enabled cabin, visible decorative wheel, enabled full-size mirror and zero seat adjustments. The instrument HUD starts **OFF** for new profiles; the physical dashboard instruments remain visible. Updates preserve saved preferences.
+Settings save automatically across Arcade and Simulation. **Reset cockpit settings** restores the enabled cabin, visible decorative wheel, enabled full-size mirror and zero seat adjustments. The instrument HUD starts **OFF** for new profiles; the physical dashboard instruments remain visible. In Original camera, during the race intro and whenever the cabin is not drawn, the original 2D speedometer, tachometer and gear cluster is shown instead. Updates preserve saved preferences.
 
 ## Seating and visibility
 
