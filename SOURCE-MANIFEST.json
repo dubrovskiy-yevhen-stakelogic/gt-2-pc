@@ -2911,8 +2911,8 @@
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
-      "sha256": "71b37a0148f0f2304837021bfc3133ace3036f71b1d7d063663ad052436ec105",
-      "textSha256": "71b37a0148f0f2304837021bfc3133ace3036f71b1d7d063663ad052436ec105"
+      "sha256": "1b9023c40d6a520f1d0ef8ee4aa6bdccd6a78b26161ce30eb218249714fd888b",
+      "textSha256": "1b9023c40d6a520f1d0ef8ee4aa6bdccd6a78b26161ce30eb218249714fd888b"
     },
     {
       "path": "tools/gt2game/menu_mode.h",
