@@ -106,9 +106,12 @@ MenuPage ParseMenuPage(std::span<const uint8_t> b, uint32_t id) {
     o += pic.clut.size() * 2;
     pic.textureTiles = U32(b, o);
     o += 4;
-    const size_t rows = size_t(pic.textureTiles / 32 + 1) * 8; // stored: one strip more when n is a multiple of 32
-    if (o + rows * 256 != b.size()) throw std::runtime_error("GM page: picture size does not match the page size");
-    pic.pixels.assign(b.begin() + ptrdiff_t(o), b.end());
+    // 0x80021284 uploads ceil(n / 32) * 8 rows; the files may or may not append the unused strip after them (the
+    // original discs store it when n is a multiple of 32, the A-Spec pages trim it and keep one when n is not).
+    const size_t rows = size_t((pic.textureTiles + 31) / 32) * 8;
+    const size_t stored = b.size() - o;
+    if (stored < rows * 256 || stored > (rows + 8) * 256) throw std::runtime_error("GM page: picture size does not match the page size");
+    pic.pixels.assign(b.begin() + ptrdiff_t(o), b.begin() + ptrdiff_t(o + rows * 256));
     return p;
 }
 

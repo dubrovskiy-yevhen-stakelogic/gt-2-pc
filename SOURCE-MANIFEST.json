@@ -1369,8 +1369,8 @@
     },
     {
       "path": "src/gt2formats/gt_menu.cpp",
-      "sha256": "0378cc96254c8d8252cd85f857b194ada8e8fb1bf5bebca799a7734b273bf28c",
-      "textSha256": "0378cc96254c8d8252cd85f857b194ada8e8fb1bf5bebca799a7734b273bf28c"
+      "sha256": "c08b47574c6cbe30bba33d1108046bfeef5a7e36cf1e9f51cd3911f840fe852b",
+      "textSha256": "c08b47574c6cbe30bba33d1108046bfeef5a7e36cf1e9f51cd3911f840fe852b"
     },
     {
       "path": "src/gt2formats/gt_menu.h",
@@ -2354,8 +2354,8 @@
     },
     {
       "path": "tests/checks.cpp",
-      "sha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540",
-      "textSha256": "d4c18499881a68207912a797bbdd6bf9e33c784d0c22ef8d9413ccb1dee87540"
+      "sha256": "1673054ac222516d9ee8cb4e852b7133718a016ae5f9d5bb4fd9f5c2ebbb5ce2",
+      "textSha256": "1673054ac222516d9ee8cb4e852b7133718a016ae5f9d5bb4fd9f5c2ebbb5ce2"
     },
     {
       "path": "tests/cockpit_audit_sheets.py",

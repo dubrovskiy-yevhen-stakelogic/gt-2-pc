@@ -1,6 +1,7 @@
 #include "gt2formats/track.h"
 #include "gt2formats/boot_images.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/gt_menu.h"
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/str_video.h"
 #include "gt2vfs/gtfs.h"
@@ -31,6 +32,36 @@
 
 static int checks = 0;
 static void Check(bool ok, const char* what) { ++checks; if (!ok) throw std::runtime_error(what); }
+
+static void CheckGmPagePictures() {
+    using namespace gt2;
+    auto page = [](uint32_t textureTiles, size_t storedRows) {
+        std::vector<uint8_t> b = {'G', 'M', 3, 0};
+        auto u32 = [&](uint32_t v) {
+            for (int i = 0; i < 4; i++) b.push_back(uint8_t(v >> (8 * i)));
+        };
+        u32(0);          // groups
+        u32(0);          // own items
+        u32(0); u32(0xFFFFFFFFu); u32(0); // flags, back, picture
+        u32(0);          // picture magic ("GMLL", not read)
+        u32(0);          // picture tiles
+        b.resize(b.size() + 64 * 8 * 2); // CLUT
+        u32(textureTiles);
+        b.resize(b.size() + storedRows * 256);
+        return b;
+    };
+    // The A-Spec repack trims the unused strip of a multiple of 32 (n = 96 -> 24 rows, not 32).
+    const MenuPage trimmed = ParseMenuPage(page(96, 24), 1);
+    Check(trimmed.own.Rows() == 24 && trimmed.own.pixels.size() == 24 * 256, "GM page without the unused picture strip");
+    // ... and keeps one on a non-multiple (n = 1 -> 8 rows uploaded, 16 stored).
+    const MenuPage extra = ParseMenuPage(page(1, 16), 2);
+    Check(extra.own.Rows() == 8 && extra.own.pixels.size() == 8 * 256, "GM page with an unused picture strip");
+    for (const auto& [tiles, rows] : {std::pair<uint32_t, size_t>{1, 0}, {33, 8}}) {
+        bool rejected = false;
+        try { (void)ParseMenuPage(page(tiles, rows), 3); } catch (const std::exception&) { rejected = true; }
+        Check(rejected, "GM page rejects a picture shorter than its uploaded rows");
+    }
+}
 
 static void CheckRegionalUiTail() {
     using namespace gt2;
@@ -265,6 +296,7 @@ static void CheckPcChanges(const char* discPath) {
 int main(int argc, char** argv) {
     try {
         CheckRegionalUiTail();
+        CheckGmPagePictures();
         CheckRegionalCareerScreens(argc > 1 ? argv[1] : nullptr);
         {
             // An indexed row validates nibble order and PS1 BGR555 conversion.
