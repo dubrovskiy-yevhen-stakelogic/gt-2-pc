@@ -20,6 +20,7 @@
 #include "game/audio/menu_audio.h"
 #include "game/career/results.h"
 #include "game/menu/menu_runtime.h"
+#include "game/shell/title_options.h"
 #include "game_window.h"
 #include "gt2export/png_writer.h"
 #include "gt2formats/car_info.h"
@@ -142,6 +143,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
         try {
             menuAudio = std::make_unique<audio::MenuAudio>();
             menuAudio->Load(vol, LoadExeImage(disc), LoadOverlayImage(disc, 4));
+            menuAudio->SetMusicVolume(uint8_t(shell::OptionValue(save.state, shell::kMusicVolume)));
             menuAudio->SetReverbEnabled(options.reverb);
             std::string error;
             if (record && !options.recordAudio.empty()) {

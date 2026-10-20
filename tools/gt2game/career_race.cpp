@@ -590,6 +590,37 @@ struct PostRaceShow {
 };
 enum class PostRaceChoice { kContinue, kExit, kClosed, kReplay };
 
+// The views' CD music (0x800481C8(track) / 0x800481E8): its own output, opened lazily and reused by the following views;
+// a track already playing is not restarted.
+class PostRaceMusic {
+public:
+    PostRaceMusic(const std::string& discPath, const DiscImage& disc, bool enabled, career::CareerState& career)
+        : discPath_(discPath), disc_(disc), enabled_(enabled), career_(career) {}
+    void operator()(int track) {
+        if (!enabled_) return;
+        if (track < 0) {
+            if (music_) music_->Stop();
+            return;
+        }
+        if (!music_) {
+            music_ = std::make_unique<audio::MenuMusic>();
+            if (!music_->Open(discPath_, LoadExeImage(disc_))) {
+                music_.reset();
+                return;
+            }
+        }
+        if (music_->Current() != track) music_->Play(track, uint8_t(shell::OptionValue(career_, shell::kMusicVolume)));
+    }
+    void Close() { music_.reset(); } // the replay race opens its own output
+
+private:
+    std::string discPath_;
+    const DiscImage& disc_;
+    bool enabled_;
+    career::CareerState& career_;
+    std::unique_ptr<audio::MenuMusic> music_;
+};
+
 // Runs the views with the view manager's switches (0x800474F4): the wait views between them (pre-results 0x8005B7A0
 // 24 fields, pre-bonus 0x8005D558 / 0x8005D4C8 / 0x8005D510 16, pre-menu 0x8005AE0C 16, leave 0x8005AE30 20) draw only
 // the header. Pad from the window (RecordScreenPad; Esc = triangle). "Save" of the bars runs SAVE GAME (show.saveGame), the
@@ -753,7 +784,7 @@ MachineTestResult MachineTestResultOf(const sim::PlayerResults& r) { return {uin
 // 0x8005AE30 (20) -> the view 0x8005D348 (20 fields, 0x80057D24) that pushes the menu (the caller's). Returns false when the window
 // was closed.
 bool RunMachineTestViews(GameWindow& window, Panels& panels, career::CareerState& s, int subMode, uint32_t carId, int paint, const MachineTestResult& result,
-                         const std::function<void()>& saveGame, bool autoAdvance) {
+                         const std::function<void()>& saveGame, bool autoAdvance, const std::function<void(int)>& music = {}) {
     using namespace gt2::career;
     const RaceMenuAssets& a = panels.MenuAssets(Panels::Screen::kSettings);
     enum class Stage { kWait, kNewRecord, kResults, kLeave, kEnter };
@@ -775,6 +806,7 @@ bool RunMachineTestViews(GameWindow& window, Panels& panels, career::CareerState
     auto next = [&]() -> bool {
         switch (stage) {
         case Stage::kWait: // 0x80050EE4 at the end of the wait: the record (0x80050D78), then NEW RECORD or RESULTS
+            if (music) music(8); // 0x80050EE4 / NEW RECORD: 0x800481C8(8)
             outcome = WriteMachineTestRecord(s, subMode, carId, result.time, result.maxSpeed);
             std::printf("machine test: record %s (0x80050D78: time %u, speed %u -> rank %d)\n", outcome.rank >= 0 ? "ranked" : "not ranked", outcome.time,
                         outcome.maxSpeed, int(outcome.rank));
@@ -801,6 +833,7 @@ bool RunMachineTestViews(GameWindow& window, Panels& panels, career::CareerState
             if (auto* v = dynamic_cast<screens::MachineResultsView*>(flow.Current()); v && v->SaveChosen() && saveGame) saveGame();
             stage = Stage::kLeave;
             flow.Switch(std::make_unique<screens::WaitView>(a, 0x8005AE30u, 20));
+            if (music) music(-1); // 0x80049D28: 0x800481E8
             return true;
         case Stage::kLeave:
             stage = Stage::kEnter;
@@ -950,10 +983,12 @@ bool RunMachineTest(const DiscImage& disc, const GtfsVolume& vol, career::Career
         if (r.playerResults.position <= 0) return lines; // 0x80017200: the record views need 0x801D5E88 > 0
         const MachineTestResult mr = MachineTestResultOf(r.playerResults);
         lines.push_back("Time " + FormatMs(int32_t(mr.time)));
-        if (ctx.panels && !ctx.window->Closed())
+        if (ctx.panels && !ctx.window->Closed()) {
+            PostRaceMusic music(view.discPath, disc, view.sound && view.music, s);
             RunMachineTestViews(*ctx.window, *ctx.panels, s, m.subMode, car.modelId, paint, mr,
-                                [&] { RunSaveGameScreen(*ctx.window, *ctx.panels, disc, vol, s, ctx.card1Path, ctx.card2Path); }, ctx.view.autoAdvance);
-        else
+                                [&] { RunSaveGameScreen(*ctx.window, *ctx.panels, disc, vol, s, ctx.card1Path, ctx.card2Path); }, ctx.view.autoAdvance,
+                                [&](int track) { music(track); });
+        } else
             WriteMachineTestRecord(s, m.subMode, car.modelId, mr.time, mr.maxSpeed);
         view.machineRecord = MachineTestEntryValue(record, 0); // the HUD's Record of the next run (0x8002D20C reads the career)
         return lines;

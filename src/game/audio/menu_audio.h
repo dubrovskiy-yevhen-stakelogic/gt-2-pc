@@ -56,6 +56,8 @@ public:
     void RequestMusic(int track);
     // 0x80018FF0: leaving the menus.
     void StopMusic();
+    // 0x801C9993: the music volume of the options (career + 0xB3) the next track starts with; 0xF0 in every dump.
+    void SetMusicVolume(uint8_t volume) { musicVolume_ = volume; }
     // Once per view update (60 Hz): 0x80019028 (the start countdown), the sequencer tick, the driver's handle poll.
     void Frame();
     int CurrentTrack() const { return requested_; }
@@ -96,6 +98,7 @@ private:
     std::vector<SeqgFile> tracks_;                          // 0x80052A50[t]
     Sequencer sequencer_;
     int requested_ = -1, playing_ = -1, countdown_ = 0;
+    uint8_t musicVolume_ = kMusicVolume;
     bool loaded_ = false;
 };
 
