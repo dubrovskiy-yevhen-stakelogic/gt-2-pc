@@ -154,6 +154,9 @@ struct PostRaceModel {
     // race car (RESULTS / the post-race menus).
     uint32_t carId = 0;
     int paint = 0;
+    // false: 0x80048528's draw (arg 1 of 0x80048754: the licence BONUS's plate) - the .cdo mesh only, no car wheels;
+    // the caller also drops the ground shadow and the reflection pass of the car draw 0x80067444, as that path does.
+    bool carWheels = true;
     // The floor camera's projection and the model camera's (menu::OverlayModelProject).
     menu::MenuCarProjection Projection(bool withYaw) const { return menu::OverlayModelProject(camera, envX, envY, withYaw); }
 };

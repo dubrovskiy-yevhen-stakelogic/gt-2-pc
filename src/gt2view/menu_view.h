@@ -89,7 +89,8 @@ public:
     MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol);
     ~MenuCarView();
     // Loads the car of `modelId` (packed id) when it is not the one loaded; false when it cannot be loaded.
-    bool Use(uint32_t modelId);
+    // `wheels` false: the .cdo mesh only (0x80048528's draw, as the licence BONUS's plate: no car wheels).
+    bool Use(uint32_t modelId, bool wheels = true);
     // Appends the car's items: `projection` = the car's camera (menu::MenuCarProject with the yaw).
     void Append(std::vector<DrawItem>& items, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect, bool squarePixels);
     // The frame size of the projection's pixels (default 512 x 480; the race overlay's views: 352 x 480).
@@ -121,11 +122,12 @@ private:
     uint8_t envColour_ = 0x40;
     uint32_t envRowBase_ = 0;
     bool shadow_ = true;
+    bool wheels_ = true;
     int dish_ = -1;
     std::array<uint32_t, 2> pairModels_{};
     std::array<int, 2> pairSlots_{-1, -1};
     std::array<int32_t, 2> pairLifts_{};
-    bool Load(uint32_t modelId);
+    bool Load(uint32_t modelId, bool wheels = true);
     void AppendSlot(std::vector<DrawItem>& items, int slot, int32_t lift, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect, bool squarePixels);
 };
 

@@ -441,7 +441,9 @@ public:
     // into a slot of its own under that name (the game mode 6 ghost: the player's car with its own reflection pass).
     // `wheels` (optional): the wheel area the race's car setup generates (car_mesh.h GenerateWheelArea from the body's
     // wheel dimensions, 0x80017FA0); without it the .cdo defaults of 0x80061504. It applies when the slot is loaded.
-    int UseCar(const std::string& id, const std::string& alias = std::string(), const WheelArea* wheels = nullptr) {
+    // `carWheels` false: the .cdo mesh only. 0x80048528 (the championship end's trophy and the licence BONUS's plate)
+    // draws a model without the car draw's runtime wheels (0x80067444).
+    int UseCar(const std::string& id, const std::string& alias = std::string(), const WheelArea* wheels = nullptr, bool carWheels = true) {
         const std::string& key = alias.empty() ? id : alias;
         for (size_t i = 0; i < slots_.size(); i++)
             if (slots_[i].id == key) return int(i);
@@ -453,6 +455,7 @@ public:
         std::vector<SceneVertex> vertices;
         CarMeshOptions meshOptions;
         meshOptions.wheelArea = wheels;
+        meshOptions.wheels = carWheels;
         // the wheels around their own origin, each drawn with its transform (AppendCarItems: steer, camber, rolling angle)
         std::array<std::array<float, 3>, 4> wheelCentres{};
         std::array<std::array<uint32_t, 2>, 4> wheelRanges{};

@@ -222,11 +222,12 @@ void Panels::Append(float windowAspect, std::vector<gt2view::DrawItem>& items) {
             modelView_ = std::make_unique<gt2view::MenuCarView>(renderer_, vol_);
             modelView_->SetFrameSize(gt2::RaceMenuAssets::kScreenWidth, gt2::RaceMenuAssets::kScreenHeight);
         }
-        const bool loaded = modelView_->Use(model_->trophy ? gt2::PackCarId("gtprz") : modelCar_);
+        const bool loaded = modelView_->Use(model_->trophy ? gt2::PackCarId("gtprz") : modelCar_, model_->carWheels);
         // The reflection pass: the car's samples the course's map left in VRAM by the race (page 9, CLUT 0x7FD7, model
-        // +9 = 0x40); the trophy's map (0x80059800 uploads it with the model) is not loaded: no pass.
-        modelView_->SetReflection(model_->envPage, model_->envClut, model_->trophy ? uint8_t(0) : model_->reflection);
-        modelView_->SetShadow(!model_->trophy); // 0x80048528 (the trophy) draws no ground shadow
+        // +9 = 0x40); the trophy's map (0x80059800 uploads it with the model) is not loaded: no pass. The licence BONUS's
+        // plate is drawn by 0x80048528 (no car draw): no reflection, shadow or generated wheels.
+        modelView_->SetReflection(model_->envPage, model_->envClut, model_->trophy || !model_->carWheels ? uint8_t(0) : model_->reflection);
+        modelView_->SetShadow(!model_->trophy && model_->carWheels); // 0x80048528 (the trophy / the plate) draws no ground shadow
         gt2::MenuFrame frame;
         frame.prims = screen_;
         frame.layer3dAt = modelAt_;
