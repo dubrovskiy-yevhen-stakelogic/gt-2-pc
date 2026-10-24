@@ -1161,8 +1161,10 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
         ro.laps = 255; // the licence dump's lap count (0x801D586B)
         ro.license = &test;
         const std::string label = std::string(kLicenceNames[licence]) + "-" + std::to_string(testIndex + 1);
+        std::optional<RaceFlow::LicenceBonus> licenceBonus; // 0x8004E104's W+0 / W+0x2C -> the BONUS view 0x8005B4B8
         auto recordResult = [&](int32_t result, uint32_t time) {
             std::vector<std::string> lines;
+            licenceBonus.reset();
             static const char* const kFail[] = {"", "", "", "Failed - past the end of the box", "Failed - off the course", "Failed - hit the wall"};
             if (result == sim::kLicenseResultPass) lines.push_back("Passed  " + FormatMs(int32_t(time)));
             else lines.push_back(result >= 3 && result <= 5 ? kFail[result] : "Failed");
@@ -1175,14 +1177,18 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
             std::printf("licence %s: prize %d (%s), career record +1 = %d, +2 = %u (0x8004DD80)\n", label.c_str(), prize, kPrize[std::clamp(prize, 0, 4)], int(int8_t(rec.passed)),
                         rec.byte2);
             lines.push_back(std::string("Prize  ") + kPrize[std::clamp(prize, 0, 4)]);
-            if (!heldBefore && LicenceHeld(s, licence)) lines.push_back(std::string("Licence ") + kLicenceNames[licence] + " obtained!");
+            const bool licenceWon = !heldBefore && LicenceHeld(s, licence); // W+0
+            bool carWon = false;                                             // W+0x2C
+            if (licenceWon) lines.push_back(std::string("Licence ") + kLicenceNames[licence] + " obtained!");
             if (!goldBefore && LicenceAllGold(s, licence)) {
                 // 0x8004E104 -> 0x8004DF04: prize block car 0 (0x801D55CC) into the garage (0x8005E7F0; full garage: no car).
                 const int32_t added = AddPreparedCar(s.garage, licencePrizes.prizeCars[0]);
+                carWon = added != 0;
                 lines.push_back(added ? "All gold! Prize car added to the garage" : "All gold! (the garage is full: no prize car)");
                 std::printf("licence %s: all tests gold - prize car %s %s (0x8004DF04)\n", kLicenceNames[licence], UnpackCarId(licencePrizes.prizeCars[0].modelId).c_str(),
                             added ? "added" : "not added (garage full)");
             }
+            if (licenceWon || carWon) licenceBonus = RaceFlow::LicenceBonus{licence, licenceWon, carWon};
             return lines;
         };
         if (!ctx.window) { // headless: the stand-in test driver
@@ -1265,9 +1271,12 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
                 }
                 const LicenceTestRecord& rec = s.licences[licence][testIndex]; // for the next try's display
                 flow.fourthPrizeCounts = int8_t(rec.passed) == 0 && uint32_t(rec.byte2) + 1 == uint32_t(test.settings[0x30]);
+                flow.licenceBonus = licenceBonus; // this test completed the licence / added the all-gold car: the BONUS view
                 return lines;
             };
             if (ctx.panels) {
+                // The BONUS's "Save Game?" bar: SAVE GAME (the card manager's view 0x8005B588).
+                flow.saveGame = [&] { RunSaveGameScreen(*ctx.window, *ctx.panels, disc, vol, s, ctx.card1Path, ctx.card2Path); };
                 // "Save Replay ..." (row 4, code -2): the card manager's view 0x8005B51C with the last run's replay.
                 flow.saveReplay = [&](const ReplayFile& replay, const sim::PlayerResults& results) {
                     ReplayFile f = replay;

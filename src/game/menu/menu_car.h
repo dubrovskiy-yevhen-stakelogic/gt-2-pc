@@ -167,6 +167,9 @@ OverlayModelCamera ModelViewCamera(int16_t w, int16_t h);
 // 0x800593F4(camera, t) (the championship end's trophy, t = W+0x20C - 0x18 = 1..0x78): z = 4 m + t * 8 m / 90 until t =
 // 90, then 12 m; roll = -((90 - t) * 6 + 64), then -64; y = 0x4CCC (0.3 m); yaw = (yaw + 8) & 0x3FFF.
 void ChampionModelMotion(OverlayModelCamera& camera, int32_t t);
+// 0x8004E804(camera, t) (the licence BONUS's GT car, t = W+0x68C - 0x18 = 1..0x78): z = 4 m + t * 8 m / 90 until t = 90,
+// then 12 m; roll = -(90 - t) * 6, then 0; x = 0; pitch = -0x20; yaw = (yaw + 0x84 - t) & 0x3FFF.
+void LicenceBonusModelMotion(OverlayModelCamera& camera, int32_t t);
 // The projection of 0x80048754 with the model environment's offset (envX, envY) as the frame position of the
 // rectangle: `withYaw` = the model's camera, else the floor's.
 MenuCarProjection OverlayModelProject(const OverlayModelCamera& camera, int16_t envX, int16_t envY, bool withYaw);

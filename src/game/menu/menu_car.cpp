@@ -263,6 +263,16 @@ void ChampionModelMotion(OverlayModelCamera& camera, int32_t t) {
     camera.yaw = int16_t((camera.yaw + 8) & 0x3FFF);
 }
 
+void LicenceBonusModelMotion(OverlayModelCamera& camera, int32_t t) {
+    camera.position[2] = 0xC0000;
+    if (t < 0x5A) camera.position[2] = (t * 0x80000) / 0x5A + 0x40000;
+    camera.roll = 0;
+    if (t < 0x5A) camera.roll = int16_t(-((0x5A - int16_t(t)) * 6));
+    camera.position[0] = 0;
+    camera.pitch = -0x20;
+    camera.yaw = int16_t((camera.yaw + 0x84 - int16_t(t)) & 0x3FFF);
+}
+
 MenuCarProjection OverlayModelProject(const OverlayModelCamera& camera, int16_t envX, int16_t envY, bool withYaw) {
     MenuCarProjection p;
     p.x0 = envX;
