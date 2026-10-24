@@ -130,6 +130,17 @@ struct RaceFlow {
     std::function<void()> settingsChanged; // rebuild slot 0's record (RaceData::params[0]) after a commit
     // The race task ended after the player's finish: apply the result, return the result panel's lines.
     std::function<std::vector<std::string>(const RaceViewResult&)> finished;
+    // After a licence test's `finished`: the result was the licence's last test / its all-gold car was added (0x8004E104:
+    // W+0 and W+0x2C), so the result view opens the licence BONUS (view 0x8005B4B8, gt2view/race_result_screens.h)
+    // before the licence menu. Empty = no BONUS.
+    struct LicenceBonus {
+        int licence = 5;          // 0 S .. 5 B
+        bool licenceWon = false;  // the licence was not held before this test
+        bool carWon = false;      // the all-gold prize car was added
+    };
+    std::optional<LicenceBonus> licenceBonus; // out: set by `finished` (cleared when there is none)
+    // The licence BONUS's "Save Game?" bar: "Save" (0x8005B588, the card manager), then the licence menu.
+    std::function<void()> saveGame;
     std::string continueLabel = "Continue"; // the result panel's item (e.g. "Next race")
     // The race-end display over the race (gt2view/race_overlay_screens.h, 0x8002B170): the shell's sub-mode
     // 0x801D5866 (1 event, 2 championship race, 3 licence), the series' race count, the car names of the grid, and

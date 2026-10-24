@@ -150,6 +150,10 @@ struct PostRaceModel {
     int16_t envX = 0, envY = 0;     // the environment's drawing offset (0x8008034C of the view's draw)
     uint16_t envClut = 0x7FD7, envPage = 9;
     uint8_t reflection = 0x40;
+    // Nonzero: the view brings its own car (the licence BONUS's GT car, view 0x8005B4B8), instead of the caller's
+    // race car (RESULTS / the post-race menus).
+    uint32_t carId = 0;
+    int paint = 0;
     // The floor camera's projection and the model camera's (menu::OverlayModelProject).
     menu::MenuCarProjection Projection(bool withYaw) const { return menu::OverlayModelProject(camera, envX, envY, withYaw); }
 };
@@ -298,6 +302,51 @@ public:
     shell::Band newCarBand;          // 0x8005D454
     ResultBar bar;                   // W+0x138
     ResultDialog dialog;             // W+0x1CC
+
+private:
+    const RaceMenuAssets& a_;
+    bool save_ = false;
+};
+
+// ---- B2. the licence / all-gold prize BONUS
+
+// The view the licence result opens when the licence just became complete or its all-gold car was just added (view
+// 0x8005B4B8 "BONUS": setup 0x8004E88C, update 0x8004E978, draw 0x8004EC28; pushed by 0x8004E104 and by NEW RECORD's
+// OK 0x8004E658). "X LICENSE ACQUIRED" from the table 0x8005B3EC (SUPER / IA / IB / IC / A / B), "New Car Acquired!!"
+// when the all-gold car was added, the licence's GT car (table 0x8005B3D4: gt-sn .. gt-bn, camera 0x80049780(0x160,
+// 0x1E0) moved by 0x8004E804) and the "Save Game?" bar (template 0x8005B2C4: Save / Next).
+struct LicenceBonusInput {
+    int licence = 5;        // 0 S .. 5 B (race block + 0xB)
+    bool licenceWon = false; // W+0: the licence was not held before this test (0x8004DCAC before / after 0x8004DD80)
+    bool carWon = false;     // W+0x2C: the all-gold car was added (0x8004DF04's result)
+};
+
+class LicenceBonusView : public PostRaceView {
+public:
+    static constexpr uint32_t kView = 0x8005B4B8u;
+    explicit LicenceBonusView(const RaceMenuAssets& a);
+    LicenceBonusView(const LicenceBonusView&) = delete;
+    LicenceBonusView& operator=(const LicenceBonusView&) = delete;
+
+    void Setup(const LicenceBonusInput& in);                         // 0x8004E88C
+    int Update(const MenuListPad* pad, bool input = true) override;  // 0x8004E978
+    void Draw(MenuOt& ot) const override;                            // 0x8004EC28
+    std::optional<PostRaceModel> Model() const override;             // from W+0x68C 0x18: the licence's GT car (0x8004DF40)
+    std::string Title() const override;
+    uint32_t Colour() const override;
+    bool SaveChosen() const { return save_; }                        // left with "Save" (view 0x8005B588)
+
+    // State (the original's fields; public so that the checks can load it from a RAM dump).
+    int16_t t = 0;                  // V+14: fields since the setup (from 0x3C when only the car was won)
+    int16_t buttons = 0;            // V+16: the bar's input is on (field 0xB4)
+    bool licenceWon = false;        // W+0
+    bool carWon = false;            // W+0x2C
+    uint32_t modelCar = 0;          // W+0x690's car: the licence's 5-character GT id, packed
+    TextObject licenceText;         // W+4
+    TextObject newCarText;          // W+0x30
+    ResultBar bar;                  // W+0x58
+    int16_t modelAnim = 0;          // W+0x68C
+    menu::OverlayModelCamera camera; // W+0x7D4 (0x80049780(0x160, 0x1E0), floor off, moved by 0x8004E804)
 
 private:
     const RaceMenuAssets& a_;
