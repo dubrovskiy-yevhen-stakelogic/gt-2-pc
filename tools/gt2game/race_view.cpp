@@ -25,6 +25,7 @@
 #include "game/career/career_state.h"
 #include "game/career/events.h"
 #include "game/menu/menu_car.h"
+#include "game/pc_features.h"
 #include "game/shell/title_draw.h"
 #include "game/shell/title_options.h"
 #include "gt2view/machine_test_views.h"
@@ -657,6 +658,14 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         phase = Phase::kRacing;
         std::printf("replay: %d frames\n", ReplayStream::FromBytes(lastStream).Frames());
     };
+    // 0x80017A28 -> the menu again (0x80057EAC / the licence menu's setup): the replay rows by M+0x240, the car by M+0x241
+    auto backToPreRaceMenu = [&] {
+        phase = Phase::kPreRace;
+        menuSelected = startItem();
+        menuCar = flow->eventMenu.has_value() || flow->machineTest != 0;
+        setupMenu(false);
+        std::printf("race f%d: back to the %s menu\n", window.Field(), flow->licenceMenu ? "licence" : flow->machineTest ? "machine test" : "event");
+    };
     // State 12 ended (the stream ran out: 0x800A8D68, or the replay pause's Exit) -> 13 -> 6; true = the view ends.
     auto endReplay = [&]() -> bool {
         replaying = false;
@@ -674,17 +683,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             resultLines = flow->finished ? flow->finished(*pendingLicence) : std::vector<std::string>{};
             pendingLicence.reset();
         }
-        // 0x80017A28 -> the menu again (0x80057EAC / the licence menu's setup): the replay rows by M+0x240, the car by M+0x241
-        phase = Phase::kPreRace;
-        menuSelected = startItem();
-        menuCar = flow->eventMenu.has_value() || flow->machineTest != 0;
-        setupMenu(false);
-        std::printf("race f%d: back to the %s menu after the replay\n", window.Field(), flow->licenceMenu ? "licence" : flow->machineTest ? "machine test" : "event");
+        backToPreRaceMenu();
         return false;
     };
     uint32_t enterPressedForShell = 0; // X for the shell's results wait (0x8002A700), latched until the next step
     Phase loggedPhase = Phase(-1);
     bool finishLogged = false;
+    bool skipReplayLeaves = false; // ours: the skip option sends an event finish to the post-race views without the replay
     Phase autoPhase = phase;
     int phaseFrames = 0;
 
@@ -968,7 +973,6 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     result.steps = steps;
                     leave = true;
                 } else if (overlayMenus) { // 0x80017964: a licence test / a Test Run - M+0x240 = 1, the replay (state 11)
-                    std::printf("race: exit from the pause menu (no result): the replay\n");
                     racedOnce = true;
                     keepRace();
                     if (flow->raceEnded) { // 0x80017964 (the race's end: the player's dirt), no result
@@ -976,7 +980,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                         ended.playerDirt = uint16_t(int32_t(race.CarAt(0).body.dirtiness << 12) / 600000);
                         flow->raceEnded(ended);
                     }
-                    playLast(AfterReplay::kMenu);
+                    if (gt2::pc::skipRaceReplays) { // ours: the menu without the replay (the state of its end)
+                        std::printf("race: exit from the pause menu (no result): the menu\n");
+                        selectRace(lastTestRun);
+                        resetRace();
+                        backToPreRaceMenu();
+                    } else {
+                        std::printf("race: exit from the pause menu (no result): the replay\n");
+                        playLast(AfterReplay::kMenu);
+                    }
                 } else { // the original's pause "Exit": back to the race overlay's menu, the race abandoned
                     std::printf("race: exit from the pause menu (the race is abandoned, no result)\n");
                     phase = Phase::kPreRace;
@@ -1297,12 +1309,33 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     result.recordedStream = lastStream;
                     result.playerDirt = uint16_t(int32_t(race.CarAt(0).body.dirtiness << 12) / 600000); // 0x800131AC -> 0x801DE8B8
                     if (flow->raceEnded) flow->raceEnded(result);                                        // 0x80017964
+                    const bool skipReplay = gt2::pc::skipRaceReplays; // ours: the menu / post-race views without the replay
                     if (flow->licenceMenu || flow->machineTest) { // the machine test: 0x80017200 after the replay (M + 0x5D1)
-                        pendingLicence = result; // applied after the replay (0x8001736C -> 0x8004E104)
-                        playLast(AfterReplay::kLicenceResult);
+                        if (skipReplay) {
+                            // 0x8001736C -> 0x8004E104 applied at once: the record / NEW RECORD, then the menu (as state 13 -> 6)
+                            if (flow->machineTest && musicPlayer) musicPlayer->Stop();
+                            resultLines = flow->finished ? flow->finished(result) : std::vector<std::string>{};
+                            selectRace(lastTestRun);
+                            resetRace(); // the menu's next Start builds from a fresh race (the replay did this)
+                            backToPreRaceMenu();
+                        } else {
+                            pendingLicence = result; // applied after the replay (0x8001736C -> 0x8004E104)
+                            playLast(AfterReplay::kLicenceResult);
+                        }
                     } else {
                         resultLines = flow->finished ? flow->finished(result) : std::vector<std::string>{};
-                        playLast(testRun ? AfterReplay::kMenu : AfterReplay::kLeave);
+                        if (skipReplay) {
+                            if (testRun) { // a Test Run goes back to the event menu (as state 13 -> 6)
+                                selectRace(lastTestRun);
+                                resetRace();
+                                backToPreRaceMenu();
+                            } else { // the event race: the post-race views follow (as the replay's end)
+                                skipReplayLeaves = true;
+                                result.exit = RaceExit::kFinished;
+                            }
+                        } else {
+                            playLast(testRun ? AfterReplay::kMenu : AfterReplay::kLeave);
+                        }
                     }
                     break;
                 }
@@ -1311,6 +1344,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 break;
             }
         }
+        if (skipReplayLeaves) break; // the event's post-race views follow (as after the replay)
         if (steps != stepsAtField) stepAnchor = fieldTime;
         lastPad = pad;
 

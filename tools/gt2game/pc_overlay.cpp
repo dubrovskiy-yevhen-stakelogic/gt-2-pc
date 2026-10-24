@@ -162,7 +162,8 @@ void Save() {
         for (const auto& setting : hudSettings) out << setting.key << '=' << int(hudVisibility.*setting.member) << '\n';
         out << "profiler=" << int(profiler) << "\n";
         out << "vr_foveation=" << foveation << "\n";
-        out << "vr_refresh=" << vrRefresh << "\nunlock_sim_events=" << int(gt2::pc::unlockSimulationEvents) << "\n";
+        out << "vr_refresh=" << vrRefresh << "\nunlock_sim_events=" << int(gt2::pc::unlockSimulationEvents)
+            << "\nskip_race_replays=" << int(gt2::pc::skipRaceReplays) << "\n";
         out.flush();
         if (!out) throw std::runtime_error("cannot write overlay settings");
     }
@@ -193,6 +194,7 @@ void LoadOverlaySettings(const std::string& basePath) {
     gt2::hd::SetEnabled(true);
     gt2::pc::SetUnlocks(false, false);
     gt2::pc::unlockSimulationEvents = false;
+    gt2::pc::skipRaceReplays = false;
     settingsPath = basePath + ".overlay";
     std::istringstream in(gt2::shell::ReadPreferences(settingsPath)+"\n"+
         gt2::shell::VrPreferences(gt2::shell::ReadPreferences(gt2::shell::sharedVrSettingsPath)));
@@ -232,6 +234,7 @@ void LoadOverlaySettings(const std::string& basePath) {
         else if (key == "vr_refresh") vrRefresh = std::clamp(std::atoi(value.c_str()), 72, 120);
         else if (key == "vr_render_scale") vrScale = std::clamp(std::atoi(value.c_str()), 50, 200);
         else if (key == "unlock_sim_events") gt2::pc::unlockSimulationEvents = value == "1";
+        else if (key == "skip_race_replays") gt2::pc::skipRaceReplays = value == "1";
         else if (key == "unlock_courses") courses = value == "1";
         else if (key == "unlock_cars") cars = value == "1";
         else {
@@ -996,7 +999,8 @@ void ShowSettingsMenu(GameWindow& window) {
             rows = {"Arcade - all tracks: " + std::string(gt2::pc::unlockCourses ? "ON" : "OFF"),
                 "Arcade - all cars: " + std::string(gt2::pc::unlockCars ? "ON" : "OFF"),
                 "Simulation - all licences GOLD", "Simulation - 99,999,999 credits", "Simulation - all cars catalogue",
-                "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"), "Back"};
+                "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"),
+                "Auto replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF" : "ON"), "Back"};
         }
         if (page == 3) {
             title = "ALL CARS / PAGE " + std::to_string(carPage + 1);
@@ -1162,7 +1166,11 @@ void ShowSettingsMenu(GameWindow& window) {
                         }
                     }
                     if (selected == 5 && page == 2 && direction) gt2::pc::unlockSimulationEvents = !gt2::pc::unlockSimulationEvents;
-                    if (selected == 6 && page == 2) { page = 0; selected = 0; }
+                    if (selected == 6 && page == 2 && direction) {
+                        gt2::pc::skipRaceReplays = !gt2::pc::skipRaceReplays;
+                        status = "Saved. Applies on resume: no automatic replay after a race finish or exit.";
+                    }
+                    if (selected == 7 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
