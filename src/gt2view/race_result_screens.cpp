@@ -1018,6 +1018,7 @@ std::optional<PostRaceModel> LicenceBonusView::Model() const { // 0x8004ECAC: W+
     m.envClut = 0x7FD7, m.envPage = 9, m.reflection = 0x40; // 0x8004E040..: the model slot of 0x80067444
     m.carId = modelCar;
     m.paint = 0;
+    m.carWheels = false; // 0x80048754(..., 1) -> 0x80048528: the plate's mesh only, no car wheels / shadow / reflection
     return m;
 }
 
