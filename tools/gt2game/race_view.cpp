@@ -581,6 +581,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     std::unique_ptr<gt2::screens::EventMenuView> eventView;
     std::unique_ptr<gt2::screens::MachineTestMenuView> machineView; // the machine test's menu (RaceFlow::machineTest)
     gt2::screens::PostRaceView* menuView = nullptr;
+    // The licence BONUS (0x8005B4B8) pushed over the licence menu after a licence / its all-gold car was won.
+    gt2::screens::LicenceBonusView* licenceBonusView = nullptr;
     gt2::screens::SessionViewStack menuStack;
     int pendingCode = 0; // the menu's code (M + 0x7C) while its leave view runs
     MenuPadReader menuPad;
@@ -679,6 +681,20 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         menuSelected = startItem();
         menuCar = flow->eventMenu.has_value() || flow->machineTest != 0;
         setupMenu(false);
+        if (flow->licenceBonus && flow->licenceMenu && licenceView) { // 0x8004E104 -> the BONUS view 0x8005B4B8 over the menu
+            auto v = std::make_unique<gt2::screens::LicenceBonusView>(menuAssets());
+            gt2::screens::LicenceBonusInput in;
+            in.licence = flow->licenceBonus->licence;
+            in.licenceWon = flow->licenceBonus->licenceWon;
+            in.carWon = flow->licenceBonus->carWon;
+            v->Setup(in);
+            const uint32_t modelCar = v->modelCar;
+            licenceBonusView = v.get();
+            menuStack.Push(std::move(v));
+            std::printf("licence %d: BONUS (%s%s), car %08X\n", in.licence, in.licenceWon ? "licence acquired" : "",
+                        in.carWon ? (in.licenceWon ? ", new car acquired" : "new car acquired") : "", modelCar);
+            flow->licenceBonus.reset();
+        }
         std::printf("race f%d: back to the %s menu after the replay\n", window.Field(), flow->licenceMenu ? "licence" : flow->machineTest ? "machine test" : "event");
         return false;
     };
@@ -825,7 +841,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 machineView->Setup(flow->machineTest, !lastStream.empty(), menuCar && flow->menuCarId != 0, true);
                 menuStack.Pop();
             }
-            if (r == 1 && menuOnTop) {
+            if (r == 1 && licenceBonusView) { // the licence BONUS left (0x8004E978): Save -> the card manager, then the menu
+                if (licenceBonusView->SaveChosen() && flow->saveGame) flow->saveGame();
+                menuStack.Pop();
+                licenceBonusView = nullptr;
+                menuSelected = startItem();
+            } else if (r == 1 && menuOnTop) {
                 const int code = licenceView ? licenceView->Action() : machineView ? machineView->Action() : eventView->Action();
                 const bool start = licenceView || machineView ? code == 1 : (code == 1 || code == 4);
                 const bool noBar = (eventView && eventView->noTransmission) || (machineView && machineView->noTransmission);
@@ -1735,7 +1756,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 std::optional<gt2::screens::PostRaceModel> menuModel;
                 std::vector<MenuPrim> prims = menuStack.Frame(menuAssets(), modelAt, menuModel);
                 const Panels::Screen screen = flow->licenceMenu ? Panels::Screen::kLicence : Panels::Screen::kSettings;
-                if (menuModel && flow->menuCarId != 0) panels->FullScreenModel(std::move(prims), screen, modelAt, menuModel, flow->menuCarId, flow->menuCarPaint);
+                // The licence BONUS brings its own car (the licence's GT car); the other views draw the race slot's car.
+                const uint32_t modelCar = menuModel && menuModel->carId ? menuModel->carId : flow->menuCarId;
+                const int modelPaint = menuModel && menuModel->carId ? menuModel->paint : flow->menuCarPaint;
+                if (menuModel && modelCar != 0) panels->FullScreenModel(std::move(prims), screen, modelAt, menuModel, modelCar, modelPaint);
                 else panels->FullScreen(std::move(prims), screen);
             } else if (phase == Phase::kPreRace) {
                 Panels::Menu m;
