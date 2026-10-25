@@ -26,6 +26,7 @@ struct RenderSnapshot {
     gt2view::SmokePool smoke;               // the sprite pool after the step's spawns
     int32_t rpm = 0, speedReadout = 0, boost = 0; // HUD gauges: body + 0x6D8 / + 0x6DA / + 0x76E of the player
     int32_t steerAngle = 0;
+    int32_t throttle = 0, brake = 0, steerInput = 0; // HUD input meters: body + 0x610 / + 0x612 / + 0x768
     uint32_t clock = 0;                     // RaceSim::RaceClock
     std::vector<std::array<gt2::sim::WheelVisual, 4>> wheels; // steer / rolling angle / suspension of every car's wheels
 };
