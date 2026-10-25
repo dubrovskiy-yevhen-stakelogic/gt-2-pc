@@ -93,8 +93,8 @@ CarModel ParseCarModel(std::span<const uint8_t> data) {
         size_t entry = kLodTableOffset + 4 + li * 8;
         lod.maxDistance = r.U16(entry + 2);
         uint32_t tablePtr = r.U32(entry + 4);
-        if (tablePtr != 0 && tablePtr != lodPos)
-            throw std::runtime_error("car model: LOD table pointer disagrees with block walk");
+        // Mod cars may store stale/non-packed offsets; the blocks are packed in order, so ignore the offsets.
+        (void)tablePtr;
 
         r.Need(lodPos, kLodHeaderSize);
         std::array<uint32_t, 10> off{};
@@ -109,17 +109,7 @@ CarModel ParseCarModel(std::span<const uint8_t> data) {
         const uint16_t uvTriCount = lod.counts[6], uvQuadCount = lod.counts[7];
         if (lod.counts[4] || lod.counts[5] || lod.counts[8] || lod.counts[9])
             throw std::runtime_error("car model: LOD uses undocumented blocks (counts 4/5/8/9)");
-        // Blocks are packed in this order; the offset of an empty block may be 0 or stale.
-        const struct { size_t offsetIndex; size_t count; size_t stride; } blocks[] = {
-            {0, vertCount, 8}, {2, normalCount, 4}, {3, triCount, kPolygonSize}, {4, quadCount, kPolygonSize},
-            {7, uvTriCount, kUvPolygonSize}, {8, uvQuadCount, kUvPolygonSize}};
-        size_t expected = kLodHeaderSize;
-        for (const auto& blk : blocks) {
-            if (blk.count != 0 && off[blk.offsetIndex] != expected)
-                throw std::runtime_error("car model: LOD offsets are not the expected packed layout");
-            expected += blk.count * blk.stride;
-        }
-
+        
         size_t pos = lodPos + kLodHeaderSize;
         for (uint16_t i = 0; i < vertCount; i++, pos += 8)
             lod.vertices.push_back({r.S16(pos), r.S16(pos + 2), r.S16(pos + 4), r.S16(pos + 6)});
