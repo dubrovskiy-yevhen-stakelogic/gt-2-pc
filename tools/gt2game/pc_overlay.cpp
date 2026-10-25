@@ -56,7 +56,8 @@ constexpr HudSetting hudSettings[] = {
     {"Driving warnings", "vr_hud_warnings", &gt2view::HudVisibility::warnings},
     {"Split times and messages", "vr_hud_messages", &gt2view::HudVisibility::messages},
     {"Replay caption", "vr_hud_replay", &gt2view::HudVisibility::replay},
-    {"Movie skip hint", "vr_hud_movie_hint", &gt2view::HudVisibility::movieHint}
+    {"Movie skip hint", "vr_hud_movie_hint", &gt2view::HudVisibility::movieHint},
+    {"Throttle / brake / steering", "vr_hud_meters", &gt2view::HudVisibility::meters}
 };
 constexpr uint32_t vertexBase = gt2view::SceneRenderer::kNativeUiVertexBase, fontRow = gt2view::SceneRenderer::kNativeFontRow;
 

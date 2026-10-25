@@ -828,6 +828,7 @@ CarTelemetry RaceSim::Telemetry(size_t car) const {
     t.brake = body.brake;
     t.handbrake = body.handbrake;
     t.steerAngle = body.steerAngle;
+    t.steerInput = body.steerInput;
     t.heading = body.heading;
     t.courseDistance = body.courseDistance;
     t.racePosition = body.racePosition;

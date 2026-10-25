@@ -1205,6 +1205,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 previous.speedReadout = b.speedReadout;
                 previous.steerAngle = b.steerAngle;
                 previous.boost = b.intakeLoad;
+                previous.throttle = b.throttle;
+                previous.brake = b.brake;
+                previous.steerInput = b.steerInput;
                 previous.clock = race.RaceClock();
                 previous.wheels.resize(race.CarCount());
                 for (size_t i = 0; i < race.CarCount(); i++) previous.wheels[i] = race.Wheels(i);
@@ -1692,6 +1695,11 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.clutchEngaged = body.clutchState == 1; // car + 0x645
             hf.turbo = body.boostCap;              // car + 0x154
             hf.boost = interp ? LerpInt(previous.boost, body.intakeLoad, at) : body.intakeLoad; // car + 0x76E
+            hf.throttle = interp ? LerpInt(previous.throttle, body.throttle, at) : body.throttle; // car + 0x610
+            hf.brake = interp ? LerpInt(previous.brake, body.brake, at) : body.brake;            // car + 0x612
+            hf.steerInput = interp ? LerpInt(previous.steerInput, body.steerInput, at) : body.steerInput; // car + 0x768
+            hf.handbrake = body.handbrake;         // car + 0x614
+            hf.frontSteer = {body.wheels[0].wearGrip, body.wheels[1].wearGrip}; // car + 0x498 / 0x500 (original reads these offsets)
             hf.metric = OverlayMetricUnits(config.metric);
             for (size_t i = 0; i < race.CarCount(); i++) { // car + 0x832 / 0x83A: the integer metres of the world position
                 const sim::CarPose carPose = interp ? InterpolatedPoseRounded(previous.poses[i], race.Pose(i), at) : race.Pose(i);
