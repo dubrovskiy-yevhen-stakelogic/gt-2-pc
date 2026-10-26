@@ -674,6 +674,31 @@ void Hud::MedalLine(int32_t ms, int x, int y, uint32_t colorWord) {
     Tile(x - 55, y - 7, 6, 6, 0);
 }
 
+// 0x8002DA3C (x 192, y 208), Replay Info level 2: the B / A / handbrake bars over their frame. Each fill rises from
+// y + 6, 21 px at full pedal; the frame sprite at 0x8002F810 is tinted 0x808080 (no tint).
+void Hud::InputBars(const HudFrame& f, int x, int y) {
+    const int amount[3] = {f.throttle, f.brake, f.handbrake};
+    for (int i = 0; i < 3; i++) {
+        const int h = std::clamp(amount[i], 0, 0x1000) * 21 / 0x1000;
+        if (h > 0) Tile(x + tables_.inputX[size_t(i)], y + 6 - h, 6, h, tables_.inputColor[size_t(i)]);
+    }
+    const gt2::HudSpriteDesc& d = tables_.inputFrame;
+    SpriteAt(x - (d.w >> 1), y - (d.h >> 1), d, 0x808080);
+    Mode(uint16_t(d.tpage | 0x20));
+}
+
+// 0x8002DBB0 (x 150, y 204), Replay Info level 2: the < > steering arrows (the side being steered is tinted 0x4080,
+// the other 0x303030). The front-wheel steer-angle quads are omitted.
+void Hud::InputSteering(const HudFrame& f, int x, int y) {
+    const int steer = std::clamp(int(f.steerInput), -100, 100);
+    const gt2::HudSpriteDesc& left = tables_.inputSteerLeft;
+    const gt2::HudSpriteDesc& right = tables_.inputSteerRight;
+    SpriteAt(x - (left.w >> 1) - 6, y - (left.h >> 1) + 6, left, steer > 0 ? 0x4080 : 0x303030);
+    Mode(uint16_t(left.tpage | 0x20));
+    SpriteAt(x - (right.w >> 1) + 10, y - (right.h >> 1) + 6, right, steer < 0 ? 0x4080 : 0x303030);
+    Mode(uint16_t(right.tpage | 0x20));
+}
+
 // 0x8002D664 (x 160, y 96): the shell's message block. The glyphs' draw mode carries blend 1 (the context's page word
 // gets bit 21 set), so the fading texts (colour word bit 25 below 31 frames) are additive.
 void Hud::Messages(const HudFrame& f, int x, int y) {
@@ -807,6 +832,12 @@ void Hud::ViewHud(const HudFrame& f) {
     visible_ = f.visibility.warnings; Warning(f, 0xA0, 0xB6);
     visible_ = f.visibility.messages; Messages(f, 0xA0, 0x60);
     const bool full = !f.replay || f.replayView != 0;
+    if (f.visibility.meters || (f.replay && f.replayView == 2)) { // 0x8002E6DC: our in-race option, or Replay Info level 2 (independent of replay config)
+        anchor_ = kAnchorCentre;
+        visible_ = true;
+        InputBars(f, 0xC0, 0xD0);     // 0x8002DA3C
+        InputSteering(f, 0x96, 0xCC); // 0x8002DBB0
+    }
     if (full) {
         anchor_ = kAnchorRight;
         visible_ = f.visibility.records; RecordPanel(f, 0x134, 0x10);

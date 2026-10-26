@@ -270,6 +270,7 @@ struct CarTelemetry {
     uint8_t gear = 0;              // body + 0x618 (0 = reverse)
     int16_t throttle = 0, brake = 0, handbrake = 0; // body + 0x610 / 0x612 / 0x614, 0x1000 = full
     int16_t steerAngle = 0;        // body + 0x60C
+    int8_t steerInput = 0;         // body + 0x768: the pad's steering, -100 (right) .. 100 (left)
     int16_t heading = 0;           // body + 0x648
     int32_t courseDistance = 0;    // body + 0x604, 16.16 m
     uint8_t racePosition = 0;      // body + 0x750
