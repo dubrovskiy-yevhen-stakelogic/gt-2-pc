@@ -832,7 +832,7 @@ void Hud::ViewHud(const HudFrame& f) {
     visible_ = f.visibility.warnings; Warning(f, 0xA0, 0xB6);
     visible_ = f.visibility.messages; Messages(f, 0xA0, 0x60);
     const bool full = !f.replay || f.replayView != 0;
-    if (f.replay ? f.replayView == 2 : f.visibility.meters) { // 0x8002E6DC: Replay Info level 2, or our in-race option
+    if (f.visibility.meters || (f.replay && f.replayView == 2)) { // 0x8002E6DC: our in-race option, or Replay Info level 2 (independent of replay config)
         anchor_ = kAnchorCentre;
         visible_ = true;
         InputBars(f, 0xC0, 0xD0);     // 0x8002DA3C

@@ -1037,8 +1037,8 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 4) {
             title = "GT2 VR / HUD / PAGE " + std::to_string(hudPage + 1);
             rows.push_back(std::string("Speed units: ") + (OverlayMetricUnits(baseMetricUnits) ? "km/h" : "mph"));
-            const size_t start = size_t(hudPage) * 6;
-            for (size_t i = start; i < std::min(start + 6, std::size(hudSettings)); ++i) {
+            const size_t start = size_t(hudPage) * 7;
+            for (size_t i = start; i < std::min(start + 7, std::size(hudSettings)); ++i) {
                 const auto& setting = hudSettings[i];
                 rows.push_back(std::string(setting.label) + ": " + (hudVisibility.*setting.member ? "ON" : "OFF"));
             }
@@ -1168,7 +1168,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == count - 1) { page = 0; selected = 0; }
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
                     else if (selected == 0 && direction) { metricUnits = !OverlayMetricUnits(baseMetricUnits); status = "Saved. Speed units apply on resume."; }
-                    else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 6 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
+                    else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 7 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
                 }
 #ifdef _WIN32
                 else if (page == 6 && accept && selected == (vr ? 5 : 6)) {
