@@ -101,6 +101,9 @@ public:
             }
             const CourseInfoTable info = sources ? CourseInfoTable{} : ParseCourseInfo(vol_.Read(".crsinfo"));
             const int entry = sources ? -1 : info.FindByFileName(name);
+            // Bit 0 of the flags marks the night courses (every Special / Clubman Stage Route 5 and Rome-Night entry; the
+            // night reflection map above): their cars use the night models and textures (.cno / .cnp, lit lamps).
+            nightCars_ = ((sources ? sources->courseFlags : entry >= 0 ? info.entries[size_t(entry)].flags : 0) & 1) != 0;
             if (entry >= 0 && environmentMapEntry < 0) environmentMapEntry = int(EnvironmentMapEntry(info.entries[size_t(entry)].flags));
             std::vector<std::string> bsoPaths;
             for (const auto& f : vol_.Files())
@@ -447,8 +450,8 @@ public:
             if (slots_[i].id == key) return int(i);
         if (slots_.size() >= carSlotLimit_) return -1;
         const uint32_t slot = uint32_t(slots_.size());
-        CarModel model = ParseCarModel(vol_.Read("carobj/" + id + ".cdo"));
-        CarTexture texture = ParseCarTexture(vol_.Read("carobj/" + id + ".cdp"));
+        CarModel model = ParseCarModel(vol_.Read("carobj/" + id + (nightCars_ ? ".cno" : ".cdo")));
+        CarTexture texture = ParseCarTexture(vol_.Read("carobj/" + id + (nightCars_ ? ".cnp" : ".cdp")));
 
         std::vector<SceneVertex> vertices;
         CarMeshOptions meshOptions;
@@ -457,6 +460,7 @@ public:
         std::array<std::array<float, 3>, 4> wheelCentres{};
         std::array<std::array<uint32_t, 2>, 4> wheelRanges{};
         meshOptions.wheelsAtOrigin = true;
+        meshOptions.reverseDrawOrder = true; // lamps over their housings (car_mesh.h)
         meshOptions.wheelCentres = &wheelCentres;
         meshOptions.wheelRanges = &wheelRanges;
         for (const CarMeshVertex& v : BuildCarMesh(model, meshOptions)) {
@@ -1371,6 +1375,7 @@ private:
     std::vector<uint16_t> ownRows_;
     std::vector<Slot> slots_;
     uint32_t carSlotLimit_ = kCarSlots; // ReserveSecondView: kCarSlotsSplit
+    bool nightCars_ = false;            // UseTrack: a night course (.crsinfo flags bit 0); UseCar loads .cno / .cnp
     uint32_t billboardBase_ = kBillboardVertexBase, billboardLimit_ = kBillboardVertexLimit, smokeBase_ = kSmokeVertexBase; // SelectView
     std::string trackName_;
     std::unique_ptr<Track> track_;

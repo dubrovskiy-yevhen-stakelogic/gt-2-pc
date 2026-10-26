@@ -86,6 +86,10 @@ struct CarMeshOptions {
     bool wheelsAtOrigin = false;
     std::array<std::array<float, 3>, 4>* wheelCentres = nullptr;
     std::array<std::array<uint32_t, 2>, 4>* wheelRanges = nullptr;
+    // true: body polygons in reverse file order. The original's ordering table draws a later-added primitive of a bucket
+    // first, so of two coplanar faces (each lamp over its unlit housing) the earlier one in the file ends on top; a
+    // depth-tested renderer where the last draw wins a tie needs the reverse order to keep the lamps visible.
+    bool reverseDrawOrder = false;
 };
 
 std::vector<CarMeshVertex> BuildCarMesh(const CarModel& model, const CarMeshOptions& options);

@@ -1134,13 +1134,13 @@
     },
     {
       "path": "src/gt2export/car_mesh.cpp",
-      "sha256": "f19133c3283de16e513b4e49fba9bbae77639e1fa52c9db0260d0b3619f47200",
-      "textSha256": "40ec52f7b0ce5fc853d2aeb694791274fad2857f47f7363a34fae4b4ecf2cdcc"
+      "sha256": "214210dbbd802745a483d97872ca855d11decc363c8e666bac6c7e1f374bd90f",
+      "textSha256": "214210dbbd802745a483d97872ca855d11decc363c8e666bac6c7e1f374bd90f"
     },
     {
       "path": "src/gt2export/car_mesh.h",
-      "sha256": "c68c79eae5f0612037f3f38d0b7427c512234ea83f661509f3df71c990c41415",
-      "textSha256": "00a5f903ac3e8b3a25374c51c0c5c8f179dcb7a9f3a109712c4d443390816d1d"
+      "sha256": "9c1c1fcfdd8c8211436d9fb837360d16fccc25401d98b580b14dd1f85b7994fd",
+      "textSha256": "9c1c1fcfdd8c8211436d9fb837360d16fccc25401d98b580b14dd1f85b7994fd"
     },
     {
       "path": "src/gt2export/car_preview.cpp",
@@ -1889,8 +1889,8 @@
     },
     {
       "path": "src/gt2view/scene_assets.h",
-      "sha256": "6c282646872a9cdc9d76f94c985db25a484f23823874fa13ebf60a74fc2cd292",
-      "textSha256": "6c282646872a9cdc9d76f94c985db25a484f23823874fa13ebf60a74fc2cd292"
+      "sha256": "57f34f405bb1856173435be58a8b751240af9fefdd7a6791eb8b3598a24b06bc",
+      "textSha256": "57f34f405bb1856173435be58a8b751240af9fefdd7a6791eb8b3598a24b06bc"
     },
     {
       "path": "src/gt2view/scene_renderer.h",
@@ -3006,8 +3006,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "02b7f71979fe294d50bc3effea87d00e1511b37acad90d9d37c49ccfb9897cc2",
-      "textSha256": "02b7f71979fe294d50bc3effea87d00e1511b37acad90d9d37c49ccfb9897cc2"
+      "sha256": "ea63601b1a0b819ab6a1f1e385e9bda6b0c2e6641f6824d9e48c78d933ddf879",
+      "textSha256": "ea63601b1a0b819ab6a1f1e385e9bda6b0c2e6641f6824d9e48c78d933ddf879"
     },
     {
       "path": "tools/gt2game/race_view.h",
@@ -3031,8 +3031,8 @@
     },
     {
       "path": "tools/gt2game/split_race.cpp",
-      "sha256": "8b9b1c65dade17827563b8a49f24f2a816386f2a0d9a47f76fbaf905d024cbe4",
-      "textSha256": "8b9b1c65dade17827563b8a49f24f2a816386f2a0d9a47f76fbaf905d024cbe4"
+      "sha256": "94dc09c4eabc1f629f7365942fe3ae9b59c151ff8056ac8420237a7baa9438f5",
+      "textSha256": "94dc09c4eabc1f629f7365942fe3ae9b59c151ff8056ac8420237a7baa9438f5"
     },
     {
       "path": "tools/gt2game/split_race.h",

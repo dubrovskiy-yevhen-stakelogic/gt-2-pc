@@ -1567,7 +1567,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (slot != carSlot || hiddenCar == 0) assets.UpdateCarReflection(slot, otherModel, cameraAxes); // a slot shared with a drawn player keeps the player's pass
             const auto otherWheels = wheelModels(i, slot);
             const auto shadow = shadowClip(i, slot, vp);
-            assets.AppendCarItems(items, slot, otherMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &otherWheels, shadow.data());
+            const uint32_t otherBrakeLit = race.CarAt(i).body.brake > 0 ? 1u : 0u; // the car's brake pedal (AI or replay), CLUT 14 -> 15
+            assets.AppendCarItems(items, slot, otherMvp, i < data.paints.size() ? data.paints[i] : 0u, otherBrakeLit, true, &otherWheels, shadow.data());
         }
         if (particles) { // tyre smoke: camera-facing sprites of the pool (0x8002EB60), additive
             const float smokeEye[3] = {eye.x, eye.y, eye.z}, smokeRight[3] = {cs.x, cs.y, cs.z}, smokeUp[3] = {cu.x, cu.y, cu.z}, smokeForward[3] = {cf.x, cf.y, cf.z};
@@ -1635,7 +1636,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 Multiply(mirrorVp, mirrorModel, carMirrorMvp);
                 const auto mirrorWheels = wheelModels(i, slot);
                 const auto shadow = shadowClip(i, slot, mirrorVp);
-                assets.AppendCarItems(items, slot, carMirrorMvp, i < data.paints.size() ? data.paints[i] : 0u, 0, true, &mirrorWheels, shadow.data());
+                const uint32_t mirrorBrakeLit = (i == 0 ? lastPad.brake != 0 : race.CarAt(i).body.brake > 0) ? 1u : 0u;
+                assets.AppendCarItems(items, slot, carMirrorMvp, i < data.paints.size() ? data.paints[i] : 0u, mirrorBrakeLit, true, &mirrorWheels, shadow.data());
             }
             for (size_t k = firstCar; k < items.size(); k++) std::copy(rect, rect + 4, items[k].scissor);
             items.insert(items.end(), mirrorBlended.begin(), mirrorBlended.end());
