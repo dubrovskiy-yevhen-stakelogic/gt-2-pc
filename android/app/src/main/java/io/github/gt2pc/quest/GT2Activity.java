@@ -1,6 +1,7 @@
 package io.github.gt2pc.quest;
 import android.app.NativeActivity;
 import android.os.Bundle;
+import android.media.AudioManager;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
@@ -15,6 +16,7 @@ public final class GT2Activity extends NativeActivity {
             if (saveLock == null) throw new IllegalStateException("A save transfer is in progress. Try again when it finishes.");
         } catch (Exception e) { throw new IllegalStateException("Cannot lock game saves", e); }
         super.onCreate(state);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
     @Override public void onDestroy() {
         super.onDestroy();

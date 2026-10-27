@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <map>
 #include <vector>
 
 #include "gt2vfs/disc_image.h"
@@ -22,6 +23,7 @@ public:
 
     const std::vector<GtfsEntry>& Files() const { return files_; }
     const GtfsEntry* Find(const std::string& path) const;
+    bool IsExpansionAsset(const std::string& path) const { return expansionFiles_.contains(path) || expansionFiles_.contains(path + ".gz"); }
 
     std::vector<uint8_t> ReadStored(const GtfsEntry& e) const;
     // Transparently gunzips when the stored payload is a gzip stream.
@@ -33,6 +35,8 @@ private:
     const DiscImage& disc_;
     IsoFile vol_;
     std::vector<GtfsEntry> files_;
+    // Optional native catalogue expansion. Original VOL entries and file indices stay intact.
+    std::map<std::string, std::string> expansionFiles_;
 };
 
 } // namespace gt2

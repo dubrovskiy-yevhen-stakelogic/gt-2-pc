@@ -131,23 +131,27 @@ void WebGlSceneRenderer::UploadExternalTexture(uint32_t first, uint32_t count, c
 }
 void WebGlSceneRenderer::PrepareMaterials(const std::vector<DrawItem>& items) {
     decoded_.Begin();
-    for (const auto& item : items) {
-        if (uint64_t(item.firstVertex)+item.vertexCount > kMaxVertices) throw std::runtime_error("WebGL draw range");
-        auto [it, added] = ranges_.try_emplace((uint64_t(item.firstVertex)<<32)|item.vertexCount);
-        if (added) {
-            std::unordered_set<uint64_t> seen;
-            for (uint32_t i=0;i<item.vertexCount;i+=3) {
-                const auto& v=shadow_[item.firstVertex+i];
-                if (!(v.flags&kTextured) || (v.flags&(kOverlay|kExternalTexture|kHandTexture|kHdUi|kSmoothUi))) continue;
-                const auto key=uint64_t(v.page)|(uint64_t(v.clut|(((v.flags>>8)&3u)<<28)|((v.flags&kCarPaint)?1u<<30:0u))<<32);
-                if (seen.insert(key).second) it->second.push_back(v);
+    for (unsigned pass = 0; pass < 2; ++pass) {
+        for (const auto& item : items) {
+            if (uint64_t(item.firstVertex)+item.vertexCount > kMaxVertices) throw std::runtime_error("WebGL draw range");
+            auto [it, added] = ranges_.try_emplace((uint64_t(item.firstVertex)<<32)|item.vertexCount);
+            if (added) {
+                std::unordered_set<uint64_t> seen;
+                for (uint32_t i=0;i<item.vertexCount;i+=3) {
+                    const auto& v=shadow_[item.firstVertex+i];
+                    if (!(v.flags&kTextured) || (v.flags&(kOverlay|kExternalTexture|kHandTexture|kHdUi|kSmoothUi))) continue;
+                    const auto key=uint64_t(v.page)|(uint64_t(v.clut|(((v.flags>>8)&3u)<<28)|((v.flags&kCarPaint)?1u<<30:0u))<<32);
+                    if (seen.insert(key).second) it->second.push_back(v);
+                }
             }
-        }
-        for (const auto& v : it->second) {
-            auto clut=v.clut;
-            if (v.flags&kCarPaint) { clut+=item.paint<<16; if ((clut&65535)==224 && item.brakeLit) clut+=16; }
-            decoded_.Prepare(v.page,clut|(((v.flags>>8)&3)<<28),vramShadow_.data(),kVramRows);
-        }
+            for (const auto& v : it->second) {
+                auto clut=v.clut;
+                if (v.flags&kCarPaint) { clut+=item.paint<<16; if ((clut&65535)==224 && item.brakeLit) clut+=16; }
+                const auto clutDepth=clut|(((v.flags>>8)&3)<<28);
+                if (pass == 0) decoded_.Protect(v.page,clutDepth);
+                else decoded_.Prepare(v.page,clutDepth,vramShadow_.data(),kVramRows);
+            }
+    }
     }
     glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D,materials_);
     glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,16,GL_RGBA_INTEGER,GL_UNSIGNED_INT,decoded_.table.data());
@@ -190,6 +194,7 @@ void WebGlSceneRenderer::DrawItems(const std::vector<DrawItem>& items,size_t fir
     glViewport(0,0,size.width,size.height); glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GEQUAL); glEnable(GL_SCISSOR_TEST);
     for (size_t i=first;i<last;++i) {
         const auto& d=items[i]; if (!d.vertexCount || ((d.space==kSpaceMirrorSource)!=mirror)) continue;
+        glDepthRangef(d.cabinDepth==2?.75f:d.cabinDepth?.5f:0.f,d.cabinDepth==2?.875f:d.cabinDepth?.75f:.5f);
         int x0=0,y0=0,x1=int(size.width),y1=int(size.height);
         if(d.scissor[2]>d.scissor[0]) {
             x0=std::clamp(int(d.scissor[0]*size.width),0,x1); x1=std::clamp(int(d.scissor[2]*size.width),x0,x1);
@@ -200,7 +205,11 @@ void WebGlSceneRenderer::DrawItems(const std::vector<DrawItem>& items,size_t fir
         glUniformMatrix4fv(mvp_,1,GL_FALSE,d.mvp); glUniform1ui(paint_,d.paint); glUniform1ui(brake_,d.brakeLit); glUniform1ui(stp_,d.stpPass);
         glUniform1ui(optionsUniform_,i<sceneItems ? (options_.smoothTextures?1u:0u)|(options_.affine?2u:0u)|(options_.mipmaps?8u:0u) : 0u);
         glEnable(GL_BLEND); glBlendEquationSeparate(d.blend==2 ? GL_FUNC_REVERSE_SUBTRACT : GL_FUNC_ADD,GL_FUNC_ADD);
-        if(d.blend<4) {
+        glDepthFunc(d.blend==kBlendStockSurfaceEnvironment ? GL_EQUAL : GL_GEQUAL);
+        if(d.blend==kBlendStockSurfaceEnvironment) {
+            glBlendFuncSeparate(GL_ONE,GL_ONE,GL_ZERO,GL_ONE);
+            glDepthMask(GL_FALSE);glDisable(GL_POLYGON_OFFSET_FILL);
+        } else if(d.blend<4) {
             const float factor=d.blend==3 ? 0.25f : 0.5f; glBlendColor(factor,factor,factor,1);
             glBlendFuncSeparate(d.blend==0 || d.blend==3 ? GL_CONSTANT_COLOR : GL_ONE,d.blend==0 ? GL_CONSTANT_COLOR : GL_ONE,GL_ONE,GL_ZERO);
             glDepthMask(GL_FALSE); glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(0,1);

@@ -33,6 +33,7 @@
 #include "gt2view/scene_renderer.h"
 #include "platform/input/input_system.h"
 #include "platform/xr/vr_rig.h"
+#include "platform/xr/vr_driving.h"
 
 namespace gt2game {
 
@@ -92,6 +93,11 @@ public:
     virtual void BeginRenderFrame() {}
     virtual void ConfigureVr() {}
     virtual void SetDrivingActive(bool) {}
+    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center) { cockpitWheelCenter_ = center; }
+    gt2::vr::DrivingSettings EffectiveDrivingSettings(gt2::vr::DrivingSettings settings) const {
+        settings.cockpitWheelCenter = cockpitWheelCenter_;
+        return settings;
+    }
     virtual void SetVrMenuActive(bool) {}
     virtual bool PhysicalSteering(float&) const { return false; }
     virtual void AppendDrivingVisuals(std::vector<gt2view::DrawItem>&, const float* = nullptr) {}
@@ -142,6 +148,8 @@ public:
     }
     // Drops a stereo frame that was begun but is not going to be drawn (the frame falls back to the quad).
     virtual void CancelStereoScene() {}
+private:
+    std::optional<std::array<float,3>> cockpitWheelCenter_;
 };
 
 // The platform's backend with its window of `clientWidth` x `clientHeight` (game_window_win32.cpp).
@@ -256,7 +264,9 @@ public:
     bool VBlankTiming(std::chrono::steady_clock::time_point& vblank, std::chrono::steady_clock::duration& period) const;
     // Restarts the pacing clock (after a long load, so that the next frames do not rush to catch up).
     void ResetPacing() { next_ = Clock::now(); }
-    void SetDrivingActive(bool on) { backend_->SetDrivingActive(on); }
+    void SetDrivingActive(bool on) { backend_->SetDrivingActive(on); if (!on) backend_->SetCockpitWheelCenter(std::nullopt); }
+    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center) { backend_->SetCockpitWheelCenter(center); }
+    bool CockpitWheelAnchored() const { return backend_->EffectiveDrivingSettings({}).cockpitWheelCenter.has_value(); }
     bool PhysicalSteering(float& value) const { return backend_->PhysicalSteering(value); }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame = nullptr) {
         backend_->AppendDrivingVisuals(items, vehicleFrame);
@@ -281,8 +291,14 @@ public:
 
     // The controllers (src/platform/input): port 1 of this field and its buttons (ps1::k*) held / newly pressed.
     gt2::input::InputSystem& Input() { return input_; }
-    const gt2::input::Ps1PadFrame& Pad() const { return input_.Port1(); }
-    bool PadHeld(uint16_t ps1Buttons) const { return (input_.Port1().buttons & ps1Buttons) != 0; }
+    // PC OpenXR is a companion input, never a candidate for replacing the desktop pad.
+    bool SeparateVrInput() const { return bool(vrInput_); }
+    const gt2::input::Ps1PadFrame& RacePad() const { return vrInput_ ? desktopPad_ : pad_; }
+    const gt2::input::Ps1PadFrame& VrPad() const { return vrPad_; }
+    bool PadHasMotors() const { return input_.Port1HasMotors() || (vrInput_ && vrInput_->HasMotors()); }
+    void SetPadActuators(const gt2::input::Actuators& actuators);
+    const gt2::input::Ps1PadFrame& Pad() const { return pad_; }
+    bool PadHeld(uint16_t ps1Buttons) const { return (pad_.buttons & ps1Buttons) != 0; }
     bool PausePressed() const { return menuShortcuts_.pause; }
     bool MenuPressed() const { return menuShortcuts_.menu; }
     bool SettingsPressed() const { return menuShortcuts_.settings; }
@@ -325,6 +341,11 @@ private:
     Clock::time_point next_ = Clock::now();
     gt2::input::InputSystem input_;
     MenuShortcutState menuShortcuts_;
+    MenuInputRelease menuRelease_;
+    std::unique_ptr<gt2::input::Device> vrInput_;
+    gt2::input::Ps1PadFrame desktopPad_, vrPad_, rawVrPad_;
+    MenuInputRelease vrMenuRelease_;
+    gt2::input::Ps1PadFrame pad_;
     uint16_t padPrevious_ = 0, padPressed_ = 0;
     gt2::input::Ps1PadFrame pad2_;
     uint16_t pad2Previous_ = 0, pad2Pressed_ = 0;

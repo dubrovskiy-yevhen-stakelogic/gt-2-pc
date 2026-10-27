@@ -1,4 +1,7 @@
 #version 450
+#ifndef GT2_WEBGL
+#extension GL_GOOGLE_include_directive : require
+#endif
 #ifdef GT2_WEBGL
 precision highp float;
 precision highp int;
@@ -28,12 +31,11 @@ layout(push_constant) uniform Push {
     uint brakeLit;
     uint stpPass;
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
-#ifdef GT2_WEBGL
     uint space;
     uint eye;
     uvec2 reserved;
     vec4 hudClip;
-#endif
+    vec4 nativeModelRotation;
 #ifdef GT2_WEBGL
 };
 uniform Push pc;
@@ -53,6 +55,7 @@ GT2_VARYING(7) flat out vec4 outRect;
 GT2_VARYING(8) out vec3 outScreen;
 
 GT2_VARYING(9) flat out uint outCache;
+GT2_VARYING(10) out vec3 outPaintView;
 #ifdef GT2_WEBGL
 uniform highp usampler2D materialTable;
 out float outAffineW;
@@ -62,6 +65,7 @@ layout(std430, set = 0, binding = 4) readonly buffer MaterialTable { uvec4 entri
 uvec4 materialAt(uint i) { return materials.entries[i]; }
 #endif
 uint cachedPage() {
+    if((inFlags & 64u)!=0u)return 0u;
     if ((inFlags & 1u) == 0u || (inFlags & (24u | 65536u | 131072u | 262144u)) != 0u) return 0u;
     uint clut = inClut;
     if ((inFlags & 4u) != 0u) {
@@ -69,7 +73,11 @@ uint cachedPage() {
         if ((clut & 65535u) == 224u && pc.brakeLit != 0u) clut += 16u;
     }
     uint key = clut | (((inFlags >> 8) & 3u) << 28);
-    uint at = ((inPage * 73856093u) ^ (key * 19349663u)) & 4095u;
+    // Must match DecodedTextureCache::Bucket, including the high CLUT row bits.
+    uint at = (inPage * 73856093u) ^ (key * 19349663u);
+    at ^= at >> 16;
+    at *= 0x7feb352du;
+    at = (at ^ (at >> 15)) & 4095u;
     for (uint i = 0u; i < 16u; ++i, at = (at + 1u) & 4095u) {
         uvec4 e = materialAt(at);
         if (e.w == 0u) break;
@@ -77,6 +85,9 @@ uint cachedPage() {
     }
     return 0u;
 }
+#ifndef GT2_WEBGL
+#include "native_model_vertex.glsl"
+#endif
 void main() {
     outCache = cachedPage();
     gl_Position = pc.mvp * vec4(inPos, 1.0);
@@ -85,6 +96,23 @@ void main() {
     gl_Position.z *= 1.0 + float((inFlags >> 12) & 3u) * 2e-5;
     outTexel = inTexel;
     outColor = inColor;
+    outPaintView=vec3(0,0,-1);
+#ifndef GT2_WEBGL
+    outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
+    if((inFlags & 64u)!=0u) {
+        vec3 n=nativeVertices.entries[gl_VertexIndex-1228800].xyz;
+        vec3 ray=nativeProjectedRay(inPos,pc.mvp);
+        nativeVertex(nativeProjectedNormal(n,pc.mvp),-ray,ray,mat3(1),nativeModelBasis()*transpose(nativeProjectedBasis(pc.mvp)));
+    } else
+#endif
+    if ((inFlags & 268435456u)!=0u) {
+        mat3 basis=mat3(pc.mvp);
+        // Remove projection/scale magnitude; only orientation drives the sheen.
+        vec3 right=normalize(vec3(basis[0].x,basis[1].x,basis[2].x));
+        vec3 down=normalize(vec3(basis[0].y,basis[1].y,basis[2].y));
+        vec3 forward=normalize(cross(right,down));
+        outColor=vec3(dot(right,inColor),-dot(down,inColor),-dot(forward,inColor));
+    }
     outPage = inPage;
     outClut = inClut;
     outFlags = inFlags;

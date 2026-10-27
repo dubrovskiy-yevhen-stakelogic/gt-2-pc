@@ -262,8 +262,13 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
 
 // ---------------------------------------------------------------- the car view
 
-MenuCarView::MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol) : renderer_(renderer), vol_(vol) {}
+MenuCarView::MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol, SceneAssets* sharedAssets)
+    : renderer_(renderer), vol_(vol), sharedAssets_(sharedAssets) {}
 MenuCarView::~MenuCarView() = default;
+bool MenuCarView::HasNativeInterior(int which) const {
+    const int slot=which>=0 && which<2?pairSlots_[size_t(which)]:slot_;
+    return Assets() && Assets()->HasNativeGt4Interior(slot);
+}
 void MenuCarView::LoadMenuReflection() {
     gt2::MenuVram map;
     map.UploadTimToPage(vol_.Read("arcade/gt_cursor.tim"), 9);
@@ -280,7 +285,7 @@ bool MenuCarView::Use(uint32_t modelId) {
 
 bool MenuCarView::Load(uint32_t modelId) {
     // A fresh set of car slots per car (the view shows one car; the slot's vertex range and texture rows are reused).
-    assets_ = std::make_unique<SceneAssets>(renderer_, vol_);
+    if (!sharedAssets_) assets_ = std::make_unique<SceneAssets>(renderer_, vol_,false);
     slot_ = -1;
     model_ = modelId;
     try {
@@ -290,9 +295,9 @@ bool MenuCarView::Load(uint32_t modelId) {
             dims[0].dish = dims[1].dish = int16_t(dish_);
             static const gt2::WheelTemplates templates = gt2::GeneratedWheelTemplates();
             const gt2::WheelArea area = gt2::GenerateWheelArea(dims, templates);
-            slot_ = assets_->UseCar(gt2::UnpackCarId(modelId), std::string(), &area);
+            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId), std::string(), &area);
         } else {
-            slot_ = assets_->UseCar(gt2::UnpackCarId(modelId));
+            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId));
         }
         lift_ = gt2::menu::MenuCarLift(model.wheelRadiusFront, model.wheels[0].y); // 0x80061544
     } catch (const std::exception& e) {
@@ -303,19 +308,19 @@ bool MenuCarView::Load(uint32_t modelId) {
 }
 
 void MenuCarView::SetWheels(const gt2::menu::MenuWheelTexture* wheel, int dish) {
-    if (slot_ < 0 || !assets_) return;
+    if (slot_ < 0 || !Assets()) return;
     if (dish != dish_) {
         dish_ = dish;
         Load(model_);
         if (slot_ < 0) return;
     }
-    if (wheel) assets_->SetCarWheelTexture(slot_, wheel->image, wheel->words, wheel->rows, wheel->clut);
-    else assets_->SetCarWheelTexture(slot_, {}, 0, 0, {});
+    if (wheel) Assets()->SetCarWheelTexture(slot_, wheel->image, wheel->words, wheel->rows, wheel->clut);
+    else Assets()->SetCarWheelTexture(slot_, {}, 0, 0, {});
 }
 
 bool MenuCarView::UsePair(uint32_t a, uint32_t b) {
-    if (slot_ < 0 && assets_ && pairModels_[0] == a && pairModels_[1] == b) return true;
-    assets_ = std::make_unique<SceneAssets>(renderer_, vol_);
+    if (slot_ < 0 && Assets() && pairModels_[0] == a && pairModels_[1] == b) return true;
+    if (!sharedAssets_) assets_ = std::make_unique<SceneAssets>(renderer_, vol_,false);
     slot_ = -1;
     model_ = 0;
     pairModels_ = {a, b};
@@ -325,7 +330,7 @@ bool MenuCarView::UsePair(uint32_t a, uint32_t b) {
         try {
             const gt2::CarModel model = gt2::ParseCarModel(vol_.Read("carobj/" + gt2::UnpackCarId(pairModels_[k]) + ".cdo"));
             // the same car twice: a slot of its own (alias) so that each keeps its reflection pass
-            pairSlots_[k] = assets_->UseCar(gt2::UnpackCarId(pairModels_[k]), k == 1 && a == b ? "pair1" : std::string());
+            pairSlots_[k] = Assets()->UseCar(gt2::UnpackCarId(pairModels_[k]), k == 1 && a == b ? "pair1" : std::string());
             pairLifts_[k] = gt2::menu::MenuCarLift(model.wheelRadiusFront, model.wheels[0].y); // 0x80061544
         } catch (const std::exception& e) {
             std::printf("menu car view: %s: %s\n", gt2::UnpackCarId(pairModels_[k]).c_str(), e.what());
@@ -346,8 +351,9 @@ void MenuCarView::Append(std::vector<DrawItem>& items, const gt2::menu::MenuCarP
 
 void MenuCarView::AppendSlot(std::vector<DrawItem>& items, int slot, int32_t lift, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect,
                              bool squarePixels) {
-    if (slot < 0 || !assets_) return;
+    if (slot < 0 || !Assets()) return;
     const gt2::menu::MenuCarLinearView L = gt2::menu::MenuCarLinear(projection);
+    Assets()->SetGt4Enabled(gt2::gt4ModelSetEnabled);
     float asx = 1, asy = 1;
     MenuView::FrameScale(windowAspect, squarePixels, asx, asy);
     const float kW = float(frameWidth_), kH = float(frameHeight_);
@@ -378,9 +384,9 @@ void MenuCarView::AppendSlot(std::vector<DrawItem>& items, int slot, int32_t lif
         axes[2][size_t(k)] = float(projection.view[size_t(k)][2]) / 4096.0f;
     }
     // The menus: page 9, CLUT 0x2624 (the captured second-pass primitives), 0x40 (SetReflection for other views).
-    if (envColour_ != 0) assets_->UpdateCarReflection(slot, model, axes, envPage_, envClut_, envColour_, 0, envRowBase_);
+    if (envColour_ != 0) Assets()->UpdateCarReflection(slot, model, axes, envPage_, envClut_, envColour_, 0, envRowBase_);
     const size_t first = items.size();
-    assets_->AppendCarItems(items, slot, mvp, uint32_t(std::max(0, paint)), 0);
+    Assets()->AppendCarItems(items, slot, mvp, uint32_t(std::max(0, paint)), 0);
     if (!shadow_) // the ground shadow is the car's subtractive item (blend mode 2, SceneAssets::AppendCarItems)
         items.erase(std::remove_if(items.begin() + std::ptrdiff_t(first), items.end(), [](const DrawItem& d) { return d.blend == 2; }), items.end());
     // The drawing area of the car's environment (0x8008034C with the viewport rectangle), in window fractions.

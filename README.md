@@ -9,7 +9,7 @@ it is rebuilt.
 
 **[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
-**Download the current complete release: `GT2-0.8.1.zip`.** It contains the common
+**Download the current complete release: `GT2-0.9.0.zip`.** It contains the common
 source, all platform installation/build scripts, precompiled Windows tools, a signed Quest APK, and a ready-to-deploy `web/`
 folder. You do not need an older release for VR, macOS or Steam Deck.
 
@@ -29,7 +29,7 @@ platform entry points. Native applications retain their platform-specific VR,
 controller and graphics features; the browser runs in flat-screen mode.
 
 Supply your own supported disc images. Game data, BIOS and saves are not included.
-The screenshot above illustrates gameplay. Release history belongs in
+The screenshots illustrate gameplay. Release history is in
 [CHANGELOG.md](CHANGELOG.md); the feature list below describes the current project.
 
 ## Features
@@ -48,7 +48,7 @@ The screenshot above illustrates gameplay. Release history belongs in
 - Keyboard, XInput controllers and **native DualSense / DualSense Edge support on PC**, over USB or Bluetooth: buttons, sticks, trigger pedals, adjustable vibration and adaptive accelerator/brake resistance. Adaptive effects do not require Steam Input. Touch controllers have vibration, not adaptive triggers.
 - Quest theatre-screen menus/movies and head-tracked stereo driving/replays. The HUD is projected per eye; the cockpit mirror sits on a physical surface inside the cabin.
 - Three VR driving modes on PCVR and Quest: **Stick, Virtual wheel and Motion**. One/two-handed wheel grabbing with animated hands; all fingers stay closed while holding the wheel. Motion uses wrist rotation around the forearm, with grip-held steering and independent trigger pedals.
-- VR Controls submenu: driving bindings, selected steering stick/motion hand, wheel position/size and height-only adjustment of the original starting flythrough. Automatic brake-to-reverse is available.
+- VR Controls submenu: driving bindings, steering sensitivity/dead zone, hold/toggle wheel grip, selected steering stick/motion hand, wheel position/size and height-only adjustment of the original starting flythrough. VR steering and native replays retain 12-bit precision. Automatic brake-to-reverse is available.
 - VR Graphics submenu: 50–200% eye resolution, available headset refresh rates, MSAA, distance, textures, foveation and vibration. Resolution changes require a restart; other supported settings apply immediately.
 - Saved km/h / mph selection in the VR HUD menu, with km/h as the default on both discs. Saved HUD visibility controls for map, lap/times, records, gauges, turbo, tyres, mirror, countdown, warnings, messages and replay caption.
 - FPS profiler: application FPS, frame time, GPU time, 1% low, peak frame interval, texture-cache coverage and frustum-culling counts.
@@ -62,6 +62,109 @@ The screenshot above illustrates gameplay. Release history belongs in
 - Browser play through WebAssembly/WebGL2, local BIN selection, keyboard/gamepad input, audio, persistent saves and save backup import/export.
 - Desktop render scale from 50% to 200% in 5% steps, plus fixed output resolutions.
 - Automatic brake-to-reverse for keyboard and supported controller bindings: hold Down to stop and then reverse; Up brakes reverse motion before driving forward.
+
+## GT4 cars
+
+**GT2 and GT4 cars can race together.** The optional GT4 pack adds **722 cars**
+to the catalogue and supplies **388 model replacements** for existing GT2 entries.
+That makes **1,110 model mappings**; some editions and replacement entries share
+the same underlying model. Added cars appear in **GT4 Showroom** in Simulation
+and the extended Arcade garage. The graphics setting can disable replacements
+for original GT2 entries while keeping added GT4 cars available.
+
+![GT4 Honda S2000 racing alongside GT2 cars in Seattle](docs/images/gt4-cars-0.9.0.png)
+
+The importer was tested with **Gran Turismo 4, USA, version 1.01 (SCUS-97328)**.
+It checks the disc's table-of-contents SHA-256:
+`9ea0707b27466488fe14f68ebace3af31759efb13559d13584a3c714ef35a43c`.
+This identifies the tested disc layout; it is not a checksum of the entire ISO.
+Other GT4 revisions have not been validated.
+Supply your own disc images; converted car assets are not included in the release.
+See [GT4 import and installation](docs/GT4-CARS.md).
+
+**Restored original cockpits: 66 GT4 models, used by 89 catalogue entries.**
+These preserve their authored dashboard, seats and controls. The **ORIGINAL
+INTERIOR** badge identifies them in car selection. Other cars use a generated
+cockpit fitted to their body. **Generated cockpits may have incorrect fit or
+clipping. The full catalogue has not been checked manually.** Automated geometry
+and rendering tests do not replace checking every car in motion and in VR.
+
+<details>
+<summary>All 66 cars with restored GT4 cockpits</summary>
+
+- AC Cars 427 S/C '66
+- Alfa Romeo Spider 1600 Duetto '66
+- Alfa Romeo Spider 3.0i V6 24V '01
+- Audi R8 Race Car '01
+- Auto Union V16 Type C Streamline '37
+- BMW V12 LMR Race Car '99
+- BMW Z4 '03
+- Caterham Seven Fire Blade '02
+- Chaparral 2J Race Car '70
+- Chevrolet Corvette Convertible (C1) '54
+- Chevrolet SSR '03
+- Chrysler Prowler '02
+- Daihatsu Copen Active Top '02
+- Fiat Barchetta Giovane Due '00
+- Ford Model T Tourer '15
+- Formula Gran Turismo '04
+- Honda BEAT '91
+- Honda BEAT Version F '92
+- Honda BEAT Version Z '93
+- Honda S2000 '01
+- Honda S2000 '04
+- Honda S2000 '99
+- Honda S2000 Type V '00
+- Honda S2000 Type V '01
+- Honda S2000 Type V '03
+- Honda S500 '63
+- Honda S600 '64
+- Honda S800 '66
+- Jay Leno Tank Car '03
+- Lexus SC430 '01
+- Lotus Elan S1 '62
+- MG TF160 '03
+- MGF '97
+- Mazda MX-5 Miata (NA) '89
+- Mazda MX-5 Miata 1.8 RS (NB, J) '98
+- Mazda MX-5 Miata 1600 NR-A (NB, J) '04
+- Mazda MX-5 Miata 1800 RS (NB, J) '00
+- Mazda MX-5 Miata 1800 RS (NB, J) '04
+- Mazda MX-5 Miata J-Limited (NA, J) '91
+- Mazda MX-5 Miata J-Limited II (NA, J) '93
+- Mazda MX-5 Miata S-Special Type I (NA, J) '95
+- Mazda MX-5 Miata SR-Limited (NA, J) '97
+- Mazda MX-5 Miata V-Special Type II (NA, J) '93
+- Mazda MX-5 Miata VR-Limited (NA, J) '95
+- Mercedes-Benz Benz Patent Motor Wagen '86
+- Mercedes-Benz Daimler Motor Carriage '86
+- Mercedes-Benz SL 500 (R230) '02
+- Mercedes-Benz SL 55 AMG (R230) '02
+- Mercedes-Benz SL 600 (R230) '04
+- Mercedes-Benz SL 65 AMG (R230) '04
+- Mercedes-Benz SLK 230 Kompressor '98
+- NIKE One 2022
+- Nissan 350Z Roadster (Z33) '03
+- Nissan Fairlady 2000 (SR311) '68
+- Pescarolo Courage C60/Peugeot Race Car '03
+- Peugeot 206cc '01
+- PlayStation Pescarolo C60/Judd Race Car '04
+- Shelby Cobra 427 '67
+- Suzuki GSX-R/4 '01
+- TVR Griffith 500 '94
+- TVR Tamora '02
+- Toyota 7 Race Car '70
+- Toyota MR2 Spyder '99
+- Toyota MR2 Spyder (6-speed sequential manual transmission) '02
+- Toyota Motor Triathlon Race Car '04
+- Toyota SERA '92
+
+</details>
+
+Cars use the GT2 vehicle simulation with adapted GT4 specifications, not the
+original GT4 driving engine. Reconstructed cockpit detail depends on what exists
+in the source model. The native GT4 pack is supported by desktop and VR builds;
+the browser version does not load it.
 
 ## Install and play
 
@@ -113,7 +216,7 @@ load; use the profiler to choose settings appropriate for the device.
 Native installers can prepare HD menus, fonts, HUD and movies from local game
 assets. See [HD media](docs/HD-MEDIA.md). An optional locally supplied BIOS can
 prepare the PlayStation startup sequence; a BIOS is not required for normal play.
-No firmware or generated game artwork is distributed.
+No firmware, extracted models or generated HD asset packs are distributed.
 
 ## Requirements and limits
 

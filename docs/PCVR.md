@@ -14,7 +14,7 @@ A Windows x64 PC and a Vulkan 1.3-capable graphics driver are required. An OpenX
 - Open VR settings with **L3 + R3**, or **both grips + Menu**. The stick-click shortcut avoids the Menu button reserved by some PCVR runtimes. Both shortcuts remain available on PC. Y retains its camera action while holding the wheel. L3 + R3 means pressing both sticks simultaneously, without grips.
 - **Menu** alone pauses the game. **F10** is a keyboard fallback for VR settings.
 - In VR settings, use stick up/down to select a row, triggers to change a value, A to open and B to go back.
-- Xbox-compatible gamepads, DualSense and existing DirectInput controllers remain usable. The most recently used controller supplies input; the keyboard requires focus on the game window.
+- Xbox-compatible gamepads, DualSense and existing DirectInput controllers remain usable. The active desktop gamepad and Touch controllers work together: each retains its own bindings, buttons combine and the larger pedal input wins. Neutral Touch input does not erase a held gamepad stick; the virtual wheel takes steering only while held. Desktop gamepad input follows headset focus, while the keyboard requires focus on the game window.
 
 The packaged action bindings target Touch controllers. Other controller layouts may need runtime bindings or a gamepad; they have not been validated on hardware.
 
@@ -49,3 +49,9 @@ The dedicated VD launcher selects the bundled VDXR runtime for this process, eve
 ## Changing games
 
 Open VR settings with **L3 + R3** (both stick clicks) or **both grips + Menu**, choose **Change game (Arcade / Simulation)**, then **Return to disc selection**. Both discs must be installed. Save progress in the original game first; unsaved progress is discarded after confirmation. The application stays running and returns to the disc picker without repeating the PlayStation startup. Each disc keeps its own memory card, and shared VR preferences remain in use.
+
+## Development checks
+
+`tests/check_pcvr_gamepads.py --game <gt2game.exe> --disc <owned disc> --runtime-json <xrsim_runtime.json> --output <new work directory>` compares flat and PCVR input through the production race loop. It covers simultaneous Touch/gamepad controls, custom desktop bindings, camera buttons, release and hidden-view wheel rendering.
+
+`tests/check_camera_views.py --game <gt2game.exe> --disc <owned disc> --output <new work directory>` checks all four camera views, wrapping, saved selection and retry. These use isolated settings/cards; simulator results do not replace physical-headset/controller acceptance.

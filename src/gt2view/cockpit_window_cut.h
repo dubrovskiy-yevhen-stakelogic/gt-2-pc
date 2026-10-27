@@ -175,7 +175,7 @@ inline bool IsCockpitEndWindowFace(std::span<const gt2::CarMeshVertex> face) {
 
 // A complete authored face shares one mask across both triangles of a quad.
 inline WindowCut CutCockpitWindows(std::span<const gt2::CarMeshVertex> face, const gt2::CarTexture& texture,
-                                   const std::array<uint16_t,16>& masks, bool paintedBacking = false) {
+                                   const std::array<uint16_t,16>& masks, bool paintedBacking = false, bool authoredPillar = false) {
     using namespace cockpit_window_detail;
     WindowCut result;
     auto unchanged=[&]() { result.frame.assign(face.begin(),face.end()); return result; };
@@ -187,9 +187,9 @@ inline WindowCut CutCockpitWindows(std::span<const gt2::CarMeshVertex> face, con
         if (!v.textured || v.palette!=palette || !std::isfinite(v.texel[0]) || !std::isfinite(v.texel[1]) ||
             std::abs(v.texel[0])>4096 || std::abs(v.texel[1])>4096) return unchanged();
     }
-    const uint16_t mask=masks[palette];
+    uint16_t mask=masks[palette];
     uint16_t blackMask=0,blueShadowMask=0;
-    if (!texture.paints.empty() && (IsCockpitEndWindowFace(face) || paintedBacking)) {
+    if (!texture.paints.empty() && (IsCockpitEndWindowFace(face) || paintedBacking || authoredPillar)) {
         for (size_t index=0;index<16;++index) {
             const auto color=texture.paints.front().cluts[palette][index]&0x7fffu;
             const auto r=color&31u,g=(color>>5)&31u,b=(color>>10)&31u;
@@ -206,6 +206,9 @@ inline WindowCut CutCockpitWindows(std::span<const gt2::CarMeshVertex> face, con
             }
         }
     }
+    // A reconstructed pillar follows the shared authored edge. Its old baked
+    // dark fringe must not survive as disconnected tabs beside that edge.
+    if(authoredPillar)mask|=blackMask;
     std::vector<std::array<Point,3>> triangles;
     float minX=face[0].texel[0],maxX=minX,minY=face[0].texel[1],maxY=minY;
     for (const auto& v:face) {

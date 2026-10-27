@@ -31,6 +31,7 @@ public:
     Panels(gt2view::SceneRenderer& renderer, const gt2::DiscImage& disc, const gt2::GtfsVolume& vol);
     // (Re)uploads the layers' VRAM into the panel rows.
     void Upload();
+    void SetCarAssets(gt2view::SceneAssets* assets) { modelView_.reset(); carAssets_ = assets; }
 
     void Clear() { prims_.clear(), overlay_.clear(), screen_.clear(), model_.reset(); }
     // A full-screen 352 x 480 frame of the race overlay's menus (gt2view/race_menus.h, GPU order) drawn instead of the
@@ -104,6 +105,7 @@ private:
     bool soundOn_ = false, soundFailed_ = false;
     std::unique_ptr<gt2view::MenuView> modelFrame_;
     std::unique_ptr<gt2view::MenuCarView> modelView_;
+    gt2view::SceneAssets* carAssets_ = nullptr;
     std::optional<gt2::screens::PostRaceModel> model_;
     size_t modelAt_ = 0;
     uint32_t modelCar_ = 0;

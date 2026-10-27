@@ -63,6 +63,7 @@
 #include "game_window.h"
 #include "save_transfer_guard.h"
 #include "gt2formats/hd_media.h"
+#include "gt2formats/model_set.h"
 #include "graphics_options.h"
 #include "panel.h"
 #include "change_parts_check.h"
@@ -194,6 +195,7 @@ int GameMain(int argc, char** argv) {
             if (std::string(argv[i]) == "--settings") titleOptions.settingsPath = argv[i + 1];
         const shell::GraphicsSettings fileGraphics = shell::PcSettings::Load(titleOptions.settingsPath).graphics;
         SetGraphicsFromSettings(fileGraphics);
+        gt2::SetGt4ModelSetRoot(argv[1], gt2::os::DataRoot());
         LoadOverlaySettings(titleOptions.settingsPath);
         std::string frameLogPath;  // --frame-log <csv> (race_view.h)
         double interpAlpha = -1;   // --interp-alpha A (race_view.h)
@@ -345,7 +347,7 @@ int GameMain(int argc, char** argv) {
             else if (a == "--mod-physics-check" && i + 1 < argc) modPhysicsSteps = std::atoi(argv[++i]); // mods.h ModCoursePhysicsCheck
             else if (a == "--attract") options.attractShell = true;
             else if (a == "--generated-atan") options.generatedAtan = true;
-            else if (a == "--camera" && i + 1 < argc) cameraPosition = std::clamp(std::atoi(argv[++i]), 0, 2); // 0 Driver, 1 Chase 1, 2 Chase 2
+            else if (a == "--camera" && i + 1 < argc) cameraPosition = std::clamp(std::atoi(argv[++i]), 0, 3); // 0 Cockpit, 1 Chase 1, 2 Chase 2, 3 Hidden car
             else if (a == "--view-angle" && i + 1 < argc) viewAngle = std::clamp(std::atoi(argv[++i]), 0, 2); // 0 Narrow, 1 Standard, 2 Wide
             else if (a == "--look-back") lookBack = true;   // the look-back button held (screenshots)
             else if (a == "--old-camera") oldCamera = true; // the former chase / bonnet / high camera (debugging only)

@@ -44,8 +44,8 @@ def make_cases(include_xr):
                               cockpit=enabled, shots=[(30, 'settled'), (90, 'final')]))
     base = dict(car=CARS[0][1], car_name=CARS[0][2], cockpit=1)
     cases.extend([
-        dict(base, id='sports-camera-cycle', script='31:c,61:c,91:c',
-             shots=[(20, 'driver'), (50, 'chase-1'), (80, 'chase-2'), (120, 'driver-return')]),
+        dict(base, id='sports-camera-cycle', script='31:c,61:c,91:c,121:c',
+             shots=[(20, 'driver'), (50, 'chase-1'), (80, 'chase-2'), (110, 'hidden-car'), (150, 'driver-return')]),
         dict(base, id='sports-look-back', script='35:v:40',
              shots=[(30, 'forward'), (60, 'back'), (100, 'forward-return')]),
         dict(base, id='sports-steering', script='5:up:95,35:right:40',
@@ -104,7 +104,7 @@ def prepare_case(case, args, output):
     (folder / 'wheel-settings.txt').write_text(
         'version 2\noptions 0 0 0 25 10 0\nauto 0 0 0 "" ""\n', encoding='ascii')
     command = [str(args.game), str(args.disc), '--race', '--track', args.track,
-               '--car', case['car'], '--cars', '1', '--no-countdown', '--camera', '0',
+               '--car', case['car'], '--cars', '1', '--no-countdown', '--camera', '0' if case['cockpit'] else '3',
                '--view-angle', '1', '--no-sound', '--no-music', '--no-hud',
                '--window', '1280x720', '--settings', str(settings),
                '--card', str(folder / 'card1.mcd'), '--card2', str(folder / 'card2.mcd'),

@@ -11,6 +11,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if (!$PSBoundParameters.ContainsKey('HdMedia') -and !$DiscImage) {
+    . (Join-Path $PSScriptRoot 'hd-upscale.ps1')
+    $HdMedia = Select-HdMediaForInstall
+}
 $repo = Split-Path $PSScriptRoot
 $InstallDir = [IO.Path]::GetFullPath($InstallDir)
 $build = if ([IO.Path]::IsPathRooted($BuildDir)) { $BuildDir } else { Join-Path $repo $BuildDir }
@@ -138,6 +142,13 @@ cd /d "%~dp0"
 if errorlevel 1 pause
 '@
 [IO.File]::WriteAllText((Join-Path $InstallDir 'PLAY.bat'), $launcher, [Text.Encoding]::ASCII)
+foreach ($obsolete in @('PLAY-PC.bat','PLAY-2D.bat','TRY-GT4-MODELS-DESKTOP.bat','TRY-GT4-MODELS-VR.bat',
+        'gt2_arcade.bat','gt2_race.bat','gt2_sim.bat','run_race.bat')) {
+    $path = Join-Path $InstallDir $obsolete
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        Move-Item -LiteralPath $path -Destination (Join-Path $backup $obsolete)
+    }
+}
 [IO.File]::WriteAllText((Join-Path $InstallDir 'PLAY-PCVR.bat'), $launcher.Replace('--player', '--player --vr'), [Text.Encoding]::ASCII)
 foreach ($runtime in @('META','STEAMVR','VD')) {
     $policy = if ($runtime -eq 'VD') { 'vdxr' } else { $runtime.ToLowerInvariant() }
@@ -149,9 +160,7 @@ foreach ($mode in 'arcade','simulation') {
     foreach ($legacy in @("PLAY-$mode.bat", "PLAY-PCVR-$mode.bat")) {
         $path = Join-Path $InstallDir $legacy
         if (Test-Path -LiteralPath $path) {
-            Copy-Item -LiteralPath $path -Destination (Join-Path $backup $legacy)
-            $target = if ($legacy.StartsWith('PLAY-PCVR')) { 'PLAY-PCVR.bat' } else { 'PLAY.bat' }
-            [IO.File]::WriteAllText($path, "@echo off`r`ncall `"%~dp0$target`" %*`r`n", [Text.Encoding]::ASCII)
+            Move-Item -LiteralPath $path -Destination (Join-Path $backup $legacy)
         }
     }
     if (Test-Path (Join-Path $InstallDir $mode)) {

@@ -6,6 +6,8 @@
 
 #include "gt2vfs/gtfs.h"
 #include "gt2vfs/inflate.h"
+#include "gt2formats/model_set.h"
+#include "gt2formats/car_info.h"
 
 namespace gt2 {
 
@@ -77,6 +79,49 @@ CarInfoDirectory::CarInfoDirectory(std::vector<uint8_t> data) {
 
 CarInfoDirectory CarInfoDirectory::Load(const GtfsVolume& vol, const std::string& path) { return CarInfoDirectory(vol.Read(path)); }
 
+const CarInfoRecord& CarInfoDirectory::At(size_t index) const {
+    const auto& original=records_.at(index);
+    if(!gt4ModelSetEnabled)return original;
+    const auto root=std::getenv("GT2_GT4_NATIVE")?std::filesystem::path(std::getenv("GT2_GT4_NATIVE")):gt4ModelSetRoot/"native-v16";
+    if(!std::filesystem::is_regular_file(root/"manifest.json"))return original;
+    if(nativeRoot_!=root.string() || nativeRecords_.size()!=records_.size()) {
+        nativeRoot_=root.string();nativeRecords_.clear();nativeRecords_.resize(records_.size());
+        nativePaintEntries_.clear();const auto manifest=json::ReadFile((root/"manifest.json").string());
+        for(const auto& [key,value]:manifest.Require("cars").Members())nativePaintEntries_.emplace(key,value.AsString());
+    }
+    auto& cached=nativeRecords_.at(index);
+    if(!cached) {
+        auto presented=original;
+        const auto id=UnpackCarId(original.carId);
+        if(const auto entry=nativePaintEntries_.find(id);entry!=nativePaintEntries_.end()) {
+            const auto mesh=ModelSetAsset(root,entry->second);
+            const auto palette=json::ReadFile((mesh.parent_path()/"paints.json.gz").string());
+            const auto& colors=palette.Require("colors");
+            if(!colors.Size() || colors.Size()>32)throw std::runtime_error("native car palette size");
+            presented.retailPaintCount=original.PaintCount();
+            presented.word=(presented.word & ~(31u<<18))|uint32_t(colors.Size()-1)<<18;
+            presented.chipColors.clear();presented.paintIds.clear();
+            // Keep existing save paint codes for shared indices. Additional
+            // colours get unused codes from GT2's own six-bit paint alphabet.
+            const std::string codes="0123456789abcdefghijklmnopqrstuvwxyz";
+            for(size_t i=0;i<colors.Size();++i) {
+                const uint32_t rgb=uint32_t(colors.At(i).IntOr("chip",0x808080));
+                presented.chipColors.push_back(uint16_t(((rgb&255u)>>3)|((rgb>>8&255u)>>3)<<5|((rgb>>16&255u)>>3)<<10));
+                if(i<original.paintIds.size())presented.paintIds.push_back(original.paintIds[i]);
+                else {
+                    const auto next=std::find_if(codes.begin(),codes.end(),[&](char code) {
+                        return std::none_of(presented.paintIds.begin(),presented.paintIds.end(),[&](uint8_t v){return v==uint8_t(code) || v==uint8_t(code-'a'+'A');});
+                    });
+                    if(next==codes.end())throw std::runtime_error("native car paint alphabet exhausted");
+                    presented.paintIds.push_back(uint8_t(*next));
+                }
+            }
+        }
+        cached=std::move(presented);
+    }
+    return *cached;
+}
+
 int32_t CarInfoDirectory::IndexOf(uint32_t carId) const { // 0x80060A24 (binary search, ids sorted)
     const auto it = std::lower_bound(records_.begin(), records_.end(), carId, [](const CarInfoRecord& r, uint32_t id) { return r.carId < id; });
     if (it == records_.end() || it->carId != carId) return -1;
@@ -85,7 +130,7 @@ int32_t CarInfoDirectory::IndexOf(uint32_t carId) const { // 0x80060A24 (binary 
 
 const CarInfoRecord* CarInfoDirectory::Find(uint32_t carId) const {
     const int32_t i = IndexOf(carId);
-    return i < 0 ? nullptr : &records_[size_t(i)];
+    return i < 0 ? nullptr : &At(size_t(i));
 }
 
 // ---------------------------------------------------------------- .usedcar_usa

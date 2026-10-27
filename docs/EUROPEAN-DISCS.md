@@ -1,6 +1,6 @@
 # European disc support
 
-Version 0.1.0 recognizes SCES_023.80 and SCES_123.80 by the executable hashes listed in README.md. The runtime keeps its existing fixed 30 Hz simulation and English UI. This is data compatibility for the native port, not a claim that every PAL timing or language option is reproduced.
+The native loaders recognize the supported European Arcade (SCES_023.80) and Simulation (SCES_123.80) revisions by executable identity. The runtime keeps its existing fixed 30 Hz simulation and English UI. This is data compatibility for the native port, not a claim that every PAL timing or language option is reproduced.
 
 The main profiles map reference US Simulation addresses onto the European resident executable and overlays. Arcade UI code uses US Arcade addresses, so it has its own mapping. UI copies relocate overlay-local pointers and RAM text/state pointers; resident EXE words are not indiscriminately treated as pointers because packed palette values can resemble addresses. Gameplay loaders retain the original images and profile identity.
 
@@ -23,4 +23,4 @@ Regenerate address tables after editing the YAML facts:
 .\build\gt2tool.exe gen-profile --build ArcadeEuUi=db/arcade_eu_ui_symbols.yaml --out src/gt2formats/arcade_eu_ui.inc
 ```
 
-The menu/global string offset maps match the English blocks of the exact supported revisions. Each range stores reference offset, European offset and byte count; it copies the user's data at runtime. Changing to another revision requires reviewing these offsets and the address profiles, then rerunning disc-specific `gt2checks`, course/physics checks and UI/movie tests.
+The menu/global string offset maps match the English blocks of the exact supported revisions. Each range stores reference offset, European offset and byte count; it copies the local disc data at runtime. Changing to another revision requires reviewing these offsets and the address profiles, then rerunning disc-specific `gt2checks`, course/physics checks and UI/movie tests.

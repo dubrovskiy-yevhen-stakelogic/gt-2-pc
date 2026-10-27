@@ -1,5 +1,6 @@
 // The 2 player Battle's split-screen race (split_race.h).
 #include "split_race.h"
+#include "gt2view/race_road_contact.h"
 #include "desktop_field_pacing.h"
 #include "wheel_race_trace.h"
 #include "wheel_shift_hint.h"
@@ -387,6 +388,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
     // The scene: the course, both cars (and their copies for the second view: the reflection pass is written per camera).
     renderer.clearColor[0] = 0.45f; renderer.clearColor[1] = 0.58f; renderer.clearColor[2] = 0.78f;
     SceneAssets assets(renderer, vol);
+    assets.SetGt4Enabled(OverlayGt4ModelSet());
     if (!assets.ReserveSecondView()) throw std::runtime_error("2 player race: the scene's second view ranges are taken");
     SponsorTable sponsorTable;
     std::vector<SponsorUpload> sponsors;
@@ -424,10 +426,12 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
             std::array<WheelAxleDims, 2> dims;
             for (size_t axle = 0; axle < 2; axle++) dims[axle] = RaceWheelDims(body.wheelRadius[axle], body.rimRadius[axle], body.tyreHeight[axle], dish);
             const WheelArea area = GenerateWheelArea(dims, wheelTemplates);
+            SceneAssets::RaceWheelGeometry geometry;
+            for(size_t axle=0;axle<2;++axle) {geometry.radius[axle]=body.wheelRadius[axle]/4096.f;geometry.rideHeight[axle]=body.rideHeight[axle]/4096.f;}
             for (int view = 0; view < 2; view++) {
                 // a car of each player, and its copy per view (the same model as the other player's: its own slot for its own entry)
                 const std::string alias = "2p:" + std::to_string(view) + ":" + std::to_string(car);
-                slots[size_t(view)][car] = assets.UseCar(data.carIds[car], alias, &area);
+                slots[size_t(view)][car] = assets.UseCar(data.carIds[car], alias, &area, &geometry);
                 if (slots[size_t(view)][car] < 0) throw std::runtime_error("2 player race: no free car slot in the scene");
                 if (wheelFiles && car < data.configs.size()) {
                     const int file = menu::MenuWheelFile(*wheelFiles, data.configs[car].word00);
@@ -574,6 +578,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
             break;
         }
         if (window.Field() != fieldBeforeOverlay || window.ClockRevision() != clockBeforePump) nextPresent = stepAnchor = Clock::now();
+        assets.SetGt4Enabled(OverlayGt4ModelSet());
         if (!(graphics == CurrentGraphics())) {
             graphics = CurrentGraphics();
             renderer.SetOptions(RenderOptionsOf(graphics));
@@ -806,8 +811,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     float model[16], mvp[16];
                     if (blend) InterpolatedModelMatrix(previous.poses[car], race.Pose(car), at, model);
                     else ModelMatrix(race.Pose(car), model);
-                    Multiply(vp, model, mvp);
-                    assets.UpdateCarReflection(slot, model, cameraAxes);
+
                     // the wheels (0x800140A4 / 0x800670F0: race_view.cpp's rule): steer / travel / rolling angle between the steps
                     std::array<std::array<float, 16>, 4> wheelModels{};
                     const sim::CarBody& body = race.CarAt(car).body;
@@ -825,12 +829,16 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                         const float centre[3] = {float((w & 1) ? halfTrack : -halfTrack) / 4096.0f, float(v.verticalOffset) / 4096.0f, float(wheelZ[car][w]) / 4096.0f};
                         WheelModelMatrix(int(w), centre, v.steerAngle, body.camber[w >> 1], v.rotation, wheelModels[w].data());
                     }
+                    FitRaceCarRoadContact(assets,slot,race.Course(),uint16_t(body.chunkIndex),model,wheelModels);
+                    Multiply(vp,model,mvp);
+                    assets.UpdateCarReflection(slot,model,cameraAxes);
                     float ground[16], shadowMvp[16];
                     const auto groundPose = race.VisualPose(car);
                     if (interp && !PoseJump(previous.groundPoses[car], groundPose))
                         InterpolatedModelMatrix(previous.groundPoses[car], groundPose, at, ground);
                     else ModelMatrix(groundPose, ground);
                     GroundShadowMatrix(ground, assets.SlotShadowHeight(slot));
+                    FitRaceCarRoadShadow(assets,slot,race.Course(),uint16_t(body.chunkIndex),ground);
                     Multiply(vp, ground, shadowMvp);
                     assets.AppendCarItems(items, slot, mvp, car < data.paints.size() ? data.paints[car] : 0u, 0, true, &wheelModels, shadowMvp);
                 }

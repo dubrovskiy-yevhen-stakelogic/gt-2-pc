@@ -24,7 +24,17 @@ MenuAudio::MenuAudio()
     : pitchTable_(384), panTable_(128), velocityTable_(128),
       sequencer_(driver_, SequencerTables{pitchTable_.data(), panTable_.data(), velocityTable_.data()}) {}
 
-MenuAudio::~MenuAudio() { device_.Close(); }
+MenuAudio::~MenuAudio() { clock_.Stop();device_.Close(); }
+
+bool MenuAudio::OpenDevice(std::string& error,bool realtime) {
+    clock_.Stop();
+    if(!device_.Open(mixer_,error))return false;
+    if(realtime && !recording_) {
+        try {clock_.Start([this]{std::lock_guard lock(stateMutex_);TickFrame();});}
+        catch(const std::exception& e) {device_.Close();error=e.what();return false;}
+    }
+    return true;
+}
 
 void MenuAudio::Load(const GtfsVolume& vol, const GuestImage& exe, const GuestImage& ovl4) {
     LoadExeTables(exe);
@@ -93,6 +103,7 @@ void MenuAudio::LoadArcade(const GtfsVolume& vol, const GuestImage& exe) {
 }
 
 void MenuAudio::StartArcadeMusic(uint8_t musicVolume) { // member 2 0x800256EC(0x800F3718, 0): stop, master volume, sequence 0 at once
+    std::lock_guard lock(stateMutex_);
     sequencer_.Stop();
     const int32_t master = (int32_t(musicVolume) * 0x4000) / 255;
     if (log_) std::fprintf(log_, "%d track arcade\n", frame_);
@@ -110,6 +121,7 @@ void MenuAudio::EffectDriver::Play(int8_t* handle, const VoiceRequest& r) {
 }
 
 void MenuAudio::SetEventLog(std::FILE* log) {
+    std::lock_guard lock(stateMutex_);
     log_ = log;
     if (!log_) {
         sequencer_.onNote = nullptr;
@@ -126,6 +138,7 @@ void MenuAudio::SetEventLog(std::FILE* log) {
 }
 
 void MenuAudio::Sound(int id) { // 0x80060840
+    std::lock_guard lock(stateMutex_);
     if (log_) std::fprintf(log_, "%d effect %d\n", frame_, id);
     if (!loaded_ || id < 0 || size_t(id) >= effectPairs_.size()) return;
     const uint8_t left = effectPairs_[size_t(id)][0], right = effectPairs_[size_t(id)][1];
@@ -141,6 +154,7 @@ void MenuAudio::Sound(int id) { // 0x80060840
 }
 
 void MenuAudio::RequestMusic(int track) { // 0x80018FA4
+    std::lock_guard lock(stateMutex_);
     if (track == requested_) return;
     sequencer_.Stop(); // 0x80022934
     playing_ = -1;
@@ -149,6 +163,7 @@ void MenuAudio::RequestMusic(int track) { // 0x80018FA4
 }
 
 void MenuAudio::StopMusic() { // 0x80018FF0 (the menus are left; the track is requested again when they come back)
+    std::lock_guard lock(stateMutex_);
     sequencer_.Stop();
     playing_ = -1;
     requested_ = -1;
@@ -164,6 +179,11 @@ void MenuAudio::StartTrack(int track) { // 0x800228D4: the file of the track, se
 }
 
 void MenuAudio::Frame() {
+    if(clock_.Running())return;
+    std::lock_guard lock(stateMutex_);TickFrame();
+}
+
+void MenuAudio::TickFrame() {
     if (!loaded_) return;
     mixer_.Poll();
     if (countdown_ > 0 && --countdown_ == 0) StartTrack(requested_); // 0x80019028

@@ -45,7 +45,9 @@ if ($SkipLint) {
 }
 & $Gradle @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Android release compilation failed.' }
-$out = Join-Path $repo 'dist/GT2-VR-0.8.1.apk'
+$gradleSource = Get-Content -LiteralPath (Join-Path $repo 'android/app/build.gradle') -Raw
+if ($gradleSource -notmatch "versionName '([0-9]+\.[0-9]+\.[0-9]+)'") { throw 'Cannot determine Android release version.' }
+$out = Join-Path $repo ("dist/GT2-VR-" + $Matches[1] + '.apk')
 New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
 $unsigned = Join-Path $repo 'android/app/build/outputs/apk/release/app-release-unsigned.apk'
 $aligned = Join-Path $repo 'work/gt2-release-aligned.apk'

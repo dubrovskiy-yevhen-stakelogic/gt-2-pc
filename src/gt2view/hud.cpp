@@ -150,6 +150,21 @@ void Hud::UploadBlock() {
         for (size_t i = 0; i < 16; i++) block_[size_t(gt2::CourseMap::kClutY) * 1024 + gt2::CourseMap::kClutX + i] = map_.clut[i];
     }
     renderer_.UploadVram(kRowBase, 512, block_.data());
+
+    // Rank changes select different palettes from the same gauge sheet. Decode
+    // their optional HD pages while uploading the HUD, not on the first overtake.
+    // These are material requests only; no draw or simulation state is changed.
+    std::vector<SceneVertex> rankMaterials;
+    for (size_t p = 0; p < tables_.badges.size(); ++p) {
+        const auto& badge = tables_.badges[p];
+        const auto page = p == 0 ? tables_.unitKmh.tpage : p == 1 ? tables_.unitMph.tpage : tables_.strip[p - 2].tpage;
+        SceneVertex vertex{};
+        vertex.flags = kTextured;
+        vertex.page = uint32_t((page & 15) * 64) | ((kRowBase + uint32_t(((page >> 4) & 1) * 256)) << 16);
+        vertex.clut = uint32_t((badge.clut & 63) * 16) | ((kRowBase + uint32_t(badge.clut >> 6)) << 16);
+        rankMaterials.push_back(vertex);
+    }
+    renderer_.ApplyHdUi(rankMaterials);
 }
 
 // ---------------------------------------------------------------- packets

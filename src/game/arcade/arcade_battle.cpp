@@ -164,6 +164,8 @@ void ArcadeBattlePage::Enter(const Context& ctx, bool reenter, const uint8_t* se
             transmission_[k].Init(a_, kTransmissionDefs[p]);
             settings_[k].Init(a_, kSettingsDefs[p]);
             cameras_[k] = BattleCamera();
+            order_[k].resize(size_t(std::max(GarageCount(garageBlocks_[0]),GarageCount(garageBlocks_[1]))));
+            for (size_t i=0;i<order_[k].size();++i) order_[k][i]=int16_t(i);
             for (int g = 0; g < 2; g++) { // FUN_8006CCDC(widget, row callback, view)
                 MenuListWidget& w = garageList_[k][size_t(g)];
                 w = MenuListWidget::Read(o, kGarageLists + uint32_t(g) * 0x34 + uint32_t(p) * 0x68);
@@ -176,7 +178,7 @@ void ArcadeBattlePage::Enter(const Context& ctx, bool reenter, const uint8_t* se
                     return GarageListRow(src, command, wd, row, d);
                 });
             }
-            for (int i = 0; i < 100; i++) order_[k][size_t(i)] = int16_t(i);
+
         }
         return;
     }

@@ -8,6 +8,8 @@ param(
     [ValidateSet('Original','Menus','MenusAndMovies')][string]$HdMedia = 'Menus',
     [string]$Bios,
     [string]$CaptureCore,
+    [string]$Gt4Bundle,
+    [string]$Python = 'python',
     [switch]$NoBios,
     [switch]$VerifyOnly
 )
@@ -15,7 +17,8 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot
 $manifest = Get-Content -LiteralPath (Join-Path $root 'release-manifest.json') -Raw | ConvertFrom-Json
-if ($manifest.version -ne '0.8.1') { throw 'Unexpected release version.' }
+if ($manifest.version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Unexpected release version.' }
+$apkName = "GT2-VR-$($manifest.version).apk"
 $seen = @{}
 foreach ($entry in $manifest.files) {
     if ($entry.path -match '(^|[\\/])\.\.([\\/]|$)|^[\\/]|:' -or $seen.ContainsKey($entry.path)) { throw 'Invalid release manifest path.' }
@@ -23,10 +26,14 @@ foreach ($entry in $manifest.files) {
     $path = Join-Path $root $entry.path
     if (!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $entry.sha256) { throw "Release file failed verification: $($entry.path)" }
 }
-foreach ($required in @('GT2-VR-0.8.1.apk','tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/install-quest.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')) {
+foreach ($required in @($apkName,'tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/install-quest.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')) {
     if (!$seen.ContainsKey($required)) { throw "Required release file is missing from the manifest: $required" }
 }
 if ($VerifyOnly) { Write-Host 'Release files verified.'; return }
+if (!$PSBoundParameters.ContainsKey('HdMedia') -and !$DiscImage) {
+    . (Join-Path $PSScriptRoot 'hd-upscale.ps1')
+    $HdMedia = Select-HdMediaForInstall
+}
 if ($Bios -and $NoBios) { throw 'Choose either -Bios or -NoBios.' }
 if (!$Bios -and !$NoBios -and !$DiscImage) {
     Write-Host 'PlayStation startup is optional. The game works without a BIOS.'
@@ -61,5 +68,5 @@ if ($Target -eq 'Quest') {
 if ($Target -eq 'Quest') {
     $modes = @('arcade','simulation' | Where-Object { Test-Path -LiteralPath (Join-Path $InstallDir "$_/disc.raw2352") })
     if ($modes.Count -eq 0) { throw 'No prepared discs.' }
-    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root 'GT2-VR-0.8.1.apk') -Runtime $InstallDir -Mode $modes[0] -BothDiscs:($modes.Count -eq 2)
+    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root $apkName) -Runtime $InstallDir -Mode $modes[0] -BothDiscs:($modes.Count -eq 2) -Gt4Bundle $Gt4Bundle -Python $Python
 } else { Write-Host "PC game ready: $InstallDir. Use PLAY.bat for desktop, PLAY-PCVR-META.bat for Meta Link, PLAY-PCVR-STEAMVR.bat for SteamVR, or PLAY-PCVR-VD.bat for Virtual Desktop (VDXR). PLAY-PCVR.bat selects automatically." }

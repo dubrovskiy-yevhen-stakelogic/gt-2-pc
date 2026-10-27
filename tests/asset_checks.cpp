@@ -1,13 +1,19 @@
 #include "gt2formats/car_model.h"
 #include "cockpit_fit_checks.h"
 #include "cockpit_camera_checks.h"
+#include "backdrop_order_checks.h"
+#include "course_wall_visibility_checks.h"
+#include "window_mask_audit.h"
 #include "cockpit_body_checks.h"
 #include "cockpit_window_checks.h"
+#include "side_mirror_checks.h"
+#include "cockpit_structure_checks.h"
 #include "gt2export/car_mesh.h"
 #include "gt2view/scenery_visibility.h"
 #include "gt2view/course_texture_seams.h"
 #include "gt2formats/psx_vram.h"
 #include "gt2view/scenery_replacements.h"
+#include "gt2view/scenery_road_cut.h"
 #include "gt2vfs/gtfs.h"
 #include "game/audio/music_player.h"
 #include <algorithm>
@@ -25,8 +31,51 @@ void Require(bool ok, const std::string& message) {
     if (!ok) throw std::runtime_error(message);
 }
 void Fixtures() {
+    CourseWallVisibilityChecks(Require);
+    SideMirrorChecks(Require);
+    CockpitStructureChecks(Require);
+    {
+        gt2::Track t;t.chunks.resize(1);t.uvTable.resize(1);auto& road=t.chunks[0].road;
+        road.vertices={{-640,-640,0},{-640,640,0},{640,640,0},{640,-640,0}};
+        gt2::TrackPolygon p;p.primCode=0x2c;p.vertex={0,1,2,3};road.polygons.push_back(p);for(auto& cell:t.chunks[0].surfaceGrid.cells)cell={0};
+        auto& grid=t.chunks[0].surfaceGrid;grid.originX=grid.originZ=-1024;grid.shiftX=grid.shiftZ=9;
+        auto& uv=t.uvTable[0];uv.nearSet.tpage=256;uv.nearSet.u={0,0,31,31};uv.nearSet.v={0,31,31,0};uv.farSet=uv.nearSet;
+        gt2::TrackSceneryModel m;m.scaleExponent=22;m.vertices={{-960,32,960},{-960,32,-960},{960,32,-960},{960,32,960}};
+        gt2::TrackSceneryPolygon q;q.primCode=0x2c;q.vertex={0,1,2,3};q.sortFarthest=true;q.tpage=uv.nearSet.tpage;q.u=uv.nearSet.u;q.v=uv.nearSet.v;m.polygons.push_back(q);
+        gt2::TrackSceneryInstance inst;inst.scale={4096,4096,4096};
+        auto area=[](const auto& vs){double sum=0;for(size_t i=0;i<vs.size();i+=3){const auto& a=vs[i].position;const auto& b=vs[i+1].position;const auto& c=vs[i+2].position;sum+=std::abs((b[0]-a[0])*(c[2]-a[2])-(b[2]-a[2])*(c[0]-a[0]))*.5;}return sum;};
+        const auto clipped=gt2view::SceneryRoadCut(t).Cut(inst,m,0);
+        Require(clipped.chunks==std::vector<uint16_t>{0},"road overlap has an explicit detailed-chunk dependency");
+        Require(std::abs(area(clipped.vertices)-500)<.001,"clipping removes only road overlap and preserves surrounding hills");
+        // Even a millimetre-scale raised copy wins a floating-point depth test.
+        // Exercise a fixed-point instance offset instead of rounding to model units.
+        auto close=m;for(auto& v:close.vertices)v.y=0;
+        auto raised=inst;raised.position[1]=131;
+        const auto closeCut=gt2view::SceneryRoadCut(t).Cut(raised,close,0);
+        Require(closeCut.chunks==std::vector<uint16_t>{0} && std::abs(area(closeCut.vertices)-500)<.001,
+            "two-millimetre raised asphalt copy cannot occlude the detailed road");
+        m.polygons[0].clut=1;
+        Require(gt2view::SceneryRoadCut(t).Cut(inst,m,0).chunks.empty(),"independent overhead material is retained");m.polygons[0].clut=0;
+        for(size_t i=0;i<4;++i){auto v=road.vertices[i];v.z=32;road.vertices.push_back(v);}p.vertex={4,5,6,7};road.polygons.push_back(p);for(auto& cell:t.chunks[0].surfaceGrid.cells)cell={1,0};
+        const auto bridge=gt2view::SceneryRoadCut(t).Cut(inst,m,0);
+        Require(bridge.chunks.empty() && std::abs(area(bridge.vertices)-900)<.001,"bridge is retained when its own contact deck is closer than the lower road");
+        Require(!gt2view::CoursePolygonMesh(t.chunks[0],road.polygons[0],true).contactFan,"flat road retains six vertices");
+        road.vertices[2].z=64;
+        Require(gt2view::CoursePolygonMesh(t.chunks[0],road.polygons[0],true).indices.size()==12,"non-planar road follows four contact planes");
+        Require(gt2view::CoursePolygonMesh(t.chunks[0],road.polygons[0],false).indices.size()==6,"walls retain original geometry");
+    }
     CockpitFitChecks(Require);
     CockpitCameraChecks(Require);
+    BackdropOrderChecks(Require);
+    {
+        std::vector<uint8_t> mask(32*64);
+        for(size_t y=5;y<15;++y)for(size_t x=4;x<14;++x)mask[y*32+x]=1;
+        Require(WindowTintCores(mask,32,32).largest==64,"a continuous tinted pane has a measurable connected core");
+        std::fill(mask.begin(),mask.end(),uint8_t(0));
+        for(size_t y=3;y<60;y+=6)for(size_t a=0;a<3;++a)for(size_t x=2;x<5;++x)mask[(y+a)*32+x]=1;
+        const auto fringe=WindowTintCores(mask,32,32);
+        Require(fringe.total>1 && fringe.largest==1,"disconnected texture fringes cannot accumulate into a false window");
+    }
     CockpitBodyChecks(Require);
     CockpitWindowChecks(Require);
     {
@@ -121,6 +170,19 @@ void Fixtures() {
     Require(detail.Match(placement,patch)[0].empty(),"independent geometry above the road is retained");
     placement.position[1]=1024;
     Require(!detail.Match(placement,patch)[0].empty(),"format quantisation does not break surface matching");
+
+    placement.position={};
+    auto banked=patch;
+    banked.vertices={{64,0,-64},{256,0,-64},{256,64,-256},{64,64,-256}};
+    banked.polygons[0].primCode=0x28;banked.polygons[0].vertex={0,1,2,3};
+    Require(detail.Match(placement,banked)[0]==std::vector<uint16_t>{0},
+        "two real anchors plus an in-road footprint identify a lifted coarse bank");
+    banked.vertices[2].x=1024;
+    Require(detail.Match(placement,banked)[0].empty(),
+        "a two-anchor structure extending outside the road remains visible");
+    banked.vertices[2].x=256;placement.position[1]=65536;
+    Require(detail.Match(placement,banked)[0].empty(),
+        "an elevated independent structure has no real anchors and is retained");
 
     gt2::Track rounded;
     rounded.chunks.resize(1);
@@ -362,4 +424,5 @@ int main(int argc, char** argv) {
         std::cerr << "FAIL " << e.what() << '\n'; return 1;
     }
 }
+
 

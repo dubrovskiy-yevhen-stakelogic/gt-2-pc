@@ -1,0 +1,3580 @@
+{
+  "format": "gt2-gt4-import-profiles",
+  "version": 1,
+  "discTocSha256": "9ea0707b27466488fe14f68ebace3af31759efb13559d13584a3c714ef35a43c",
+  "cars": {
+    "dvpgn": {
+      "name": "Dodge Viper GTS '99",
+      "code": "dodg0002",
+      "directory": "lod",
+      "cockpitSkipTextures": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        39
+      ],
+      "includeShapes": [
+        "shape31"
+      ]
+    },
+    "nr32n": {
+      "name": "Nissan Skyline GT-R R32 '91",
+      "code": "niss0078",
+      "directory": "lod",
+      "cockpitSkipTextures": [
+        31,
+        32,
+        34,
+        60,
+        61,
+        62
+      ],
+      "includeShapes": [
+        "shape36"
+      ],
+      "opaqueTextures": [
+        29
+      ]
+    },
+    "io19n": {
+      "name": "Lotus Elise Sport 190 '98",
+      "code": "lotu0003",
+      "directory": "lod",
+      "cockpitSkipTextures": [
+        12,
+        34,
+        43
+      ],
+      "includeShapes": [
+        "shape30"
+      ],
+      "cockpitIncludeShapes": [
+        "shape29"
+      ]
+    },
+    "an16n": {
+      "name": "Mazda MX-5 / Miata '89",
+      "code": "mazd0039",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        32,
+        33,
+        39,
+        40,
+        41,
+        43,
+        44,
+        66
+      ],
+      "includeShapes": [
+        "shape45"
+      ],
+      "opaqueTextures": [
+        9,
+        10,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        26
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "mirrorTextures": [
+        10
+      ]
+    },
+    "arodn": {
+      "name": "Mazda MX-5 1.8 RS / Miata '98",
+      "code": "mazd0061",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        12,
+        14,
+        15,
+        27,
+        28,
+        31,
+        32,
+        38,
+        39,
+        40
+      ],
+      "includeShapes": [
+        "shape27",
+        "shape30"
+      ],
+      "opaqueTextures": [
+        7,
+        33,
+        35,
+        36
+      ],
+      "speedometer": [
+        0.38,
+        0.774,
+        -0.17,
+        0.12
+      ],
+      "mirrorTextures": [
+        8
+      ]
+    },
+    "h2s2n": {
+      "name": "Honda S2000 1999",
+      "code": "hond0048",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        -0.36,
+        1.08,
+        0.37
+      ],
+      "mirror": [
+        0,
+        1.068,
+        0.015
+      ],
+      "speedometer": [
+        -0.36,
+        0.772,
+        0.045,
+        0.13
+      ],
+      "cockpitSkipTextures": [
+        35,
+        38,
+        41
+      ],
+      "opaqueTextures": [
+        16,
+        18,
+        19,
+        25,
+        26,
+        27,
+        29,
+        30,
+        46
+      ],
+      "includeShapes": [
+        "shape40"
+      ],
+      "mirrorTextures": [
+        19
+      ]
+    },
+    "h2ben": {
+      "name": "Honda Beat 1991",
+      "code": "hond0011",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.3,
+        0.97,
+        -0.03
+      ],
+      "mirror": [
+        0,
+        0.954,
+        -0.295
+      ],
+      "speedometer": [
+        0.3,
+        0.635,
+        -0.442,
+        0.12
+      ],
+      "cockpitSkipTextures": [
+        14,
+        15,
+        16,
+        23
+      ],
+      "opaqueTextures": [
+        10,
+        11,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        52,
+        57
+      ],
+      "includeShapes": [
+        "shape56"
+      ],
+      "mirrorTextures": [
+        11
+      ]
+    },
+    "h2bfn": {
+      "name": "Honda Beat Version F 1992",
+      "code": "hond0069",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.3,
+        0.97,
+        -0.03
+      ],
+      "mirror": [
+        0,
+        0.954,
+        -0.295
+      ],
+      "speedometer": [
+        0.3,
+        0.635,
+        -0.442,
+        0.12
+      ],
+      "cockpitSkipTextures": [
+        14,
+        15,
+        16,
+        23
+      ],
+      "opaqueTextures": [
+        10,
+        11,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        52,
+        57
+      ],
+      "includeShapes": [
+        "shape56"
+      ],
+      "mirrorTextures": [
+        11
+      ]
+    },
+    "gmsln": {
+      "name": "Mercedes-Benz SLK 230 Kompressor 1998",
+      "code": "mbnz0011",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        -0.4,
+        1.13,
+        0.4
+      ],
+      "mirror": [
+        0,
+        1.077,
+        0.055
+      ],
+      "speedometer": [
+        -0.4,
+        0.797,
+        -0.015,
+        0.14
+      ],
+      "cockpitSkipTextures": [
+        8,
+        36
+      ],
+      "opaqueTextures": [
+        14,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        33
+      ],
+      "includeShapes": [
+        "shape25"
+      ],
+      "mirrorTextures": [
+        15
+      ]
+    },
+    "vgr5n": {
+      "name": "TVR Griffith 500 1994",
+      "code": "tvr_0003",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.39,
+        1.07,
+        0.4
+      ],
+      "mirror": [
+        0,
+        0.995,
+        0.067
+      ],
+      "speedometer": [
+        0.39,
+        0.678,
+        0.02,
+        0.14
+      ],
+      "cockpitSkipTextures": [
+        9,
+        10,
+        29,
+        58
+      ],
+      "opaqueTextures": [
+        8,
+        30,
+        31,
+        32,
+        33,
+        35,
+        36,
+        37,
+        41,
+        49,
+        50,
+        55
+      ],
+      "includeShapes": [
+        "shape47"
+      ],
+      "mirrorTextures": [
+        7
+      ]
+    },
+    "uscon": {
+      "name": "Shelby Cobra 427 1967",
+      "code": "slby0001",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        -0.4,
+        1.4,
+        0.61
+      ],
+      "mirror": [
+        0.068,
+        1.139,
+        0.065
+      ],
+      "speedometer": [
+        -0.4,
+        0.982,
+        0.178,
+        0.14
+      ],
+      "cockpitSkipTextures": [
+        26,
+        51,
+        78,
+        79,
+        82
+      ],
+      "opaqueTextures": [
+        28,
+        30,
+        31,
+        33,
+        34,
+        35,
+        36,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        58,
+        59,
+        69,
+        77
+      ],
+      "includeShapes": [
+        "shape35"
+      ],
+      "mirrorTextures": [
+        48
+      ]
+    },
+    "a28sn": {
+      "name": "Mazda RX-7 Type RS '98",
+      "code": "mazd0025",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS (FD) `98"
+    },
+    "a2azn": {
+      "name": "azda AZ-1 '91",
+      "code": "mazd0021",
+      "directory": "lod",
+      "referenceName": "Mazda Autozam AZ-1 `92"
+    },
+    "a2gln": {
+      "name": "azda Demio GL-X '99",
+      "code": "mazd0057",
+      "directory": "lod",
+      "referenceName": "Mazda DEMIO (J) `99"
+    },
+    "a2rrn": {
+      "name": "azda RX-7 RS-R '97",
+      "code": "mazd0074",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS-R (FD) `97"
+    },
+    "afc7n": {
+      "name": "Mazda RX-7 Infini III '90",
+      "code": "mazd0017",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 INFINI III (FC, J) `90"
+    },
+    "afd7n": {
+      "name": "Mazda RX-7 Type RZ '96",
+      "code": "mazd0082",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RZ (FD, J) `96"
+    },
+    "afo7n": {
+      "name": "Mazda RX-7 Type R '91",
+      "code": "mazd0076",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type R (FD, J) `91"
+    },
+    "afr7n": {
+      "name": "Mazda RX-7 GT-X '90",
+      "code": "mazd0064",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 GT-X (FC, J) `90"
+    },
+    "altsn": {
+      "name": "Mazda 323F Coupe 2000 '93",
+      "code": "mazd0084",
+      "directory": "lod",
+      "referenceName": "Mazda Mazda 323F `93"
+    },
+    "amivn": {
+      "name": "azda MX-5 V sp.(J) '93",
+      "code": "mazd0047",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        37,
+        51,
+        64
+      ],
+      "includeShapes": [],
+      "opaqueTextures": [
+        30,
+        31,
+        36,
+        38,
+        39,
+        40
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "mirrorTextures": [
+        9
+      ],
+      "referenceName": "Mazda MX-5 Miata V-Special Type II (NA, J) `93"
+    },
+    "bjkrn": {
+      "name": "Jaguar XKR Coupe",
+      "code": "jagu0005",
+      "directory": "lod",
+      "referenceName": "Jaguar XKR Coupe `99"
+    },
+    "bmmgn": {
+      "name": "MGF 1.8i VVC",
+      "code": "mg_30002",
+      "directory": "open",
+      "referenceName": "MGF `97",
+      "nativeInterior": true,
+      "eye": [
+        -0.34,
+        1.07,
+        0.02
+      ],
+      "mirror": [
+        0,
+        1.08,
+        -0.25
+      ],
+      "speedometer": [
+        -0.34,
+        0.78,
+        -0.5,
+        0.14
+      ],
+      "mirrorTextures": [
+        8
+      ]
+    },
+    "bu41n": {
+      "name": "UF BTR TypeI",
+      "code": "ruf_0001",
+      "directory": "lod",
+      "referenceName": "RUF BTR `86"
+    },
+    "bu42n": {
+      "name": "UF BTR TypeII",
+      "code": "ruf_0001",
+      "directory": "lod",
+      "referenceName": "RUF BTR `86"
+    },
+    "buc1n": {
+      "name": "UF CTR Yellow Bird",
+      "code": "ruf_0005",
+      "directory": "lod",
+      "referenceName": "RUF CTR \"Yellow Bird\" `87"
+    },
+    "buc9n": {
+      "name": "UF CTR 2",
+      "code": "ruf_0002",
+      "directory": "lod",
+      "referenceName": "RUF CTR2 `96"
+    },
+    "bvcdr": {
+      "name": "\u007fVauxhall Calibra Touring car",
+      "code": "opel0003",
+      "directory": "lod",
+      "referenceName": "Opel Calibra Touring Car `94"
+    },
+    "bvtin": {
+      "name": "Vauxhall Tigra 1.6i",
+      "code": "opel0001",
+      "directory": "lod",
+      "referenceName": "Opel Tigra 1.6i `99"
+    },
+    "cc69n": {
+      "name": "amaro Z28 '69",
+      "code": "chev0001",
+      "directory": "lod",
+      "referenceName": "Chevrolet Camaro Z28 302 `69"
+    },
+    "ccamn": {
+      "name": "amaro Z28 Coupe '97",
+      "code": "chev0005",
+      "directory": "lod",
+      "referenceName": "Chevrolet Camaro Z28 Coupe `97"
+    },
+    "ccrvn": {
+      "name": "Corvette Grand Sport '96",
+      "code": "chev0006",
+      "directory": "lod",
+      "referenceName": "Chevrolet Corvette GRAND SPORT (C4) `96"
+    },
+    "dcc1n": {
+      "name": "Dodge Charger",
+      "code": "dodg0007",
+      "directory": "lod",
+      "referenceName": "Dodge Charger 440 R/T `70"
+    },
+    "efe2n": {
+      "name": "ord Rs200 Rally Car",
+      "code": "fdeu0004",
+      "directory": "lod",
+      "referenceName": "Ford RS200 Rally Car `85"
+    },
+    "efesr": {
+      "name": "\u007fFord Escort Rally Car",
+      "code": "fdeu0002",
+      "directory": "lod",
+      "referenceName": "Ford Escort Rally Car `98"
+    },
+    "effwr": {
+      "name": "Ford Focus Rally Car",
+      "code": "fdeu0001",
+      "directory": "lod",
+      "referenceName": "Ford FOCUS Rally Car `99"
+    },
+    "efkan": {
+      "name": "Ford Ka",
+      "code": "fdeu0006",
+      "directory": "lod",
+      "referenceName": "Ford Ka `01"
+    },
+    "fcr8r": {
+      "name": "\u007fCitroen Xsara Rally Car",
+      "code": "citr0006",
+      "directory": "lod",
+      "referenceName": "Citroen Xsara Rally Car `99"
+    },
+    "fp26n": {
+      "name": "eugeot 206 S16",
+      "code": "peug0010",
+      "directory": "lod",
+      "referenceName": "Peugeot 206 S16 `99"
+    },
+    "fp27n": {
+      "name": "eugeot 206 S16",
+      "code": "peug0010",
+      "directory": "lod",
+      "referenceName": "Peugeot 206 S16 `99"
+    },
+    "fp2wr": {
+      "name": "\u007fPeugeot 206 '99 Rally Car",
+      "code": "peug0012",
+      "directory": "lod",
+      "referenceName": "Peugeot 206 Rally Car `99"
+    },
+    "fp2xr": {
+      "name": "\u007fPeugeot 206 '99 Rally Car",
+      "code": "peug0012",
+      "directory": "lod",
+      "referenceName": "Peugeot 206 Rally Car `99"
+    },
+    "fp46n": {
+      "name": "Peugeot 406 3.0 V6 Coupe",
+      "code": "peug0004",
+      "directory": "lod",
+      "referenceName": "Peugeot 406 3.0 V6 Coupe `98"
+    },
+    "frcsn": {
+      "name": "Renault Clio Sport V6 24V",
+      "code": "re__0006",
+      "directory": "lod",
+      "referenceName": "Renault Clio Renault Sport V6 24V `00"
+    },
+    "gas4n": {
+      "name": "Audi S4",
+      "code": "audi0010",
+      "directory": "lod",
+      "referenceName": "Audi S4 `98"
+    },
+    "gattn": {
+      "name": "Audi TT 1.8T quattro",
+      "code": "audi0002",
+      "directory": "lod",
+      "referenceName": "Audi TT Coupe 1.8T quattro `00"
+    },
+    "gm16n": {
+      "name": "ercedes A160 Avantgarde",
+      "code": "mbnz0010",
+      "directory": "lod",
+      "referenceName": "Mercedes-Benz A 160 Avantgarde `98"
+    },
+    "gocdr": {
+      "name": "\u007fOpel Calibra Touring Car",
+      "code": "opel0003",
+      "directory": "lod",
+      "referenceName": "Opel Calibra Touring Car `94"
+    },
+    "gotin": {
+      "name": "pel Tigra 1.6i",
+      "code": "opel0001",
+      "directory": "lod",
+      "referenceName": "Opel Tigra 1.6i `99"
+    },
+    "gv48n": {
+      "name": "olkswagen Golf GTI 1.8T",
+      "code": "vw__0001",
+      "directory": "lod",
+      "referenceName": "Volkswagen Golf IV GTI `01"
+    },
+    "gvnbn": {
+      "name": "Volkswagen New Beetle",
+      "code": "vw__0011",
+      "directory": "lod",
+      "referenceName": "Volkswagen New Beetle 2.0 `00"
+    },
+    "h2a0n": {
+      "name": "cura NSX '91",
+      "code": "acra0003",
+      "directory": "lod",
+      "referenceName": "Acura NSX `91"
+    },
+    "h2a2n": {
+      "name": "cura NSX '97",
+      "code": "acra0004",
+      "directory": "lod",
+      "referenceName": "Acura NSX Coupe `97"
+    },
+    "h2bzn": {
+      "name": "onda Beat ver.Z '94",
+      "code": "hond0070",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.3,
+        0.97,
+        -0.03
+      ],
+      "mirror": [
+        0,
+        0.954,
+        -0.295
+      ],
+      "speedometer": [
+        0.3,
+        0.635,
+        -0.442,
+        0.12
+      ],
+      "cockpitSkipTextures": [
+        14,
+        15,
+        16,
+        35
+      ],
+      "opaqueTextures": [
+        18,
+        19,
+        23,
+        24,
+        26,
+        27,
+        30
+      ],
+      "includeShapes": [],
+      "mirrorTextures": [
+        13
+      ],
+      "referenceName": "Honda BEAT Version Z `93"
+    },
+    "h2crn": {
+      "name": "onda Civic Type R '98",
+      "code": "hond0018",
+      "directory": "lod",
+      "referenceName": "Honda CIVIC TYPE R (EK) `98"
+    },
+    "h2psn": {
+      "name": "onda Prelude SiR S spec",
+      "code": "hond0044",
+      "directory": "lod",
+      "referenceName": "Honda PRELUDE SiR S spec `98"
+    },
+    "h2scn": {
+      "name": "Spoon Civic Type-R",
+      "code": "spon0002",
+      "directory": "lod",
+      "referenceName": "Spoon CIVIC TYPE R (EK) `00"
+    },
+    "h2sin": {
+      "name": "Spoon Integra Type-R",
+      "code": "spon0005",
+      "directory": "lod",
+      "referenceName": "Spoon INTEGRA TYPE R (DC2) `99"
+    },
+    "h2ssn": {
+      "name": "poon S2000",
+      "code": "spon0004",
+      "directory": "lod",
+      "referenceName": "Spoon S2000 `00"
+    },
+    "hcvrn": {
+      "name": "Honda Civic Type R '97",
+      "code": "hond0082",
+      "directory": "lod",
+      "referenceName": "Honda CIVIC TYPE R (EK) `97"
+    },
+    "hcvon": {
+      "name": "Honda Civic VTi '93",
+      "code": "hond0072",
+      "directory": "lod",
+      "referenceName": "Honda CIVIC SiR-II (EG) `93"
+    },
+    "hcrxn": {
+      "name": "onda CR-X 1.6 VTEC",
+      "code": "hond0008",
+      "directory": "lod",
+      "referenceName": "Honda CR-X SiR `90"
+    },
+    "hdern": {
+      "name": "Honda CR-X del-sol 1.6VTi",
+      "code": "hond0003",
+      "directory": "lod",
+      "referenceName": "Honda CR-X del Sol SiR `92"
+    },
+    "hinrn": {
+      "name": "ntegra Type R '95",
+      "code": "hond0065",
+      "directory": "lod",
+      "referenceName": "Honda INTEGRA TYPE R (DC2) `95"
+    },
+    "hnsbn": {
+      "name": "SX",
+      "code": "hond0076",
+      "directory": "lod",
+      "referenceName": "Honda NSX `97"
+    },
+    "hnsnn": {
+      "name": "NSX Type S Zero",
+      "code": "hond0004",
+      "directory": "lod",
+      "referenceName": "Honda NSX Type S Zero `97"
+    },
+    "hnsrn": {
+      "name": "SX Type R '92",
+      "code": "hond0037",
+      "directory": "lod",
+      "referenceName": "Honda NSX Type R `92"
+    },
+    "hnssn": {
+      "name": "NSX Type S",
+      "code": "hond0078",
+      "directory": "lod",
+      "referenceName": "Honda NSX Type S `97"
+    },
+    "hnsxn": {
+      "name": "NSX '90",
+      "code": "hond0073",
+      "directory": "lod",
+      "referenceName": "Honda NSX `90"
+    },
+    "hpnvn": {
+      "name": "onda Prelude Type-S '96",
+      "code": "hond0001",
+      "directory": "lod",
+      "referenceName": "Honda PRELUDE Type S `96"
+    },
+    "hprvn": {
+      "name": "onda Prelude 2.2VTEC '91",
+      "code": "hond0038",
+      "directory": "lod",
+      "referenceName": "Honda PRELUDE Si VTEC `91"
+    },
+    "ia54n": {
+      "name": "Alfa 156 2.5 V6 24V",
+      "code": "alfa0006",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 156 2.5 V6 24V `98"
+    },
+    "ia5dr": {
+      "name": "\u007fAlfa 155 Touring Car",
+      "code": "alfa0005",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 155 2.5 V6 TI `93"
+    },
+    "ia65n": {
+      "name": "lfa 166 2.5 V6 24V",
+      "code": "alfa0011",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 166 2.5 V6 24V Sportronic `98"
+    },
+    "iiban": {
+      "name": "iat Barchetta",
+      "code": "fiat0003",
+      "directory": "open",
+      "referenceName": "Fiat Barchetta Giovane Due `00",
+      "nativeInterior": true,
+      "eye": [
+        -0.34,
+        1.07,
+        0.02
+      ],
+      "mirror": [
+        0,
+        1.08,
+        -0.25
+      ],
+      "speedometer": [
+        -0.34,
+        0.78,
+        -0.5,
+        0.14
+      ],
+      "mirrorTextures": [
+        6
+      ]
+    },
+    "iictn": {
+      "name": "iat Coupe",
+      "code": "fiat0004",
+      "directory": "lod",
+      "referenceName": "Fiat Coupe Turbo Plus `00"
+    },
+    "iio5n": {
+      "name": "iat 500R '75",
+      "code": "fiat0007",
+      "directory": "lod",
+      "referenceName": "Fiat 500R `72"
+    },
+    "ildcn": {
+      "name": "Lancia Delta HF I. Collezione",
+      "code": "lnca0005",
+      "directory": "lod",
+      "referenceName": "Lancia DELTA HF Integrale Evoluzione `91"
+    },
+    "ildvn": {
+      "name": "elta HF Integrale Evo.",
+      "code": "lnca0005",
+      "directory": "lod",
+      "referenceName": "Lancia DELTA HF Integrale Evoluzione `91"
+    },
+    "ils4r": {
+      "name": "\u007fLancia Delta S4",
+      "code": "lnca0001",
+      "directory": "lod",
+      "referenceName": "Lancia Delta S4 Rally Car `85"
+    },
+    "ilstn": {
+      "name": "Lancia Stratos",
+      "code": "lnca0003",
+      "directory": "lod",
+      "referenceName": "Lancia STRATOS `73"
+    },
+    "ioeln": {
+      "name": "otus Elise",
+      "code": "lotu0002",
+      "directory": "lod",
+      "referenceName": "Lotus Elise `00"
+    },
+    "ioesn": {
+      "name": "Lotus Esprit Sport 350",
+      "code": "lotu0006",
+      "directory": "lod",
+      "referenceName": "Lotus Esprit Sport 350 `00"
+    },
+    "ioeun": {
+      "name": "Lotus Europa",
+      "code": "lotu0001",
+      "directory": "lod",
+      "referenceName": "Lotus Europa Special `71"
+    },
+    "iogtn": {
+      "name": "otus Esprit V8 SE",
+      "code": "lotu0012",
+      "directory": "lod",
+      "referenceName": "Lotus Esprit V8 SE `98"
+    },
+    "iosen": {
+      "name": "otus Esprit V8 SE",
+      "code": "lotu0012",
+      "directory": "lod",
+      "referenceName": "Lotus Esprit V8 SE `98"
+    },
+    "iomsn": {
+      "name": "Lotus Motorsport Elise",
+      "code": "lotu0005",
+      "directory": "lod",
+      "referenceName": "Lotus Motor Sport Elise `99"
+    },
+    "k2zzn": {
+      "name": "ommykaira ZZ-S Coupe",
+      "code": "tkir0001",
+      "directory": "lod",
+      "referenceName": "Tommy kaira ZZ-S `00"
+    },
+    "ldvan": {
+      "name": "Aston Martin V8 VANTAGE",
+      "code": "asmt0002",
+      "directory": "lod",
+      "referenceName": "Aston Martin V8 Vantage `99"
+    },
+    "m2g2n": {
+      "name": "Lancer Evolution II '94",
+      "code": "mits0036",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution II    GSR `94"
+    },
+    "m2g5n": {
+      "name": "Lancer Evolution V GSR '98",
+      "code": "mits0009",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution V    GSR `98"
+    },
+    "m2g6n": {
+      "name": "Lancer Evolution VI GSR '99",
+      "code": "mits0019",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution VI    GSR `99"
+    },
+    "m2lgn": {
+      "name": "itsubishi Legnum VR-4 '97",
+      "code": "mits0016",
+      "directory": "lod",
+      "referenceName": "Mitsubishi LEGNUM    VR-4 Type V `98"
+    },
+    "m2min": {
+      "name": "irage Cyborg-ZR '97",
+      "code": "mits0020",
+      "directory": "lod",
+      "referenceName": "Mitsubishi MIRAGE    CYBORG ZR `97"
+    },
+    "m2mon": {
+      "name": "Mitsubishi Minica Dangan'90",
+      "code": "mits0023",
+      "directory": "lod",
+      "referenceName": "Mitsubishi MINICA    DANGAN ZZ `89"
+    },
+    "m2ngn": {
+      "name": "Mitsubishi Legnum VR-4 '99",
+      "code": "mits0016",
+      "directory": "lod",
+      "referenceName": "Mitsubishi LEGNUM    VR-4 Type V `98"
+    },
+    "m2r6n": {
+      "name": "Lancer Evolution VI RS '99",
+      "code": "mits0025",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution VI   RS `99"
+    },
+    "m2w6r": {
+      "name": "\u007fLancer Evo.VI Rally Car '99",
+      "code": "mits0026",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution VI    Rally Car `99"
+    },
+    "mecln": {
+      "name": "itsubishi Eclipse",
+      "code": "mits0006",
+      "directory": "lod",
+      "referenceName": "Mitsubishi ECLIPSE    GT `95"
+    },
+    "mftgn": {
+      "name": "itsubishi FTO GR '97",
+      "code": "mits0033",
+      "directory": "lod",
+      "referenceName": "Mitsubishi FTO    GR `97"
+    },
+    "mftnn": {
+      "name": "FTO GP Ver.R '97",
+      "code": "mits0004",
+      "directory": "lod",
+      "referenceName": "Mitsubishi FTO    GP Version R `97"
+    },
+    "mfton": {
+      "name": "Mitsubishi FTO GPX '94",
+      "code": "mits0030",
+      "directory": "lod",
+      "referenceName": "Mitsubishi FTO    GPX `94"
+    },
+    "mftrn": {
+      "name": "itsubishi FTO GR '94",
+      "code": "mits0031",
+      "directory": "lod",
+      "referenceName": "Mitsubishi FTO    GR `94"
+    },
+    "mftxn": {
+      "name": "itsubishi FTO GPX '97",
+      "code": "mits0032",
+      "directory": "lod",
+      "referenceName": "Mitsubishi FTO    GPX `97"
+    },
+    "mgtmn": {
+      "name": "Mitsubishi 3000GT MR '95",
+      "code": "mits0061",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    MR (J) `95"
+    },
+    "mgton": {
+      "name": "Mitsubishi 3000GT SR '95",
+      "code": "mits0057",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    SL (J) `95"
+    },
+    "mgttn": {
+      "name": "3000GT VR-4 Turbo '96",
+      "code": "mits0065",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    VR-4 Turbo (J) `96"
+    },
+    "mlnnn": {
+      "name": "Lancer EvolutionIV GSR '96",
+      "code": "mits0017",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution IV    GSR `96"
+    },
+    "mlnon": {
+      "name": "Lancer EvolutionIII GSR '95",
+      "code": "mits0037",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution III  GSR `95"
+    },
+    "n-00n": {
+      "name": "ismo 400R",
+      "code": "nism0002",
+      "directory": "lod",
+      "referenceName": "NISMO 400R `96"
+    },
+    "n-18n": {
+      "name": "Nissan Sileighty",
+      "code": "org_0002",
+      "directory": "lod",
+      "referenceName": "SILEIGHTY `98"
+    },
+    "n231n": {
+      "name": "kyline GTS-R(R31) '87",
+      "code": "niss0016",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GTS-R (R31) `87"
+    },
+    "n240r": {
+      "name": "\u007fNissan R390 GT1 '98",
+      "code": "niss0017",
+      "directory": "lod",
+      "referenceName": "Nissan R390 GT1 Race Car `98"
+    },
+    "n24nn": {
+      "name": "Nissan R390GT1 RoadCar'98",
+      "code": "niss0114",
+      "directory": "lod",
+      "referenceName": "Nissan R390 GT1 Road Car `98"
+    },
+    "n24rn": {
+      "name": "Skyline GT-R(R34) '99",
+      "code": "niss0045",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R (R34) `99"
+    },
+    "n24vn": {
+      "name": "Skyline GT-R V-spec(R34)",
+      "code": "niss0046",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R V-spec (R34) `99"
+    },
+    "n270n": {
+      "name": "Nismo 270R",
+      "code": "nism0005",
+      "directory": "lod",
+      "referenceName": "NISMO 270R `94"
+    },
+    "n284n": {
+      "name": "Nissan Stagea RS Four V '98",
+      "code": "niss0090",
+      "directory": "lod",
+      "referenceName": "Nissan STAGEA 25t RS FOUR S `98"
+    },
+    "n28gn": {
+      "name": "Nissan Stagea 260RS '98",
+      "code": "niss0091",
+      "directory": "lod",
+      "referenceName": "Nissan STAGEA 260RS AutechVersion `98"
+    },
+    "n2cun": {
+      "name": "Nissan Cube X '98",
+      "code": "niss0034",
+      "directory": "lod",
+      "referenceName": "Nissan CUBE X `98"
+    },
+    "n2gpr": {
+      "name": "\u007fPennzoil Nismo GT-R GT'99",
+      "code": "niss0110",
+      "directory": "lod",
+      "referenceName": "Nissan PENNZOIL Nismo GT-R (JGTC) `99"
+    },
+    "n2s4n": {
+      "name": "issan Stagea RS Four V '97",
+      "code": "niss0090",
+      "directory": "lod",
+      "referenceName": "Nissan STAGEA 25t RS FOUR S `98"
+    },
+    "n2sgn": {
+      "name": "Nissan Stagea 260RS '97",
+      "code": "niss0091",
+      "directory": "lod",
+      "referenceName": "Nissan STAGEA 260RS AutechVersion `98"
+    },
+    "n2sxn": {
+      "name": "issan Silvia Spec R Aero",
+      "code": "niss0056",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Spec R AERO (S15) `99"
+    },
+    "n2syn": {
+      "name": "issan Silvia Spec S Aero",
+      "code": "niss0057",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Spec S AERO (S15) `99"
+    },
+    "n2zrn": {
+      "name": "issan 300ZX  2+2  '98",
+      "code": "niss0098",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2by2 (Z32) `98"
+    },
+    "n2stn": {
+      "name": "issan 300ZX  Turbo '98",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98"
+    },
+    "nl33n": {
+      "name": "Nismo GT-R LM Road Car",
+      "code": "nism0006",
+      "directory": "lod",
+      "referenceName": "NISMO GT-R LM Road Going Version `95"
+    },
+    "nm32n": {
+      "name": "kyline GTS25 Type S(R32)",
+      "code": "niss0084",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GTS25 Type S (R32) `91"
+    },
+    "nq13n": {
+      "name": "issan Silvia Q's 1800cc '88",
+      "code": "niss0101",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Q's (S13) `88"
+    },
+    "nq23n": {
+      "name": "Nissan Silvia Q's 2000cc '91",
+      "code": "niss0102",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Q's (S13) `91"
+    },
+    "nr02n": {
+      "name": "Skyline GT-R(R32) '89",
+      "code": "niss0077",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R (R32) `89"
+    },
+    "nr33n": {
+      "name": "Skyline GT-R(R33) '95",
+      "code": "niss0069",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R (R33) `95"
+    },
+    "nr34n": {
+      "name": "Skyline GT-R(R33) '97",
+      "code": "niss0075",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R (R33) `97"
+    },
+    "ns13n": {
+      "name": "issan Silvia K's 1800cc '88",
+      "code": "niss0005",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA K's (S13) `88"
+    },
+    "ns23n": {
+      "name": "Nissan Silvia K's 2000cc '91",
+      "code": "niss0037",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA K's (S13) `91"
+    },
+    "nt32n": {
+      "name": "kyline GTS-t Type M(R32)",
+      "code": "niss0038",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GTS-t Type M (R32) `91"
+    },
+    "nv12n": {
+      "name": "Skyline GT-R Vspec(R32)",
+      "code": "niss0080",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R Vspec (R32) `93"
+    },
+    "nv22n": {
+      "name": "Skyline GT-R Vspec II(R32)",
+      "code": "niss0007",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R Vspec II (R32) `94"
+    },
+    "nv33n": {
+      "name": "Skyline GT-R Vsp.(R33) '95",
+      "code": "niss0070",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R Vspec (R33) `95"
+    },
+    "nv34n": {
+      "name": "Skyline GT-R '98",
+      "code": "niss0076",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GT-R Vspec (R33) `97"
+    },
+    "q2m2n": {
+      "name": "aihatsu Move SR-XX '97",
+      "code": "daih0009",
+      "directory": "lod",
+      "referenceName": "Daihatsu MOVE SR-XX 2WD `97"
+    },
+    "q2m4n": {
+      "name": "aihatsu Move SR-XX '97",
+      "code": "daih0010",
+      "directory": "lod",
+      "referenceName": "Daihatsu MOVE SR-XX 4WD `97"
+    },
+    "q2min": {
+      "name": "aihatsu Midget II D-type",
+      "code": "daih0005",
+      "directory": "lod",
+      "referenceName": "Daihatsu Midget II D-type `98"
+    },
+    "q2mvn": {
+      "name": "aihatsu Move '95",
+      "code": "daih0006",
+      "directory": "lod",
+      "referenceName": "Daihatsu MOVE CX `95"
+    },
+    "q2s4n": {
+      "name": "aihatsu Sirion (4WD) '98",
+      "code": "daih0011",
+      "directory": "lod",
+      "referenceName": "Daihatsu STORIA CX 4WD `98"
+    },
+    "q2stn": {
+      "name": "aihatsu Sirion (2WD) '98",
+      "code": "daih0012",
+      "directory": "lod",
+      "referenceName": "Daihatsu STORIA CX 2WD `98"
+    },
+    "s222n": {
+      "name": "Impreza 22B Sti Version '98",
+      "code": "subr0019",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Premium Sport Coupe 22B-STi Version (GC) `98"
+    },
+    "s236n": {
+      "name": "Subaru 360",
+      "code": "subr0030",
+      "directory": "lod",
+      "referenceName": "Subaru SUBARU 360 `58"
+    },
+    "s2i4n": {
+      "name": "Impreza WRX STi Ver.IV '97",
+      "code": "subr0026",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version IV (GC) `97"
+    },
+    "s2i5n": {
+      "name": "Impreza WRX STi Ver.V '98",
+      "code": "subr0027",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version V (GC) `98"
+    },
+    "s2i6n": {
+      "name": "mpreza WRX STi Ver.VI",
+      "code": "subr0005",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version VI (GC) `99"
+    },
+    "s2irr": {
+      "name": "\u007fImpreza Rally Car '99",
+      "code": "subr0006",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Rally Car `99"
+    },
+    "s2r6n": {
+      "name": "mpreza WRX-R STi Ver.VI",
+      "code": "subr0018",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Coupe WRXtypeR STi Version VI (GC) `99"
+    },
+    "s2w6n": {
+      "name": "mpreza Wgn STi Ver. VI",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99"
+    },
+    "sipbn": {
+      "name": "Impreza WRX STi Ver.III '96",
+      "code": "subr0025",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version III (GC) `96"
+    },
+    "sipsn": {
+      "name": "Impreza WRX STi Ver.II '95",
+      "code": "subr0024",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version II (GC) `95"
+    },
+    "slgan": {
+      "name": "egacy Wagon GT '96",
+      "code": "subr0012",
+      "directory": "lod",
+      "referenceName": "Subaru LEGACY Touring Wagon GT-B `96"
+    },
+    "t211n": {
+      "name": "Toyota MR2 1600G-Ltd.'86",
+      "code": "toyt0058",
+      "directory": "lod",
+      "referenceName": "Toyota MR2 1600 G `86"
+    },
+    "t22gn": {
+      "name": "Toyota 2000GT '67",
+      "code": "toyt0067",
+      "directory": "lod",
+      "referenceName": "Toyota 2000GT `67"
+    },
+    "t22hn": {
+      "name": "Toyota 2000GT '67",
+      "code": "toyt0067",
+      "directory": "lod",
+      "referenceName": "Toyota 2000GT `67"
+    },
+    "t2con": {
+      "name": "oyota Celica GT-R '91",
+      "code": "toyt0049",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA GT-R (ST183, 4WS) `91"
+    },
+    "t2crn": {
+      "name": "Celica GT-Four RC '91",
+      "code": "toyt0014",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA GT-FOUR RC (ST185) `91"
+    },
+    "t2clr": {
+      "name": "\u007fToyota Celica Rally Car",
+      "code": "toyt0023",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA GT-FOUR Rally Car (ST205) `95"
+    },
+    "t2cxr": {
+      "name": "\u007fToyota Corolla Rally Car '98",
+      "code": "toyt0036",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA Rally Car `98"
+    },
+    "t2cyn": {
+      "name": "oyota Celica SS-II '99",
+      "code": "toyt0065",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA SS-II (ZZT231) `99"
+    },
+    "t2g9r": {
+      "name": "\u007fToyota GT-ONE '99",
+      "code": "toyt0063",
+      "directory": "lod",
+      "referenceName": "Toyota GT-ONE Race Car (TS020) `99"
+    },
+    "t2h9r": {
+      "name": "\u007fToyota GT-ONE '99",
+      "code": "toyt0063",
+      "directory": "lod",
+      "referenceName": "Toyota GT-ONE Race Car (TS020) `99"
+    },
+    "t2isn": {
+      "name": "exus IS 200",
+      "code": "lxus0001",
+      "directory": "lod",
+      "referenceName": "Lexus IS200 `98"
+    },
+    "t2lvn": {
+      "name": "oyota Corolla Levin '98",
+      "code": "toyt0016",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA LEVIN BZ-R `98"
+    },
+    "t2m2n": {
+      "name": "Toyota MR2 GT-S '98",
+      "code": "toyt0026",
+      "directory": "lod",
+      "referenceName": "Toyota MR2 GT-S `97"
+    },
+    "t2mgn": {
+      "name": "Toyota MR2 G-Limited '98",
+      "code": "toyt0069",
+      "directory": "lod",
+      "referenceName": "Toyota MR2 G-Limited `97"
+    },
+    "t2msn": {
+      "name": "Toyota MR2 Spider(J) '99",
+      "code": "toyt0070",
+      "directory": "open",
+      "referenceName": "Toyota MR2 Spyder `99",
+      "nativeInterior": true,
+      "eye": [
+        -0.34,
+        1.07,
+        0.02
+      ],
+      "mirror": [
+        0,
+        1.08,
+        -0.25
+      ],
+      "speedometer": [
+        -0.34,
+        0.78,
+        -0.5,
+        0.14
+      ],
+      "mirrorTextures": [
+        8
+      ]
+    },
+    "t2o3n": {
+      "name": "Lexus SC 300(A)",
+      "code": "lxus0009",
+      "directory": "lod",
+      "referenceName": "Lexus SC300 `97"
+    },
+    "t2srn": {
+      "name": "Toyota Supra SZ-R '97",
+      "code": "toyt0055",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA SZ-R `97"
+    },
+    "t2ssn": {
+      "name": "Toyota Supra RZ '97",
+      "code": "toyt0006",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA RZ `97"
+    },
+    "t2svn": {
+      "name": "Toyota Starlet Glanza V '98",
+      "code": "toyt0048",
+      "directory": "lod",
+      "referenceName": "Toyota STARLET Glanza V `97"
+    },
+    "t2trn": {
+      "name": "oyota Sprinter Trueno '98",
+      "code": "toyt0017",
+      "directory": "lod",
+      "referenceName": "Toyota SPRINTER TRUENO BZ-R `98"
+    },
+    "tcegn": {
+      "name": "elica GT-Four '95",
+      "code": "toyt0003",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA GT-FOUR (ST205) `98"
+    },
+    "tlv1n": {
+      "name": "Toyota Corolla Levin '83",
+      "code": "toyt0001",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA LEVIN GT-APEX (AE86) `83"
+    },
+    "tmr2n": {
+      "name": "Toyota MR2 GT-S '96",
+      "code": "toyt0026",
+      "directory": "lod",
+      "referenceName": "Toyota MR2 GT-S `97"
+    },
+    "tmrln": {
+      "name": "Toyota MR2 G-Limited '96",
+      "code": "toyt0069",
+      "directory": "lod",
+      "referenceName": "Toyota MR2 G-Limited `97"
+    },
+    "tspon": {
+      "name": "upra Twinturbo-R '91",
+      "code": "toyt0002",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA 2.5GT Twin Turbo R `90"
+    },
+    "ttr1n": {
+      "name": "Toyota Corolla Trueno '83",
+      "code": "toyt0005",
+      "directory": "lod",
+      "referenceName": "Toyota SPRINTER TRUENO GT-APEX (AE86) `83"
+    },
+    "uf4lr": {
+      "name": "\u007fFord GT40 Race Car",
+      "code": "ford0007",
+      "directory": "lod",
+      "referenceName": "Ford GT40 Race Car `69"
+    },
+    "uftan": {
+      "name": "Ford Taurus SHO '99",
+      "code": "ford0005",
+      "directory": "lod",
+      "referenceName": "Ford Taurus SHO `98"
+    },
+    "ulsbn": {
+      "name": "Plymouth Superbird",
+      "code": "plym0002",
+      "directory": "lod",
+      "referenceName": "Plymouth Super Bird `70"
+    },
+    "um67n": {
+      "name": "Mercury Cougar XR-7 '67",
+      "code": "mcry0001",
+      "directory": "lod",
+      "referenceName": "Mercury Cougar XR-7 `67"
+    },
+    "vcs6n": {
+      "name": "TVR Cerbera Speed 6",
+      "code": "tvr_0001",
+      "directory": "lod",
+      "referenceName": "TVR Cerbera Speed Six `97"
+    },
+    "vst6n": {
+      "name": "TVR Tuscan Speed 6",
+      "code": "tvr_0002",
+      "directory": "lod",
+      "referenceName": "TVR Tuscan Speed 6 `00"
+    },
+    "x2asn": {
+      "name": "uzuki Alto Works Sports Ltd.",
+      "code": "suzk0002",
+      "directory": "lod",
+      "referenceName": "Suzuki ALTO WORKS SUZUKI SPORT LIMITED `97"
+    },
+    "x2azn": {
+      "name": "Suzuki Alto Works RS/Z '97",
+      "code": "suzk0011",
+      "directory": "lod",
+      "referenceName": "Suzuki ALTO WORKS RS-Z `97"
+    },
+    "x2cpn": {
+      "name": "Suzuki Capcino '95",
+      "code": "suzk0007",
+      "directory": "lod",
+      "referenceName": "Suzuki Cappuccino (EA21R) `95"
+    },
+    "x2w8n": {
+      "name": "uzuki Wagon R RR '98",
+      "code": "suzk0010",
+      "directory": "lod",
+      "referenceName": "Suzuki WAGON R RR `98"
+    },
+    "h2irn": {
+      "name": "onda Integra Type-R",
+      "code": "hond0019",
+      "directory": "lod",
+      "referenceName": "Honda INTEGRA TYPE R (DC2) `98"
+    },
+    "m2mrn": {
+      "name": "3000GT Turbo MR",
+      "code": "mits0070",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    MR (J) `98"
+    },
+    "m2srn": {
+      "name": "Mitsubishi 3000GT SR",
+      "code": "mits0066",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    SL (J) `98"
+    },
+    "mgntn": {
+      "name": "3000GT VR-4 Turbo '98",
+      "code": "mits0068",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    VR-4 (J) `98"
+    },
+    "mgnon": {
+      "name": "Mitsubishi 3000GT SR '97",
+      "code": "mits0062",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    SL (J) `96"
+    },
+    "n230n": {
+      "name": "Skyline Turbo RS-X '84",
+      "code": "niss0040",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE Hard Top 2000 RS-X Turbo C (R30) `84"
+    },
+    "n271n": {
+      "name": "Skyline GT-R(KPGC10) '71",
+      "code": "niss0068",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE Hard Top 2000GT-R (KPGC10) `70"
+    },
+    "nq14n": {
+      "name": "issan 200SX Q's '95",
+      "code": "niss0105",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Q's AERO (S14) `93"
+    },
+    "nq15n": {
+      "name": "issan 200SX Q's Aero '97",
+      "code": "niss0107",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Q's AERO (S14) `96"
+    },
+    "ns14n": {
+      "name": "issan 200SX '95",
+      "code": "niss0106",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA K's AERO (S14) `93"
+    },
+    "n180n": {
+      "name": "00SX Type X(J) '96",
+      "code": "niss0103",
+      "directory": "lod",
+      "referenceName": "Nissan 240SX `96"
+    },
+    "n18nn": {
+      "name": "200SX Type X(J) '96",
+      "code": "niss0103",
+      "directory": "lod",
+      "referenceName": "Nissan 240SX `96"
+    },
+    "t285n": {
+      "name": "Toyota Celica GT-Four '88",
+      "code": "toyt0064",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA 2000GT-FOUR (ST165) `86"
+    },
+    "t2c3n": {
+      "name": "oyota Celica '97",
+      "code": "toyt0004",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA SS-II (ST202) `97"
+    },
+    "tceln": {
+      "name": "oyota Celica '96",
+      "code": "toyt0004",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA SS-II (ST202) `97"
+    },
+    "t2a1n": {
+      "name": "oyota Aristo 3.0V '91",
+      "code": "lxus0006",
+      "directory": "lod",
+      "referenceName": "Lexus GS300 `91"
+    },
+    "t2a3n": {
+      "name": "oyota Aristo V300 '97",
+      "code": "lxus0008",
+      "directory": "lod",
+      "referenceName": "Lexus GS300 Vertex Edition (J) `00"
+    },
+    "t2s3n": {
+      "name": "exus GS 300",
+      "code": "lxus0007",
+      "directory": "lod",
+      "referenceName": "Lexus GS300 `00"
+    },
+    "x2esr": {
+      "name": "Suzuki Escudo Pikes Peak",
+      "code": "suzk0005",
+      "directory": "lod",
+      "referenceName": "Suzuki ESCUDO Dirt Trial Car '98"
+    },
+    "gvlun": {
+      "name": "Volkswagen Lupo 1.4",
+      "code": "vw__0013",
+      "directory": "lod",
+      "referenceName": "Volkswagen Lupo 1.4 '02"
+    },
+    "a26sn": {
+      "name": "azda MX-5 1.6(J) '98",
+      "code": "mazd0061",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        12,
+        14,
+        15,
+        27,
+        28,
+        31,
+        32,
+        38,
+        39,
+        40
+      ],
+      "includeShapes": [
+        "shape27",
+        "shape30"
+      ],
+      "opaqueTextures": [
+        7,
+        33,
+        35,
+        36
+      ],
+      "speedometer": [
+        0.38,
+        0.774,
+        -0.17,
+        0.12
+      ],
+      "mirrorTextures": [
+        8
+      ],
+      "referenceName": "Mazda MX-5 Miata 1.8 RS (NB, J) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "NB roadster, engine/trim differs; keeps GT2 physics"
+    },
+    "a2vsn": {
+      "name": "azda MX-5 1.8 VS(J) '98",
+      "code": "mazd0061",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        12,
+        14,
+        15,
+        27,
+        28,
+        31,
+        32,
+        38,
+        39,
+        40
+      ],
+      "includeShapes": [
+        "shape27",
+        "shape30"
+      ],
+      "opaqueTextures": [
+        7,
+        33,
+        35,
+        36
+      ],
+      "speedometer": [
+        0.38,
+        0.774,
+        -0.17,
+        0.12
+      ],
+      "mirrorTextures": [
+        8
+      ],
+      "referenceName": "Mazda MX-5 Miata 1.8 RS (NB, J) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "NB roadster, engine/trim differs; keeps GT2 physics"
+    },
+    "a28bn": {
+      "name": "Mazda RX-7 Type RB '98",
+      "code": "mazd0025",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS (FD) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1998, RB/R vs RS trim"
+    },
+    "a28rn": {
+      "name": "Mazda RX-7 Type R '98",
+      "code": "mazd0025",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS (FD) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1998, RB/R vs RS trim"
+    },
+    "a2gsn": {
+      "name": "Mazda Demio GL-X Sp. '98",
+      "code": "mazd0057",
+      "directory": "lod",
+      "referenceName": "Mazda DEMIO (J) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Demio, year/trim differs"
+    },
+    "ademn": {
+      "name": "azda Demio GL-X '97",
+      "code": "mazd0057",
+      "directory": "lod",
+      "referenceName": "Mazda DEMIO (J) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Demio, year/trim differs"
+    },
+    "adgln": {
+      "name": "azda Demio GL '97",
+      "code": "mazd0057",
+      "directory": "lod",
+      "referenceName": "Mazda DEMIO (J) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Demio, year/trim differs"
+    },
+    "adlxn": {
+      "name": "azda Demio LX G '97",
+      "code": "mazd0057",
+      "directory": "lod",
+      "referenceName": "Mazda DEMIO (J) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Demio, year/trim differs"
+    },
+    "a2rbn": {
+      "name": "azda RX-7 Type RB '97",
+      "code": "mazd0074",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS-R (FD) `97",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1997, RB/RS vs RS-R trim"
+    },
+    "a2rsn": {
+      "name": "azda RX-7 Type RS '97",
+      "code": "mazd0074",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RS-R (FD) `97",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1997, RB/RS vs RS-R trim"
+    },
+    "a2rzn": {
+      "name": "Mazda RX-7 Type RZ '97",
+      "code": "mazd0082",
+      "directory": "lod",
+      "referenceName": "Mazda RX-7 Type RZ (FD, J) `96",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 RZ 1997 vs 1996"
+    },
+    "afb7n": {
+      "code": "mazd0083",
+      "directory": "lod",
+      "name": "azda RX-7 Type RB '96",
+      "referenceName": "Mazda RX-7 Type RS (FD, J) `96",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1996, RB/Touring X vs RS trim"
+    },
+    "afx7n": {
+      "code": "mazd0083",
+      "directory": "lod",
+      "name": "azda RX-7 Touring X '96",
+      "referenceName": "Mazda RX-7 Type RS (FD, J) `96",
+      "matchType": "same-body-variant",
+      "matchNote": "FD RX-7 1996, RB/Touring X vs RS trim"
+    },
+    "aminn": {
+      "name": "Mazda MX-5(J) '93",
+      "code": "mazd0039",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        32,
+        33,
+        39,
+        40,
+        41,
+        43,
+        44,
+        66
+      ],
+      "includeShapes": [
+        "shape45"
+      ],
+      "opaqueTextures": [
+        9,
+        10,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        26
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "mirrorTextures": [
+        10
+      ],
+      "referenceName": "Mazda MX-5 Miata (NA) `89",
+      "matchType": "same-body-variant",
+      "matchNote": "NA MX-5 base, 1993 vs 1989"
+    },
+    "amisn": {
+      "code": "mazd0041",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "name": "azda MX-5 S sp.(J) '93",
+      "referenceName": "Mazda MX-5 Miata S-Special Type I (NA, J) `95",
+      "matchType": "same-body-variant",
+      "matchNote": "NA MX-5 S-Special, 1993/1992 vs 1995; windshield transparency passes omitted for visibility, frame detail simplified",
+      "cockpitSkipTextures": [
+        27,
+        29,
+        32,
+        33,
+        39,
+        41,
+        64,
+        65,
+        66,
+        67,
+        68,
+        71
+      ],
+      "includeShapes": [
+        "shape47"
+      ],
+      "opaqueTextures": [
+        30,
+        31,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "mirrorTextures": [
+        10
+      ]
+    },
+    "as16n": {
+      "code": "mazd0041",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "name": "azda MX-5 S sp.(J) '92",
+      "referenceName": "Mazda MX-5 Miata S-Special Type I (NA, J) `95",
+      "matchType": "same-body-variant",
+      "matchNote": "NA MX-5 S-Special, 1993/1992 vs 1995; windshield transparency passes omitted for visibility, frame detail simplified",
+      "cockpitSkipTextures": [
+        27,
+        29,
+        32,
+        33,
+        39,
+        41,
+        64,
+        65,
+        66,
+        67,
+        68,
+        71
+      ],
+      "includeShapes": [
+        "shape47"
+      ],
+      "opaqueTextures": [
+        30,
+        31,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "mirrorTextures": [
+        10
+      ]
+    },
+    "av16n": {
+      "name": "azda MX-5 V sp.(J) '90",
+      "code": "mazd0047",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.38,
+        1.06,
+        0.05
+      ],
+      "mirror": [
+        0,
+        1.017,
+        -0.12
+      ],
+      "cockpitSkipTextures": [
+        37,
+        51,
+        64
+      ],
+      "includeShapes": [],
+      "opaqueTextures": [
+        30,
+        31,
+        36,
+        38,
+        39,
+        40
+      ],
+      "speedometer": [
+        0.38,
+        0.738,
+        -0.229,
+        0.14
+      ],
+      "mirrorTextures": [
+        9
+      ],
+      "referenceName": "Mazda MX-5 Miata V-Special Type II (NA, J) `93",
+      "matchType": "same-body-variant",
+      "matchNote": "NA MX-5 V-Special, 1990 vs Type II 1993"
+    },
+    "bj22n": {
+      "code": "jagu0003",
+      "directory": "lod",
+      "name": "aguar XJ220 GT Race Car",
+      "referenceName": "Jaguar XJ220 LM Race Car `01",
+      "matchType": "same-body-variant",
+      "matchNote": "XJ220 race body, GT2 GT vs GT4 LM livery/year"
+    },
+    "bjk8n": {
+      "name": "Jaguar XK8 Coupe",
+      "code": "jagu0005",
+      "directory": "lod",
+      "referenceName": "Jaguar XKR Coupe `99",
+      "matchType": "same-body-variant",
+      "matchNote": "X100 XK8 coupe vs XKR coupe trim"
+    },
+    "bucrn": {
+      "name": "UF CTR 2 Sport",
+      "code": "ruf_0002",
+      "directory": "lod",
+      "referenceName": "RUF CTR2 `96",
+      "matchType": "same-body-variant",
+      "matchNote": "CTR2 Sport vs CTR2; aero differs"
+    },
+    "c-30n": {
+      "name": "Camaro Z28 30th Anv. '96",
+      "code": "chev0005",
+      "directory": "lod",
+      "referenceName": "Chevrolet Camaro Z28 Coupe `97",
+      "matchType": "same-body-variant",
+      "matchNote": "pre-facelift fourth-generation Camaro; anniversary/SS vs Z28 trim"
+    },
+    "ccssn": {
+      "name": "Camaro SS '97",
+      "code": "chev0005",
+      "directory": "lod",
+      "referenceName": "Chevrolet Camaro Z28 Coupe `97",
+      "matchType": "same-body-variant",
+      "matchNote": "pre-facelift fourth-generation Camaro; anniversary/SS vs Z28 trim"
+    },
+    "c427n": {
+      "code": "chev0002",
+      "directory": "lod",
+      "name": "Corvette 427 Stingray '69",
+      "referenceName": "Chevrolet Corvette Stingray L46 350 (C3) `69",
+      "matchType": "same-body-variant",
+      "matchNote": "C3 Corvette 1969; 427 vs L46 350 engine/trim"
+    },
+    "ccrcn": {
+      "name": "Corvette Coupe '96",
+      "code": "chev0006",
+      "directory": "lod",
+      "referenceName": "Chevrolet Corvette GRAND SPORT (C4) `96",
+      "matchType": "same-body-variant",
+      "matchNote": "C4 Corvette 1996 coupe vs Grand Sport trim/livery"
+    },
+    "czr1n": {
+      "code": "chev0013",
+      "directory": "lod",
+      "name": "orvette ZR-1 '95",
+      "referenceName": "Chevrolet Corvette ZR-1 (C4) `90",
+      "matchType": "same-body-variant",
+      "matchNote": "C4 Corvette ZR-1 1995 vs 1990"
+    },
+    "dvp8r": {
+      "code": "dodg0001",
+      "directory": "lod",
+      "name": "Viper GTS-R Team Oreca",
+      "referenceName": "Dodge VIPER GTS-R Team Oreca Race Car `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Viper GTS-R Team Oreca, later livery/year"
+    },
+    "effgn": {
+      "code": "fdeu0007",
+      "directory": "lod",
+      "name": "Ford Focus Ghia 2.0i Zetec",
+      "referenceName": "Ford FOCUS ST170 `03",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Focus, ST170 trim and facelift differs"
+    },
+    "effzn": {
+      "code": "fdeu0007",
+      "directory": "lod",
+      "name": "Ford Focus 1.8i Zetec",
+      "referenceName": "Ford FOCUS ST170 `03",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Focus, ST170 trim and facelift differs"
+    },
+    "fcx3n": {
+      "code": "citr0003",
+      "directory": "lod",
+      "name": "itroen Xantia 3.0i v6",
+      "referenceName": "Citroen Xantia 3.0i V6 Exclusive `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Xantia 3.0 V6; GT4 Exclusive 2000 trim"
+    },
+    "fcx8n": {
+      "code": "citr0004",
+      "directory": "lod",
+      "name": "itroen Xsara 1.8i 16V",
+      "referenceName": "Citroen Xsara VTR `03",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Xsara hatch, VTR facelift differs"
+    },
+    "fp1rn": {
+      "code": "peug0009",
+      "directory": "lod",
+      "name": "Peugeot 106 1.6 Rallye",
+      "referenceName": "Peugeot 106 Rallye `03",
+      "matchType": "same-body-variant",
+      "matchNote": "106 Rallye; GT4 2003 version"
+    },
+    "fp1sn": {
+      "code": "peug0005",
+      "directory": "lod",
+      "name": "Peugeot 106 1.6 S16",
+      "referenceName": "Peugeot 106 S16 `03",
+      "matchType": "same-body-variant",
+      "matchNote": "106 S16; GT4 2003 version"
+    },
+    "frmgn": {
+      "code": "re__0007",
+      "directory": "lod",
+      "name": "Renault Megane 2.0 16V",
+      "referenceName": "Renault Megane 2.0 IDE Coupe `00",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Megane coupe; IDE facelift, not second-generation Megane"
+    },
+    "gaa3n": {
+      "code": "audi0006",
+      "directory": "lod",
+      "name": "udi A3",
+      "referenceName": "Audi S3 `02",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation A3/S3 three-door; S3 2002 trim/facelift"
+    },
+    "gas3n": {
+      "code": "audi0006",
+      "directory": "lod",
+      "name": "udi S3",
+      "referenceName": "Audi S3 `02",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation A3/S3 three-door; S3 2002 trim/facelift"
+    },
+    "gaa4n": {
+      "name": "udi A4 2.8 quattro",
+      "code": "audi0010",
+      "directory": "lod",
+      "referenceName": "Audi S4 `98",
+      "matchType": "same-body-variant",
+      "matchNote": "B5 A4 sedan vs S4 trim"
+    },
+    "gm20n": {
+      "code": "mbnz0008",
+      "directory": "lod",
+      "name": "ercedes CLK 200 Sport",
+      "referenceName": "Mercedes-Benz CLK 55 AMG `00",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation CLK coupe; CLK55 AMG trim/facelift"
+    },
+    "gm32n": {
+      "code": "mbnz0008",
+      "directory": "lod",
+      "name": "ercedes CLK 320 Sport",
+      "referenceName": "Mercedes-Benz CLK 55 AMG `00",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation CLK coupe; CLK55 AMG trim/facelift"
+    },
+    "gv45n": {
+      "name": "olkswagen Golf 2.3 V5",
+      "code": "vw__0001",
+      "directory": "lod",
+      "referenceName": "Volkswagen Golf IV GTI `01",
+      "matchType": "same-body-variant",
+      "matchNote": "Golf IV hatch; V5/V6/GTI engine/trim differs"
+    },
+    "gv46n": {
+      "name": "olkswagen Golf V6",
+      "code": "vw__0001",
+      "directory": "lod",
+      "referenceName": "Volkswagen Golf IV GTI `01",
+      "matchType": "same-body-variant",
+      "matchNote": "Golf IV hatch; V5/V6/GTI engine/trim differs"
+    },
+    "gv4gn": {
+      "name": "olkswagen Golf GTI",
+      "code": "vw__0001",
+      "directory": "lod",
+      "referenceName": "Volkswagen Golf IV GTI `01",
+      "matchType": "same-body-variant",
+      "matchNote": "Golf IV hatch; V5/V6/GTI engine/trim differs"
+    },
+    "h28cn": {
+      "code": "hond0083",
+      "directory": "lod",
+      "name": "Honda Accord SiR-T '98",
+      "referenceName": "Honda ACCORD Euro-R `00",
+      "matchType": "same-body-variant",
+      "matchNote": "sixth-generation Japanese Accord sedan; Euro-R trim/facelift"
+    },
+    "h2acn": {
+      "code": "hond0083",
+      "directory": "lod",
+      "name": "Honda Accord SiR-T '97",
+      "referenceName": "Honda ACCORD Euro-R `00",
+      "matchType": "same-body-variant",
+      "matchNote": "sixth-generation Japanese Accord sedan; Euro-R trim/facelift"
+    },
+    "h2ain": {
+      "code": "acra0002",
+      "directory": "lod",
+      "name": "Acura Integra GS-R",
+      "referenceName": "Acura INTEGRA Type-R `01",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Acura Integra; Type-R 2001 vs earlier trim/year"
+    },
+    "hairn": {
+      "code": "acra0002",
+      "directory": "lod",
+      "name": "Acura Integra Type R",
+      "referenceName": "Acura INTEGRA Type-R `01",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Acura Integra; Type-R 2001 vs earlier trim/year"
+    },
+    "hiarn": {
+      "code": "acra0002",
+      "directory": "lod",
+      "name": "Acura Integra Type-R '95",
+      "referenceName": "Acura INTEGRA Type-R `01",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Acura Integra; Type-R 2001 vs earlier trim/year"
+    },
+    "hiasn": {
+      "code": "acra0002",
+      "directory": "lod",
+      "name": "Acura Integra GS-R '95",
+      "referenceName": "Acura INTEGRA Type-R `01",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Acura Integra; Type-R 2001 vs earlier trim/year"
+    },
+    "h2csn": {
+      "name": "Honda Civic VTi '98",
+      "code": "hond0018",
+      "directory": "lod",
+      "referenceName": "Honda CIVIC TYPE R (EK) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "EK Civic hatch VTi vs Type R trim"
+    },
+    "h2cnr": {
+      "code": "hond0024",
+      "directory": "lod",
+      "name": "Castrol Mugen NSX GT",
+      "referenceName": "Honda Castrol MUGEN NSX (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Castrol Mugen NSX JGTC; GT4 2000 livery/year"
+    },
+    "h2ncr": {
+      "code": "hond0024",
+      "directory": "lod",
+      "name": "Castrol Mugen NSX GT '99",
+      "referenceName": "Honda Castrol MUGEN NSX (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Castrol Mugen NSX JGTC; GT4 2000 livery/year"
+    },
+    "h2ign": {
+      "name": "Honda Integra SiR-G '98",
+      "code": "hond0019",
+      "directory": "lod",
+      "referenceName": "Honda INTEGRA TYPE R (DC2) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Integra 1998; SiR-G vs Type R trim"
+    },
+    "h2n1r": {
+      "code": "hond0028",
+      "directory": "lod",
+      "name": "Mobil 1 NSX GT '99",
+      "referenceName": "Honda Mobil 1 NSX (JGTC) `01",
+      "matchType": "same-body-variant",
+      "matchNote": "Mobil 1 NSX JGTC; GT4 2001 livery/year"
+    },
+    "h2nrr": {
+      "code": "hond0025",
+      "directory": "lod",
+      "name": "Raybrig NSX GT '99",
+      "referenceName": "Honda RAYBRIG NSX (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Raybrig NSX JGTC; GT4 2000 livery/year"
+    },
+    "h2prn": {
+      "code": "hond0014",
+      "directory": "lod",
+      "name": "onda Prelude 2.2 VTi",
+      "referenceName": "Honda PRELUDE SiR `96",
+      "matchType": "same-body-variant",
+      "matchNote": "fifth-generation Prelude; regional engine/trim differs"
+    },
+    "hpnen": {
+      "code": "hond0014",
+      "directory": "lod",
+      "name": "Honda Prelude 2.0i '96",
+      "referenceName": "Honda PRELUDE SiR `96",
+      "matchType": "same-body-variant",
+      "matchNote": "fifth-generation Prelude; regional engine/trim differs"
+    },
+    "hcvnn": {
+      "name": "Honda Civic VTi",
+      "code": "hond0072",
+      "directory": "lod",
+      "referenceName": "Honda CIVIC SiR-II (EG) `93",
+      "matchType": "same-body-variant",
+      "matchNote": "EG Civic hatch, SiR-II regional trim"
+    },
+    "hdegn": {
+      "name": "onda CRX 1.6ESi",
+      "code": "hond0008",
+      "directory": "lod",
+      "referenceName": "Honda CR-X SiR `90",
+      "matchType": "same-body-variant",
+      "matchNote": "second-generation CR-X hatch; regional ESi/VTi vs SiR trim"
+    },
+    "hdesn": {
+      "name": "onda CRX 1.6VTi",
+      "code": "hond0008",
+      "directory": "lod",
+      "referenceName": "Honda CR-X SiR `90",
+      "matchType": "same-body-variant",
+      "matchNote": "second-generation CR-X hatch; regional ESi/VTi vs SiR trim"
+    },
+    "hdeln": {
+      "name": "Honda CR-X del-sol 1.6ESi",
+      "code": "hond0003",
+      "directory": "lod",
+      "referenceName": "Honda CR-X del Sol SiR `92",
+      "matchType": "same-body-variant",
+      "matchNote": "del Sol roadster ESi vs SiR trim"
+    },
+    "hinsn": {
+      "name": "onda Integra SiR-G '95",
+      "code": "hond0065",
+      "directory": "lod",
+      "referenceName": "Honda INTEGRA TYPE R (DC2) `95",
+      "matchType": "same-body-variant",
+      "matchNote": "DC2 Integra 1995; SiR-G vs Type R trim"
+    },
+    "hnann": {
+      "name": "Acura NSX Type S Zero",
+      "code": "hond0004",
+      "directory": "lod",
+      "referenceName": "Honda NSX Type S Zero `97",
+      "matchType": "same-body-variant",
+      "matchNote": "NSX Type S Zero, regional Honda/Acura naming"
+    },
+    "hnarn": {
+      "code": "hond0074",
+      "directory": "lod",
+      "name": "cura NSX '93",
+      "referenceName": "Honda NSX `93",
+      "matchType": "same-body-variant",
+      "matchNote": "NSX 1993, Honda/Acura regional naming"
+    },
+    "hnasn": {
+      "name": "Acura NSX Type S",
+      "code": "hond0078",
+      "directory": "lod",
+      "referenceName": "Honda NSX Type S `97",
+      "matchType": "same-body-variant",
+      "matchNote": "NSX Type S, Honda/Acura regional naming"
+    },
+    "hpren": {
+      "name": "onda Prelude 2.0i '91",
+      "code": "hond0038",
+      "directory": "lod",
+      "referenceName": "Honda PRELUDE Si VTEC `91",
+      "matchType": "same-body-variant",
+      "matchNote": "fourth-generation Prelude 1991; regional engine/trim differs"
+    },
+    "ia56n": {
+      "name": "Alfa 156 2.0 TS 16V",
+      "code": "alfa0006",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 156 2.5 V6 24V `98",
+      "matchType": "same-body-variant",
+      "matchNote": "156 sedan; 2.0 TS vs 2.5 V6 trim"
+    },
+    "ia63n": {
+      "name": "lfa 166 3.0 V6 24V",
+      "code": "alfa0011",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 166 2.5 V6 24V Sportronic `98",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation 166 sedan; 3.0/2.0 vs 2.5 trim"
+    },
+    "ia66n": {
+      "name": "lfa 166 2.0 TS",
+      "code": "alfa0011",
+      "directory": "lod",
+      "referenceName": "Alfa Romeo 166 2.5 V6 24V Sportronic `98",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation 166 sedan; 3.0/2.0 vs 2.5 trim"
+    },
+    "iag4n": {
+      "code": "alfa0007",
+      "directory": "lod",
+      "name": "lfa GTV 3.0 V6 24V",
+      "referenceName": "Alfa Romeo GTV 3.0 V6 24V `01",
+      "matchType": "same-body-variant",
+      "matchNote": "type 916 GTV coupe; engine/phase differs"
+    },
+    "iag6n": {
+      "code": "alfa0007",
+      "directory": "lod",
+      "name": "lfa GTV 2.0 TS 16V",
+      "referenceName": "Alfa Romeo GTV 3.0 V6 24V `01",
+      "matchType": "same-body-variant",
+      "matchNote": "type 916 GTV coupe; engine/phase differs"
+    },
+    "iaspn": {
+      "code": "alfa0009",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        -0.34,
+        1.07,
+        0.02
+      ],
+      "mirror": [
+        0,
+        1.08,
+        -0.25
+      ],
+      "speedometer": [
+        -0.36,
+        0.82,
+        -0.44,
+        0.12
+      ],
+      "name": "lfa Spider 2.0 TS",
+      "referenceName": "Alfa Romeo Spider 3.0i V6 24V `01",
+      "matchType": "same-body-variant",
+      "matchNote": "type 916 Spider; 2.0 vs 3.0 V6 trim",
+      "cockpitSkipTextures": [
+        37,
+        38,
+        39,
+        40,
+        45,
+        61
+      ],
+      "mirrorTextures": [
+        7
+      ]
+    },
+    "ilden": {
+      "name": "Lancia Delta HF Integrale",
+      "code": "lnca0005",
+      "directory": "lod",
+      "referenceName": "Lancia DELTA HF Integrale Evoluzione `91",
+      "matchType": "same-body-variant",
+      "matchNote": "Delta HF Integrale; GT4 Evoluzione body/aero"
+    },
+    "io11n": {
+      "name": "otus Elise 111S",
+      "code": "lotu0002",
+      "directory": "lod",
+      "referenceName": "Lotus Elise `00",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Elise; 111S/135 vs base trim"
+    },
+    "io13n": {
+      "name": "otus Elise 135",
+      "code": "lotu0002",
+      "directory": "lod",
+      "referenceName": "Lotus Elise `00",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Elise; 111S/135 vs base trim"
+    },
+    "k2z2n": {
+      "code": "tkir0002",
+      "directory": "lod",
+      "name": "Tommykaira ZZII",
+      "referenceName": "Tommy kaira ZZII `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Tommykaira ZZII; concept revision/year differs"
+    },
+    "ld7cn": {
+      "code": "asmt0003",
+      "directory": "lod",
+      "name": "ston Martin DB7 COUPE",
+      "referenceName": "Aston Martin DB7 Vantage Coupe `00",
+      "matchType": "same-body-variant",
+      "matchNote": "DB7 coupe; GT4 Vantage facelift/engine trim"
+    },
+    "m2l4n": {
+      "name": "egnum Super VR4 '98",
+      "code": "mits0016",
+      "directory": "lod",
+      "referenceName": "Mitsubishi LEGNUM    VR-4 Type V `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Legnum wagon; Super VR4/ST vs VR4 Type V trim"
+    },
+    "m2lsn": {
+      "name": "itsubishi Legnum ST '97",
+      "code": "mits0016",
+      "directory": "lod",
+      "referenceName": "Mitsubishi LEGNUM    VR-4 Type V `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Legnum wagon; Super VR4/ST vs VR4 Type V trim"
+    },
+    "m2nsn": {
+      "name": "Mitsubishi Legnum ST '99",
+      "code": "mits0016",
+      "directory": "lod",
+      "referenceName": "Mitsubishi LEGNUM    VR-4 Type V `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Legnum wagon; Super VR4/ST vs VR4 Type V trim"
+    },
+    "m2r5n": {
+      "name": "Lancer Evolution V RS '98",
+      "code": "mits0009",
+      "directory": "lod",
+      "referenceName": "Mitsubishi Lancer Evolution V    GSR `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Lancer Evolution V; RS vs GSR trim, not Evolution VI"
+    },
+    "m2ttn": {
+      "name": "3000GT VR-4 Turbo '99",
+      "code": "mits0068",
+      "directory": "lod",
+      "referenceName": "Mitsubishi 3000GT    VR-4 (J) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "late 3000GT VR4 body; 1999 vs GT4 1998"
+    },
+    "n18sn": {
+      "name": "200SX Type S(J) '96",
+      "code": "niss0103",
+      "directory": "lod",
+      "referenceName": "Nissan 240SX `96",
+      "matchType": "same-body-variant",
+      "matchNote": "RPS13 180SX/200SX hatch; Type S vs Type X trim"
+    },
+    "ns15n": {
+      "code": "niss0006",
+      "directory": "lod",
+      "name": "issan 200SX '98",
+      "referenceName": "Nissan SILVIA K's AERO (S14) '96",
+      "matchType": "same-body-variant",
+      "matchNote": "S14 Silvia/200SX Ks Aero 1996-1998; Japanese donor from ISO",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "n2ksn": {
+      "code": "niss0006",
+      "directory": "lod",
+      "name": "issan 200SX K'S Aero '98",
+      "referenceName": "Nissan SILVIA K's AERO (S14) '96",
+      "matchType": "same-body-variant",
+      "matchNote": "S14 Silvia/200SX Ks Aero 1996-1998; Japanese donor from ISO",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "n23nn": {
+      "name": "Nissan R390GT1 RoadCar'97",
+      "code": "niss0114",
+      "directory": "lod",
+      "referenceName": "Nissan R390 GT1 Road Car `98",
+      "matchType": "same-body-variant",
+      "matchNote": "R390 GT1 road car; 1997 vs 1998 aero revision"
+    },
+    "n2zsn": {
+      "name": "issan 300ZX '98",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 short-wheelbase 2-seater; year/engine trim differs"
+    },
+    "nax3n": {
+      "name": "Nissan 300ZX 2-seater",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 short-wheelbase 2-seater; year/engine trim differs"
+    },
+    "nzx3n": {
+      "name": "Nissan 300ZX Ver.S (J) '94",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 short-wheelbase 2-seater; year/engine trim differs"
+    },
+    "nzxsn": {
+      "name": "300ZX Ver.S Turbo (J) '94",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 short-wheelbase 2-seater; year/engine trim differs"
+    },
+    "naxsn": {
+      "name": "Nissan 300ZX Turbo",
+      "code": "niss0003",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2seater (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 short-wheelbase 2-seater; year/engine trim differs"
+    },
+    "n2rtn": {
+      "name": "00ZX 2+2 Turbo '98",
+      "code": "niss0098",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2by2 (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 long-wheelbase 2+2; year/engine trim differs"
+    },
+    "naxvn": {
+      "name": "Nissan 300ZX 2+2 '94",
+      "code": "niss0098",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2by2 (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 long-wheelbase 2+2; year/engine trim differs"
+    },
+    "nzx2n": {
+      "name": "Nissan 300ZX 2+2 '94",
+      "code": "niss0098",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2by2 (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 long-wheelbase 2+2; year/engine trim differs"
+    },
+    "nzxvn": {
+      "name": "Nissan 300ZX 2+2 '94",
+      "code": "niss0098",
+      "directory": "lod",
+      "referenceName": "Nissan 300ZX 2by2 (Z32) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Z32 long-wheelbase 2+2; year/engine trim differs"
+    },
+    "n2skn": {
+      "name": "issan Silvia Spec R '99",
+      "code": "niss0056",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Spec R AERO (S15) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "S15 Spec R vs Spec R Aero"
+    },
+    "n2sqn": {
+      "name": "issan Silvia Spec S '99",
+      "code": "niss0057",
+      "directory": "lod",
+      "referenceName": "Nissan SILVIA Spec S AERO (S15) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "S15 Spec S vs Spec S Aero"
+    },
+    "n432n": {
+      "name": "Skyline GTS4(R32) '91",
+      "code": "niss0084",
+      "directory": "lod",
+      "referenceName": "Nissan SKYLINE GTS25 Type S (R32) `91",
+      "matchType": "same-body-variant",
+      "matchNote": "R32 narrow-body coupe; GTS4 vs GTS25 Type S"
+    },
+    "nn32n": {
+      "code": "niss0079",
+      "directory": "lod",
+      "name": "Skyline GT-R NISMO(R32)",
+      "referenceName": "Nissan SKYLINE GT-R N1 (R32) `91",
+      "matchType": "same-body-variant",
+      "matchNote": "R32 GT-R Nismo vs N1 trim"
+    },
+    "n2gcr": {
+      "code": "niss0112",
+      "directory": "lod",
+      "name": "Calsonic Skyline GT '99",
+      "referenceName": "Nissan CALSONIC SKYLINE (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Calsonic R34 JGTC; 1999 vs 2000 livery/year"
+    },
+    "n2m4n": {
+      "code": "mine0001",
+      "directory": "lod",
+      "name": "Mine's R34 Skyline GT-R",
+      "referenceName": "Mine's Skyline GT-R\uff65N1 V\uff65spec (R34) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Mines R34 GT-R; 1999 vs 2000 revision"
+    },
+    "n2man": {
+      "code": "niss0020",
+      "directory": "lod",
+      "name": "Nissan Micra SR '97",
+      "referenceName": "Nissan March G# `99",
+      "matchType": "same-body-variant",
+      "matchNote": "K11 Micra/March; GT4 G# 1999 trim"
+    },
+    "nprin": {
+      "code": "niss0014",
+      "directory": "lod",
+      "name": "Nissan Primera GT '95",
+      "referenceName": "Nissan PRIMERA 2.0Te '90",
+      "matchType": "same-body-variant",
+      "matchNote": "P10 Primera sedan; GT vs Japanese 2.0Te 1990 trim/year",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "npron": {
+      "code": "niss0014",
+      "directory": "lod",
+      "name": "Nissan Primera GT '90",
+      "referenceName": "Nissan PRIMERA 2.0Te '90",
+      "matchType": "same-body-variant",
+      "matchNote": "P10 Primera sedan; GT vs Japanese 2.0Te 1990 trim/year",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "q2x4n": {
+      "code": "daih0003",
+      "directory": "lod",
+      "name": "Daihatsu Sirion X4(J) '98",
+      "referenceName": "Daihatsu STORIA X4 `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Storia/Sirion X4; 1998 vs 2000"
+    },
+    "q2trn": {
+      "code": "daih0002",
+      "directory": "lod",
+      "name": "Daihatsu Cuore (Aero Pac.)",
+      "referenceName": "Daihatsu MIRA TR-XX Avanzato R `97",
+      "matchType": "same-body-variant",
+      "matchNote": "L500 Mira/Cuore hatch; TR-XX Avanzato trim"
+    },
+    "q2txn": {
+      "code": "daih0002",
+      "directory": "lod",
+      "name": "aihatsu Cuore",
+      "referenceName": "Daihatsu MIRA TR-XX Avanzato R `97",
+      "matchType": "same-body-variant",
+      "matchNote": "L500 Mira/Cuore hatch; TR-XX Avanzato trim"
+    },
+    "s2a6n": {
+      "name": "mpreza typeRA STi Ver.VI",
+      "code": "subr0005",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version VI (GC) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza sedan STi VI; type RA vs standard trim"
+    },
+    "s2iwn": {
+      "name": "Impreza Sedan GT '97",
+      "code": "subr0026",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version IV (GC) `97",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza sedan 1997; GT vs STi IV trim"
+    },
+    "s2nin": {
+      "name": "Impreza Sedan GT '98",
+      "code": "subr0027",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version V (GC) `98",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza sedan 1998; GT vs STi V trim"
+    },
+    "sipan": {
+      "name": "Impreza Sedan GT '96",
+      "code": "subr0025",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi Version III (GC) `96",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza sedan 1996; GT vs STi III trim"
+    },
+    "sipzn": {
+      "code": "subr0004",
+      "directory": "lod",
+      "name": "Impreza Sedan GT '94",
+      "referenceName": "Subaru IMPREZA Sedan WRX STi (GC) `94",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza sedan 1994; GT vs STi trim"
+    },
+    "s2nwn": {
+      "name": "Impreza Wagon GT '98",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "s2w4n": {
+      "name": "mpreza Wgn STi Ver.IV '97",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "s2w5n": {
+      "name": "Impreza Wagon STi Ver.V '98",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "s2wwn": {
+      "name": "Impreza Wagon GT '97",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "sipcn": {
+      "name": "mpreza Wagon GT '96",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "sipdn": {
+      "name": "mpreza Wgn STi Ver.III '96",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "siptn": {
+      "name": "Impreza Wagon STi Ver.II '95",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "sipwn": {
+      "name": "mpreza Wagon GT '94",
+      "code": "subr0017",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Sport Wagon WRX STi Version VI (GF) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GF Impreza wagon; GT/earlier STi vs STi VI 1999 trim/facelift"
+    },
+    "s2r4n": {
+      "name": "Impreza typeR STi Ver.IV '97",
+      "code": "subr0018",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Coupe WRXtypeR STi Version VI (GC) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza coupe; earlier type R vs STi VI 1999"
+    },
+    "s2r5n": {
+      "name": "Impreza typeR STi Ver.V '98",
+      "code": "subr0018",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Coupe WRXtypeR STi Version VI (GC) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza coupe; earlier type R vs STi VI 1999"
+    },
+    "siprn": {
+      "name": "Impreza WRX typeR STi '96",
+      "code": "subr0018",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Coupe WRXtypeR STi Version VI (GC) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza coupe; earlier type R vs STi VI 1999"
+    },
+    "s2lbn": {
+      "name": "egacy Wagon GT '97",
+      "code": "subr0012",
+      "directory": "lod",
+      "referenceName": "Subaru LEGACY Touring Wagon GT-B `96",
+      "matchType": "same-body-variant",
+      "matchNote": "BG Legacy wagon; 1997/1993 vs GT-B 1996"
+    },
+    "slgwn": {
+      "name": "Legacy Wagon GT '93",
+      "code": "subr0012",
+      "directory": "lod",
+      "referenceName": "Subaru LEGACY Touring Wagon GT-B `96",
+      "matchType": "same-body-variant",
+      "matchNote": "BG Legacy wagon; 1997/1993 vs GT-B 1996"
+    },
+    "s2lgn": {
+      "code": "subr0014",
+      "directory": "lod",
+      "name": "Legacy Sedan GT '98",
+      "referenceName": "Subaru LEGACY B4 RSK `98",
+      "matchType": "same-body-variant",
+      "matchNote": "BE Legacy sedan 1998; GT vs B4 RSK trim"
+    },
+    "sipxr": {
+      "name": "Impreza Rally Car",
+      "code": "subr0006",
+      "directory": "lod",
+      "referenceName": "Subaru IMPREZA Rally Car `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GC Impreza rally; later 1999 livery/aero"
+    },
+    "t291n": {
+      "code": "toyt0061",
+      "directory": "lod",
+      "name": "oyota Altezza RS200 '98",
+      "referenceName": "Toyota ALTEZZA RS200 '98",
+      "matchType": "same-body-variant",
+      "matchNote": "Altezza RS200 1998; Japanese donor from ISO",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "t2c4n": {
+      "name": "Toyota Celica GT-Four '91",
+      "code": "toyt0014",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA GT-FOUR RC (ST185) `91",
+      "matchType": "same-body-variant",
+      "matchNote": "ST185 Celica GT-Four 1991 vs RC trim"
+    },
+    "t2cen": {
+      "name": "oyota Celica E.S.Ver. '99",
+      "code": "toyt0065",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA SS-II (ZZT231) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "seventh-generation Celica SS-II; E.S./M.S. trim"
+    },
+    "t2cmn": {
+      "name": "oyota Celica M.S.Ver. '99",
+      "code": "toyt0065",
+      "directory": "lod",
+      "referenceName": "Toyota CELICA SS-II (ZZT231) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "seventh-generation Celica SS-II; E.S./M.S. trim"
+    },
+    "t2cwr": {
+      "name": "Toyota Corolla Rally Car '97",
+      "code": "toyt0036",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA Rally Car `98",
+      "matchType": "same-body-variant",
+      "matchNote": "Corolla rally 1997 vs 1998"
+    },
+    "t2lgn": {
+      "name": "exus GS 400(A)",
+      "code": "lxus0007",
+      "directory": "lod",
+      "referenceName": "Lexus GS300 `00",
+      "matchType": "same-body-variant",
+      "matchNote": "S160 GS400 vs GS300 trim"
+    },
+    "t2lsn": {
+      "name": "Lexus SC 400(A)",
+      "code": "lxus0009",
+      "directory": "lod",
+      "referenceName": "Lexus SC300 `97",
+      "matchType": "same-body-variant",
+      "matchNote": "Z30 SC400 vs SC300 engine/trim"
+    },
+    "tsoan": {
+      "code": "toyt0057",
+      "directory": "lod",
+      "name": "Toyota Soarer 2.5VVT-i '96",
+      "referenceName": "Toyota SOARER 2.5GT-T '97",
+      "matchType": "same-body-variant",
+      "matchNote": "Z30 Soarer 2.5GT-T; 1996/1995 vs 1997 trim/year",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "tsoon": {
+      "code": "toyt0057",
+      "directory": "lod",
+      "name": "Toyota Soarer 2.5GT-T '95",
+      "referenceName": "Toyota SOARER 2.5GT-T '97",
+      "matchType": "same-body-variant",
+      "matchNote": "Z30 Soarer 2.5GT-T; 1996/1995 vs 1997 trim/year",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "t2prn": {
+      "code": "toyt0010",
+      "directory": "lod",
+      "name": "Toyota PRIUS '97",
+      "referenceName": "Toyota PRIUS G (J) `02",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Prius; 1997 vs 2002 facelift"
+    },
+    "t2scr": {
+      "code": "toyt0032",
+      "directory": "lod",
+      "name": "Castrol Tom's Supra GT",
+      "referenceName": "Toyota Castrol Tom's Supra (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Castrol Toms JZA80 Supra JGTC; 2000 livery/aero"
+    },
+    "tsplr": {
+      "code": "toyt0032",
+      "directory": "lod",
+      "name": "Castrol Supra GT",
+      "referenceName": "Toyota Castrol Tom's Supra (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Castrol Toms JZA80 Supra JGTC; 2000 livery/aero"
+    },
+    "t2sdr": {
+      "code": "toyt0033",
+      "directory": "lod",
+      "name": "Denso Sard Supra GT",
+      "referenceName": "Toyota DENSO SARD SUPRA GT (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Denso Sard JZA80 Supra JGTC; 2000 livery/aero"
+    },
+    "t2vzn": {
+      "code": "toyt0039",
+      "directory": "lod",
+      "name": "Toyota Yaris '99",
+      "referenceName": "Toyota VITZ U Euro Sport Edition `00",
+      "matchType": "same-body-variant",
+      "matchNote": "XP10 Yaris/Vitz; 1999 vs U Euro Sport 2000"
+    },
+    "tlevn": {
+      "name": "oyota Levin BZG '96",
+      "code": "toyt0016",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA LEVIN BZ-R `98",
+      "matchType": "same-body-variant",
+      "matchNote": "AE111 Levin; BZG vs BZ-R trim/facelift"
+    },
+    "tlvon": {
+      "name": "oyota Corolla Levin '85",
+      "code": "toyt0001",
+      "directory": "lod",
+      "referenceName": "Toyota COROLLA LEVIN GT-APEX (AE86) `83",
+      "matchType": "same-body-variant",
+      "matchNote": "AE86 Levin; 1985 vs 1983 trim"
+    },
+    "ttron": {
+      "name": "oyota Corolla Trueno '85",
+      "code": "toyt0005",
+      "directory": "lod",
+      "referenceName": "Toyota SPRINTER TRUENO GT-APEX (AE86) `83",
+      "matchType": "same-body-variant",
+      "matchNote": "AE86 Trueno; 1985 vs 1983 trim"
+    },
+    "tsgtn": {
+      "name": "oyota Supra (Turbo) '93",
+      "code": "toyt0006",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA RZ `97",
+      "matchType": "same-body-variant",
+      "matchNote": "JZA80 Supra turbo; year/trim differs"
+    },
+    "tsonn": {
+      "name": "oyota (Turbo) '96",
+      "code": "toyt0006",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA RZ `97",
+      "matchType": "same-body-variant",
+      "matchNote": "JZA80 Supra turbo; year/trim differs"
+    },
+    "tspnn": {
+      "name": "Toyota Supra (Turbo) '97",
+      "code": "toyt0006",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA RZ `97",
+      "matchType": "same-body-variant",
+      "matchNote": "JZA80 Supra turbo; year/trim differs"
+    },
+    "tsorn": {
+      "name": "oyota Supra '96",
+      "code": "toyt0055",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA SZ-R `97",
+      "matchType": "same-body-variant",
+      "matchNote": "JZA80 Supra non-turbo; SZ-R trim"
+    },
+    "tsprn": {
+      "name": "Toyota Supra '97",
+      "code": "toyt0055",
+      "directory": "lod",
+      "referenceName": "Toyota SUPRA SZ-R `97",
+      "matchType": "same-body-variant",
+      "matchNote": "JZA80 Supra non-turbo; SZ-R trim"
+    },
+    "tstln": {
+      "name": "Toyota Starlet '96",
+      "code": "toyt0048",
+      "directory": "lod",
+      "referenceName": "Toyota STARLET Glanza V `97",
+      "matchType": "same-body-variant",
+      "matchNote": "EP91 Starlet; GT4 Glanza V trim"
+    },
+    "ttrnn": {
+      "name": "oyota Trueno BZG '96",
+      "code": "toyt0017",
+      "directory": "lod",
+      "referenceName": "Toyota SPRINTER TRUENO BZ-R `98",
+      "matchType": "same-body-variant",
+      "matchNote": "AE111 Trueno; BZG vs BZ-R trim/facelift"
+    },
+    "ulcun": {
+      "code": "plym0001",
+      "directory": "lod",
+      "name": "lymouth Cuda '70",
+      "referenceName": "Plymouth Cuda 440 Six Pack `71",
+      "matchType": "same-body-variant",
+      "matchNote": "E-body Cuda; 1970 vs 1971 front/rear trim"
+    },
+    "uss1n": {
+      "code": "slby0003",
+      "directory": "lod",
+      "name": "helby Series 1",
+      "referenceName": "Shelby Series 1 Super Charged `03",
+      "matchType": "same-body-variant",
+      "matchNote": "Shelby Series 1; GT4 supercharged trim"
+    },
+    "vce5n": {
+      "name": "TVR Cerbera 4.5",
+      "code": "tvr_0001",
+      "directory": "lod",
+      "referenceName": "TVR Cerbera Speed Six `97",
+      "matchType": "same-body-variant",
+      "matchNote": "Cerbera coupe; V8 4.5/4.2 vs Speed Six trim"
+    },
+    "vcrbn": {
+      "name": "TVR Cerbera 4.2",
+      "code": "tvr_0001",
+      "directory": "lod",
+      "referenceName": "TVR Cerbera Speed Six `97",
+      "matchType": "same-body-variant",
+      "matchNote": "Cerbera coupe; V8 4.5/4.2 vs Speed Six trim"
+    },
+    "vgrfn": {
+      "name": "VR Griffith Blackpool B340",
+      "code": "tvr_0003",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.39,
+        1.07,
+        0.4
+      ],
+      "mirror": [
+        0,
+        0.995,
+        0.067
+      ],
+      "speedometer": [
+        0.39,
+        0.678,
+        0.02,
+        0.14
+      ],
+      "cockpitSkipTextures": [
+        9,
+        10,
+        29,
+        58
+      ],
+      "opaqueTextures": [
+        8,
+        30,
+        31,
+        32,
+        33,
+        35,
+        36,
+        37,
+        41,
+        49,
+        50,
+        55
+      ],
+      "includeShapes": [
+        "shape47"
+      ],
+      "mirrorTextures": [
+        7
+      ],
+      "referenceName": "TVR Griffith 500 `94",
+      "matchType": "same-body-variant",
+      "matchNote": "Griffith roadster; Blackpool B340 vs 500 trim"
+    },
+    "x2a8n": {
+      "name": "uzuki Alto Works RS/Z '98",
+      "code": "suzk0011",
+      "directory": "lod",
+      "referenceName": "Suzuki ALTO WORKS RS-Z `97",
+      "matchType": "same-body-variant",
+      "matchNote": "Alto Works RS-Z; 1998 vs 1997"
+    },
+    "x2ksn": {
+      "code": "suzk0004",
+      "directory": "lod",
+      "name": "Suzuki Kei S '98",
+      "referenceName": "Suzuki Kei WORKS `02",
+      "matchType": "same-body-variant",
+      "matchNote": "first-generation Kei hatch; S vs WORKS facelift/trim"
+    },
+    "brmcn": {
+      "code": "rov10001",
+      "directory": "lod",
+      "name": "over Mini Cooper 1.3i",
+      "referenceName": "Rover Mini Cooper 1.3 (unused GT4 resource)",
+      "matchType": "same-body-variant",
+      "matchNote": "classic Rover Mini 1.3 hatch; GT4 unused regional resource, Cooper trim",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "brmin": {
+      "code": "rov10001",
+      "directory": "lod",
+      "name": "over Mini 1.3",
+      "referenceName": "Rover Mini Cooper 1.3 (unused GT4 resource)",
+      "matchType": "same-body-variant",
+      "matchNote": "classic Rover Mini 1.3 hatch; GT4 unused regional resource, Cooper trim",
+      "sourceIdentity": "ISO resource corroborated by model geometry/textures and external model index"
+    },
+    "n24zn": {
+      "code": "niss0031",
+      "directory": "lod",
+      "name": "Datsun 240Z (J) '71",
+      "referenceName": "Nissan 240ZG (HS30) `71",
+      "matchType": "same-body-variant",
+      "matchNote": "S30 240Z vs 240ZG long-nose/fender trim"
+    },
+    "a2mkr": {
+      "code": "ream0001",
+      "directory": "lod",
+      "name": "RE Amemiya Matsukiyo RX-7",
+      "referenceName": "RE Amemiya AMEMIYA ASPARADRINK RX7 (JGTC) `04",
+      "matchType": "same-body-variant",
+      "matchNote": "RE Amemiya FD RX-7 JGTC; later 2004 aero/livery"
+    },
+    "d-pgr": {
+      "code": "dodg0001",
+      "directory": "lod",
+      "name": "Viper GTS-R",
+      "referenceName": "Dodge VIPER GTS-R Team Oreca Race Car `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Viper GTS-R race chassis; GT4 Oreca 2000 livery differs"
+    },
+    "d2tvr": {
+      "code": "dodg0001",
+      "directory": "lod",
+      "name": "STP Taisan Viper GT",
+      "referenceName": "Dodge VIPER GTS-R Team Oreca Race Car `00",
+      "matchType": "same-body-variant",
+      "matchNote": "Viper GTS-R race chassis; GT4 Oreca 2000 livery differs"
+    },
+    "h2ntr": {
+      "code": "hond0023",
+      "directory": "lod",
+      "name": "Takata NSX GT '99",
+      "referenceName": "Honda TAKATA DOME NSX (JGTC) `03",
+      "matchType": "same-body-variant",
+      "matchNote": "Takata Dome NSX JGTC; 2003 facelift/aero/livery"
+    },
+    "n239r": {
+      "name": "Nissan R390 GT1 '97",
+      "code": "niss0017",
+      "directory": "lod",
+      "referenceName": "Nissan R390 GT1 Race Car `98",
+      "matchType": "same-body-variant",
+      "matchNote": "R390 GT1 race car; 1998 long-tail aero vs 1997"
+    },
+    "n2gur": {
+      "code": "niss0111",
+      "directory": "lod",
+      "name": "Unisia Jecs Skyline GT '99",
+      "referenceName": "Nissan LOCTITE ZEXEL GT-R (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "R34 Skyline JGTC; GT4 Loctite Zexel 2000 livery differs"
+    },
+    "n2gzr": {
+      "code": "niss0111",
+      "directory": "lod",
+      "name": "Arta Zexel Skyline GT '99",
+      "referenceName": "Nissan LOCTITE ZEXEL GT-R (JGTC) `00",
+      "matchType": "same-body-variant",
+      "matchNote": "R34 Skyline JGTC; GT4 Loctite Zexel 2000 livery differs"
+    },
+    "t2g8r": {
+      "name": "Toyota GT-ONE '98",
+      "code": "toyt0063",
+      "directory": "lod",
+      "referenceName": "Toyota GT-ONE Race Car (TS020) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GT-One TS020 race car; 1999 aero/livery vs 1998"
+    },
+    "t2h8r": {
+      "name": "Toyota GT-ONE '98",
+      "code": "toyt0063",
+      "directory": "lod",
+      "referenceName": "Toyota GT-ONE Race Car (TS020) `99",
+      "matchType": "same-body-variant",
+      "matchNote": "GT-One TS020 race car; 1999 aero/livery vs 1998"
+    },
+    "t2sor": {
+      "code": "toyt0028",
+      "directory": "lod",
+      "name": "Cdma One Cerumo Supra GT",
+      "referenceName": "Toyota au CERUMO Supra (JGTC) `01",
+      "matchType": "same-body-variant",
+      "matchNote": "Cerumo JZA80 Supra JGTC; 2001 au livery vs CDMA One"
+    },
+    "cc67n": {
+      "code": "chev0011",
+      "directory": "lod",
+      "name": "orvette Sting Ray '67",
+      "referenceName": "Chevrolet Corvette Coupe (C2) `63",
+      "matchType": "same-body-variant",
+      "matchNote": "C2 Corvette coupe; 1963 split rear window vs 1967, year/body details differ"
+    },
+    "ios2n": {
+      "code": "lotu0008",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.3,
+        0.93,
+        0.4
+      ],
+      "mirror": [
+        0,
+        0.929,
+        -0.025
+      ],
+      "speedometer": [
+        0.3,
+        0.64,
+        0.1,
+        0.12
+      ],
+      "name": "otus Elan S2 '64",
+      "referenceName": "Lotus Elan S1 `62",
+      "matchType": "same-body-variant",
+      "matchNote": "original Elan roadster; S1 1962 vs S2/S4, body details differ",
+      "cockpitSkipTextures": [
+        27,
+        43,
+        44,
+        66
+      ],
+      "mirrorTextures": [],
+      "opaqueTextures": [
+        9,
+        11,
+        13,
+        15,
+        17,
+        18,
+        19,
+        20
+      ]
+    },
+    "ios4n": {
+      "code": "lotu0008",
+      "directory": "open",
+      "nativeInterior": true,
+      "eye": [
+        0.3,
+        0.93,
+        0.4
+      ],
+      "mirror": [
+        0,
+        0.929,
+        -0.025
+      ],
+      "speedometer": [
+        0.3,
+        0.64,
+        0.1,
+        0.12
+      ],
+      "name": "otus ELAN S4 Sprint '71",
+      "referenceName": "Lotus Elan S1 `62",
+      "matchType": "same-body-variant",
+      "matchNote": "original Elan roadster; S1 1962 vs S2/S4, body details differ",
+      "cockpitSkipTextures": [
+        27,
+        43,
+        44,
+        66
+      ],
+      "mirrorTextures": [],
+      "opaqueTextures": [
+        9,
+        11,
+        13,
+        15,
+        17,
+        18,
+        19,
+        20
+      ]
+    },
+    "ufc9n": {
+      "code": "ford0008",
+      "directory": "lod",
+      "name": "ustang SVT Cobra '99",
+      "referenceName": "Ford MUSTANG SVT Cobra R `00",
+      "matchType": "same-body-variant",
+      "matchNote": "New Edge Mustang coupe; Cobra R 2000 vs Cobra/GT 1999, aero/trim differs"
+    },
+    "ufm9n": {
+      "code": "ford0008",
+      "directory": "lod",
+      "name": "ustang GT '99",
+      "referenceName": "Ford MUSTANG SVT Cobra R `00",
+      "matchType": "same-body-variant",
+      "matchNote": "New Edge Mustang coupe; Cobra R 2000 vs Cobra/GT 1999, aero/trim differs"
+    }
+  }
+}

@@ -93,7 +93,7 @@ private:
     std::array<PanelList, 2> classList_;
     std::array<std::array<MenuListWidget, 2>, 2> garageList_;     // [player][garage]
     std::array<std::array<std::vector<ArcGarageEntry>, 2>, 2> garageInfo_; // the summaries (per player for the row callbacks)
-    std::array<std::array<int16_t, 100>, 2> order_{};             // 0x800F3440 + player * 200
+    std::array<std::vector<int16_t>, 2> order_;             // 0x800F3440 + player * 200
     std::array<ArcCarousel, 2> carousel_;
     std::array<std::vector<uint8_t>, 2> available_;              // the carousel's availability (0x80051F30[class])
     std::array<ArcCarSpecs, 2> specs_;

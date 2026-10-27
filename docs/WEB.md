@@ -60,7 +60,7 @@ From the source folder on Windows:
 
 ```powershell
 ./scripts/build-web.ps1 -Emsdk C:/path/to/emsdk -Build build_web
-./scripts/package-web.ps1 -Build build_web -Output dist/GT2-Web-0.8.0
+./scripts/package-web.ps1 -Build build_web -Output dist/GT2-Web-0.9.0
 ```
 
 The build generates a deployable site under `build_web/site`. The packaging

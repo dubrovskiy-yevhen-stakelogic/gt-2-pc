@@ -9,10 +9,15 @@
 
 namespace gt2::hd {
 inline std::vector<uint8_t> SmoothUiContours4x(const std::vector<uint8_t>& indices,
-    const std::array<uint16_t,16>& palette,int size=256) {
+    const std::array<uint16_t,16>& palette,int size=256,
+    int rx=0,int ry=0,int rw=0,int rh=0,bool outsideZero=false) {
+    if(!rw) rw=size;
+    if(!rh) rh=size;
     if(size<1 || size>256 || indices.size()!=size_t(size)*size ||
        std::any_of(indices.begin(),indices.end(),[](uint8_t i){return i>15;}))
         throw std::runtime_error("invalid contour atlas");
+    if(rx<0 || ry<0 || rw<1 || rh<1 || rx+rw>size || ry+rh>size)
+        throw std::runtime_error("invalid contour region");
     std::array<float,16> luma{};
     std::array<std::array<float,3>,16> rgb{};
     for(int i=0;i<16;++i) {
@@ -20,15 +25,16 @@ inline std::vector<uint8_t> SmoothUiContours4x(const std::vector<uint8_t>& indic
         luma[i]=palette[i]?48.f*(.299f*rgb[i][0]+.587f*rgb[i][1]+.114f*rgb[i][2]):-48.f;
     }
     const auto ramp=[](float value,float centre) {const float t=std::clamp((value-centre+.4f)/.8f,0.f,1.f);return t*t*(3-2*t);};
-    std::vector<uint8_t> result(size_t(size*4)*size*4*4,255);
-    for(int y=0;y<size;++y) for(int x=0;x<size;++x) {
-        const int centre=indices[size_t(y*size+x)];
+    std::vector<uint8_t> result(size_t(rw*4)*rh*4*4,255);
+    for(int y=0;y<rh;++y) for(int x=0;x<rw;++x) {
+        const int centre=indices[size_t((ry+y)*size+rx+x)];
         struct Edge {bool active=false,left=false,up=false,left3=false,up3=false;int next=0;float distance=0;};
         Edge edges[4];
         for(int rotation=0;rotation<4;++rotation) {
             const auto index=[&](int dx,int dy) {
                 for(int r=0;r<rotation;++r) {const int old=dx;dx=dy;dy=-old;}
-                return int(indices[size_t(std::clamp(y+dy,0,size-1)*size+std::clamp(x+dx,0,size-1))]);
+                if(outsideZero && (x+dx<0 || x+dx>=rw || y+dy<0 || y+dy>=rh)) return 0;
+                return int(indices[size_t((ry+std::clamp(y+dy,0,rh-1))*size+rx+std::clamp(x+dx,0,rw-1))]);
             };
             const auto sample=[&](int dx,int dy){return luma[index(dx,dy)];};
             const float e=luma[centre],b=sample(0,-1),c=sample(1,-1),d=sample(-1,0),f=sample(1,0),
@@ -59,7 +65,7 @@ inline std::vector<uint8_t> SmoothUiContours4x(const std::vector<uint8_t>& indic
                 if(edge.up) {w=(std::max)(w,ramp(v+2*u,2.f));if(edge.up3) w=(std::max)(w,ramp(2*v+6*u,5.f));}
                 if(w*edge.distance>best) {best=w*edge.distance;weight=w;next=edge.next;}
             }
-            const size_t at=size_t((y*4+sy)*size*4+x*4+sx)*4;
+            const size_t at=size_t((y*4+sy)*rw*4+x*4+sx)*4;
             result[at]=uint8_t(centre);result[at+1]=uint8_t(next);result[at+2]=uint8_t(weight*255+.5f);
         }
     }

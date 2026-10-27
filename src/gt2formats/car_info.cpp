@@ -51,7 +51,8 @@ std::optional<CarInfoEntry> CarInfo::Lookup(const std::string& carId, std::span<
     for (size_t i = 0; i < count_; i++) {
         if (PackedIdAt(i) != key) continue;
         const uint8_t* r = &data_[kTableOffset + i * kRecordSize];
-        size_t pos = size_t(r[4] | (r[5] << 8));
+        // Directory offsets occupy 18 bits; expanded catalogues cross 64 KiB.
+        size_t pos = size_t(r[4] | (r[5] << 8) | ((r[6] & 3) << 16));
         const size_t n = cdpPaintIds.size();
 
         CarInfoEntry e;

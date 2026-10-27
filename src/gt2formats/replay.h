@@ -23,7 +23,7 @@ namespace gt2 {
 // and brake >> 4 (0..15, analogue only).
 struct ReplayFrame {
     uint8_t flags = 0, buttons = 0, steer = 0, throttle = 0, brake = 0;
-    uint16_t wheelFine = 0; // Native wheel frames: low 4 steering / 6 throttle / 6 brake bits.
+    uint16_t wheelFine = 0; // Native extensions: low 4 steering / 6 throttle / 6 brake bits.
     bool operator==(const ReplayFrame&) const = default;
 };
 
@@ -38,6 +38,7 @@ struct LogicalPad {
     // gear 0 auto, 1 neutral,
     // 2 reverse, 3..9 gears 1..7, 10 forward-only auto, 15 sequential. Original pads leave wheel false.
     bool wheel = false;
+    bool fineSteering = false; // Native VR: 12-bit axis, original pad physics and pedals.
     bool ignoreShiftSpeed = false; // Recorded only for explicit wheel gear requests.
     uint8_t clutch = 0, wheelGear = 0;
 };

@@ -1,6 +1,12 @@
-param([string]$Output='dist/GT2-0.8.1', [string]$Web='dist/GT2-Web-0.8.1', [string]$Native='dist/GT2-native-0.8.1')
+param([string]$Output, [string]$Web, [string]$Native)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
+$project=Get-Content -LiteralPath (Join-Path $root 'CMakeLists.txt') -Raw
+if ($project -notmatch 'project\(gt2pc VERSION ([0-9]+\.[0-9]+\.[0-9]+) ') { throw 'Cannot determine release version.' }
+$version=$Matches[1]
+if (!$Output) { $Output="dist/GT2-$version" }
+if (!$Web) { $Web="dist/GT2-Web-$version" }
+if (!$Native) { $Native="dist/GT2-native-$version" }
 $destination=[IO.Path]::GetFullPath((Join-Path $root $Output))
 $webPath=[IO.Path]::GetFullPath((Join-Path $root $Web))
 $nativePath=[IO.Path]::GetFullPath((Join-Path $root $Native))
@@ -35,6 +41,11 @@ foreach ($entry in @($webManifest.files) + @([pscustomobject]@{path='BUILD-MANIF
 $files=@(Get-ChildItem -LiteralPath $destination -File -Recurse | Sort-Object FullName | ForEach-Object {
     [ordered]@{path=$_.FullName.Substring($destination.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash.ToLowerInvariant()}
 })
+$obsoleteLaunchers = @('TRY-GT4-MODELS-DESKTOP.bat','TRY-GT4-MODELS-VR.bat','try-gt4-models.ps1',
+    'PLAY-PC.bat','PLAY-2D.bat','gt2_arcade.bat','gt2_race.bat','gt2_sim.bat','run_race.bat')
+foreach ($entry in $files) {
+    if ([IO.Path]::GetFileName($entry.path) -in $obsoleteLaunchers) { throw "Obsolete launcher in release: $($entry.path)" }
+}
 [ordered]@{version=$snapshot.version;sourceProvenance='filesystem-sha256';contents='Common source, all platform scripts, Windows executables, signed Quest APK and compiled browser site';files=$files} |
     ConvertTo-Json -Depth 5 | Set-Content (Join-Path $destination 'PACKAGE-MANIFEST.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem

@@ -81,6 +81,32 @@ void DrawText(TextCtx& c, const std::string& s, int x, int y, int spacing) { // 
 
 int TextWidth(const TextCtx& c, const std::string& s, int spacing) { return c.font->TextWidth(s, spacing); } // 0x8006AC4C
 
+std::string FitText(const HudFont& font, const std::string& text, int width, int spacing) {
+    auto fits=[&](const std::string& s) {
+        std::vector<HudFontSprite> glyphs; font.Text(s,0,0,spacing,glyphs);
+        return std::all_of(glyphs.begin(),glyphs.end(),[&](const auto& g){return g.x>=0 && g.x+g.w<=width;});
+    };
+    if(fits(text))return text;
+    std::string prefix=text;
+    while(!prefix.empty()) {prefix.pop_back();if(fits(prefix+"..."))return prefix+"...";}
+    return fits("...")?"...":"";
+}
+
+void DrawTextScaled(TextCtx& c, const std::string& text, int x, int y, int width) {
+    std::vector<HudFontSprite> glyphs;c.font->Text(text,0,0,1,glyphs);
+    int left=0,right=0;for(const auto& g:glyphs){left=std::min(left,g.x);right=std::max(right,g.x+g.w);}
+    const float scale=std::min(1.f,float(width)/float(std::max(1,right-left)));
+    x+=(width-int(float(right-left)*scale))/2;
+    for(const auto& g:glyphs) {
+        MenuPrim p;p.kind=MenuPrim::kPolyFT4;
+        const int x0=x+int(float(g.x-left)*scale),x1=x+int(float(g.x+g.w-left)*scale);
+        const int y0=y+int(float(g.y)*scale),y1=y+int(float(g.y+g.h)*scale);
+        for(size_t k=0;k<4;++k){p.x[k]=int16_t(k&1?x1:x0);p.y[k]=int16_t(k&2?y1:y0);
+            p.tu[k]=uint8_t(g.u+(k&1?g.w:0));p.tv[k]=uint8_t(g.v+(k&2?g.h:0));}
+        p.tpage=g.tpage;p.clut=g.clut;p.colour[0]=c.colour & 0xffffff;c.ot->Add(p);
+    }
+}
+
 void DrawNumber(TextCtx& c, const std::string& s, int x, int y, int spacing, int digitShift, int digitExtra) { // 0x8006AE50
     int pen = x;
     const int cell = c.font->cell;

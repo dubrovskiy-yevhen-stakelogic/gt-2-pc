@@ -10,9 +10,9 @@ namespace gt2 {
 // .carinfoa/.carinfoe/.carinfoj ("CAR\0"): car display names and paint chip colours.
 // Layout derived from real bytes (US v1.2), see docs/formats/car_info.md:
 //   0x00 "CAR\0", 0x04 u16 count, u16 0
-//   0x08 count x { u32 packedCarId, u16 entryOffset, u16 flags(unknown) }
+//   0x08 count x { u32 packedCarId, u32 (18-bit entryOffset | (paintCount - 1) << 18 | region flags) }
 //   entry: u16 chipColor[n] (PS1 15-bit), u8 paintId[n], u8 code(unknown), pad 0x7F to even,
-//          NUL-terminated name. n is NOT stored - it is the paint count of the car's .cdp.
+//          NUL-terminated name. n agrees with the paint count of the car's .cdp.
 struct CarInfoEntry {
     std::string name;
     std::vector<uint16_t> chipColors;

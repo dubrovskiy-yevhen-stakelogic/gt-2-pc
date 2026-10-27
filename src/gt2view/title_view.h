@@ -5,6 +5,7 @@
 // draws a 352 x 480 frame (E3 0,0 / E4 351,479), which the console shows across the full 4:3 picture.
 #include <cstdint>
 #include <vector>
+#include <span>
 
 #include "gt2formats/gt_menu_images.h"
 #include "gt2view/scene_renderer.h"
@@ -20,7 +21,8 @@ public:
     void UploadVram(const gt2::MenuVram& vram);
     // Appends the draw items of `prims` (GPU order) for a frame `frameWidth` x 480 pixels shown at 4:3, or with square
     // pixels (a frameWidth x 480 window then shows it 1:1).
-    void Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels = false);
+    void Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels = false,
+               size_t layerAt = ~size_t(0), std::span<const DrawItem> layer = {});
     void SetRasterRules(gt2::MenuCanvas::Rules rules) { coverA_.rules = coverB_.rules = rules; }
 
 private:

@@ -18,8 +18,8 @@ int main() {
     const auto dir=fs::temp_directory_path()/ ("gt2-hd-check-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     fs::create_directories(dir);
     try {
-        for(const auto* newline:{"\n","\r\n"}) {
-            std::istringstream index(std::string("palette-contours4x-v1")+newline+"9a61b7e14cf3319e-3e70"+newline+"9a61b7e14cf3319e-3e37"+newline);
+        for(const auto* version:{"palette-contours4x-v1"}) for(const auto* newline:{"\n","\r\n"}) {
+            std::istringstream index(std::string(version)+newline+"9a61b7e14cf3319e-3e70"+newline+"9a61b7e14cf3319e-3e37"+newline);
             const auto entries=gt2::hd::ReadFontIndex(index);
             Require(entries.size()==2 && entries[0]=="9a61b7e14cf3319e-3e70" && entries[1]=="9a61b7e14cf3319e-3e37");
         }
@@ -44,6 +44,14 @@ int main() {
             int antialiased=0;for(int i=0;i<1024;++i) {float c=coverage(smooth,i);if(c>0 && c<1) ++antialiased;}
             Require(antialiased>0);
             Reject([&]{gt2::hd::SmoothUiContours4x({16},palette,1);});
+            std::vector<uint8_t> atlas(16*16,1);
+            for(int y=3;y<9;++y) for(int x=2;x<7;++x) atlas[size_t(y*16+x)]=x>=y-2?2:0;
+            const auto glyph=gt2::hd::SmoothUiContours4x(atlas,palette,16,2,3,5,6,true);
+            for(int y=0;y<16;++y) for(int x=0;x<16;++x)
+                if(x<2 || x>=7 || y<3 || y>=9) atlas[size_t(y*16+x)]=uint8_t((x+y)&1?0:2);
+            Require(glyph==gt2::hd::SmoothUiContours4x(atlas,palette,16,2,3,5,6,true));
+            Require(glyph.size()==size_t(5*4*6*4*4));
+            Reject([&]{gt2::hd::SmoothUiContours4x(atlas,palette,16,14,0,3,4,true);});
         }
         std::vector<uint8_t> source(4*4*4,100), neural(16*16*4,255);
         gt2::hd::ConstrainMovieFrame(neural,16,16,source,4,4);
@@ -68,6 +76,16 @@ int main() {
         const auto whole=gt2::hd::EnlargeUiPage(mapPage.data());
         Require(whole[576*1024+383]!=isolated[383]); // neighbouring index zero used to leak into the corner
         Reject([&]{gt2::hd::EnlargeUiRegion(mapPage.data(),0,240,96);});
+        // Adjacent packed GT Mode tiles can be unrelated. Their indices must
+        // never change a solid tile or cut pinholes into its corners.
+        std::vector<uint16_t> tiles(1024*256,0);
+        for(int y=8;y<16;++y) std::fill_n(tiles.data()+y*1024+4,4,uint16_t(0x1111));
+        const auto tilePage=gt2::hd::EnlargeMenuTilePage(tiles.data());
+        for(int y=32;y<64;++y) for(int x=64;x<128;++x) Require(tilePage[size_t(y)*1024+x]==1);
+        for(int y=0;y<256;++y) for(int x=0;x<64;++x)
+            if(y<8 || y>=16 || x<4 || x>=8) tiles[size_t(y)*1024+x]=uint16_t((x+y)&1?0x3333:0x2222);
+        const auto hostile=gt2::hd::EnlargeMenuTilePage(tiles.data());
+        for(int y=32;y<64;++y) for(int x=64;x<128;++x) Require(hostile[size_t(y)*1024+x]==1);
         const auto path=(dir/"test.gtm").string();
         const std::vector<int16_t> pcm={-32768,32767,-128,128,0,0};
         {

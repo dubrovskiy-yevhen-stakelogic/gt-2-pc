@@ -1,0 +1,10 @@
+{
+  "source": "owned CORE.GT4 US 1.01",
+  "exeSha1": "30031137ce494323816bb707b90d3ec0d07937d2",
+  "status": "confirmed-owned-decompilation-and-car-command-trace",
+  "begin": "0x00455370",
+  "commandInterpreter": "0x00455708",
+  "fact": "ModelSet2 begin enables capability 0x0f through FUN_004a1638, the same call made by command 0x2d. Command 0x2e disables it through FUN_004ab040. Untouched cull state therefore means enabled for CAR4 draws.",
+  "regression": "scripts/check_cockpit_frames.py",
+  "importerMetadataVersion": 7
+}

@@ -141,12 +141,18 @@ void TitleView::EmitRasterised(const gt2::MenuPrim& p, int frameWidth) {
         }
 }
 
-void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels) {
+void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels,
+                      size_t layerAt, std::span<const DrawItem> layer) {
     if(hdGeneration_ != gt2::hd::Generation()) {
         hdGeneration_=gt2::hd::Generation(); hdSize_=UploadHdPicture(renderer_,"title.png",352,480);
     }
     quads_.clear();
-    for (const gt2::MenuPrim& p : prims) Emit(p, frameWidth);
+    size_t splitQuad=0;
+    for (size_t i=0;i<prims.size();++i) {
+        if(i==layerAt)splitQuad=quads_.size();
+        Emit(prims[i],frameWidth);
+    }
+    if(layerAt>=prims.size())splitQuad=quads_.size();
     if (quads_.size() * 6 > kVertexLimit) quads_.resize(kVertexLimit / 6);
     const float kW = float(frameWidth), kH = float(gt2::MenuCanvas::kHeight);
     const float frameAspect = squarePixels ? kW / kH : 4.0f / 3.0f;
@@ -173,9 +179,12 @@ void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, f
     renderer_.SetVertices(kVertexBase, vertices);
     const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     size_t first = 0;
-    while (first < quads_.size()) {
+    bool inserted=layer.empty();
+    splitQuad=std::min(splitQuad,quads_.size());
+    while (first < quads_.size() || !inserted) {
+        if(!inserted && first==splitQuad){items.insert(items.end(),layer.begin(),layer.end());inserted=true;continue;}
         size_t last = first;
-        while (last + 1 < quads_.size() && quads_[last + 1].blend == quads_[first].blend && quads_[last + 1].stpPass == quads_[first].stpPass) last++;
+        while (last + 1 < quads_.size() && (inserted || last+1!=splitQuad) && quads_[last + 1].blend == quads_[first].blend && quads_[last + 1].stpPass == quads_[first].stpPass) last++;
         DrawItem item;
         item.firstVertex = kVertexBase + uint32_t(first * 6);
         item.vertexCount = uint32_t((last - first + 1) * 6);

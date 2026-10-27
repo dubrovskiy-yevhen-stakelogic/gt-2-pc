@@ -1,12 +1,78 @@
 #pragma once
 #include "gt2view/cockpit_eye_fit.h"
+#include "gt2view/gt4_cabin_geometry.h"
 #include <cmath>
 
 template<class Check>
 void CockpitFitChecks(Check check) {
     using gt2::CarMeshVertex;
     using namespace gt2view;
+    {
+        std::array<gt2::GltfVertex,3> source{};
+        source[0].position={-1,0,0};source[1].position={1,0,0};source[2].position={0,1,0};
+        for (auto& v:source) v.uv={v.position[0],v.position[1]};
+        const std::array<std::array<float,4>,1> half{{{1,0,0,0}}};
+        const auto result=SubtractModelVolume(source,half);
+        float area=0;
+        for (size_t i=0;i+2<result.size();i+=3) {
+            const auto& a=result[i].position;const auto& b=result[i+1].position;const auto& c=result[i+2].position;
+            area+=std::abs((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]))*.5f;
+        }
+        check(std::abs(area-.5f)<1e-6f,"model volume subtraction preserves the exact area outside a cut");
+        for (const auto& v:result) check(v.position[0]>=0 && v.uv[0]==v.position[0] && v.uv[1]==v.position[1],
+            "model clipping retains interpolated UVs along a continuous aperture");
+        const std::array<std::array<float,4>,1> enclosing{{{1,0,0,2}}};
+        check(SubtractModelVolume(source,enclosing).empty(),"a fully enclosed interior cap is removed");
+        const std::array<std::array<float,4>,1> separate{{{1,0,0,-2}}};
+        check(SubtractModelVolume(source,separate).size()==3,"unrelated body triangles survive volume subtraction");
+    }
     CockpitFit fit;
+    {
+        // A closed cabin can still be badly deformed: detached mirror shells
+        // must not pull its two front corners outwards and back into the seats.
+        std::vector<CarMeshVertex> surface;
+        auto triangle=[&](std::array<float,3> a,std::array<float,3> b,std::array<float,3> c){
+            for(const auto& p:{a,b,c}){CarMeshVertex v{};std::copy(p.begin(),p.end(),v.pos);surface.push_back(v);}
+        };
+        triangle({-.8f,.6f,-.6f},{.8f,.6f,-.6f},{.7f,1.1f,0});
+        triangle({-.8f,.6f,-.6f},{.7f,1.1f,0},{-.7f,1.1f,0});
+        std::array<std::array<float,3>,2> lower{},upper{},expectedLower{},expectedUpper{},legacyLower{},legacyUpper{};
+        auto corners=[&](auto& low,auto& high,bool connected){
+            const std::vector<gt2::CarPolygon> polygons(surface.size()/3);
+            cockpit_detail::WindowCorners(surface,polygons,-.6f,.6f,0,1.1f,1.1f,false,low,high,connected);
+        };
+        corners(expectedLower,expectedUpper,true);
+        for(float sign:{-1.f,1.f})
+            triangle({sign*1.08f,.6f,-.10f},{sign*.99f,1.f,.12f},{sign*1.09f,1.f,.12f});
+        corners(lower,upper,true);corners(legacyLower,legacyUpper,false);
+        check(lower==expectedLower && upper==expectedUpper,"detached mirror shells cannot create two dashboard side humps");
+        check(legacyLower!=expectedLower,"mirror-shaped negative fixture actually deforms the unfiltered cabin outline");
+        check(std::abs(lower[0][0]+.8f)<1e-6f && std::abs(lower[1][0]-.8f)<1e-6f,
+              "connected windscreen preserves both authored lower corners");
+        for(float sign:{-1.f,1.f})
+            triangle({sign*.8f,.6f,-.6f},{sign*1.08f,.6f,-.10f},{sign*.8f,.6f,0});
+        corners(lower,upper,true);
+        check(lower==expectedLower && upper==expectedUpper,
+              "mirrors welded through a door panel still cannot deform the windshield fit");
+        for(float sign:{-1.f,1.f})
+            triangle({sign*.8f,.6f,-.6f},{sign*1.f,.6f,.1f},{sign*.7f,1.1f,0});
+        corners(lower,upper,true);
+        check(lower==expectedLower && upper==expectedUpper,
+              "connected side quarter-windows cannot pull the dashboard backwards");
+        std::vector<CarMeshVertex> sampledWindow;
+        const std::vector<gt2::CarPolygon> polygons(surface.size()/3);
+        cockpit_detail::WindowCorners(surface,polygons,-.6f,.6f,0,1.1f,1.1f,false,lower,upper,true,&sampledWindow);
+        check(sampledWindow.size()==6 && std::all_of(sampledWindow.begin(),sampledWindow.end(),[](const auto& v){return std::abs(v.pos[0])<=.8f && v.pos[2]<=0;}),
+              "intermediate cowl sections use only the connected windshield, without accessory or quarter-window peaks");
+    }
+    {
+        auto same=fit;
+        check(same==fit,"identical cabin parameters reuse the cached geometry");
+        same.wheelWells[3][4]+=.01f;
+        check(same!=fit,"the last wheel parameter invalidates the cabin cache");
+        same=fit;same.smoothShell=!fit.smoothShell;
+        check(same!=fit,"shell construction mode invalidates the cabin cache");
+    }
     fit.valid = true; fit.windshieldZ = -1.0f; fit.dashboardY = 0.7f;
     std::array<CarMeshVertex, 3> triangle{};
     triangle[0].pos[0] = -1; triangle[0].pos[1] = 0.3f; triangle[0].pos[2] = -2;
@@ -106,6 +172,22 @@ void CockpitFitChecks(Check check) {
     openCar.lods[0].polygons.erase(openCar.lods[0].polygons.begin() + 2);
     const auto open = FitCockpit(openCar);
     check(open.openTop, "missing overhead shell does not invent a closed roof");
+
+    {
+        // An open imported roadster has a tall screen but no supporting roof.
+        // Its lower bonnet step has support and used to win the profile search.
+        auto donor=car;donor.wheels[0].x=donor.wheels[1].x=-7373;
+        std::vector<CarMeshVertex> roadster;
+        const std::array<std::array<float,2>,6> profile{{{-2,.1f},{-1.6f,.5f},{-.8f,.5f},{-.2f,1.2f},{.5f,.6f},{2,.6f}}};
+        for(size_t i=1;i<profile.size();++i){
+            const auto a=profile[i-1],b=profile[i];
+            const std::array<std::array<float,3>,4> quad{{{-.8f,a[1],a[0]},{.8f,a[1],a[0]},{.8f,b[1],b[0]},{-.8f,b[1],b[0]}}};
+            for(size_t k:{0u,1u,2u,0u,2u,3u}){CarMeshVertex v{};std::copy(quad[k].begin(),quad[k].end(),v.pos);roadster.push_back(v);}
+        }
+        const auto imported=FitCockpit(donor,roadster);
+        check(imported.valid && imported.windshieldZ> -1.f && imported.roofFrontY>1.f,
+              "an imported roadster's unsupported screen outranks a low supported bonnet step");
+    }
 
     auto withOverlappingWing = car;
     auto& wingLod = withOverlappingWing.lods[0];
@@ -216,6 +298,21 @@ void CockpitFitChecks(Check check) {
     check(std::abs(seat.eye[0] + .23f) < 1e-6f && seat.eye[2] == .2f,
           "an unobstructed left seat keeps its lateral and longitudinal position");
     for (size_t i = 0; i < 6; ++i) shell[i].textured = false;
+    std::array<std::array<float,3>,17> bowedCowl{};
+    for(size_t i=0;i<bowedCowl.size();++i) {
+        const float x=float(i)/8.f-1.f;
+        bowedCowl[i]={x,.7f,-1.f+(std::abs(x)*.6f)};
+    }
+    const std::array<std::array<float,3>,3> cap{{{-1,.7f,-.5f},{1,.7f,-.5f},{0,.7f,-1.2f}}};
+    check(!cockpit_detail::TriangleAheadOfCowl(cap,bowedCowl),
+          "a cap crossing a bowed cowl is not bonnet even when its three vertices are ahead");
+    const std::array<std::array<float,3>,3> bonnet{{{-1,.7f,-1.2f},{1,.7f,-1.2f},{0,.7f,-2.f}}};
+    check(cockpit_detail::TriangleAheadOfCowl(bonnet,bowedCowl),"real bonnet remains in the hole reference");
+    auto flatCowl=bowedCowl;
+    for(auto& station:flatCowl)station[2]=-1.f;
+    const std::array<std::array<float,3>,3> screenLip{{{-.5f,.7f,-.96f},{.5f,.7f,-.96f},{0,.8f,-.94f}}};
+    check(!cockpit_detail::TriangleAheadOfCowl(screenLip,flatCowl),
+          "windshield geometry 4 cm behind the real cut cannot become a bonnet hole reference");
     const auto before = seat.eye;
     check(!RefineCockpitEye(seat, shell, glazing, glassMask) && seat.eye == before,
           "an opaque body cannot be passed by moving the eye above the roof or below the cowl");

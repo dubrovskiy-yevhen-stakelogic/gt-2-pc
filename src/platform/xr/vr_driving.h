@@ -1,6 +1,7 @@
 #pragma once
 #include "platform/xr/vr_rig.h"
 #include <array>
+#include <optional>
 
 namespace gt2::vr {
 struct TrackedControllers {
@@ -11,19 +12,29 @@ struct TrackedControllers {
 struct DrivingSettings {
     int mode = 0; // 0 stick, 1 virtual wheel, 2 motion
     int motionHand = 1;
+    int sensitivity = 100; // Below 100: softer centre and smoothed virtual-wheel response at every turn size; full lock remains.
+    int deadZonePercent = 3;
+    bool toggleGrip = false; // Virtual wheel only; each hand latches independently.
     int wheelHeightCm = -28, wheelDistanceCm = 38, wheelRadiusCm = 18;
+    // Runtime cockpit anchor in recentered tracking metres; never persisted.
+    std::optional<std::array<float,3>> cockpitWheelCenter;
 };
+inline std::array<float,3> DrivingWheelCenter(const DrivingSettings& s) {
+    return s.cockpitWheelCenter.value_or(std::array<float,3>{0,s.wheelHeightCm*.01f,-s.wheelDistanceCm*.01f});
+}
 // Vice City Quest's car steering behavior, independent of its vehicle engine.
 class DrivingController {
 public:
     static constexpr float maxWheelAngle = 1.3962634f; // 80 degrees
     void Reset();
-    float Update(const TrackedControllers& input, const DrivingSettings& settings, bool active);
+    float Update(const TrackedControllers& input, const DrivingSettings& settings, bool active, float elapsedSeconds = 1.f/90.f);
     float Angle() const { return physicalAngle_; }
     bool Grabbed(int hand) const { return grabbed_[hand]; }
     bool MotionCalibrated() const { return motionReferenceValid_; }
 private:
+    float steering_ = 0;
     int mode_ = -1, hand_ = -1;
+    bool toggleGrip_ = false;
     bool grabbed_[2]{}, gripDown_[2]{}, angleValid_[2]{}, spokeUsable_[2]{};
     float reference_[2]{}, continuous_[2]{};
     bool twoValid_ = false, motionReferenceValid_ = false;

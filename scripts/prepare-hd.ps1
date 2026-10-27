@@ -6,10 +6,13 @@ param(
     [string]$Bios,
     [string]$CaptureCore,
     [string]$Cache,
+    [ValidateRange(0,4096)][int]$Tile = 128,
+    [ValidateRange(-1,32)][int]$Gpu = -1,
     [int[]]$Movies = @(24,25,26)
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'hd-upscale.ps1')
 $Runtime = (Resolve-Path -LiteralPath $Runtime).Path
 $BuildDir = (Resolve-Path -LiteralPath $BuildDir).Path
 if (!$Cache) { $Cache = Join-Path $Runtime '.hd-work' }
@@ -65,7 +68,7 @@ function Write-HdManifest([string]$Folder,[string]$Profile) {
     $files = @(Get-ChildItem -LiteralPath $Folder -Recurse -File | Where-Object { $_.Name -ne 'manifest.json' } | ForEach-Object {
         [ordered]@{path=$_.FullName.Substring($Folder.Length+1).Replace('\','/');sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
     })
-    [ordered]@{format=1;profile=$Profile;model='realesrgan-x4plus';scale=4;ui='indexed-scale4x-v2';fonts='palette-contours4x-v1';video='source-bounded-v1';files=$files} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Folder 'manifest.json') -Encoding UTF8
+    [ordered]@{format=1;profile=$Profile;model='realesrgan-x4plus';scale=4;ui='indexed-scale4x-v2';fonts='palette-contours4x-v1';pictures='source-bounded-v1';video='source-bounded-v1';files=$files} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Folder 'manifest.json') -Encoding UTF8
 }
 $discs = @()
 foreach ($mode in @('arcade','simulation')) {
@@ -81,9 +84,8 @@ if (!$discs.Count) { throw 'No installed discs.' }
 if ($HdMedia -ne 'Original') {
     $upscaleDir = Fetch 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip' 'ABC02804E17982A3BE33675E4D471E91EA374E65B70167ABC09E31ACB412802D' 'realesrgan-20220424'
     $upscale = Join-Path $upscaleDir 'realesrgan-ncnn-vulkan.exe'
-    function Upscale([string]$InputDir,[string]$OutputDir) {
-        New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-        Run $upscale @('-i',$InputDir,'-o',$OutputDir,'-n','realesrgan-x4plus','-m',(Join-Path $upscaleDir 'models'),'-s','4','-t','128','-f','png')
+    function Upscale([string]$InputDir,[string]$OutputDir,[string]$Label) {
+        Invoke-HdUpscale -Exe $upscale -Models (Join-Path $upscaleDir 'models') -InputDirectory $InputDir -OutputDirectory $OutputDir -Label $Label -Tile $Tile -Gpu $Gpu
     }
     foreach ($disc in $discs) {
         Write-Host "Preparing HD media for $($disc.mode). This can take a long time; keep the PC connected to power."
@@ -93,14 +95,33 @@ if ($HdMedia -ne 'Original') {
         $stage = Join-Path $work ('candidate-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $stage | Out-Null
         $original = Join-Path $work 'images-original'
-        Run $media @('images',$disc.path,$original)
+        Write-Host "HD $($disc.mode): extracting original menu pictures (before neural processing)."
+        $exportIndex = Join-Path $work 'images-original-verified.json'
+        $exportValid = $false
+        if (Test-Path -LiteralPath $exportIndex) {
+            try {
+                $exported = @(Get-Content -LiteralPath $exportIndex -Raw | ConvertFrom-Json)
+                $exportValid = $exported.Count -gt 0
+                foreach ($entry in $exported) {
+                    if ($entry.name -notmatch '^[A-Za-z0-9_.-]+$') { $exportValid=$false; break }
+                    $file = Join-Path $original $entry.name
+                    if (!(Test-Path -LiteralPath $file) -or (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -ne $entry.sha256) { $exportValid=$false; break }
+                }
+            } catch { $exportValid=$false }
+        }
+        if (!$exportValid) {
+            Run $media @('images',$disc.path,$original)
+            @(Get-ChildItem -LiteralPath $original -File | ForEach-Object {
+                [ordered]@{name=$_.Name;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
+            }) | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $exportIndex -Encoding UTF8
+        } else { Write-Host 'Verified original pictures reused.' }
         $images = Join-Path $work 'images-upscaled'
         # A completion stamp is created only after the whole group succeeds.
         if (!(Test-Path -LiteralPath (Join-Path $images 'complete.txt'))) {
             $inputImages = Join-Path $work 'image-input'
             New-Item -ItemType Directory -Force -Path $inputImages | Out-Null
             Get-ChildItem -LiteralPath $original -Filter '*.png' | Copy-Item -Destination $inputImages -Force
-            Upscale $inputImages $images
+            Upscale $inputImages $images "HD $($disc.mode) menus"
             Run $media @('fit-images',$images)
             Set-Content -LiteralPath (Join-Path $images 'complete.txt') -Value 'realesrgan-x4plus-4x-v1' -Encoding ascii
         }
@@ -109,12 +130,16 @@ if ($HdMedia -ne 'Original') {
         $actualImages = @(Get-ChildItem -LiteralPath $images -Filter '*.png' | ForEach-Object Name | Sort-Object)
         if (!$expectedImages.Count -or (Compare-Object $expectedImages $actualImages)) { throw "HD image set is incomplete for $($disc.mode)." }
         New-Item -ItemType Directory -Path (Join-Path $stage 'images') | Out-Null
-        Get-ChildItem -LiteralPath $images -Filter '*.png' | Copy-Item -Destination (Join-Path $stage 'images')
+        $bounded = Join-Path $work 'images-source-bounded-v1'
+        Run $media @('compose-images',$original,$images,$bounded)
+        Get-ChildItem -LiteralPath $bounded -Filter '*.png' | Copy-Item -Destination (Join-Path $stage 'images')
         Copy-Item -LiteralPath (Join-Path $original 'profile.txt') -Destination $stage
         $ui = Join-Path $work 'ui-indexed-scale4x-v2-pages'
         $uiDone = Join-Path $work 'ui-indexed-scale4x-v2-pages.complete'
         if (!(Test-Path -LiteralPath $uiDone)) {
+            Write-Host "HD $($disc.mode): preparing indexed interface contours."
             Run $media @('ui',$disc.path,$ui)
+            Set-Content -LiteralPath (Join-Path $work 'ui-tile-boundaries-v1.complete') -Value 'complete' -Encoding ascii
             Set-Content -LiteralPath $uiDone -Value 'complete' -Encoding ascii
         }
 
@@ -123,14 +148,25 @@ if ($HdMedia -ne 'Original') {
             Run $media @('ui-maps',$disc.path,$ui)
             Set-Content -LiteralPath $mapDone -Value 'complete' -Encoding ascii
         }
+        $tilesDone = Join-Path $work 'ui-tile-boundaries-v1.complete'
+        if (!(Test-Path -LiteralPath $tilesDone)) {
+            Run $media @('ui-tiles',$disc.path,$ui)
+            Set-Content -LiteralPath $tilesDone -Value 'complete' -Encoding ascii
+        }
         $keys = @(Get-Content -LiteralPath (Join-Path $ui 'index.txt') | Select-Object -Skip 1)
         if (!$keys.Count) { throw 'HD interface index is empty.' }
         foreach ($key in $keys) {
             if ($key -notmatch '^[0-9a-f]{16}$' -or !(Test-Path -LiteralPath (Join-Path $ui ($key+'.png')))) { throw 'HD interface cache is incomplete.' }
         }
         Copy-Item -LiteralPath $ui -Destination (Join-Path $stage 'ui') -Recurse
+        $previousHd = Join-Path $Runtime "$($disc.mode)/hd"
+        if ((Test-Path -LiteralPath (Join-Path $previousHd 'profile.txt')) -and
+            (Get-Content -LiteralPath (Join-Path $previousHd 'profile.txt') -Raw).Trim() -eq $disc.profile -and
+            (Test-Path -LiteralPath (Join-Path $previousHd 'movies'))) {
+            Copy-Item -LiteralPath (Join-Path $previousHd 'movies') -Destination (Join-Path $stage 'movies') -Recurse
+        }
         if ($HdMedia -eq 'MenusAndMovies' -and $disc.mode -eq 'arcade') {
-            New-Item -ItemType Directory -Path (Join-Path $stage 'movies') | Out-Null
+            New-Item -ItemType Directory -Force -Path (Join-Path $stage 'movies') | Out-Null
             foreach ($id in $Movies) {
                 if ($id -notin @(24,25,26)) { throw 'Only full-screen movies 24, 25 and 26 are supported.' }
                 $packed = Join-Path $work "$id-conservative-v1.gtm"
@@ -147,7 +183,7 @@ if ($HdMedia -ne 'Original') {
                         }
                     }
                     $enhanced = Join-Path $work "movie-$id-upscaled"
-                    Upscale $inputFrames $enhanced
+                    Upscale $inputFrames $enhanced "HD $($disc.mode) movie $id"
                     Copy-Item -LiteralPath (Join-Path $frames 'movie.txt'),(Join-Path $frames 'audio.pcm') -Destination $enhanced -Force
                     Run $media @('pack',$enhanced,($packed+'.candidate'),$frames)
                     Run $media @('inspect',($packed+'.candidate'))
@@ -157,8 +193,9 @@ if ($HdMedia -ne 'Original') {
                 Copy-Item -LiteralPath $packed -Destination (Join-Path $stage "movies/$id.gtm")
             }
         }
-        $fontPack = Join-Path $work 'fonts-contours-xbr-v1'
+        $fontPack = Join-Path $work 'fonts-contours-xbr-regions-v2'
         if (!(Test-Path -LiteralPath (Join-Path $fontPack 'index.txt'))) {
+            Write-Host "HD $($disc.mode): reconstructing fonts and HUD."
             Run $media @('fonts',$disc.path,$fontPack)
         }
         Copy-Item -LiteralPath $fontPack -Destination (Join-Path $stage 'fonts') -Recurse
@@ -223,7 +260,7 @@ if ($HdMedia -ne 'Original' -and (Test-Path -LiteralPath $originalStartup)) {
             $mapping[$frame.Name] = $unique[$hash]
         }
         $uniqueOutput = Join-Path $bootWork 'unique-upscaled'
-        Upscale $inputFrames $uniqueOutput
+        Upscale $inputFrames $uniqueOutput 'HD PlayStation startup'
         $enhanced = Join-Path $bootWork 'upscaled'
         New-Item -ItemType Directory -Force -Path $enhanced | Out-Null
         foreach ($name in $mapping.Keys) {

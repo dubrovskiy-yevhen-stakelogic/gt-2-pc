@@ -48,7 +48,9 @@ public:
             throw std::runtime_error("Could not configure MoltenVK resource bindings");
         std::printf("graphics: MoltenVK argument buffers %s\n", SDL_getenv("MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS"));
 #endif
-        const bool noFocus = WindowNoFocus() || std::getenv("GT2_NO_FOCUS");
+        const char* windowMode=std::getenv("GT2_WINDOW");
+        const bool hidden=windowMode && std::string(windowMode)=="hidden";
+        const bool noFocus = hidden || WindowNoFocus() || std::getenv("GT2_NO_FOCUS");
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, noFocus ? "1" : "0");
         // Keep fullscreen on the existing desktop instead of a Cocoa Space.
@@ -58,6 +60,7 @@ public:
         try {
             SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, noFocus ? "1" : "0");
             Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+            if (hidden) flags |= SDL_WINDOW_HIDDEN;
             if (render) flags |= SDL_WINDOW_VULKAN;
             if (render && !noFocus && !WindowedMode()) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 #if defined(__linux__) && !defined(__ANDROID__)

@@ -3,6 +3,7 @@
 #include "gt2view/cockpit_window_cut.h"
 #include "gt2view/cockpit_materials.h"
 #include "gt2formats/car_texture.h"
+#include "gt2view/cockpit_structure.h"
 
 namespace gt2view {
 
@@ -255,6 +256,46 @@ inline bool SharesEdge(std::span<const gt2::CarMeshVertex> a, std::span<const gt
     return shared>=2;
 }
 
+// Window polygons can include painted bonnet lips. Only the portion behind
+// the measured curved cowl receives opaque cabin trim.
+inline void AppendWindowFrame(std::span<const gt2::CarMeshVertex> frame,const CockpitFit& fit,
+                              std::vector<gt2::CarMeshVertex>& output,bool opaque=true) {
+    using Polygon=std::vector<gt2::CarMeshVertex>;
+    auto clip=[](std::span<const gt2::CarMeshVertex> polygon,auto distance) {
+        Polygon result;if(polygon.empty())return result;
+        auto previous=polygon.back();float pd=distance(previous);
+        for(const auto& current:polygon) {
+            const float d=distance(current);
+            if((d>=0)!=(pd>=0))result.push_back(cockpit_window_detail::Interpolate(previous,current,pd/(pd-d)));
+            if(d>=0)result.push_back(current);
+            previous=current;pd=d;
+        }
+        return result;
+    };
+    float front=fit.cowl.front()[2],back=front;
+    for(const auto& p:fit.cowl){front=std::min(front,p[2]);back=std::max(back,p[2]);}
+    if(std::all_of(frame.begin(),frame.end(),[&](const auto& v){return v.pos[2]>=back;})) {
+        for(auto v:frame){if(opaque)v.textured=false;CockpitLining(v);output.push_back(v);}return;
+    }
+    if(std::all_of(frame.begin(),frame.end(),[&](const auto& v){return v.pos[2]<front;})) {
+        output.insert(output.end(),frame.begin(),frame.end());return;
+    }
+    for(size_t tri=0;tri+2<frame.size();tri+=3)for(size_t strip=1;strip<fit.cowl.size();++strip) {
+        const auto& a=fit.cowl[strip-1];const auto& b=fit.cowl[strip];
+        Polygon polygon(frame.begin()+tri,frame.begin()+tri+3);
+        if(strip>1)polygon=clip(polygon,[&](const auto& v){return v.pos[0]-a[0];});
+        if(strip+1<fit.cowl.size())polygon=clip(polygon,[&](const auto& v){return b[0]-v.pos[0];});
+        for(bool interior:{false,true}) {
+            auto part=clip(polygon,[&](const auto& v){
+                const float z=a[2]+(b[2]-a[2])*(v.pos[0]-a[0])/std::max(.001f,b[0]-a[0]);
+                return (v.pos[2]-z)*(interior?1.f:-1.f);
+            });
+            if(interior)for(auto& v:part){if(opaque)v.textured=false;CockpitLining(v);}
+            for(size_t i=1;i+1<part.size();++i){output.push_back(part[0]);output.push_back(part[i]);output.push_back(part[i+1]);}
+        }
+    }
+}
+
 inline bool UpperCabinTrim(std::span<const gt2::CarMeshVertex> face, const CockpitFit& fit) {
     if (face.empty()) return false;
     float centerZ=0;
@@ -265,6 +306,16 @@ inline bool UpperCabinTrim(std::span<const gt2::CarMeshVertex> face, const Cockp
     }
     return centerZ>=fit.windshieldZ && centerZ<=fit.rearWindowZ+.10f;
 }
+
+inline bool CabinPillarEdge(cockpit_structure::Point a,cockpit_structure::Point b,const CockpitFit& fit) {
+    // Lamps can share the glazing palette and the same end/side face angles.
+    // A pillar must belong to the passenger aperture, not just look like one.
+    const float front=std::min(fit.frontCowl[0][2],fit.frontCowl[1][2])-.15f;
+    const float back=std::max(fit.rearCowl[0][2],fit.rearCowl[1][2])+.15f;
+    const float belt=std::min({fit.frontCowl[0][1],fit.frontCowl[1][1],fit.rearCowl[0][1],fit.rearCowl[1][1]})-.08f;
+    for(const auto& p:{a,b})if(p[2]<front || p[2]>back || p[1]<belt)return false;
+    return true;
+}
 }
 
 struct CockpitBody {
@@ -273,9 +324,11 @@ struct CockpitBody {
     std::array<uint16_t, 16> glassMasks{};
     size_t windowTriangles = 0;
     std::vector<size_t> exteriorPolygons;
+    std::vector<cockpit_structure::Support> mirrorSupports;
+    std::vector<cockpit_structure::Support> pillarSeams;
 };
 
-inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTexture& texture, const CockpitFit& fit) {
+inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTexture& texture, const CockpitFit& fit, bool restoreStructure=true) {
     CockpitBody result;
     if (!fit.valid) return result;
     result.glassMasks = CockpitGlassMasks(texture);
@@ -308,6 +361,30 @@ inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTe
             endPanes.insert(endPanes.end(),faces.back().begin(),faces.back().end());
     }
     result.vertices.reserve(original.size() * 2);
+    // Adjacent side glass and front/rear glass meet at an authored pillar edge.
+    // Their independent low-resolution masks can leave that edge disconnected.
+    // Use the actual shared edge, never the rectangular fitted window reveal.
+    auto endPane=[](std::span<const gt2::CarMeshVertex> face){
+        if(IsCockpitEndWindowFace(face))return true;
+        const auto a=cockpit_structure::Position(face[0]),b=cockpit_structure::Position(face[1]),c=cockpit_structure::Position(face[2]);
+        const auto n=cockpit_structure::Cross(cockpit_structure::Sub(b,a),cockpit_structure::Sub(c,a));
+        return cockpit_structure::Length(n)>.04f && std::abs(n[2])>=std::abs(n[0])*.95f && std::abs(n[2])>=cockpit_structure::Length(n)*.25f;
+    };
+    for(size_t a=0;restoreStructure && a<faces.size();++a)if(coverage[a]>.25f && endPane(faces[a]))
+        for(size_t b=0;b<faces.size();++b)if(coverage[b]>.25f && !IsCockpitEndWindowFace(faces[b]) &&
+                CockpitSideOpening(faces[b].first(3),fit)){
+            std::vector<cockpit_structure::Point> shared;
+            for(const auto& va:faces[a])for(const auto& vb:faces[b]){
+                const auto p=cockpit_structure::Position(va);
+                if(p==cockpit_structure::Position(vb) && std::find(shared.begin(),shared.end(),p)==shared.end())shared.push_back(p);}
+            if(shared.size()!=2 || std::abs(shared[0][1]-shared[1][1])<.10f)continue;
+            if(!cockpit_detail::CabinPillarEdge(shared[0],shared[1],fit))continue;
+            const auto delta=cockpit_structure::Sub(shared[1],shared[0]);const float length=cockpit_structure::Length(delta);
+            if(length>.9f || length<.15f)continue;
+            if(std::any_of(result.pillarSeams.begin(),result.pillarSeams.end(),[&](const auto& seam){
+                return (seam.root==shared[0] && seam.tip==shared[1]) || (seam.root==shared[1] && seam.tip==shared[0]);}))continue;
+            result.pillarSeams.push_back({shared[0],shared[1],.014f});
+        }
     size_t at = 0;
     for (size_t polygonIndex=0; polygonIndex<model.lods.front().polygons.size(); ++polygonIndex) {
         const auto& polygon=model.lods.front().polygons[polygonIndex];
@@ -351,6 +428,10 @@ inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTe
             cockpit_detail::WindowOverlay(face,endPanes)) continue;
         const float glassThreshold = IsCockpitEndWindowFace(face) ? .005f : .025f;
         const bool roof = windowSurface && cockpit_detail::RoofPanel(face,fit);
+        // Roof alpha/teal pixels can be livery or baked highlights, not an
+        // opening. Once geometry establishes an opaque upper panel, its inner
+        // lining must stay continuous instead of running through the glass cut.
+        if(roof){cockpit_detail::AppendWindowFrame(face,fit,result.vertices);continue;}
         // Small teal letters and highlights on an otherwise opaque upper band
         // are not windows; retaining the band avoids perforating sponsor text.
         const bool header=windowSurface && !backing[polygonIndex] && cockpit_detail::HeaderTrim(face,fit,glassCoverage);
@@ -372,19 +453,16 @@ inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTe
         if (glazing || alphaOpening) {
             auto cutMasks=result.glassMasks;
             for (size_t p=0;p<16;++p) cutMasks[p]|=transparentMasks[p];
-            auto cut = CutCockpitWindows(face, texture, cutMasks, paintedBacking);
+            const bool pillar=glassCoverage>.5f && std::any_of(result.pillarSeams.begin(),result.pillarSeams.end(),[&](const auto& seam){
+                return std::any_of(face.begin(),face.end(),[&](const auto& v){return cockpit_structure::Position(v)==seam.root;}) &&
+                    std::any_of(face.begin(),face.end(),[&](const auto& v){return cockpit_structure::Position(v)==seam.tip;});});
+            auto cut = CutCockpitWindows(face, texture, cutMasks, paintedBacking,pillar);
             result.windowTriangles += count / 3;
             if (cut.openings) {
                 // Alpha also describes wheel arches and exterior trim. Only an
                 // authored glazing colour establishes a window for cabin fitting.
                 if (glazing) result.windowOpenings.insert(result.windowOpenings.end(),cut.opening.begin(),cut.opening.end());
-                for (auto& vertex : cut.frame) {
-                    // Geometry owns the opening; source alpha must not perforate
-                    // the new smooth edge with another grid of transparent texels.
-                    vertex.textured=false;
-                    CockpitLining(vertex);
-                }
-                result.vertices.insert(result.vertices.end(), cut.frame.begin(), cut.frame.end());
+                cockpit_detail::AppendWindowFrame(cut.frame,fit,result.vertices);
             } else {
                 for (auto vertex : face) {
                     vertex.palette += uint8_t(kCockpitGlazingPalette);
@@ -393,15 +471,16 @@ inline CockpitBody BuildCockpitBody(const gt2::CarModel& model, const gt2::CarTe
             }
             continue;
         }
-        const size_t start = result.vertices.size();
-        result.vertices.insert(result.vertices.end(), face.begin(), face.end());
-        if (windowSurface || cockpit_detail::InnerSidewall(face,fit) || cockpit_detail::UpperCabinTrim(face,fit)) {
-            // Matching inner trim also avoids coplanar exterior decals fighting the window frame.
-            for (auto& vertex : std::span(result.vertices).subspan(start)) {
-                CockpitLining(vertex);
-            }
-        } else result.exteriorPolygons.push_back(polygonIndex);
+        if (windowSurface || (cockpit_detail::InnerSidewall(face,fit) && !cockpit_detail::OutsideCabinShell(face,fit)) || cockpit_detail::UpperCabinTrim(face,fit)) {
+            cockpit_detail::AppendWindowFrame(face,fit,result.vertices,false);
+        } else {
+            result.vertices.insert(result.vertices.end(), face.begin(), face.end());
+            result.exteriorPolygons.push_back(polygonIndex);
+        }
     }
+    if(restoreStructure)result.mirrorSupports=cockpit_structure::MirrorSupports(model,texture,fit);
+    for(const auto& support:result.mirrorSupports)cockpit_structure::AppendSupport(support,result.vertices);
+    for(const auto& support:result.pillarSeams)cockpit_structure::AppendSupport(support,result.vertices);
     return result;
 }
 

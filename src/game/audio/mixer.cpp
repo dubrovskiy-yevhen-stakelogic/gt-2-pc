@@ -189,6 +189,11 @@ void Mixer::SetStream(StreamSource* source) {
     stream_ = source;
 }
 
+void Mixer::SetVoicesPaused(bool paused) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    voicesPaused_ = paused;
+}
+
 // One step of the reverb unit (psx-spx "SPU Reverb Formula"), all values 16-bit samples, volumes 1.15 fixed point.
 // Register addresses are in 8-byte units (4 samples); "[m - 2]" of the byte formula is the sample before m.
 void Mixer::ReverbTick(int32_t inLeft, int32_t inRight) {
@@ -261,6 +266,10 @@ void Mixer::RenderReverb(const float* input, float* output, size_t frames) {
 void Mixer::Mix(float* output, size_t frames) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (paused_ || mixPauseDepth.load() != 0) return;
+    if (voicesPaused_) {
+        if (stream_) stream_->MixStream(output, frames);
+        return;
+    }
     const bool reverb = reverb_.settings.enabled;
     if (reverb) wet_.assign(frames * 2, 0.0f);
     for (Voice& v : voices_) {

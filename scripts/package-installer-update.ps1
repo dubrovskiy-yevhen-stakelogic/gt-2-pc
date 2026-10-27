@@ -25,11 +25,12 @@ foreach ($entry in $package.files) {
     New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
     Copy-Item -LiteralPath (Join-Path $Base $entry.path) -Destination $target
 }
-$updates = @('scripts/prepare-hd.ps1', 'docs/HD-MEDIA.md', 'tests/test-hd-download.ps1', 'scripts/package-installer-update.ps1')
+$updates = @('scripts/prepare-hd.ps1', 'scripts/hd-upscale.ps1', 'scripts/install-quest.ps1', 'docs/HD-MEDIA.md', 'tests/test-hd-download.ps1', 'tests/test-hd-upscale.ps1', 'scripts/package-installer-update.ps1')
 foreach ($relative in $updates) {
     Copy-Item -LiteralPath (Join-Path $repo $relative) -Destination (Join-Path $Output $relative)
 }
-foreach ($relative in @('scripts/prepare-hd.ps1', 'docs/HD-MEDIA.md')) {
+$nativeUpdates = @('scripts/prepare-hd.ps1', 'scripts/hd-upscale.ps1', 'scripts/install-quest.ps1', 'docs/HD-MEDIA.md')
+foreach ($relative in $nativeUpdates) {
     Copy-Item -LiteralPath (Join-Path $repo $relative) -Destination (Join-Path $Output ('native/' + $relative))
 }
 # Refresh the source snapshot from actual bytes, retaining the original provenance.
@@ -50,6 +51,11 @@ $source.files = @((@($source.files.path) + $updates) | Sort-Object -Unique | For
 Save-Json $source (Join-Path $Output 'SOURCE-MANIFEST.json')
 $nativePath = Join-Path $Output 'native'
 $native = Get-Content -LiteralPath (Join-Path $nativePath 'release-manifest.json') -Raw | ConvertFrom-Json
+foreach ($relative in $nativeUpdates) {
+    if ($relative -notin @($native.files.path)) {
+        $native.files += [pscustomobject]@{path=$relative;sha256='';bytes=0}
+    }
+}
 # The binaries are unchanged. Keep their original sourceManifestSha256; record
 # the installer snapshot separately rather than imply that they were rebuilt.
 $native | Add-Member -Force NoteProperty installerRevision 2

@@ -104,7 +104,12 @@ void Command(android_app*, int32_t command) {
 }
 int32_t Input(android_app*, AInputEvent* event) {
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        gt2game::android::KeyEvent(AKeyEvent_getKeyCode(event), AKeyEvent_getAction(event) == AKEY_EVENT_ACTION_DOWN);
+        const int code = AKeyEvent_getKeyCode(event);
+        // NativeActivity must pass system audio keys back to Android. Consuming
+        // them suppresses Quest's volume adjustment and its system overlay.
+        if (code == AKEYCODE_VOLUME_UP || code == AKEYCODE_VOLUME_DOWN || code == AKEYCODE_VOLUME_MUTE)
+            return 0;
+        gt2game::android::KeyEvent(code, AKeyEvent_getAction(event) == AKEY_EVENT_ACTION_DOWN);
         return 1;
     }
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION &&

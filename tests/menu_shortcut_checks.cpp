@@ -8,7 +8,44 @@ static void Check(bool value, const char* message) {
 int main() {
     try {
         using namespace gt2::input::ps1;
+        gt2game::MenuInputRelease release;
+        gt2::input::Ps1PadFrame pad;pad.buttons=kCircle;pad.pressureR2=180;
+        release.Block(pad,0);release.Block(pad,1);
+        for(int i=0;i<120;++i) {
+            const auto filtered=release.Filter(pad,0);
+            Check(filtered.buttons==0 && filtered.pressureR2==0,"menu exit leaked held pad input");
+        }
+        pad.buttons|=kCross;
+        Check(release.Filter(pad,0).buttons==kCross,"fresh unrelated press was swallowed");
+        Check(release.Filter(pad,1).buttons==kCross,"second pad leaked menu cancel");
+        pad.buttons=0;pad.pressureR2=0;release.Filter(pad,0);
+        pad.buttons=kCircle;pad.pressureR2=180;
+        Check(release.Filter(pad,0).buttons==kCircle && release.Filter(pad,0).pressureR2==180,"new press after release stayed blocked");
+        release.keys[27]=true;release.UpdateKey(27,true);
+        Check(release.KeyBlocked(27),"held keyboard menu exit was not blocked");
+        release.UpdateKey(27,false);release.UpdateKey(27,true);
+        Check(!release.KeyBlocked(27),"keyboard release did not rearm input");
         gt2game::MenuShortcutState keys;
+        {
+            using Clock=std::chrono::steady_clock;
+            const auto start=Clock::time_point{};
+            gt2game::MenuShortcutState hold;
+            hold.Update(kStart,false,false,true,start);
+            Check(hold.menu && !hold.settings,"short Menu behavior changed");
+            hold.Update(kStart,false,false,true,start+std::chrono::milliseconds(999));
+            Check(!hold.settings,"long Menu fired before one second");
+            hold.Update(kStart,false,false,true,start+std::chrono::seconds(1));
+            Check(hold.settings && !hold.pause && !hold.menu,"one-second Menu did not open settings");
+            hold.Update(kStart,false,false,true,start+std::chrono::seconds(5));
+            Check(!hold.settings,"held Menu reopened settings repeatedly");
+            hold.Update(0,false,false,true,start+std::chrono::seconds(6));
+            hold.Update(kStart,false,false,true,start+std::chrono::seconds(7));
+            hold.Update(0,false,false,true,start+std::chrono::milliseconds(7500));
+            hold.Update(kStart,false,false,true,start+std::chrono::seconds(8));
+            Check(!hold.settings,"separate short holds accumulated into a long press");
+            hold.Update(kStart,false,false,true,start+std::chrono::seconds(9));
+            Check(hold.settings,"second long press did not rearm");
+        }
         int presses = 0;
         for (int frame = 0; frame < 600; ++frame) {
             keys.Update(kStart, false, false, true);

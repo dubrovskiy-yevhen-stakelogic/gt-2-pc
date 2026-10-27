@@ -1,11 +1,11 @@
 # Install GT2 VR on Quest from Linux or Steam Deck
 
-This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.8.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
+This installs the **standalone Quest game**, not a Linux desktop game or a streaming setup. Use the same **GT2-0.9.0.zip** as Windows. No Wine, ISO conversion, C++ compiler, `sudo`, `pacman` or `steamos-readonly disable` is needed. Installation tools, disc staging and download caches stay in your home directory. Python 3.10 or newer is required.
 
 ## Steam Deck: step by step
 
 1. Switch the Deck to **Desktop Mode**.
-2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-0.8.0`. Do not run a script from inside the ZIP viewer.
+2. Download the complete release ZIP and extract it with Ark into a folder in your home directory, for example `Downloads/GT2-0.9.0`. Do not run a script from inside the ZIP viewer.
 3. Extract your own GT2 disc archives with Ark too. Keep each `.cue` beside its matching `.bin`. The installer reads BIN/CUE directly; do not convert the disc to a 2048-byte ISO. That conversion loses race music and movie sectors.
 4. Enable developer mode on Quest, connect it by a USB data cable, put it on and accept **Allow USB debugging**. Leave the headset connected and awake during copying.
 5. In Dolphin, open the `native` folder inside the extracted complete release and choose **Open Terminal Here** (Konsole). Run:

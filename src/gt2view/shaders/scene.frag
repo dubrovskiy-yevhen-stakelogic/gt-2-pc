@@ -35,6 +35,7 @@ layout(std430, set = 0, binding = 1) readonly buffer External {
 } ext;
 
 uint externalWord(uint i) { return ext.texels[i]; }
+layout(set = 0, binding = 7) uniform sampler2D modelAtlas;
 #endif
 
 #ifdef GT2_WEBGL
@@ -70,6 +71,7 @@ GT2_VARYING(7) flat in vec4 inRect; // UV rectangle of the triangle (texel units
 GT2_VARYING(8) in vec3 inScreen;
 layout(location = 0) out vec4 outColor;
 GT2_VARYING(9) flat in uint inCache;
+GT2_VARYING(10) in vec3 inPaintView;
 #ifdef GT2_WEBGL
 uniform sampler2DArray decodedPages;
 #else
@@ -121,6 +123,8 @@ uint pageTexel(uvec2 t, uint pageX, uint pageY, uint clutX, uint clutY, uint dep
 vec3 rgb15(uint texel) { return vec3(float(texel & 31u), float((texel >> 5) & 31u), float((texel >> 10) & 31u)) / 31.0; }
 
 vec4 externalTexel(ivec2 t, ivec2 size) {
+    if ((inFlags & 8388608u)!=0u) t.x=clamp(t.x,0,size.x-1);
+    if ((inFlags & 16777216u)!=0u) t.y=clamp(t.y,0,size.y-1);
     t = ((t % size) + size) % size;
     uint px = externalWord(inPage + uint(t.y) * uint(size.x) + uint(t.x));
     return vec4(float(px & 255u), float((px >> 8) & 255u), float((px >> 16) & 255u), float(px >> 24)) / 255.0;
@@ -158,8 +162,73 @@ vec4 contourTexel(ivec2 t,ivec2 lo,ivec2 hi,vec3 color) {
 
 #include "texture_mips.glsl"
 
-void main() {
-    if ((inFlags & 2097152u) != 0u) {
+vec3 cabinColor(vec3 color) {
+    if ((inFlags & 536870912u)!=0u) return (inFlags & 67108864u)!=0u ? vec3(0,1,0) : vec3(.055,.060,.067);
+    if ((inFlags & 67108864u)!=0u) return gl_FrontFacing ? vec3(1,0,1) : vec3(0,1,0);
+    if (!gl_FrontFacing) {
+        if ((inFlags & 134217728u)!=0u) return vec3(.055,.060,.067);
+    }
+    return color;
+}
+
+#ifndef GT2_WEBGL
+#include "paint_clearcoat.glsl"
+#endif
+vec3 modelColor(vec3 base,vec3 color) {
+    if ((inFlags & 268435456u)==0u) return cabinColor(base*color);
+    if (!gl_FrontFacing) discard;
+#ifdef GT2_WEBGL
+    vec3 n=normalize(color),r=reflect(vec3(0,0,-1),n);
+    vec3 radiance=mix(vec3(.07),vec3(.34,.39,.47),clamp(r.y*.65+.45,0.0,1.0));
+    float fresnel=.075+.78*pow(1.0-abs(n.z),5.0);
+    return max(sqrt(base*base+radiance*fresnel)-base,vec3(0));
+#else
+    return paintClearcoat(base,color,inPaintView,pc.space==0u);
+#endif
+}
+
+#ifndef GT2_WEBGL
+#include "native_model_fragment.glsl"
+#endif
+void shadeScene() {
+    // Opaque and transparent draws share immutable geometry. Select fragments
+    // before doing any texture reads, keeping early cabin depth effective.
+    if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;
+#ifndef GT2_WEBGL
+    if((inFlags & 64u)!=0u && (inFlags & (16u|4194304u))==0u){outColor=nativeModelColor(vec4(1));return;}
+#endif
+    if ((inFlags & 268435456u)!=0u && (inFlags & (16u|4194304u))==0u) {
+        if (!gl_FrontFacing) discard;
+#ifndef GT2_WEBGL
+        outColor=vec4(stockPaintClearcoat(inColor,inPaintView,pc.space==0u || (pc.options & 16u)!=0u),1);return;
+#endif
+    }
+#ifndef GT2_WEBGL
+    if ((inFlags & 4194304u) != 0u) {
+        vec2 size=vec2(inClut & 65535u,inClut >> 16);
+        vec2 origin=vec2(inPage & 65535u,inPage >> 16);
+        vec2 uv=fract(inTexel/size)*size;
+        if ((inFlags & 8388608u)!=0u) uv.x=clamp(inTexel.x,0.5,size.x-0.5);
+        if ((inFlags & 16777216u)!=0u) uv.y=clamp(inTexel.y,0.5,size.y-0.5);
+        if ((pc.options & 1u)==0u) uv=floor(uv)+0.5;
+        vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
+        if ((inFlags & 2147483648u)!=0u) {
+            if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
+            c.a=1.0;
+        }
+        if ((inFlags & 2097152u)!=0u) {
+            // The authored glass mask clips the reflected image to the mirror,
+            // preserving its black border instead of filling the whole quad.
+            if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
+            outColor=vec4(textureLod(rearView,inColor.xy,0).rgb,1);return;
+        }
+        if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
+        if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
+        if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
+        outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
+    }
+#endif
+    if ((inFlags & 2097152u) != 0u && (inFlags & 16u)==0u) {
         #ifdef GT2_WEBGL
         outColor = vec4(textureLod(rearView, vec2(inTexel.x, 1.0-inTexel.y), 0.0).rgb, 1.0);
 #else
@@ -192,7 +261,7 @@ void main() {
     if ((inFlags & 2048u) != 0u && !gl_FrontFacing) discard; // kCullBack: the original's NCLIP test
     if ((inFlags & 1u) == 0u) {
         if (pc.stpPass == 1u) discard; // untextured semi-transparent: blended pass only
-        outColor = vec4(color, 1.0);
+        outColor = vec4(cabinColor(color), 1.0);
         return;
     }
     if ((inFlags & 1048576u) != 0u) {
@@ -232,7 +301,22 @@ void main() {
     if (!cachedOnly && (inFlags & 16u) != 0u) { // external RGBA8 image, repeat wrapping, nearest texel, alpha mask at 0.5
         ivec2 size = ivec2(int(inClut & 0xFFFFu), int(inClut >> 16));
         vec4 c = externalTexel(ivec2(floor(texelCoord)), size);
-        if (c.a < 0.5) discard;
+        if ((inFlags & 2147483648u)!=0u) {
+            if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
+            c.a=1.0;
+        }
+        if ((inFlags & 2097152u)!=0u) {
+            if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
+#ifdef GT2_WEBGL
+            outColor=vec4(textureLod(rearView,vec2(inColor.x,1.0-inColor.y),0.0).rgb,1);
+#else
+            outColor=vec4(textureLod(rearView,inColor.xy,0).rgb,1);
+#endif
+            return;
+        }
+        bool opaque = (inFlags & 33554432u)!=0u;
+        float cutoff=(inFlags & (1073741824u|32u))!=0u ? .5/255.0 : .5;
+        if (!opaque && c.a < cutoff) discard;
         if (smoothTextures) { // bilinear over the covering texels (alpha-masked ones left out)
             vec2 p = texelCoord - 0.5;
             vec2 f = fract(p);
@@ -243,13 +327,13 @@ void main() {
                 ivec2 d = ivec2(k & 1, k >> 1);
                 float w = (d.x == 1 ? f.x : 1.0 - f.x) * (d.y == 1 ? f.y : 1.0 - f.y);
                 vec4 s = externalTexel(i0 + d, size);
-                if (s.a < 0.5) continue;
+                if (!opaque && s.a < cutoff) continue;
                 sum += w * s.rgb;
                 wsum += w;
             }
             if (wsum > 0.0) c.rgb = sum / wsum;
         }
-        outColor = vec4(c.rgb * color, 1.0);
+        outColor = vec4(modelColor(c.rgb,inColor), (inFlags & 32u)!=0u?c.a:1.0);
         return;
     }
     uint pageX = inPage & 0xFFFFu, pageY = inPage >> 16;
@@ -314,4 +398,10 @@ void main() {
         rgb = min(floor(t5 * c8 / 128.0), vec3(31.0)) / 31.0;
     } else if ((inFlags & 2u) == 0u) rgb = min(rgb * color * (255.0 / 128.0), vec3(1.0)); // 0x80 = neutral
     outColor = vec4(rgb, 1.0);
+}
+
+void main() {
+    shadeScene();
+    // Apply diagnostic colour after all coverage tests, including rim alpha.
+    if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }

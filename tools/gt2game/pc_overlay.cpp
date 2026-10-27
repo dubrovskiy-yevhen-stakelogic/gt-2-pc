@@ -1,5 +1,7 @@
 #include "pc_overlay.h"
 #include "gt2formats/hd_media.h"
+#include "gt2formats/model_set.h"
+#include "gt2formats/car_info.h"
 #include "game/shell/shared_vr_settings.h"
 #include "movie_player.h"
 #ifdef _WIN32
@@ -20,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <map>
 #include <stdexcept>
 
 namespace gt2game {
@@ -43,6 +46,14 @@ gt2::vr::ControlBindings desktopBindings = gt2::vr::DesktopBindings();
 bool desktopCustom = false;
 int introLowerCm = 200;
 CockpitSettings cockpitSettings;
+int raceView = -1;
+std::map<std::string,int> carSeatHeights;
+std::string cockpitCar;
+bool cockpitCarHasGt4 = false, cockpitCarRequiresGt4 = false;
+std::string CarSeatKey(const std::string& car, bool gt4) { return std::string(gt4?"gt4_":"gt2_")+car; }
+bool CockpitCarGt4() { return cockpitCarRequiresGt4 || (gt2::gt4ModelSetEnabled && cockpitCarHasGt4); }
+
+bool& gt4ModelSet = gt2::gt4ModelSetEnabled;
 struct HudSetting { const char* label; const char* key; bool gt2view::HudVisibility::*member; };
 constexpr HudSetting hudSettings[] = {
     {"Course map", "vr_hud_map", &gt2view::HudVisibility::map},
@@ -144,14 +155,20 @@ void Save() {
         out << "# Live overlay preferences; separate from earned progress.\n" << CurrentGraphics().Serialize();
         out << "hd_assets=" << int(gt2::hd::Enabled()) << '\n';
         out << "vr_ps1_intro=" << int(playStationIntro) << '\n';
+        out << "gt4_model_set=" << int(gt4ModelSet) << '\n';
+        if (raceView >= 0) out << "race_view=" << raceView << '\n';
+        for(const auto& [key,height]:carSeatHeights) out << "cockpit_car_height_" << key << '=' << height << '\n';
         out << "cockpit=" << int(cockpitSettings.enabled) << "\ncockpit_wheel=" << int(cockpitSettings.steeringWheel)
             << "\ncockpit_seat_height=" << cockpitSettings.seatHeightCm << "\ncockpit_seat_back=" << cockpitSettings.seatBackCm
-            << "\ncockpit_mirror=" << int(cockpitSettings.mirror) << "\ncockpit_mirror_scale=" << cockpitSettings.mirrorScalePercent << '\n';
+            << "\ncockpit_side_mirrors=" << int(cockpitSettings.sideMirrors) << "\ncockpit_mirror=" << int(cockpitSettings.mirror) << "\ncockpit_mirror_scale=" << cockpitSettings.mirrorScalePercent << '\n';
         out << "adaptive=" << adaptive << "\nrumble=" << rumble << "\nunlock_courses=" << int(gt2::pc::unlockCourses)
             << "\nunlock_cars=" << int(gt2::pc::unlockCars) << "\n";
         if (metricUnits >= 0) out << "units=" << (metricUnits ? "kmh" : "mph") << '\n';
         if (vrScale >= 0) out << "vr_render_scale=" << vrScale << "\n";
         out << "vr_driving_mode=" << drivingSettings.mode << "\nvr_motion_hand=" << drivingSettings.motionHand
+            << "\nvr_steering_sensitivity=" << drivingSettings.sensitivity
+            << "\nvr_steering_dead_zone=" << drivingSettings.deadZonePercent
+            << "\nvr_wheel_toggle_grip=" << int(drivingSettings.toggleGrip)
             << "\nvr_wheel_height=" << drivingSettings.wheelHeightCm << "\nvr_wheel_distance=" << drivingSettings.wheelDistanceCm
             << "\nvr_wheel_radius=" << drivingSettings.wheelRadiusCm << "\nvr_intro_lower_cm=" << introLowerCm << '\n';
         out << "pc_custom_bindings=" << int(desktopCustom) << "\npc_brake_reverse=" << int(desktopBindings.brakeReverse)
@@ -185,6 +202,10 @@ void LoadOverlaySettings(const std::string& basePath) {
     adaptive = 60; rumble = 50; vrScale = -1; vrRefresh = 72; profiler = false; foveation = 2;
     hudVisibility = kDefaultHudVisibility; drivingSettings = {}; controlBindings = {}; introLowerCm = 200;
     cockpitSettings = {};
+    raceView = -1;
+    bool legacyOpenView = false;
+    carSeatHeights.clear();
+    gt4ModelSet = gt2::Gt4ModelSetInstalled();
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;
@@ -204,10 +225,21 @@ void LoadOverlaySettings(const std::string& basePath) {
         if (eq == std::string::npos || line.empty() || line[0] == '#') continue;
         const auto key = line.substr(0, eq), value = line.substr(eq + 1);
         if (key == "hd_assets") gt2::hd::SetEnabled(value != "0");
-        else if (key == "cockpit") cockpitSettings.enabled = value == "1";
+        else if (key == "gt4_model_set") gt4ModelSet = value == "1";
+        else if (key == "cockpit") legacyOpenView = value == "0";
+        else if (key == "race_view") {
+            if (value.size()==1 && value[0]>='0' && value[0]<='3') raceView=value[0]-'0';
+        }
+        else if (key.starts_with("cockpit_car_height_")) {
+            const auto id=key.substr(19);
+            if ((id.starts_with("gt2_") || id.starts_with("gt4_")) && id.size()>4 && id.size()<128 &&
+                id.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")==std::string::npos)
+                carSeatHeights[id]=std::clamp(std::atoi(value.c_str()),CockpitSettings::kMinHeightCm,CockpitSettings::kMaxHeightCm);
+        }
         else if (key == "cockpit_wheel") cockpitSettings.steeringWheel = value == "1";
         else if (key == "cockpit_seat_height") cockpitSettings.seatHeightCm = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
         else if (key == "cockpit_seat_back") cockpitSettings.seatBackCm = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinBackCm, CockpitSettings::kMaxBackCm);
+        else if (key == "cockpit_side_mirrors") cockpitSettings.sideMirrors = value == "1";
         else if (key == "cockpit_mirror") cockpitSettings.mirror = value == "1";
         else if (key == "cockpit_mirror_scale") cockpitSettings.mirrorScalePercent = std::clamp(std::atoi(value.c_str()), CockpitSettings::kMinMirrorScalePercent, CockpitSettings::kMaxMirrorScalePercent);
         else if (key == "vr_ps1_intro") playStationIntro = value != "0";
@@ -221,6 +253,9 @@ void LoadOverlaySettings(const std::string& basePath) {
         else if (key.size()==12 && key.substr(0,11)=="vr_binding_" && key[11]>='0' && key[11]<='7') controlBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,8);
         else if (key == "vr_driving_mode") drivingSettings.mode = std::clamp(std::atoi(value.c_str()),0,2);
         else if (key == "vr_motion_hand") drivingSettings.motionHand = std::clamp(std::atoi(value.c_str()),0,1);
+        else if (key == "vr_steering_sensitivity") drivingSettings.sensitivity = std::clamp(std::atoi(value.c_str()),50,200);
+        else if (key == "vr_steering_dead_zone") drivingSettings.deadZonePercent = std::clamp(std::atoi(value.c_str()),0,10);
+        else if (key == "vr_wheel_toggle_grip") drivingSettings.toggleGrip = std::atoi(value.c_str()) != 0;
         else if (key == "vr_wheel_height") drivingSettings.wheelHeightCm = std::clamp(std::atoi(value.c_str()),-60,0);
         else if (key == "vr_wheel_distance") drivingSettings.wheelDistanceCm = std::clamp(std::atoi(value.c_str()),20,75);
         else if (key == "vr_wheel_radius") drivingSettings.wheelRadiusCm = std::clamp(std::atoi(value.c_str()),8,40);
@@ -242,6 +277,7 @@ void LoadOverlaySettings(const std::string& basePath) {
             if (!hudKey) graphics.Parse(key, value);
         }
     }
+    if (raceView < 0 && legacyOpenView) raceView = 3;
     SetGraphicsFromOverlay(graphics);
     gt2::pc::SetUnlocks(courses, cars);
 }
@@ -251,6 +287,22 @@ const gt2::vr::ControlBindings& OverlayControlBindings() { return controlBinding
 const gt2::vr::DrivingSettings& OverlayDrivingSettings() { return drivingSettings; }
 float OverlayIntroLowering() { return introLowerCm*.01f; }
 const CockpitSettings& OverlayCockpitSettings() { return cockpitSettings; }
+CockpitSettings OverlayCockpitSettings(const std::string& car,bool gt4) {
+    auto result=cockpitSettings;
+    if(const auto found=carSeatHeights.find(CarSeatKey(car,gt4));found!=carSeatHeights.end()) result.seatHeightCm=found->second;
+    return result;
+}
+void SetOverlayCockpitCar(const std::string& car,bool requiredGt4) {
+    cockpitCar=car;cockpitCarRequiresGt4=requiredGt4;
+    cockpitCarHasGt4=!car.empty() && gt2::ModelSet(gt2::gt4ModelSetRoot).Has(car);
+}
+int OverlayRaceView() { return raceView; }
+void RememberRaceView(int view) {
+    if (view < 0 || view > 3 || raceView == view) return;
+    raceView = view;
+    Save();
+}
+bool OverlayGt4ModelSet() { return gt4ModelSet; }
 const gt2view::HudVisibility& OverlayHudVisibility() { return hudVisibility; }
 bool OverlayMetricUnits(bool fallback) { return metricUnits < 0 ? fallback : metricUnits != 0; }
 int OverlayVrScale() { return vrScale; }
@@ -313,10 +365,11 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
 gt2::career::CareerSave* cheatSave = nullptr;
 const gt2::career::CareerData* cheatData = nullptr;
 std::string cheatPath;
+std::function<std::string()> arcadeGarageCheat;
 const gt2::career::NewGameDefaults* campaignDefaults = nullptr;
 bool campaignChanged = false;
 std::vector<size_t> catalogue;
-const gt2::career::CareerData* catalogueData = nullptr;
+bool catalogueGt4 = false;
 
 std::string ApplySimulationCheat(int action, size_t carIndex = 0) {
     using namespace gt2::career;
@@ -957,13 +1010,15 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 10) {
             title = "GT2 / COCKPIT";
-            rows = {std::string("Driver view: ") + (cockpitSettings.enabled ? "Cockpit" : "Original"),
-                "Seat height: " + std::to_string(cockpitSettings.seatHeightCm) + " cm",
+            rows = {"Default seat height: " + std::to_string(cockpitSettings.seatHeightCm) + " cm",
                 "Seat forward / back: " + std::to_string(cockpitSettings.seatBackCm) + " cm",
                 std::string("Steering wheel: ") + (cockpitSettings.steeringWheel ? "ON" : "OFF"),
                 std::string("Rear-view mirror: ") + (cockpitSettings.mirror ? "ON" : "OFF"),
                 "Mirror size: " + std::to_string(cockpitSettings.mirrorScalePercent) + "%",
-                "Reset cockpit settings", "Back"};
+                "Reset default cockpit settings",
+                std::string("Side mirrors: ") + (cockpitSettings.sideMirrors ? "ON" : "OFF"),
+                cockpitCar.empty() ? "This car seat height: enter a race" : std::string("This car seat height (") + (CockpitCarGt4()?"GT4): ":"GT2): ") + std::to_string(OverlayCockpitSettings(cockpitCar,CockpitCarGt4()).seatHeightCm) + " cm" + (carSeatHeights.contains(CarSeatKey(cockpitCar,CockpitCarGt4()))?"":" (default)"),
+                "Reset this car height to default", "Back"};
         }
         if (page == 9) {
             title = "GT2 VR / CHANGE GAME";
@@ -979,7 +1034,9 @@ void ShowSettingsMenu(GameWindow& window) {
                 "FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"),
                 "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
                 "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
-                "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"), "Back"};
+                "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"),
+                "GT2 car reflections: " + std::string(graphics.modernCarReflections ? "Modern" : "Original"),
+                std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"), "Back"};
         }
         if (page == 1 && !vr) {
             rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
@@ -996,10 +1053,10 @@ void ShowSettingsMenu(GameWindow& window) {
             rows = {"Arcade - all tracks: " + std::string(gt2::pc::unlockCourses ? "ON" : "OFF"),
                 "Arcade - all cars: " + std::string(gt2::pc::unlockCars ? "ON" : "OFF"),
                 "Simulation - all licences GOLD", "Simulation - 99,999,999 credits", "Simulation - all cars catalogue",
-                "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"), "Back"};
+                "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"), "Simulation - GT4 cars catalogue", "Arcade - add all cars to garage", "Back"};
         }
         if (page == 3) {
-            title = "ALL CARS / PAGE " + std::to_string(carPage + 1);
+            title = std::string(catalogueGt4 ? "GT4 CARS / PAGE " : "ALL CARS / PAGE ") + std::to_string(carPage + 1);
             const size_t start = size_t(carPage) * 8;
             for (size_t i = start; i < std::min(start + 8, catalogue.size()); ++i)
                 rows.push_back(cheatData->cars.At(catalogue[i]).name);
@@ -1028,10 +1085,13 @@ void ShowSettingsMenu(GameWindow& window) {
             const char* modes[] = {"Stick", "Virtual wheel", "Motion"};
             rows = {std::string("Steering: ") + modes[drivingSettings.mode],
                 std::string("Motion hand: ") + (drivingSettings.motionHand ? "Right" : "Left"),
-                "Wheel height: " + std::to_string(drivingSettings.wheelHeightCm) + " cm",
-                "Wheel distance: " + std::to_string(drivingSettings.wheelDistanceCm) + " cm",
+                window.CockpitWheelAnchored() ? "Wheel height: fixed to dashboard" : "Wheel height: " + std::to_string(drivingSettings.wheelHeightCm) + " cm",
+                window.CockpitWheelAnchored() ? "Wheel distance: fixed to dashboard" : "Wheel distance: " + std::to_string(drivingSettings.wheelDistanceCm) + " cm",
                 "Wheel radius: " + std::to_string(drivingSettings.wheelRadiusCm) + " cm",
-                "Intro camera lower: " + std::to_string(introLowerCm) + " cm", "Back"};
+                "Intro camera lower: " + std::to_string(introLowerCm) + " cm",
+                "Steering sensitivity: " + std::to_string(drivingSettings.sensitivity) + "%",
+                "Steering dead zone: " + std::to_string(drivingSettings.deadZonePercent) + "%",
+                std::string("Wheel grip: ") + (drivingSettings.toggleGrip ? "Toggle" : "Hold"), "Back"};
         }
         if (page == 4) {
             title = "GT2 VR / HUD / PAGE " + std::to_string(hudPage + 1);
@@ -1071,23 +1131,28 @@ void ShowSettingsMenu(GameWindow& window) {
                         if (gameChangeAvailable) { page = 9; selected = 1; }
                         else status = "Launch from the disc picker with both discs installed.";
                     }
-                    else if (selected == 6) { page = 10; selected = 0; status = "Applies to Driver camera. Change view with C / your camera button."; }
+                    else if (selected == 6) { page = 10; selected = 0; status = "Driver view settings."; }
                     else if (selected == 8 + int(discImportAvailable)) { done = ShowCampaignManager(window); }
                     else if (selected >= 8) { page = discImportAvailable && selected == 8 ? 11 : 12; selected = 1; }
                     else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
                     else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
                 }
                 else if (page == 10) {
-                    if (selected == 0 && direction) cockpitSettings.enabled = !cockpitSettings.enabled;
-                    if (selected == 1 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
-                    if (selected == 2 && direction) cockpitSettings.seatBackCm = std::clamp(cockpitSettings.seatBackCm + direction * 2, CockpitSettings::kMinBackCm, CockpitSettings::kMaxBackCm);
-                    if (selected == 3 && direction) cockpitSettings.steeringWheel = !cockpitSettings.steeringWheel;
-                    if (selected == 4 && direction) cockpitSettings.mirror = !cockpitSettings.mirror;
-                    if (selected == 5 && direction) cockpitSettings.mirrorScalePercent = std::clamp(cockpitSettings.mirrorScalePercent + direction * 5, CockpitSettings::kMinMirrorScalePercent, CockpitSettings::kMaxMirrorScalePercent);
-                    if (selected == 6 && accept) cockpitSettings = {};
-                    if (selected == 7 && accept) { page = 0; selected = 6; }
+                    if (selected == 0 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
+                    if (selected == 1 && direction) cockpitSettings.seatBackCm = std::clamp(cockpitSettings.seatBackCm + direction * 2, CockpitSettings::kMinBackCm, CockpitSettings::kMaxBackCm);
+                    if (selected == 2 && direction) cockpitSettings.steeringWheel = !cockpitSettings.steeringWheel;
+                    if (selected == 3 && direction) cockpitSettings.mirror = !cockpitSettings.mirror;
+                    if (selected == 4 && direction) cockpitSettings.mirrorScalePercent = std::clamp(cockpitSettings.mirrorScalePercent + direction * 5, CockpitSettings::kMinMirrorScalePercent, CockpitSettings::kMaxMirrorScalePercent);
+                    if (selected == 5 && accept) cockpitSettings = {};
+                    if (selected == 7 && direction && !cockpitCar.empty()) {
+                        const bool gt4=CockpitCarGt4();
+                        carSeatHeights[CarSeatKey(cockpitCar,gt4)]=std::clamp(OverlayCockpitSettings(cockpitCar,gt4).seatHeightCm+direction*2,CockpitSettings::kMinHeightCm,CockpitSettings::kMaxHeightCm);
+                    }
+                    if (selected == 8 && accept && !cockpitCar.empty()) carSeatHeights.erase(CarSeatKey(cockpitCar,CockpitCarGt4()));
+                    if (selected == 9 && accept) { page = 0; selected = 6; }
+                    if (selected == 6 && direction) cockpitSettings.sideMirrors = !cockpitSettings.sideMirrors;
                     status = "Saved. Applies to Driver camera when you resume.";
-                    if (page == 10 && (selected == 4 || selected == 5) && cockpitSettings.mirror && !hudVisibility.mirror)
+                    if (page == 10 && (selected == 3 || selected == 4) && cockpitSettings.mirror && !hudVisibility.mirror)
                         status = "Saved. Enable Rear-view mirror in HUD elements to show it.";
                 }
                 else if ((page == 11 || page == 12) && accept) {
@@ -1105,7 +1170,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         window.Close(); done = true;
                     } else { page = 0; selected = 4; }
                 }
-                else if (page == 1 && (direction || selected == 10)) {
+                else if (page == 1 && (direction || selected == 12)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     status = "Saved.";
                     if (vr && selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
@@ -1138,7 +1203,12 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 8 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
                     if (selected == 9 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
                     if (!vr && selected == 7 && accept) { page = 8; selected = 0; }
-                    else if (selected == 10) { page = 0; selected = 0; }
+                    else if (selected == 12) { page = 0; selected = 0; }
+                    if (page==1 && selected==11 && direction) {
+                        gt4ModelSet=!gt4ModelSet;
+                        status=gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
+                    }
+                    if (page==1 && selected==10 && direction) graphics.modernCarReflections=!graphics.modernCarReflections;
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 8) {
@@ -1152,17 +1222,27 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);
                     if (selected == 2 && accept) status = ApplySimulationCheat(0);
                     if (selected == 3 && accept) status = ApplySimulationCheat(1);
-                    if (selected == 4 && accept) {
+                    if ((selected == 4 || selected == 6) && accept) {
                         if (!cheatData) status = "Enter GT Mode first. Catalogue unavailable in races.";
                         else {
-                            if (catalogueData != cheatData) {
-                                catalogue = gt2::career::CheatCatalogue(*cheatData); catalogueData = cheatData;
+                            catalogueGt4=selected==6;
+                            catalogue = gt2::career::CheatCatalogue(*cheatData);
+                            if (catalogueGt4) {
+                                try {
+                                    gt2::ModelSet modelSet(gt2::gt4ModelSetRoot);
+                                    std::erase_if(catalogue,[&](size_t index) {return !modelSet.Has(gt2::UnpackCarId(cheatData->cars.At(index).carId));});
+                                } catch (const std::exception& e) {catalogue.clear();status=e.what();}
+                                if (catalogue.empty()) status="No matching GT4 pack installed.";
                             }
                             if (!catalogue.empty()) { page = 3; selected = carPage = 0; status = "A: add free car. Triggers: pages. X/Y: row. B: back."; }
                         }
                     }
                     if (selected == 5 && page == 2 && direction) gt2::pc::unlockSimulationEvents = !gt2::pc::unlockSimulationEvents;
-                    if (selected == 6 && page == 2) { page = 0; selected = 0; }
+                    if (selected == 7 && accept) {
+                        try {status=arcadeGarageCheat ? arcadeGarageCheat() : "Available in Arcade menus. Cheats are disabled in races.";}
+                        catch (const std::exception& e) {status=e.what();}
+                    }
+                    if (selected == 8 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
@@ -1202,12 +1282,19 @@ void ShowSettingsMenu(GameWindow& window) {
                 } else if (page == 5) {
                     if (selected == 0 && direction) drivingSettings.mode = (drivingSettings.mode + direction + 3) % 3;
                     if (selected == 1 && direction) drivingSettings.motionHand = 1-drivingSettings.motionHand;
-                    if (selected == 2 && direction) drivingSettings.wheelHeightCm = std::clamp(drivingSettings.wheelHeightCm+direction*2,-60,0);
-                    if (selected == 3 && direction) drivingSettings.wheelDistanceCm = std::clamp(drivingSettings.wheelDistanceCm+direction*2,20,75);
+                    if (selected == 2 && direction && !window.CockpitWheelAnchored()) drivingSettings.wheelHeightCm = std::clamp(drivingSettings.wheelHeightCm+direction*2,-60,0);
+                    if (selected == 3 && direction && !window.CockpitWheelAnchored()) drivingSettings.wheelDistanceCm = std::clamp(drivingSettings.wheelDistanceCm+direction*2,20,75);
                     if (selected == 4 && direction) drivingSettings.wheelRadiusCm = std::clamp(drivingSettings.wheelRadiusCm+direction,8,40);
                     if (selected == 5 && direction) introLowerCm = std::clamp(introLowerCm+direction*50,0,2000);
-                    if (selected == 6 && accept) { page = 6; selected = 0; }
-                    status = "Saved. Wheel: grip rim. Motion: hold grip to steer.";
+                    if (selected == 6 && direction) drivingSettings.sensitivity = std::clamp(drivingSettings.sensitivity+direction*10,50,200);
+                    if (selected == 7 && direction) drivingSettings.deadZonePercent = std::clamp(drivingSettings.deadZonePercent+direction,0,10);
+                    if (selected == 8 && direction) drivingSettings.toggleGrip = !drivingSettings.toggleGrip;
+                    status = window.CockpitWheelAnchored() && (selected == 2 || selected == 3) ? "Wheel stays on dashboard. Adjust your seat in Cockpit settings." :
+                        selected == 6 ? "Below 100%: softer centre and slower wheel response; full turn stays available." :
+                        selected == 7 ? "Lower dead zone: smaller movements steer. Zero may reveal tracking jitter." :
+                        drivingSettings.toggleGrip ? "Wheel: press grip to grab, press again to release. Motion: hold grip." :
+                        "Wheel: hold grip at rim. Motion: hold grip to steer.";
+                    if (selected == 9 && accept) { page = 6; selected = 0; }
                 } else if (page == 3) {
                     if (accept) status = ApplySimulationCheat(2, catalogue[size_t(carPage) * 8 + size_t(selected)]);
                     else { const int pages = int((catalogue.size() + 7) / 8); carPage = (carPage + direction + pages) % pages; selected = 0; }
@@ -1227,10 +1314,11 @@ void ShowSettingsMenu(GameWindow& window) {
 }
 
 bool TakeCampaignChangeRequest() { const bool changed = campaignChanged; campaignChanged = false; return changed; }
+void SetArcadeGarageCheatContext(std::function<std::string()> action) {arcadeGarageCheat=std::move(action);}
+
 void SetSimulationCheatContext(gt2::career::CareerSave* save, const gt2::career::CareerData* data, const std::string& path, const gt2::career::NewGameDefaults* defaults) {
     cheatSave = save; cheatData = data; cheatPath = path;
     campaignDefaults = defaults;
-    if (!data) catalogueData = nullptr;
 }
 void PrepareNativeUi(gt2view::SceneRenderer& renderer) { UploadFont(renderer); }
 bool FrameProfilerEnabled() { return profiler; }
@@ -1310,6 +1398,7 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
         if (window.Pressed(gt2::keys::kUp) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
         if (window.Pressed(gt2::keys::kReturn)) {
             std::printf("player: selected %s\n", modes[size_t(selected)].c_str());
+            Panel(window,"GRAN TURISMO 2",{modes[size_t(selected)]=="arcade"?"Loading Arcade...":"Loading Simulation..."},-1,"","");
             window.RetainBackendForNextWindow(); return modes[size_t(selected)];
         }
         Panel(window, "GRAN TURISMO 2 / SELECT DISC", rows, selected, "Choose your disc for this session.",

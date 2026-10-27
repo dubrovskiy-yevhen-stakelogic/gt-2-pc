@@ -36,6 +36,20 @@ void CockpitBodyChecks(Check check) {
     fit.valid = true; fit.windshieldZ = -.5f; fit.windshieldY = .75f;
     fit.roofFrontZ = 0; fit.roofRearZ = 1; fit.roofY = 1.1f;
     fit.rearWindowZ = 1.5f; fit.rearWindowY = .75f;
+    for(size_t i=0;i<fit.cowl.size();++i)fit.cowl[i]={float(i)/8.f-1.f,fit.windshieldY,fit.windshieldZ};
+    {
+        std::array<gt2::CarMeshVertex,3> lip{};
+        const float points[3][3]={{-.5f,.75f,-.8f},{.5f,.75f,-.8f},{0,.85f,-.2f}};
+        for(size_t i=0;i<3;++i){std::copy_n(points[i],3,lip[i].pos);lip[i].textured=true;lip[i].palette=2;lip[i].color[0]=.8f;}
+        std::vector<gt2::CarMeshVertex> frame;
+        gt2view::cockpit_detail::AppendWindowFrame(lip,fit,frame);
+        bool paint=false,lining=false;
+        for(const auto& v:frame) {
+            if(v.pos[2]<fit.windshieldZ-.001f){paint=true;check(v.textured && v.palette==2 && v.color[0]==.8f,"window frame preserves the bonnet-side paint");}
+            if(v.pos[2]>fit.windshieldZ+.001f){lining=true;check(!v.textured && v.color[0]==gt2view::kCockpitInteriorRgb[0],"window frame keeps opaque cabin-side lining");}
+        }
+        check(paint && lining,"a shared bonnet/window triangle is split at the cabin boundary");
+    }
     const auto body = gt2view::BuildCockpitBody(model, texture, fit);
     check(body.exteriorPolygons == std::vector<size_t>{1}, "cockpit reflections preserve the bonnet and exclude removed glazing");
     check(body.vertices.size() == 3 && body.windowTriangles == 2, "window glass is removed geometrically, never the bonnet");
@@ -277,7 +291,20 @@ void CockpitCorpus(const char* discPath, const char* output, Check check) {
         if (!fit.valid) continue;
         auto texturePath = entry.path; texturePath.replace(texturePath.find(".cdo"), 4, ".cdp");
         const auto texture = gt2::ParseCarTexture(volume.Read(texturePath));
-        const auto body = gt2view::BuildCockpitBody(model, texture, fit);
+        {
+        std::array<gt2::CarMeshVertex,3> lip{};
+        const float points[3][3]={{-.5f,.75f,-.8f},{.5f,.75f,-.8f},{0,.85f,-.2f}};
+        for(size_t i=0;i<3;++i){std::copy_n(points[i],3,lip[i].pos);lip[i].textured=true;lip[i].palette=2;lip[i].color[0]=.8f;}
+        std::vector<gt2::CarMeshVertex> frame;
+        gt2view::cockpit_detail::AppendWindowFrame(lip,fit,frame);
+        bool paint=false,lining=false;
+        for(const auto& v:frame) {
+            if(v.pos[2]<fit.windshieldZ-.001f){paint=true;check(v.textured && v.palette==2 && v.color[0]==.8f,"window frame preserves the bonnet-side paint");}
+            if(v.pos[2]>fit.windshieldZ+.001f){lining=true;check(!v.textured && v.color[0]==gt2view::kCockpitInteriorRgb[0],"window frame keeps opaque cabin-side lining");}
+        }
+        check(paint && lining,"a shared bonnet/window triangle is split at the cabin boundary");
+    }
+    const auto body = gt2view::BuildCockpitBody(model, texture, fit);
         const auto straightSill=fit;
         gt2view::FitCockpitSideSills(fit,body.windowOpenings);
         gt2view::RefineCockpitEye(fit, body.vertices, texture, body.glassMasks);

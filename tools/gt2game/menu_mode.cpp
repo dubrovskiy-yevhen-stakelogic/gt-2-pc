@@ -1,5 +1,6 @@
 // gt2game --menu: the GT-mode menus (src/game/menu, gt2view/menu_view). See menu_mode.h.
 #include "menu_mode.h"
+#include "gt2view/cockpit_badge.h"
 #include "pc_overlay.h"
 
 #include "platform/os/keys.h"
@@ -150,7 +151,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
                 audioEvents = std::fopen(eventsPath.c_str(), "w");
                 if (audioEvents) menuAudio->SetEventLog(audioEvents);
             }
-            if (!menuAudio->OpenDevice(error)) std::printf("menu sound: no device (%s), running silently\n", error.c_str());
+            if (!menuAudio->OpenDevice(error,window.Pacing() && !gt2game::VrDeterministic())) std::printf("menu sound: no device (%s), running silently\n", error.c_str());
         } catch (const std::exception& e) {
             std::printf("menu sound: %s - running silently\n", e.what());
             menuAudio.reset();
@@ -327,6 +328,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
                 cv->Append(out, carProjection, paint, renderer.AspectRatio(), options.squarePixels);
             };
         }
+        if(viewport && car.shown)gt2view::AppendCockpitBadge(frame.prims,carView->HasNativeInterior(),viewport->x0+8,viewport->y0+44);
         std::vector<gt2view::DrawItem> items;
         view.Build(frame, renderer.AspectRatio(), items, options.squarePixels, layer3d);
         std::string shotPath, comparePath;

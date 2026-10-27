@@ -125,6 +125,8 @@ struct ArcNameLogo {
     std::array<bool, 2> loaded{};       // +0x1C
     std::array<int16_t, 2> w{}, h{};    // +0xA / +0xE
     uint32_t uploads = 0;
+    std::array<std::string,2> textNames{};
+    const HudFont* textFont = nullptr;
     void Clear() { ids = {}; loaded = {}; slot = 0; }
     // 0x80016ECC + the upload 0x80016CA4 at once (the original uploads in its draw callback 0x80015654 one or two fields later).
     void Set(const ArcadeMenuAssets& a, MenuVram& vram, int model, uint32_t carId);
@@ -247,7 +249,7 @@ private:
     std::vector<ArcGarageEntry> garageInfo_;
     MenuListWidget list_;
     int listTimer_ = 0;                           // view + 0x24 in the garage view
-    std::array<int16_t, 100> order_{};            // 0x800F1370: row -> car (identity)
+    std::vector<int16_t> order_;            // 0x800F1370: row -> car (identity)
     int garageCar_ = -1;                          // selection + 8
     std::array<int16_t, 5> garageFigures_{};      // 0x80016A7C: power, 0, torque, 0, weight
     int garageDrive_ = 0;                         // model + 0x29E

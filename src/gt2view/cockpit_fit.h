@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <span>
 #include <utility>
 #include <vector>
@@ -26,15 +27,58 @@ struct CockpitFit {
     std::array<std::array<float, 3>, 2> rearCowl{{{-0.75f, 0.70f, 1.6f}, {0.75f, 0.70f, 1.6f}}};
     std::array<float, 3> eye{-0.28f, 0.98f, -0.05f};
     std::array<float, 3> mirror{0.f, 1.03f, -.2f};
+    std::array<float, 4> nativeWheel{}; // authored centre xyz, radius; zero radius means no rim
+    std::array<float, 4> speedometer{}; // native cabin display; width 0 disables it
+    std::array<std::array<float,5>,4> wheelWells{}; // centre xyz, tyre radius, width
     std::array<std::array<float, 3>, 17> cowl{};
+    std::array<std::array<float, 3>, 17> bonnetJoin{};
+    bool bonnetJoinValid = false;
+    std::array<std::array<std::array<float,3>,17>,5> bonnetSeal{};
+    bool bonnetSealValid=false;
     // Outer door-card boundary, front to back, with uniform Z stations per side.
     std::array<std::array<std::array<float, 3>, 17>, 2> sideSill{};
     bool sideSillValid = false;
+    bool nativeInterior = false; // Authored furniture retains its own seating and wheel placement.
+    bool smoothShell = false; // Imported closed body: continuous inner roof/window surrounds.
+    bool authoredUpperShell = false; // Retain the source roof/pillars instead of generating a second frame.
     bool valid = false, openTop = false;
+    bool operator==(const CockpitFit&) const = default;
 };
 
 namespace cockpit_detail {
-inline float SurfaceHeight(std::span<const gt2::CarMeshVertex> mesh, float z, float x = 0.0f) {
+inline float CowlZAt(const CockpitFit& fit,float x) {
+    for(size_t i=1;i<fit.cowl.size();++i)if(x<=fit.cowl[i][0] || i+1==fit.cowl.size()) {
+        const auto& a=fit.cowl[i-1];const auto& b=fit.cowl[i];
+        const float t=std::clamp((x-a[0])/std::max(.001f,b[0]-a[0]),0.f,1.f);
+        return a[2]+(b[2]-a[2])*t;
+    }
+    return fit.windshieldZ;
+}
+// Audit reference triangles must lie wholly ahead of the curved cabin cut.
+inline bool TriangleAheadOfCowl(const std::array<std::array<float,3>,3>& triangle,
+                                const std::array<std::array<float,3>,17>& cowl,float tolerance=0.f) {
+    for(const auto& v:triangle)for(size_t k=1;k<cowl.size();++k)
+        if(v[0]<=cowl[k][0] || k+1==cowl.size()) {
+            const auto& a=cowl[k-1];const auto& b=cowl[k];
+            const float t=std::clamp((v[0]-a[0])/std::max(.001f,b[0]-a[0]),0.f,1.f);
+            if(v[2]>a[2]+(b[2]-a[2])*t+tolerance)return false;
+            break;
+        }
+    // The cabin boundary is not convex. A long triangle can have all three
+    // vertices outside while its middle crosses the seating volume. Check
+    // each slope change too; together these exhaust the piecewise-linear gap.
+    for(const auto& station:cowl)for(size_t edge=0;edge<3;++edge) {
+        const auto& a=triangle[edge];const auto& b=triangle[(edge+1)%3];
+        if(station[0]<std::min(a[0],b[0]) || station[0]>std::max(a[0],b[0]))continue;
+        if(std::abs(b[0]-a[0])<1e-7f)continue;
+        const float t=(station[0]-a[0])/(b[0]-a[0]);
+        if(a[2]+(b[2]-a[2])*t>station[2]+tolerance)return false;
+    }
+    return true;
+}
+
+inline float SurfaceHeight(std::span<const gt2::CarMeshVertex> mesh, float z, float x = 0.0f,
+                           float ceiling = std::numeric_limits<float>::infinity()) {
     float height = -std::numeric_limits<float>::infinity();
     for (size_t i = 0; i + 2 < mesh.size(); i += 3) {
         const float* a = mesh[i].pos;
@@ -46,10 +90,52 @@ inline float SurfaceHeight(std::span<const gt2::CarMeshVertex> mesh, float z, fl
         if (std::abs(determinant) < 1e-8f) continue;
         const float u = ((x - a[0]) * cz - (z - a[2]) * cx) / determinant;
         const float v = (bx * (z - a[2]) - bz * (x - a[0])) / determinant;
-        if (u >= -1e-5f && v >= -1e-5f && u + v <= 1.00001f)
-            height = std::max(height, a[1] + u * (b[1] - a[1]) + v * (c[1] - a[1]));
+        if (u >= -1e-5f && v >= -1e-5f && u + v <= 1.00001f) {
+            const float y=a[1] + u * (b[1] - a[1]) + v * (c[1] - a[1]);
+            if(y<=ceiling)height=std::max(height,y);
+        }
     }
     return height;
+}
+
+// Trim is an underside closure, not a copy of wipers, mirror stalks or
+// isolated windshield triangles. Lower single-station peaks; never raise
+// surrounding points to an accessory, which would change the bonnet shape.
+inline void RemoveTrimSpikes(std::array<std::array<float,3>,17>& curve, bool underside=false) {
+    for(size_t pass=0;pass<curve.size();++pass)
+        for(size_t i=1;i+1<curve.size();++i)
+                curve[i][1]=std::min(curve[i][1],underside ? (curve[i-1][1]+curve[i+1][1])*.5f+.002f : std::max(curve[i-1][1],curve[i+1][1])+.025f);
+}
+
+// Follow the real surface between bonnet and cowl. A single straight band
+// can cross a concave bonnet even when both of its edges are underneath it.
+inline void FitBonnetSeal(CockpitFit& fit,std::span<const gt2::CarMeshVertex> mesh) {
+    for(size_t row=0;row<fit.bonnetSeal.size();++row) {
+        const float t=float(row)/float(fit.bonnetSeal.size()-1);
+        for(size_t i=0;i<fit.cowl.size();++i) {
+            auto& p=fit.bonnetSeal[row][i];
+            for(size_t k=0;k<3;++k)p[k]=fit.bonnetJoin[i][k]*(1-t)+fit.cowl[i][k]*t;
+            const float y=SurfaceHeight(mesh,p[2],p[0],p[1]+.012f);
+            if(std::isfinite(y))p[1]=std::min(p[1],y);
+            p[1]-=.030f;
+        }
+        RemoveTrimSpikes(fit.bonnetSeal[row],true);
+    }
+    // A sparse cell may bridge a steep wing recess. Bound its entire patch
+    // below the sampled surface, rather than only fitting its four corners.
+    const auto sampled=fit.bonnetSeal;
+    for(size_t row=1;row<sampled.size();++row)for(size_t i=1;i<sampled[0].size();++i) {
+        float lowest=std::numeric_limits<float>::infinity();
+        const std::array<std::array<float,3>,4> quad{sampled[row-1][i-1],sampled[row-1][i],sampled[row][i],sampled[row][i-1]};
+        for(size_t half=0;half<2;++half)for(int a=0;a<=6;++a)for(int b=0;b<=6-a;++b) {
+            const float u=float(a)/6,v=float(b)/6;std::array<float,3> p{};
+            for(size_t k=0;k<3;++k)p[k]=quad[0][k]*(1-u-v)+quad[half+1][k]*u+quad[half+2][k]*v;
+            const float y=SurfaceHeight(mesh,p[2],p[0]);
+            if(std::isfinite(y))lowest=std::min(lowest,y-.015f);
+        }
+        for(size_t r:{row-1,row})for(size_t c:{i-1,i})fit.bonnetSeal[r][c][1]=std::min(fit.bonnetSeal[r][c][1],lowest);
+    }
+    fit.bonnetSealValid=true;
 }
 
 inline float CabinSurfaceHeight(std::span<const gt2::CarMeshVertex> mesh, float z, float x = 0.0f) {
@@ -150,7 +236,8 @@ inline CabinShell ConnectedCabinShell(const gt2::CarLod& lod, std::span<const gt
 inline void WindowCorners(std::span<const gt2::CarMeshVertex> mesh, std::span<const gt2::CarPolygon> polygons, float lowerZ, float lowerY,
                           float upperZ, float upperY, float halfWidth, bool rear,
                           std::array<std::array<float, 3>, 2>& lower,
-                          std::array<std::array<float, 3>, 2>& upper) {
+                          std::array<std::array<float, 3>, 2>& upper, bool connectedWindow = true,
+                          std::vector<gt2::CarMeshVertex>* windowSurface = nullptr) {
     for (size_t side = 0; side < 2; ++side) {
         const float sign = side ? 1.0f : -1.0f;
         lower[side] = {sign * halfWidth * 0.90f, lowerY, lowerZ};
@@ -158,6 +245,17 @@ inline void WindowCorners(std::span<const gt2::CarMeshVertex> mesh, std::span<co
     }
     float lowerExtent[2]{}, upperExtent[2]{}, extraExtent[2]{};
     auto extraLower = lower;
+    // Detached mirrors can have the same height/slope as the windscreen.
+    // Their extremities are not cabin corners. Retain components which reach
+    // the actual centre-line window surface, including separately authored glass.
+    std::vector<size_t> roots(mesh.size()/3);
+    for(size_t i=0;i<roots.size();++i)roots[i]=i;
+    auto root=[&](size_t i){while(roots[i]!=i){roots[i]=roots[roots[i]];i=roots[i];}return i;};
+    std::map<std::array<float,3>,size_t> shared;
+    struct Candidate { size_t at; bool atHeader; };
+    std::vector<Candidate> candidates;
+    std::vector<bool> windowComponent(roots.size());
+    bool hasCentreSurface=false;
     size_t at = 0;
     for (const auto& polygon : polygons) {
         const size_t count = polygon.IsQuad() ? 6 : 3;
@@ -171,14 +269,41 @@ inline void WindowCorners(std::span<const gt2::CarMeshVertex> mesh, std::span<co
             float nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
             const float length = std::sqrt(nx * nx + ny * ny + nz * nz);
             if (length < 1e-8f) continue;
+            // Use the same facing distinction as side-window removal. A
+            // quarter-window joined to the A-pillar must not become a swept
+            // windscreen corner (and a deep, asymmetric dashboard wing).
+            if(connectedWindow && std::abs(nx)>=std::abs(nz)*1.1f && std::abs(nx)>=length*.4f &&
+               ((a[0]>halfWidth*.30f && b[0]>halfWidth*.30f && c[0]>halfWidth*.30f) ||
+                (a[0]<-halfWidth*.30f && b[0]<-halfWidth*.30f && c[0]<-halfWidth*.30f)))continue;
             if (ny < 0) { ny = -ny; nz = -nz; }
             const float z = (a[2] + b[2] + c[2]) / 3.0f;
             if (ny / length < 0.12f || (rear ? nz : -nz) / length < 0.14f ||
                 (rear ? std::max({a[1], b[1], c[1]}) : faceMaxY) < upperY - (rear ? .13f : .22f) ||
                 z < std::min(lowerZ, upperZ) - 0.15f || z > std::max(lowerZ, upperZ) + 0.15f) continue;
-            for (const float* p : {a, b, c}) {
+            const bool atHeader=std::max({a[1],b[1],c[1]})>=upperY-(rear?.13f:.22f);
+            candidates.push_back({i,atHeader});
+        }
+        at = end;
+    }
+    // Follow only window-facing surfaces. A mirror welded to a door is still
+    // not part of the windshield; connectivity through the whole body would
+    // allow the fitting walk to leave the window and reach that accessory.
+    if(connectedWindow)for(const auto& candidate:candidates)for(size_t j=0;j<3;++j){
+        const auto* p=mesh[candidate.at+j].pos;
+        const auto [it,inserted]=shared.emplace(std::array{p[0],p[1],p[2]},candidate.at/3);
+        if(!inserted)roots[root(candidate.at/3)]=root(it->second);
+    }
+    for(const auto& candidate:candidates){
+        const float a=mesh[candidate.at].pos[0],b=mesh[candidate.at+1].pos[0],c=mesh[candidate.at+2].pos[0];
+        if(std::min({a,b,c})<=0 && std::max({a,b,c})>=0){windowComponent[root(candidate.at/3)]=true;hasCentreSurface=true;}
+    }
+    for(const auto& candidate:candidates){
+        if(connectedWindow && hasCentreSurface && !windowComponent[root(candidate.at/3)])continue;
+        if(windowSurface)windowSurface->insert(windowSurface->end(),mesh.begin()+candidate.at,mesh.begin()+candidate.at+3);
+        const float* a=mesh[candidate.at].pos;const float* b=mesh[candidate.at+1].pos;const float* c=mesh[candidate.at+2].pos;
+        for (const float* p : {a, b, c}) {
                 if (p[1] < lowerY - 0.20f || p[1] > upperY + 0.13f || std::abs(p[0]) > halfWidth + 0.06f) continue;
-                const bool triangleAtHeader = std::max({a[1], b[1], c[1]}) >= upperY - (rear ? .13f : .22f);
+                const bool triangleAtHeader = candidate.atHeader;
                 const size_t side = p[0] >= 0 ? 1 : 0;
                 const float extent = std::abs(p[0]);
                 if (extent < halfWidth*.30f) continue;
@@ -193,8 +318,6 @@ inline void WindowCorners(std::span<const gt2::CarMeshVertex> mesh, std::span<co
                     upper[side] = {p[0], p[1], p[2]}; upperExtent[side] = extent;
                 }
             }
-        }
-        at = end;
     }
     // A curved quad's outer cowl corner may belong only to its lower triangle.
     if (!rear) for (size_t side = 0; side < 2; ++side)
@@ -308,12 +431,24 @@ inline void FitCockpitSideSills(CockpitFit& fit, std::span<const gt2::CarMeshVer
     fit.sideSillValid=true;
 }
 
-inline CockpitFit FitCockpit(const gt2::CarModel& model) {
+// The last argument is used by the owned-data regression audit to reproduce
+// the old detached-accessory fit; production callers use the connected surface.
+inline CockpitFit FitCockpit(const gt2::CarModel& model, std::span<const gt2::CarMeshVertex> replacement = {},
+                             bool connectedWindow = true) {
     CockpitFit fit;
+    for (size_t i=0;i<4;++i) {
+        const auto& w=model.wheels[i];
+        fit.wheelWells[i]={w.z/4096.f,w.y/4096.f,w.x/4096.f,
+            (i<2?model.wheelRadiusFront:model.wheelRadiusRear)/4096.f,
+            (i<2?model.wheelWidthFront:model.wheelWidthRear)/4096.f};
+    }
     if (model.lods.empty() || model.lods[0].vertices.empty()) return fit;
     gt2::CarMeshOptions options;
     options.wheels = false;
-    const auto mesh = gt2::BuildCarMesh(model, options);
+    const auto mesh = replacement.empty() ? gt2::BuildCarMesh(model, options) :
+        std::vector<gt2::CarMeshVertex>(replacement.begin(), replacement.end());
+    const std::vector<gt2::CarPolygon> replacementPolygons(replacement.size()/3);
+    const auto& polygons = replacement.empty() ? model.lods[0].polygons : replacementPolygons;
     if (mesh.empty()) return fit;
     std::array<float, 3> lo{mesh[0].pos[0], mesh[0].pos[1], mesh[0].pos[2]}, hi = lo;
     for (const auto& vertex : mesh)
@@ -350,8 +485,12 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
         const float roof = profile[end][1];
         const float behind = cockpit_detail::CabinSurfaceHeight(mesh, profile[end][0] + 0.20f);
         const bool supported = std::isfinite(behind) && behind >= roof - 0.10f;
+        // Imported roadsters can omit the roof entirely. A supported bonnet
+        // step must not outrank a much taller unsupported windscreen header.
+        const bool tallerReplacement=!replacement.empty() && roof>bestRoof+.30f;
+        const bool comparableRoof=replacement.empty() || roof>=bestRoof-.30f;
         if (rise > 0.17f && profile[end][0] - profile[i][0] > 0.12f &&
-            (windStart == profile.size() || (supported && !bestSupported) || (supported == bestSupported &&
+            (windStart == profile.size() || tallerReplacement || (comparableRoof && supported && !bestSupported) || (supported == bestSupported &&
              (roof > bestRoof + 0.03f || (std::abs(roof - bestRoof) <= 0.03f && rise > bestRise))))) {
             windStart = i; windEnd = end; bestRoof = roof; bestRise = rise; bestSupported = supported;
         }
@@ -379,7 +518,7 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
     };
     auto ends = rearBreaks();
     // Ignore a separate wing only when a lower, connected roof continues underneath it.
-    auto shell = cockpit_detail::ConnectedCabinShell(model.lods[0], mesh, fit.roofFrontZ, fit.roofFrontY);
+    auto shell = replacement.empty() ? cockpit_detail::ConnectedCabinShell(model.lods[0], mesh, fit.roofFrontZ, fit.roofFrontY) : cockpit_detail::CabinShell{};
     if (!shell.vertices.empty()) {
         const float rearZ = profile[ends[0]][0], rearY = profile[ends[0]][1];
         const float attachedY = cockpit_detail::CabinSurfaceHeight(shell.vertices, rearZ);
@@ -393,7 +532,7 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
     auto attachedProfile = shell.vertices.empty() ? std::vector<std::array<float, 2>>{} : cockpit_detail::CentreProfile(shell.vertices);
     if (attachedProfile.size() < 3) shell = {};
     const std::span<const gt2::CarMeshVertex> cabin = shell.vertices.empty() ? std::span(mesh) : std::span(shell.vertices);
-    const std::span<const gt2::CarPolygon> cabinPolygons = shell.vertices.empty() ? std::span(model.lods[0].polygons) : std::span(shell.polygons);
+    const std::span<const gt2::CarPolygon> cabinPolygons = shell.vertices.empty() ? std::span(polygons) : std::span(shell.polygons);
     if (!shell.vertices.empty()) {
         profile = std::move(attachedProfile);
         windEnd = size_t(std::min_element(profile.begin(), profile.end(), [&](const auto& a, const auto& b) {
@@ -417,10 +556,17 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
             fit.rearWindowZ = a[0] + (b[0] - a[0]) * t; fit.rearWindowY = a[1] + (b[1] - a[1]) * t;
         }
     }
-    cockpit_detail::WindowCorners(mesh, model.lods[0].polygons, fit.windshieldZ, fit.windshieldY, fit.roofFrontZ, fit.roofFrontY,
-                                  fit.halfWidth, false, fit.frontCowl, fit.frontHeader);
+    // Correcting trim boundaries must not recalibrate the established seat or
+    // virtual-wheel position. Keep their original body-derived lateral anchor.
+    std::array<std::array<float,3>,2> anchorCowl{},anchorHeader{};
+    cockpit_detail::WindowCorners(mesh, polygons, fit.windshieldZ, fit.windshieldY, fit.roofFrontZ, fit.roofFrontY,
+                                  fit.halfWidth, false, anchorCowl, anchorHeader, false);
+    std::vector<gt2::CarMeshVertex> frontWindowSurface;
+    cockpit_detail::WindowCorners(mesh, polygons, fit.windshieldZ, fit.windshieldY, fit.roofFrontZ, fit.roofFrontY,
+                                  fit.halfWidth, false, fit.frontCowl, fit.frontHeader, connectedWindow,
+                                  connectedWindow?&frontWindowSurface:nullptr);
     cockpit_detail::WindowCorners(cabin, cabinPolygons, fit.rearWindowZ, fit.rearWindowY, fit.roofRearZ, fit.roofRearY,
-                                  fit.halfWidth, true, fit.rearCowl, fit.rearHeader);
+                                  fit.halfWidth, true, fit.rearCowl, fit.rearHeader, false);
     auto widthOf = [](const auto& corners) { return (corners[1][0] - corners[0][0]) * 0.5f; };
     fit.windshieldHalfWidth = widthOf(fit.frontCowl); fit.roofFrontHalfWidth = widthOf(fit.frontHeader);
     for (size_t i=0; i<fit.cowl.size(); ++i) {
@@ -430,7 +576,10 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
         auto& point=fit.cowl[i];
         point={x,fit.windshieldY+(corner[1]-fit.windshieldY)*side,
                fit.windshieldZ+(corner[2]-fit.windshieldZ)*side};
-        const auto section=cockpit_detail::CentreProfile(mesh,x);
+        // Cross-sections must use the same connected windscreen as its corners.
+        // Sampling the complete car here reintroduced mirror/quarter-window
+        // peaks between otherwise correct endpoints.
+        const auto section=cockpit_detail::CentreProfile(frontWindowSurface.empty()?mesh:std::span<const gt2::CarMeshVertex>(frontWindowSurface),x);
         float best=std::numeric_limits<float>::infinity();
         for (size_t j=0; j+1<section.size(); ++j) {
             const auto& a=section[j];
@@ -444,6 +593,16 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
         }
     }
     fit.cowl.front()=fit.frontCowl[0]; fit.cowl.back()=fit.frontCowl[1];
+    cockpit_detail::RemoveTrimSpikes(fit.cowl);
+    for(size_t i=0;i<fit.cowl.size();++i) {
+        auto point=fit.cowl[i];point[2]-=.18f;
+        const float y=cockpit_detail::SurfaceHeight(mesh,point[2],point[0],point[1]+.012f);
+        if(std::isfinite(y))point[1]=y;
+        fit.bonnetJoin[i]=point;
+    }
+    fit.bonnetJoinValid=true;
+    cockpit_detail::RemoveTrimSpikes(fit.bonnetJoin,true);
+    cockpit_detail::FitBonnetSeal(fit,mesh);
     fit.roofRearHalfWidth = widthOf(fit.rearHeader); fit.rearWindowHalfWidth = widthOf(fit.rearCowl);
     fit.roofY = std::max(fit.roofFrontY, fit.roofRearY);
     for (int zi = 0; zi <= 12; ++zi)
@@ -453,10 +612,10 @@ inline CockpitFit FitCockpit(const gt2::CarModel& model) {
             const float y = cockpit_detail::CabinSurfaceHeight(cabin, z, x);
             if (std::isfinite(y)) fit.roofY = std::max(fit.roofY, y);
         }
-    const float headerZ = std::max(fit.frontHeader[0][2], fit.frontHeader[1][2]);
+    const float headerZ = std::max(anchorHeader[0][2], anchorHeader[1][2]);
     const float eyeMinZ = headerZ + 0.12f;
     const float eyeMaxZ = std::max(eyeMinZ, fit.roofRearZ - 0.18f);
-    fit.eye[0] = -0.34f * std::min(fit.halfWidth, fit.windshieldHalfWidth);
+    fit.eye[0] = -0.34f * std::min(fit.halfWidth, widthOf(anchorCowl));
     fit.eye[2] = std::clamp(fit.windshieldZ + std::clamp(wheelbase * 0.25f, 0.55f, 0.72f), eyeMinZ, eyeMaxZ);
     int overhead = 0;
     for (int i = -2; i <= 2; ++i) {

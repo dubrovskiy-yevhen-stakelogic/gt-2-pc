@@ -1,4 +1,5 @@
 #pragma once
+#include "gt2view/model_texture_atlas.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -47,7 +48,20 @@ public:
     void UploadVram(uint32_t firstRow, uint32_t rowCount, const uint16_t* words);
     // Copies `count` RGBA8 texels (R in the low byte) into the external texture store at `firstTexel`
     // (kExternalTexture vertices address it; see scene_assets.h UseExternalCar).
-    void UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba);
+    void UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba) override;
+    void BakePaintEnvironment(const std::array<std::vector<DrawItem>,6>& faces) override;
+    void BeginModelTextures() override;
+    void ClearPaintProbes() override;
+    void CachePaintProbe(int key,const std::array<std::vector<DrawItem>,6>& faces) override;
+    void SelectPaintProbe(int key) override;
+    void QueueNativeEnvironment(const std::array<std::vector<DrawItem>,3>& faces,
+        const std::array<std::array<float,16>,3>& cameras) override;
+    void SetNativeModelVertices(uint32_t first,const std::vector<NativeModelVertex>& vertices) override;
+    void SetNativeModelMaterials(uint32_t first,const std::vector<NativeModelMaterial>& materials) override;
+    void SetNativeSceneLighting(const NativeSceneLighting& light) override;
+    const std::vector<uint8_t>& PaintProbeForAudit(int key) const {return paintProbes_.at(key);}
+    std::vector<uint8_t> NativeEnvironmentForAudit();
+    const auto& NativeEnvironmentItemsForAudit() const {return nativeEnvironmentFaces_;}
 
     // If screenshotPath is not empty the presented image is also saved as PNG. items[0, sceneItems) are the scene
     // (RenderOptions apply to them: an offscreen target at the scene scale with MSAA, resolved and scaled into the
@@ -73,7 +87,11 @@ public:
     void EnableDecodedTextures(bool enabled) { decodedEnabled_ = enabled; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }
+    double EnvironmentGpuMilliseconds() const {return environmentGpuMs_;}
     double GpuMilliseconds() const { return gpuMs_; } // -1 when queue timestamps are unavailable
+    // Corpus tools replace all model slots between cars. Give each independent
+    // capture the same empty atlas as a fresh renderer, without rebuilding Vulkan.
+    void ResetModelAtlasForAudit();
     void SaveCapture(const std::string& path, const std::vector<DrawItem>& items, size_t sceneItems);
     void LoadCapture(const std::string& path, std::vector<DrawItem>& items, size_t& sceneItems);
 
@@ -93,6 +111,10 @@ public:
     // The per-eye matrices of the frame about to be recorded (vr_rig.h View::worldVP / skyVP).
     void SetStereoViews(const StereoViews& views) { stereoViews_ = views; }
     // Records `items` into the stereo target, once for both eyes. `screenshotPath` saves the left eye as PNG.
+    std::vector<uint8_t> CaptureStereoForAudit(const std::vector<DrawItem>& items,size_t sceneItems);
+    std::vector<SceneVertex> VerticesForAudit(const DrawItem& item) const;
+    // Restore/tag already-promoted vertices without remapping atlas coordinates.
+    void SetVerticesForAudit(uint32_t first,const std::vector<SceneVertex>& vertices) { WaitFrame();SetVerticesRaw(first,vertices); }
     void DrawStereo(const std::vector<DrawItem>& items, const std::string& screenshotPath = {}, size_t sceneItems = 0);
 
     struct CullingStats { uint32_t tested = 0, culled = 0; };
@@ -123,22 +145,23 @@ private:
     void DestroySwapchain();
     void CreatePipeline();
     // `stereo` = the stereo vertex shader (scene_stereo.vert); `viewMask` != 0 = its multiview variant.
-    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[6], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false);
-    void DestroyPipelineSet(VkPipeline set[6]);
+    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[9], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false, bool modelOnly = false, bool uiOnly = false, bool backCull = false, bool environmentOnly = false);
+    void DestroyPipelineSet(VkPipeline set[9]);
     struct Image {
         VkImage image = VK_NULL_HANDLE;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;   // the whole image (2D, or 2D_ARRAY when layers > 1)
-        VkImageView layer[2] = {};           // one view per array layer (the two-pass stereo path)
+        VkImageView layer[6] = {};           // individual stereo eyes or environment cube faces
         uint32_t layers = 1, mipLevels = 1;
         bool ownsImage = true;
     };
     Image CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples, VkImageAspectFlags aspect,
-                      uint32_t layers = 1, uint32_t mipLevels = 1);
+                      uint32_t layers = 1, uint32_t mipLevels = 1,bool cube = false);
     void DestroyImage(Image& image);
     void DestroyStereoTarget();
     void PrepareDecodedTextures(const std::vector<DrawItem>& items, size_t sceneItems);
     void UploadDecodedTextures();
+    void PrepareFrameTextures(const std::vector<DrawItem>& items,size_t sceneItems);
     // Records `items` once per eye into the stereo target (`layer` < 0 = one multiview pass).
     void RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer);
     void RecordMirrorPass(const std::vector<DrawItem>& items, size_t sceneItems);
@@ -147,7 +170,7 @@ private:
     VkSampleCountFlagBits ClampSamples(uint32_t requested) const;
     // Records items[first, last) into the current dynamic rendering (target of `extent`), with `pipelines` (sample count
     // of the target); items below `sceneItems` get the scene's option bits.
-    void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[6], size_t sceneItems);
+    void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[9], size_t sceneItems);
     // The swapchain image `imageIndex` with the window's depth buffer, as a target for BeginTargetRendering.
     RenderTarget WindowTarget(uint32_t imageIndex) const;
     // Begins dynamic rendering into `target` (colour loaded or cleared, depth cleared and not stored).
@@ -167,6 +190,8 @@ private:
     VkDevice device_ = VK_NULL_HANDLE;
     PFN_vkCmdBeginRendering cmdBeginRendering_ = nullptr;
     PFN_vkCmdEndRendering cmdEndRendering_ = nullptr;
+    PFN_vkCmdSetFragmentShadingRateKHR cmdSetShadingRate_ = nullptr;
+    VkSampleCountFlags softParticleRateSamples_ = 0;
     uint32_t queueFamily_ = 0;
     VkQueue queue_ = VK_NULL_HANDLE;
 
@@ -184,7 +209,7 @@ private:
     VkFence fence_ = VK_NULL_HANDLE;
     VkQueryPool gpuQueries_ = VK_NULL_HANDLE;
     uint32_t timestampBits_ = 0;
-    double timestampNs_ = 0, gpuMs_ = -1;
+    double timestampNs_ = 0, gpuMs_ = -1,environmentGpuMs_=-1;
     bool gpuQueryPending_ = false;
     VkSemaphore acquired_ = VK_NULL_HANDLE, rendered_ = VK_NULL_HANDLE;
 
@@ -193,9 +218,13 @@ private:
     VkDescriptorSet descSet_ = VK_NULL_HANDLE;
     VkDescriptorSet mirrorSourceSet_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-    VkPipeline pipelines_[6] = {}; // [0..3] PS1 blend modes, [4] opaque, [5] UI coverage
-    VkPipeline cachedMenuPipelines_[6] = {}; // Mono menu cars: the texture-only fragment path.
-    VkPipeline msaaPipelines_[6] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
+    VkPipeline pipelines_[9] = {}; // [0..3] PS1 blend modes, [4] opaque, [5] UI coverage
+    VkPipeline environmentPipelines_[9] = {};
+    Buffer environmentCodes_;
+    std::unordered_map<uint64_t,bool> environmentCodedRanges_;
+    VkPipeline cachedMenuPipelines_[9] = {}; // Mono menu cars: the texture-only fragment path.
+    VkPipeline msaaModelPipelines_[9] = {}, msaaModelCullPipelines_[9] = {};
+    VkPipeline msaaPipelines_[9] = {}; // the same for the scene target's sample count (msaaSamples_ > 1)
     VkSampleCountFlagBits msaaSamples_ = VK_SAMPLE_COUNT_1_BIT;
 
 
@@ -208,6 +237,25 @@ private:
     static constexpr VkExtent2D kMirrorExtent{480, 128};
     Image mirrorColor_, mirrorDepth_;
     bool mirrorInitialized_ = false, recordMirror_ = false;
+    Image paintStudio_,paintCourse_;
+    Image nativeEnvironment_,nativeEnvironmentDepth_;
+    Buffer nativeEnvironmentViews_;
+    std::array<std::vector<DrawItem>,3> nativeEnvironmentFaces_;
+    std::array<std::vector<uint8_t>,3> nativeEnvironmentCached_;
+    bool recordNativeEnvironment_=false;
+    bool auditStereoReadback_=false;
+    std::array<std::array<float,16>,3> nativeCameraShadow_{};
+    bool nativeCameraKnown_=false,nativeCameraActive_=false;
+    bool nativeEnvironmentPending_=false,nativeEnvironmentInitialized_=false;
+    void RecordNativeEnvironment();
+    Buffer paintUpload_;
+    Buffer paintProbeUpload_;
+    std::unordered_map<int,std::vector<uint8_t>> paintProbes_;
+    int paintProbeSelected_=-1;
+    bool paintProbePending_=false;
+    void UploadPaintProbe();
+    bool paintPending_=true,paintCourseInitialized_=false;
+    void UploadPaintEnvironment();
     bool sceneTargets_ = false;
     // Offscreen mode (the XR path): the one colour image the frames are recorded into (also images_[0] / views_[0]).
     bool offscreen_ = false;
@@ -226,10 +274,18 @@ private:
     void UploadRateImage();
     VkImage externalStereoImage_ = VK_NULL_HANDLE;
     std::unordered_map<VkImage, Image> externalStereoViews_;
-    VkPipeline cachedPipelines_[6] = {};
-    VkPipeline cachedHudPipelines_[6] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
+    VkPipeline cachedPipelines_[9] = {};
+    VkPipeline modelPipelines_[9] = {};
+    VkPipeline stereoModelPipelines_[9] = {};
+    VkPipeline modelCullPipelines_[9] = {},stereoModelCullPipelines_[9] = {};
+    struct ModelRasterRun {uint32_t first,count;bool cull;};
+    std::unordered_map<uint64_t,std::vector<ModelRasterRun>> modelRasterRuns_;
+    std::unordered_map<uint64_t,bool> modelRanges_;
+    std::vector<uint32_t> vertexFlags_; // CPU copy; never scan mapped GPU memory for draw classification.
+    VkPipeline uiPipelines_[9] = {};
+    VkPipeline cachedHudPipelines_[9] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
     std::vector<uint8_t> cachedDraws_;
-    VkPipeline stereoPipelines_[6] = {}; // the stereo shader at the stereo target's sample count
+    VkPipeline stereoPipelines_[9] = {}; // the stereo shader at the stereo target's sample count
     bool recordStereo_ = false;
     uint32_t recordEye_ = 0;             // the eye index RecordItems pushes (the two-pass path)
     uint32_t recordLayers_ = 1;          // array layers of the target being recorded (vkCmdClearAttachments)
@@ -240,6 +296,16 @@ private:
     DecodedTextureCache decoded_;
     std::unordered_map<uint64_t, std::vector<uint64_t>> materialRanges_;
     Image decodedImage_, handImage_;
+    Image modelImage_;
+    Buffer modelUpload_;
+    bool modelPending_=true, modelFullSize_=false;
+    ModelTextureAtlas modelAtlas_;
+    std::unordered_map<uint32_t,std::vector<uint32_t>> modelSourcePixels_;
+    std::unordered_map<uint32_t,uint32_t> modelSourceSizes_;
+    std::unordered_set<uint32_t> nativeTextureSources_;
+    void UploadModelImage();
+    void PromoteModelTextures(uint32_t first,const std::vector<SceneVertex>& vertices);
+    void SetVerticesRaw(uint32_t first,const std::vector<SceneVertex>& vertices);
     Buffer handUpload_;
     bool handPending_ = false;
     VkExtent2D handExtent_{1,1};
@@ -248,6 +314,7 @@ private:
     VkSampler decodedSampler_ = VK_NULL_HANDLE;
     bool decodedInitialized_ = false;
     Buffer viewBuffer_; // the uniform buffer the stereo shader reads (set 0, binding 2)
+    Buffer nativeVertexBuffer_,nativeMaterialBuffer_;
 
     // Per-vertex UV rectangle of each vertex's triangle (min u, min v, max u, max v; texel units), filled by SetVertices
     // for the smooth texture filter (vertex binding 1).

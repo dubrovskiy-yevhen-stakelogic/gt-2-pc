@@ -1,0 +1,101 @@
+{
+  "project": "gt4-pc",
+  "snapshotDate": "2026-10-27",
+  "files": [
+    {
+      "source": "src/gt4formats/common.h",
+      "destination": "native/gt4formats/common.h",
+      "sha256": "6cfc443c1e8ab8a4cc7d144a381a6f0615205d80b5a2b2c65a35624dea3e7140"
+    },
+    {
+      "source": "src/gt4formats/common.cpp",
+      "destination": "native/gt4formats/common.cpp",
+      "sha256": "7b95609325935046e9cff05850d3294b428dc16bdc49b7a30f76e43ee4215058"
+    },
+    {
+      "source": "src/gt4formats/car4.h",
+      "destination": "native/gt4formats/car4.h",
+      "sha256": "75e5d6d7520758e42b040e535f2fffaa4953101a89836416661a6a817f60756c"
+    },
+    {
+      "source": "src/gt4formats/car4.cpp",
+      "destination": "native/gt4formats/car4.cpp",
+      "sha256": "19c5ce1d9239337323f6e08415149b6fe8bdb8810085325045b9073341e238cb"
+    },
+    {
+      "source": "src/gt4formats/mdls.h",
+      "destination": "native/gt4formats/mdls.h",
+      "sha256": "d5a68db1ac6e6c8ba90bfadd68125ec536a4166bced9007714a93cec265576c1"
+    },
+    {
+      "source": "src/gt4formats/mdls.cpp",
+      "destination": "native/gt4formats/mdls.cpp",
+      "sha256": "67da7caa760f756b082cea0eb62a266f6c0600bfce4ec1094cbb93d484fb07f0"
+    },
+    {
+      "source": "src/gt4formats/tex1.h",
+      "destination": "native/gt4formats/tex1.h",
+      "sha256": "08989e4618965c731f0143e829bbb0c7f84d74dfbf4bbd392ef2fc4c61760738"
+    },
+    {
+      "source": "src/gt4formats/tex1.cpp",
+      "destination": "native/gt4formats/tex1.cpp",
+      "sha256": "4a933302b0750753fab07c82e96a557d7aa2bfc9aaac04de1baa2f2361468a8e"
+    },
+    {
+      "source": "src/game/math/vu0_matrix.h",
+      "destination": "native/game/math/vu0_matrix.h",
+      "sha256": "c88bfc3553c05dcfd4961329e2cba9897102b319b0d333c8da9df2c15e7f0d1d"
+    },
+    {
+      "source": "src/game/math/vu0_matrix.cpp",
+      "destination": "native/game/math/vu0_matrix.cpp",
+      "sha256": "c663b68615f62ca495a4ddcf421812e0d745d6ea3bb14273172eeed3b25c787a"
+    },
+    {
+      "source": "src/game/math/vu0_regs.h",
+      "destination": "native/game/math/vu0_regs.h",
+      "sha256": "932f175d79c4591c6ea0df153432dc41a6208c58470554dfc7fd121741cab483"
+    },
+    {
+      "source": "src/game/math/motion_skin.h",
+      "destination": "native/game/math/motion_skin.h",
+      "sha256": "e9868575db4b1a6cca5aa78989aff63378d5660f232117cc2d86fbdc483d59f6"
+    },
+    {
+      "source": "src/ee/fpu.h",
+      "destination": "native/ee/fpu.h",
+      "sha256": "66a7e29fa95cef69822531832471db72fc146c8596332ce377f80cb1a30d6107"
+    },
+    {
+      "source": "src/ee/fpu.cpp",
+      "destination": "native/ee/fpu.cpp",
+      "sha256": "e8e51d9f7a0c644004698e7d4c09d06d7c600e2ae924a895d82bb8ef8a914338"
+    },
+    {
+      "source": "src/ee/vu_float.h",
+      "destination": "native/ee/vu_float.h",
+      "sha256": "86d447b3fdba25b68fe454f0dd40dfea7a09209eed2dcd51d58e1f5283b2e960"
+    },
+    {
+      "source": "src/ee/vu_float.cpp",
+      "destination": "native/ee/vu_float.cpp",
+      "sha256": "3ace11369a390f008e5d6db114f3b576bec9ab0953db41824bbda091e5050663"
+    },
+    {
+      "source": "src/specdb/specdb.h",
+      "destination": "native/specdb/specdb.h",
+      "sha256": "79b0dc8ea5b3355cbd8b60d68362af05041f2863eda6581bf2cbf9cbdc0a06f8"
+    },
+    {
+      "source": "src/specdb/specdb.cpp",
+      "destination": "native/specdb/specdb.cpp",
+      "sha256": "dc231eaf83aa85f3deb247147358c21a745b3504fab9a280ebddd636c0247e49"
+    },
+    {
+      "source": "tools/gt4tool/main.cpp",
+      "destination": "asset_main.cpp",
+      "sha256": "bd97aeccef8da613b715442899a9c92d55c485d02be9f922da3f95b71cc162f8"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "format": "gt4-expansion-model-decisions",
+  "version": 1,
+  "cars": {
+    "z0219": {
+      "directory": "open",
+      "parent": "z0219-open",
+      "nativeInterior": true,
+      "eye": [0, 1.05, -0.6],
+      "mirror": [0, 1.15, -0.65]
+    },
+    "z0945": {"cabinHeightOffset": 0.5},
+    "z0946": {"cabinHeightOffset": 0.5},
+    "z0388": {"cabinHeightOffset": 0.35}
+  }
+}

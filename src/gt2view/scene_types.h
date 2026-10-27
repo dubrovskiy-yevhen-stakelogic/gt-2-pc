@@ -1,5 +1,8 @@
 #pragma once
+#include <span>
 #include <cstddef>
+#include <array>
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -21,6 +24,34 @@ constexpr uint32_t kTextured = 1, kRawTexture = 2, kCarPaint = 4, kOverlay = 8;
 // instead of the PS1 VRAM: page = first texel of the image, clut = width | height << 16, repeat wrapping,
 // alpha < 0.5 discards, colour = texel x vertex colour.
 constexpr uint32_t kExternalTexture = 16;
+constexpr uint32_t kModelBlend = 1u << 5; // native GS coverage blend, never a PS1 STP flag
+constexpr uint32_t kModelNative = 1u << 6;
+// Native-model-only bits; PS1 geometry uses these bits for texture depth.
+constexpr uint32_t kNativeSteering = 1u << 8;
+constexpr uint32_t kNativeCabin = 1u << 9;
+constexpr uint32_t kAuditWheelColor = 1u << 7; // Diagnostic tint after normal alpha/culling tests.
+struct NativeModelVertex { std::array<float,3> normal{};uint32_t materialAlpha=0; };
+struct NativeModelMaterial { std::array<float,24> values{}; };
+struct NativeSceneLighting {
+    std::array<float,4> direction{-.35f,.85f,.4f,0};
+    std::array<float,4> ambient{.5f,.5f,.5f,0};
+    std::array<float,4> diffuse{.55f,.55f,.55f,0};
+    std::array<float,4> specular{.4f,.4f,.4f,0};
+    std::array<float,4> stockSky{.35f,.43f,.55f,1}; // GT2 environment background; GT4 keeps its native black background.
+};
+static_assert(sizeof(NativeSceneLighting)==80);
+
+static_assert(sizeof(NativeModelVertex)==16 && sizeof(NativeModelMaterial)==96);
+constexpr uint32_t kModelAtlasTexture = 1u << 22; // Vulkan promotes GT4 external textures to hardware-filtered atlas regions.
+constexpr uint32_t kModelClampU = 1u << 23;
+constexpr uint32_t kModelClampV = 1u << 24;
+constexpr uint32_t kModelOpaque = 1u << 25;
+constexpr uint32_t kDebugBackfaces = 1u << 26; // Diagnostic only; preserve texture alpha masks.
+constexpr uint32_t kCabinSolid = 1u << 29; // Inner sill/arch surface, including inward folded front faces.
+constexpr uint32_t kModelAlphaNonzero = 1u << 30; // PS2 GREATER 0: alpha also carries paint reflectivity.
+constexpr uint32_t kModelMirrorMask = 1u << 31; // The baked glass and live image share their authored silhouette.
+constexpr uint32_t kModelReflection = 1u << 28; // Immutable normal-driven environment sheen.
+constexpr uint32_t kCabinLining = 1u << 27; // Dark inner side of an exterior shell; retain holes in its alpha mask.
 constexpr uint32_t kMirrorTexture = 1u << 21; // Normalized UVs into the shared rear-view target.
 constexpr uint32_t kReconstructedUi = 1u << 20;
 constexpr uint32_t kUiMap = 1u << 19;
@@ -39,7 +70,11 @@ constexpr uint32_t kHandTexture = 1u << 16; // Dedicated hardware-filtered hand 
 constexpr uint32_t kClampTextureRect = 1u << 15; // Sprite atlas edges must not sample the neighbouring image.
 
 // PS1 semi-transparency modes (GPU tpage bits 5-6): 0 = B/2 + F/2, 1 = B + F, 2 = B - F, 3 = B + F/4.
-constexpr uint32_t kBlendOpaque = 0xFF;
+constexpr uint32_t kBlendOpaque = 0xFF, kBlendAlpha = 4, kBlendNativeEnvironment = 5;
+constexpr uint32_t kBlendNativeSurfaceEnvironment = 6;
+// Additive stock paint must cover only the depth written by its opaque body.
+constexpr uint32_t kBlendStockSurfaceEnvironment = 7;
+inline bool NativeEnvironmentBlend(uint32_t blend) {return blend==kBlendNativeEnvironment || blend==kBlendNativeSurfaceEnvironment;}
 
 // Which space DrawItem::mvp leaves its vertices in (docs/research/vr_port_plan.md, M2).
 // Desktop draws use the item's matrix as-is. The mirror-source tag selects a
@@ -67,7 +102,47 @@ struct DrawItem {
     // Non-zero: the depth buffer is cleared (to the far value) inside the scissor rectangle before this item - a
     // sub-view drawn over the scene (the rear-view mirror).
     uint32_t clearDepth = 0;
+    // Occupied interior has its own depth band. Track triangles can intersect
+    // the physical body during suspension/collision, but never the cabin trim.
+    // 1 = cabin, 2 = tracked controls (may overlap a baked native steering wheel).
+    uint32_t cabinDepth = 0;
+    // Soft additive particles may share one shader invocation across 2x2 pixels.
+    uint32_t softParticle = 0;
+    std::array<float,4> nativeModelRotation{0,0,0,1};
 };
+
+// Submit depth-writing world surfaces before the distant backdrop. The sky
+// remains ahead of transparency, so glass still blends with its background.
+// Call before appending mirrors/HUD; never cross a depth-clear boundary.
+inline void DeferOpaqueBackdrop(std::vector<DrawItem>& items) {
+    if(std::any_of(items.begin(),items.end(),[](const auto& d){return d.clearDepth!=0;}) ||
+       std::none_of(items.begin(),items.end(),[](const auto& d){return d.space==kSpaceSky;}))return;
+    std::stable_partition(items.begin(),items.end(),[](const auto& d){return d.space==kSpaceWorld && d.blend==kBlendOpaque;});
+}
+
+// Regression witness for a single scene before mirrors/HUD are appended.
+inline size_t OpaqueDrawsAfterBackdrop(std::span<const DrawItem> items) {
+    bool sky=false;size_t late=0;
+    for(const auto& item:items){
+        if(item.clearDepth)sky=false;
+        sky=sky || item.space==kSpaceSky;
+        late+=sky && item.space==kSpaceWorld && item.blend==kBlendOpaque && item.vertexCount!=0;
+    }
+    return late;
+}
+
+// Coverage-blended models are drawn after opaque course/cars, back to front.
+// No blended model writes depth or disables the opaque cabin's early rejection.
+inline void SortModelTransparency(std::vector<DrawItem>& items) {
+    if(std::none_of(items.begin(),items.end(),[](const auto& d){return d.blend==kBlendAlpha || NativeEnvironmentBlend(d.blend);} ))return;
+    const auto first=std::stable_partition(items.begin(),items.end(),[](const auto& d){return d.blend!=kBlendAlpha && !NativeEnvironmentBlend(d.blend);});
+    std::stable_sort(first,items.end(),[](const auto& a,const auto& b) {
+        const auto distance=[](const auto& d){return d.mvp[12]*d.mvp[12]+d.mvp[13]*d.mvp[13]+d.mvp[14]*d.mvp[14];};
+        const float da=distance(a),db=distance(b);
+        if(da==db && NativeEnvironmentBlend(a.blend)!=NativeEnvironmentBlend(b.blend))return !NativeEnvironmentBlend(a.blend);
+        return da>db;
+    });
+}
 
 struct FrameParams {
     float mvp[16]; // column-major
@@ -79,8 +154,9 @@ struct FrameParams {
     uint32_t eye = 0;              // the two-pass stereo path's array layer
     uint32_t padding[2] = {};
     float hudClip[4] = {};
+    std::array<float,4> nativeModelRotation{0,0,0,1};
 };
-static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 112);
+static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 128);
 constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2, kOptionMipmaps = 8;
 
 // The two eyes of one stereo frame (docs/research/vr_port_plan.md, M2; src/platform/xr/vr_rig.h builds them). The
@@ -119,8 +195,11 @@ public:
     static constexpr uint32_t kVrDrivingVertexBase = kProfilerVertexBase + 8192, kVrDrivingVertexLimit = 40960;
     static constexpr uint32_t kCockpitBodyVertexBase = kVrDrivingVertexBase + kVrDrivingVertexLimit;
     static constexpr uint32_t kCockpitBodyVertexStride = 8192, kCockpitBodyVertexLimit = 8 * kCockpitBodyVertexStride;
-    static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = 32768;
-    static constexpr uint32_t kMaxVertices = kCockpitVertexBase + kCockpitVertexLimit;
+    static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = 49152;
+    static constexpr uint32_t kModelSetVertexBase = kCockpitVertexBase + kCockpitVertexLimit;
+    static constexpr uint32_t kModelSetVertexStride = 65536;
+    static constexpr uint32_t kPaintProbeVertexBase = kModelSetVertexBase + 8 * kModelSetVertexStride;
+    static constexpr uint32_t kMaxVertices = kPaintProbeVertexBase + 6 * 40000;
     static constexpr uint32_t kNativeFontRow = 2048, kNativeFontRows = 144;
     static constexpr uint32_t kMenuReflectionRow = kNativeFontRow + kNativeFontRows;
     static constexpr uint32_t kVramWidth = 1024, kVramRows = kMenuReflectionRow + 512;
@@ -129,10 +208,25 @@ public:
     static constexpr uint32_t kHdMenuTexelBase = kMovieTexelBase + 2048 * 2048;
     static constexpr uint32_t kHdUiTexelBase = kHdMenuTexelBase + 2048 * 2048;
     static constexpr uint32_t kHdUiSlots = 16, kHdUiPageTexels = 1024 * 1024 / 2;
-    static constexpr uint32_t kExternalTexels = kHdUiTexelBase + kHdUiSlots * kHdUiPageTexels;
+    static constexpr uint32_t kModelSetTexelBase = kHdUiTexelBase + kHdUiSlots * kHdUiPageTexels;
+    static constexpr uint32_t kModelSetTexelLimit = 8 * 1024 * 1024;
+    static constexpr uint32_t kExternalTexels = kModelSetTexelBase + kModelSetTexelLimit;
 
     void ApplyHdUi(std::vector<SceneVertex>& vertices);
     virtual void UploadExternalTexture(uint32_t first, uint32_t count, const uint32_t* rgba) = 0;
+    // A SceneAssets instance owns the reusable model slots and their textures.
+    virtual void BeginModelTextures() {}
+    // Optional modern paint probe; unsupported backends keep their studio fallback.
+    virtual void BakePaintEnvironment(const std::array<std::vector<DrawItem>,6>&) {}
+    virtual void ClearPaintProbes() {}
+    virtual void CachePaintProbe(int, const std::array<std::vector<DrawItem>,6>& faces) { BakePaintEnvironment(faces); }
+    virtual void SelectPaintProbe(int) {}
+    virtual void QueueNativeEnvironment(const std::array<std::vector<DrawItem>,3>&,
+        const std::array<std::array<float,16>,3>&) {}
+    static constexpr uint32_t kNativeMaterialsPerSlot=2048;
+    virtual void SetNativeModelVertices(uint32_t,const std::vector<NativeModelVertex>&) {}
+    virtual void SetNativeModelMaterials(uint32_t,const std::vector<NativeModelMaterial>&) {}
+    virtual void SetNativeSceneLighting(const NativeSceneLighting&) {}
 protected:
     RenderOptions options_;
     std::vector<uint16_t> vramShadow_;

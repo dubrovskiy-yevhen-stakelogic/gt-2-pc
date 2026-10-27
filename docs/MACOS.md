@@ -5,11 +5,11 @@ support and the cockpit view. Installation builds from the included source.
 
 ## Install
 
-Extract **GT2-0.8.0.zip** into Downloads. Close an existing GT2 instance,
+Extract **GT2-0.9.0.zip** into Downloads. Close an existing GT2 instance,
 then open **INSTALL-MACOS.command**, or run in Terminal:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.8.0/INSTALL-MACOS.command"
+bash "$HOME/Downloads/GT2-0.9.0/INSTALL-MACOS.command"
 ```
 
 This archive installs from source. The first run prepares Apple Command Line
@@ -54,7 +54,7 @@ Install the release and import your discs first. Close GT2, then open
 **PREPARE-HD.command**, or run:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.8.0/PREPARE-HD.command"
+bash "$HOME/Downloads/GT2-0.9.0/PREPARE-HD.command"
 ```
 
 Choose pictures, menu text and HUD, or also full-screen Arcade movies.

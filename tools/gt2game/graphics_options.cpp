@@ -1,5 +1,6 @@
 // The graphics settings of the running game (see graphics_options.h).
 #include "graphics_options.h"
+#include "gt2formats/model_set.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -23,10 +24,10 @@ std::vector<std::pair<std::string, std::string>> g_overrides;
 const gt2::shell::GraphicsSettings& CurrentGraphics() { return g_graphics; }
 
 void SetGraphicsFromSettings(const gt2::shell::GraphicsSettings& settings) {
-    if (!g_pinned && !g_overlay) g_graphics = settings;
+    if (!g_pinned && !g_overlay) {g_graphics = settings;gt2::modernCarReflections=settings.modernCarReflections;}
 }
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings) {
-    if (!g_pinned) { g_graphics = settings; g_overlay = true; }
+    if (!g_pinned) { g_graphics = settings; g_overlay = true; gt2::modernCarReflections=settings.modernCarReflections;}
 }
 
 bool GraphicsPinned() { return g_pinned; }
@@ -77,6 +78,7 @@ gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& s) {
     o.msaa = uint32_t(std::clamp(s.msaa, 1, 8));
     o.smoothTextures = s.smoothTextures;
     o.affine = s.affine;
+    gt2::modernCarReflections=s.modernCarReflections;
     o.vsync = s.vsync;
     return o;
 }

@@ -51,6 +51,9 @@ void DrawGlyph(TextCtx& c, uint32_t code, int x, int y);
 // 0x8006ABA0 / 0x8006AC4C / 0x8006AE50 / 0x8006AF54 (Simulation 0x8006AC90 / 0x8006AD3C / 0x8006AF40 / 0x8006B044).
 void DrawText(TextCtx& c, const std::string& s, int x, int y, int spacing);
 int TextWidth(const TextCtx& c, const std::string& s, int spacing);
+// Fit a list label using the actual glyph ink bounds, retaining an ellipsis.
+std::string FitText(const HudFont& font, const std::string& text, int width, int spacing = 1);
+void DrawTextScaled(TextCtx& c, const std::string& text, int x, int y, int width);
 void DrawNumber(TextCtx& c, const std::string& s, int x, int y, int spacing, int digitShift, int digitExtra);
 int NumberWidth(const TextCtx& c, const std::string& s, int spacing, int digitExtra);
 // 0x8006B304 (Simulation 0x8006B3F4 HudFont::TimeRight): a race time right-aligned at `right`.

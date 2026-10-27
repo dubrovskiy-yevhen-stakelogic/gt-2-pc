@@ -2,6 +2,7 @@
 // field, the controllers, the screenshots and the frame pacing. The window itself is a WindowBackend
 // (game_window_win32.cpp).
 #include "game_window.h"
+#include "platform/xr/vr_input_merge.h"
 #include "pc_overlay.h"
 #include "graphics_options.h"
 #include "gt2formats/hd_media.h"
@@ -101,7 +102,7 @@ GameWindow::GameWindow(const std::string& title, int clientWidth, int clientHeig
     } else backend_ = g_vr ? CreateXrWindowBackend(title, clientWidth, clientHeight) : CreateWindowBackend(title, clientWidth, clientHeight);
     PrepareNativeUi(backend_->Renderer());
     input_.AttachWindow(backend_->NativeHandle());
-    input_.AddDevice(backend_->CreateInputDevice());
+    vrInput_ = backend_->CreateInputDevice();
     input_.SetRumbleScale(g_rumbleScale);
     if (OverlayRumbleStrength() >= 0) input_.SetRumbleScale(OverlayRumbleStrength());
     if (!g_fakePad.empty()) input_.AddFakePad(g_fakePad);
@@ -109,7 +110,14 @@ GameWindow::GameWindow(const std::string& title, int clientWidth, int clientHeig
     next_ = Clock::now();
 }
 
-GameWindow::~GameWindow() = default;
+GameWindow::~GameWindow() {
+    if (vrInput_) { vrInput_->SetMotors(0,0); vrInput_->SetActive(false); }
+}
+void GameWindow::SetPadActuators(const gt2::input::Actuators& actuators) {
+    input_.SetActuators(actuators);
+    if (vrInput_) vrInput_->SetMotors(focused_ ? actuators.smallMotor : 0, focused_ ? actuators.largeMotor : 0,
+        OverlayRumbleStrength() >= 0 ? OverlayRumbleStrength() : g_rumbleScale);
+}
 void GameWindow::RetainBackendForNextWindow() { input_.StopFeedback(); retainedBackend = std::move(backend_); }
 void ReleaseRetainedWindow() { retainedBackend.reset(); }
 
@@ -146,14 +154,29 @@ bool GameWindow::BeginFrame() {
         if (std::find(scriptHeldBefore_.begin(), scriptHeldBefore_.end(), key) == scriptHeldBefore_.end() &&
             std::find(pressedNow_.begin(), pressedNow_.end(), key) == pressedNow_.end())
             pressedNow_.push_back(key);
+    for(int key=1;key<256;++key) {
+        const bool held=(focused_ && backend_->KeyDown(key)) ||
+            std::find(scriptHeld_.begin(),scriptHeld_.end(),key)!=scriptHeld_.end();
+        menuRelease_.UpdateKey(key,held);
+    }
+    std::erase_if(pressedNow_,[&](int key){return menuRelease_.KeyBlocked(key);});
     keyPressedNow_ = pressedNow_;
     // The controllers: port 1 of this field; its newly pressed buttons also press the menus' keys.
     input_.Poll(field_, focused_);
     for (const std::string& line : input_.TakeLog()) std::printf("input: %s\n", line.c_str());
-    const uint16_t buttons = input_.Port1().buttons;
+    rawVrPad_ = {};
+    if (vrInput_) {
+        vrInput_->SetActive(focused_);
+        vrInput_->SetMotors(0,0); // one field of haptics, refreshed by the race
+        if (!vrInput_->Poll(field_,rawVrPad_) || !focused_) rawVrPad_ = {};
+    }
+    desktopPad_=menuRelease_.Filter(input_.Port1(),0);
+    vrPad_=vrMenuRelease_.Filter(rawVrPad_,0);
+    pad_=gt2::vr::MergeMenuPads(desktopPad_,vrPad_);
+    const uint16_t buttons = pad_.buttons;
     padPressed_ = uint16_t(buttons & ~padPrevious_);
     padPrevious_ = buttons;
-    menuShortcuts_.Update(buttons, KeyHeld(keys::kEscape), KeyPressed(keys::kEscape), focused_ || !script_.empty() || FakePadGiven());
+    menuShortcuts_.Update(buttons, KeyHeld(keys::kEscape), KeyPressed(keys::kEscape), focused_ || !script_.empty() || FakePadGiven(),DisplayTime());
     for (const auto& [bit, key] : kPadKeys)
         if ((padPressed_ & bit) && std::find(pressedNow_.begin(), pressedNow_.end(), key) == pressedNow_.end()) pressedNow_.push_back(key);
     // Port 2: the second controller and player 2's keys (a digital pad when no controller is there).
@@ -163,6 +186,7 @@ bool GameWindow::BeginFrame() {
         if (KeyHeld(key)) keys2 = uint16_t(keys2 | bit);
     if (keys2 && pad2_.type == gt2::input::kTypeNone) pad2_.type = gt2::input::kTypeDigital;
     pad2_.buttons = uint16_t(pad2_.buttons | keys2);
+    pad2_=menuRelease_.Filter(pad2_,1);
     if (pad2_.type == gt2::input::kTypeNone) pad2_.type = gt2::input::kTypeDigital; // the keyboard is always there
     pad2Pressed_ = uint16_t(pad2_.buttons & ~pad2Previous_);
     pad2Previous_ = pad2_.buttons;
@@ -172,6 +196,15 @@ bool GameWindow::BeginFrame() {
         ShowPcOverlay(*this, VrMode() ? std::vector<gt2view::DrawItem>{} : lastItems_, VrMode() ? 0 : lastScene_);
         overlayActive_ = false;
         backend_->SetVrMenuActive(false);
+        menuRelease_.Block(input_.Port1(),0);menuRelease_.Block(pad2_,1);
+        vrMenuRelease_.Block(rawVrPad_,0);
+        for(int key=1;key<256;++key)
+            menuRelease_.keys[size_t(key)]=(focused_ && backend_->KeyDown(key)) ||
+                std::find(scriptHeld_.begin(),scriptHeld_.end(),key)!=scriptHeld_.end();
+        desktopPad_=menuRelease_.Filter(input_.Port1(),0);
+        vrPad_=vrMenuRelease_.Filter(rawVrPad_,0);
+        pad_=gt2::vr::MergeMenuPads(desktopPad_,vrPad_);pad2_=menuRelease_.Filter(pad2_,1);
+        padPrevious_=pad_.buttons;pad2Previous_=pad2_.buttons;
         pressedNow_.clear(); keyPressedNow_.clear(); scriptHeld_.clear();
         padPressed_ = pad2Pressed_ = 0;
         menuShortcuts_.pause = menuShortcuts_.settings = menuShortcuts_.menu = false;
@@ -186,6 +219,7 @@ bool GameWindow::BeginFrame() {
 }
 
 bool GameWindow::KeyHeld(int key) const {
+    if(menuRelease_.KeyBlocked(key))return false;
     if (std::find(scriptHeld_.begin(), scriptHeld_.end(), key) != scriptHeld_.end()) return true;
     return focused_ && backend_->KeyDown(key);
 }
@@ -194,7 +228,7 @@ bool GameWindow::KeyPressed(int key) const { return std::find(keyPressedNow_.beg
 
 bool GameWindow::Held(int key) const {
     if (KeyHeld(key)) return true;
-    const uint16_t buttons = input_.Port1().buttons;
+    const uint16_t buttons = pad_.buttons;
     for (const auto& [bit, k] : kPadKeys)
         if (k == key && (buttons & bit)) return true;
     return false;
@@ -258,6 +292,11 @@ void GameWindow::DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t s
     const double previousGpuMs = wasStereo ? backend_->Renderer().GpuMilliseconds() : -1;
     backend_->EndRenderFrame();
     const auto ended = Clock::now();
+    if (!wasStereo && ended-start > std::chrono::milliseconds(100)) {
+        std::printf("render: slow mono frame %d, %zu draws, submit %.1f ms, XR end %.1f ms\n", field_, items.size(),
+            std::chrono::duration<double,std::milli>(submitted-start).count(),
+            std::chrono::duration<double,std::milli>(ended-submitted).count());
+    }
     if (profiling) {
         const auto& renderer = backend_->Renderer();
         const auto extent = wasStereo ? renderer.StereoExtent() : renderer.Extent();

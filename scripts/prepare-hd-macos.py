@@ -123,7 +123,7 @@ def manifest(folder, profile):
     (folder / 'manifest.json').write_text(json.dumps({
         'format': 1, 'profile': profile, 'model': MODEL, 'scale': 4,
         'ui': 'indexed-scale4x-v2', 'fonts': 'palette-contours4x-v1',
-        'video': 'source-bounded-v1', 'files': files}, indent=2) + '\n')
+        'pictures': 'source-bounded-v1', 'video': 'source-bounded-v1', 'files': files}, indent=2) + '\n')
 
 
 def publish(stage, destination):
@@ -185,20 +185,29 @@ def prepare_disc(root, mode, tools, upscale, media_mode, gpu):
             raise ValueError('Incomplete upscaled picture set')
         stamp.write_text(MODEL + '\n')
     (stage / 'images').mkdir()
+    bounded = cache / 'images-source-bounded-v1'
+    run(media, 'compose-images', original, images, bounded)
     for name in expected:
-        shutil.copy2(images / name, stage / 'images' / name)
+        shutil.copy2(bounded / name, stage / 'images' / name)
     (stage / 'profile.txt').write_text(profile + '\n')
     for command, folder, header in [('ui', 'ui', 'indexed-scale4x-v2'),
                                      ('fonts', 'fonts', 'palette-contours4x-v1')]:
-        output = cache / folder
-        stamp = cache / (folder + '.complete')
+        output = cache / (folder + ('-regions-v2' if command == 'fonts' else ''))
+        stamp = cache / (folder + ('-regions-v2' if command == 'fonts' else '') + '.complete')
         if not stamp.is_file():
             run(media, command, disc, output)
             if command == 'ui':
                 run(media, 'ui-maps', disc, output)
+                (cache / 'ui-tile-boundaries-v1.complete').write_text('complete\n')
             validate_index(output, header)
             stamp.write_text('complete\n')
         validate_index(output, header)
+        if command == 'ui':
+            tiles_done = cache / 'ui-tile-boundaries-v1.complete'
+            if not tiles_done.is_file():
+                run(media, 'ui-tiles', disc, output)
+                validate_index(output, header)
+                tiles_done.write_text('complete\n')
         shutil.copytree(output, stage / folder)
     if destination.is_dir():
         old_profile = destination / 'profile.txt'

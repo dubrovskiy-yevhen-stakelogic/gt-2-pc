@@ -67,6 +67,7 @@ public:
     // The CD input of the mix: the race music (music_player.h); null detaches.
     void AttachMusic(StreamSource* music) { mixer_.SetStream(music); }
     void SetPaused(bool paused) { mixer_.SetPaused(paused); }
+    void SetDriving(bool driving) { mixer_.SetVoicesPaused(!driving); }
 
     // Once per simulation frame, after RaceSim::Step: every car's sound from its body and the listener (0x80014E6C).
     void Step(const sim::RaceSim& race, const Listener& listener, bool attract);

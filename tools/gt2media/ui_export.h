@@ -3,6 +3,30 @@
 #include "gt2formats/hud_assets.h"
 #include <set>
 
+inline void ExportUiTiles(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,const std::filesystem::path& out,
+                          std::set<std::string>& keys,int onlyPage=-1) {
+    if(gt2::ProfileOf(disc).arcade) return;
+    std::filesystem::create_directories(out);
+    const auto pages=gt2::MenuPages::Load(vol);std::set<std::string> written;
+    for(uint32_t id=0;id<pages.Count();++id) {
+        if(onlyPage>=0 && id!=uint32_t(onlyPage)) continue;
+        gt2::MenuVram v;const auto page=pages.Page(id);
+        v.Upload(640,256,128,page.own.Rows(),page.own.pixels);
+        for(int p:{26,27}) {
+            const auto* words=v.Words().data()+256*1024+(p&15)*64;
+            const auto key=gt2::hd::UiPageKey(words);
+            if(!written.insert(key).second) continue;
+            const auto indices=gt2::hd::EnlargeMenuTilePage(words);
+            std::vector<uint8_t> rgba(indices.size()*4,255);
+            for(size_t i=0;i<indices.size();++i) rgba[i*4]=rgba[i*4+1]=rgba[i*4+2]=indices[i];
+            gt2::WritePngRgbaCompressed((out/(key+".png")).string(),1024,1024,rgba);
+            keys.insert(key);
+            if(written.size()%64==0) std::cout<<"Isolated GT Mode tile pages: "<<written.size()<<std::endl;
+        }
+    }
+    std::cout<<"Prepared "<<written.size()<<" GT Mode pages with isolated 16x8 tiles\n";
+}
+
 inline void ExportUiMaps(const gt2::GtfsVolume& vol, const std::filesystem::path& out, std::set<std::string>& keys) {
     namespace fs=std::filesystem;
     fs::create_directories(out);
@@ -31,7 +55,7 @@ inline void ExportUi(const gt2::DiscImage& disc, const gt2::GtfsVolume& vol, con
     namespace fs=std::filesystem;
     fs::create_directories(out);
     std::set<std::string> keys;
-    const auto save = [&](const std::vector<uint16_t>& vram, int page, uint32_t depth=0) {
+    const auto save = [&](const std::vector<uint16_t>& vram, int page, uint32_t depth=0,bool tiles=false) {
         if((page%16)*64+(64u<<depth)>1024) return;
         const auto* words=vram.data()+(page/16)*256*1024+(page%16)*64;
         bool any=false;
@@ -39,7 +63,7 @@ inline void ExportUi(const gt2::DiscImage& disc, const gt2::GtfsVolume& vol, con
         if(!any) return;
         const auto key=gt2::hd::UiPageKey(words,1024,depth);
         if(!keys.insert(key).second) return;
-        const auto indices=gt2::hd::EnlargeUiPage(words,depth);
+        const auto indices=tiles?gt2::hd::EnlargeMenuTilePage(words):gt2::hd::EnlargeUiPage(words,depth);
         std::vector<uint8_t> rgba(indices.size()*4,255);
         for(size_t i=0;i<indices.size();++i) rgba[i*4]=rgba[i*4+1]=rgba[i*4+2]=indices[i];
         gt2::WritePngRgbaCompressed((out/(key+".png")).string(),1024,1024,rgba);
@@ -66,7 +90,8 @@ inline void ExportUi(const gt2::DiscImage& disc, const gt2::GtfsVolume& vol, con
         for(uint32_t id=0;id<pages.Count();++id) {
             gt2::MenuVram composed;
             gt2::ComposeMenuVram(assets,pages.Page(id),composed);
-            for(int p:{9,26,27}) save(composed.Words(),p);
+            save(composed.Words(),9);
+            for(int p:{26,27}) save(composed.Words(),p,0,true);
         }
     }
     std::vector<uint16_t> v(1024*512);

@@ -49,6 +49,7 @@ public:
 
     const RaceCamera& Camera() const { return camera_; }
     RaceCamera& Camera() { return camera_; }
+    void SetPosition(uint8_t position) { options_.cameraPosition = camera_.position = position > 2 ? 0 : position; }
     const Options& GetOptions() const { return options_; }
     // A replay of the race (0x800A951C set: 0x800109FC's replay cameras from the next Start) or the race again.
     void SetReplay(bool replay) { options_.replay = replay ? 1 : 0; }

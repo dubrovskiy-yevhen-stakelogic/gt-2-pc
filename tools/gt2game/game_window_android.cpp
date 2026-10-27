@@ -179,7 +179,7 @@ public:
         value = steering_; return drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
     }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
-        if (stereoFrame_ && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), vehicleFrame ? vehicleFrame : drivingMatrix_);
+        if (stereoFrame_ && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, EffectiveDrivingSettings(OverlayDrivingSettings()), vehicleFrame ? vehicleFrame : drivingMatrix_);
     }
     bool TakeTimingReset() override { const bool reset = timingReset_; timingReset_ = false; return reset; }
     void BeginRenderFrame() override;
@@ -226,8 +226,13 @@ private:
             tracking_.gripPose[h] = recenter_.Apply(tracking_.gripPose[h]);
             tracking_.aimPose[h] = recenter_.Apply(tracking_.aimPose[h]);
         }
-        steering_ = driving_.Update(tracking_,OverlayDrivingSettings(),drivingActive_ && !vrMenuActive_);
+        const auto displayTime = session_->LastDisplayTime();
+        const auto elapsed = lastDrivingTime_ == Clock::time_point{} ? session_->Period() : displayTime-lastDrivingTime_;
+        lastDrivingTime_ = displayTime;
+        steering_ = driving_.Update(tracking_,EffectiveDrivingSettings(OverlayDrivingSettings()),drivingActive_ && !vrMenuActive_,
+            std::chrono::duration<float>(elapsed).count());
     }
+    Clock::time_point lastDrivingTime_{};
     gt2::vr::DrivingController driving_;
     gt2::vr::TrackedControllers tracking_;
     std::unique_ptr<gt2view::VrDrivingVisuals> hands_;
@@ -314,19 +319,25 @@ void AndroidWindow::ConfigureVr() {
 }
 
 AndroidWindow::~AndroidWindow() {
-    if (renderer_) renderer_->WaitFrame();
-    if (session_) {
-        session_->RequestExit();
-        const auto deadline = Clock::now() + std::chrono::seconds(3);
-        while (!session_->Quit() && Clock::now() < deadline) {
-            if (!session_->PollEvents()) break;
-            if (session_->Running()) {
-                if (session_->BeginFrame()) session_->SubmitFrame(VK_NULL_HANDLE);
-            } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    // GPU failure can already be unwinding GameMain. Cleanup must not throw a
+    // second exception and terminate before its original diagnostic is saved.
+    try {
+        if (renderer_) renderer_->WaitFrame();
+        if (session_) {
+            session_->RequestExit();
+            const auto deadline = Clock::now() + std::chrono::seconds(3);
+            while (!session_->Quit() && Clock::now() < deadline) {
+                if (!session_->PollEvents()) break;
+                if (session_->Running()) {
+                    if (session_->BeginFrame()) session_->SubmitFrame(VK_NULL_HANDLE);
+                } else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
             }
+            std::printf("xr: %lld compositor frames, session %s\n", session_->FrameIndex(), session_->StateName());
         }
-        std::printf("xr: %lld compositor frames, session %s\n", session_->FrameIndex(), session_->StateName());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "xr: cleanup after graphics failure: %s\n", e.what());
     }
     renderer_.reset();
     vulkan_.reset();
@@ -441,10 +452,12 @@ bool AndroidWindow::BeginStereoScene(const gt2::vr::Camera& camera, gt2::vr::Vie
 
 void AndroidWindow::EndRenderFrame() {
     everDrawn_ = !stereoFrame_ || everDrawn_;
+    const auto waitStarted=Clock::now();
     // Vulkan enable2 permits release with rendering still queued on the bound VkQueue.
     // All queue calls are on this thread; staged buffer writes wait in DrawStereo.
     // The copy paths keep their existing completion requirement.
     if (!stereoFrame_ || !directFrame_) renderer_->WaitFrame();
+    const auto renderDone=Clock::now();
     if (frameOpen_) {
         if (stereoFrame_) {
             const VkImage depth = renderer_->EffectiveMsaa() == 1 ? renderer_->StereoDepthImage() : VK_NULL_HANDLE;
@@ -453,6 +466,11 @@ void AndroidWindow::EndRenderFrame() {
             session_->SubmitFrame(renderer_->OffscreenImage());
         }
     }
+    const auto xrDone=Clock::now();
+    if(!stereoFrame_ && xrDone-waitStarted>std::chrono::milliseconds(100))
+        std::printf("xr: slow mono completion, render wait %.1f ms, GPU %.1f ms, compositor %.1f ms\n",
+            std::chrono::duration<double,std::milli>(renderDone-waitStarted).count(),renderer_->GpuMilliseconds(),
+            std::chrono::duration<double,std::milli>(xrDone-renderDone).count());
     lastStereo_ = stereoFrame_;
     stereoFrame_ = false;
     frameOpen_ = false;

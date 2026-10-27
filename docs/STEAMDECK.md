@@ -6,7 +6,7 @@ computer; use `INSTALL-STEAMDECK.sh` for the desktop game.
 
 ## Install on Steam Deck
 
-1. Switch to **Desktop Mode** and extract **GT2-0.8.0.zip**
+1. Switch to **Desktop Mode** and extract **GT2-0.9.0.zip**
    into a writable folder. Open the extracted folder, not the ZIP preview.
 2. Double-click **INSTALL-STEAMDECK.sh** and select **Execute**. A terminal window
    opens automatically and stays open after completion or an error.
@@ -24,7 +24,7 @@ Build files and the package cache live in `~/.cache/gt2/steamdeck-build` (or und
 No FUSE setup is required. Installed Flatpak tools and runtimes remain available
 for subsequent builds.
 
-If a prebuilt **GT2-0.8.0-steamdeck.flatpak** is included beside the installer,
+If a prebuilt **GT2-0.9.0-steamdeck.flatpak** is included beside the installer,
 it installs that package directly without downloading build tools or compiling.
 The complete release contains source, so its first installation builds locally.
 

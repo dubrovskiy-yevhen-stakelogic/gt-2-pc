@@ -50,6 +50,12 @@ class MediaChecks(unittest.TestCase):
             header = 'palette-contours4x-v1' if command == 'fonts' else 'indexed-scale4x-v2'
             (out / 'index.txt').write_text(header + '\n' + key + '\n')
             (out / (key + '.png')).write_bytes(b'atlas fixture')
+        elif command == 'compose-images':
+            self.assertEqual(len(args), 5)
+            self.assertTrue(Path(args[2]).is_dir())
+            Path(args[4]).mkdir(exist_ok=True)
+            for image in Path(args[3]).glob('*.png'):
+                (Path(args[4]) / image.name).write_bytes(b'source-bounded fixture')
         elif command == 'movie':
             out = Path(args[4]); out.mkdir(parents=True)
             for name in ('movie.txt', 'audio.pcm', '000001.png'):
@@ -71,6 +77,7 @@ class MediaChecks(unittest.TestCase):
         self.assertEqual(len(list(self.disc.glob('hd.backup-*'))), 1)
         data = json.loads((self.old / 'manifest.json').read_text())
         self.assertTrue(any(f['path'] == 'fonts/0123456789abcdef-1234.png' for f in data['files']))
+        self.assertTrue(any(a[1] == 'compose-images' for a in self.calls))
         for entry in data['files']:
             self.assertEqual(hd.digest(self.old / entry['path']), entry['sha256'])
 
@@ -103,6 +110,19 @@ class MediaChecks(unittest.TestCase):
         (folder / 'index.txt').write_text('palette-contours4x-v1\n../outside\n')
         with self.assertRaises(ValueError):
             hd.validate_index(folder, 'palette-contours4x-v1')
+
+    def test_existing_ui_cache_gets_tile_repair_once(self):
+        with patch.object(hd, 'run', self.fake_run):
+            self.prepare()
+            stamp = next((self.root / '.hd-work').rglob('ui-tile-boundaries-v1.complete'))
+            stamp.unlink()  # Simulate an intact UI cache from the previous tool.
+            self.calls.clear()
+            self.prepare()
+            self.assertEqual(len([a for a in self.calls if a[1] == 'ui-tiles']), 1)
+            self.assertFalse([a for a in self.calls if a[1] in ('ui', 'fonts', '-i')])
+            self.calls.clear()
+            self.prepare()
+            self.assertFalse([a for a in self.calls if a[1] == 'ui-tiles'])
 
     def test_publish_failure_restores_previous_pack(self):
         stage = self.disc / '.candidate'; stage.mkdir()

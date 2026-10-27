@@ -1,5 +1,6 @@
 // gt2game on the arcade disc: title -> arcade menus -> race -> menus (arcade_mode.h).
 #include "arcade_mode.h"
+#include "gt2view/cockpit_badge.h"
 
 #include "platform/os/keys.h"
 #include "platform/os/paths.h"
@@ -24,6 +25,7 @@
 #include "game/arcade/arcade_battle.h"
 #include "game/arcade/arcade_car_page.h"
 #include "game/arcade/arcade_menus.h"
+#include "game/arcade/expanded_garage.h"
 #include "game/arcade/arcade_results.h"
 #include "game/arcade/arcade_setup.h"
 #include "game/audio/menu_audio.h"
@@ -37,6 +39,7 @@
 #include "game/shell/title_menu.h"
 #include "game/shell/title_screens.h"
 #include "game_window.h"
+#include "pc_overlay.h"
 #include "movie_player.h"
 #include "boot_screen.h"
 #include "panel.h"
@@ -313,8 +316,7 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
             // 0x8004C0B0 (Sim): race block + 0x582 = 0 the home garage (career + 0x3C74), 1 the guest's; the row is enabled when
             // 0 <= + 0x584 < the garage's count (+ 0).
             int16_t n = -1;
-            if (g == 0) std::memcpy(&n, menus.Career().data() + 0x3C74, 2);
-            else if (g == 1 && menus.GuestGarage().size() >= 2) std::memcpy(&n, menus.GuestGarage().data(), 2);
+            if (g == 0 || g == 1) n=int16_t(arcade::GarageCount(menus.GarageBlock(g)));
             in.garageCar = (g == 0 || g == 1) && gi >= 0 && gi < n; // "Settings ..." (CHANGE PARTS)
         }
         std::unique_ptr<audio::MenuAudio> effects;
@@ -399,11 +401,10 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
         int16_t garage = 0, garageIndex = 0;
         std::memcpy(&garage, raceBlock.data() + 0x582, 2);
         std::memcpy(&garageIndex, raceBlock.data() + 0x584, 2);
-        auto garageBlock = [&]() -> career::GarageBlock& {
-            if (garage == 0) return *reinterpret_cast<career::GarageBlock*>(menus.MutableCareer().data() + 0x3C74);
+        auto garageBlock = [&]() -> std::span<uint8_t> {
+            if (garage == 0) return menus.MutableGarageBlock(0);
             guest.assign(menus.GuestGarage().begin(), menus.GuestGarage().end());
-            if (guest.size() < sizeof(career::GarageBlock)) throw std::runtime_error("arcade CHANGE PARTS: no guest garage block");
-            return *reinterpret_cast<career::GarageBlock*>(guest.data());
+            return guest;
         };
         const bool garageCar = in.garageCar;
         if (garageCar) {
@@ -413,23 +414,24 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
                                                                                        LoadExeImage(disc), GuestImage{}});
                     partsData->strict = false;
                 }
-                career::GarageBlock& g = garageBlock();
+                auto g = garageBlock();
+                auto& garageEntry=arcade::ExpandedGarageCar(g,garageIndex);
                 partsSheet = std::make_unique<career::TuneSheet>();
-                career::LoadCarSheet(*partsSheet, g.cars[garageIndex], partsData->tables); // 0x800173E8
-                std::printf("arcade CHANGE PARTS: garage %d car %d of %d (%s), sheet stages", int(garage), int(garageIndex), int(g.count), UnpackCarId(g.cars[garageIndex].carId).c_str());
+                career::LoadCarSheet(*partsSheet, garageEntry, partsData->tables); // 0x800173E8
+                std::printf("arcade CHANGE PARTS: garage %d car %d of %d (%s), sheet stages", int(garage), int(garageIndex), arcade::ExpandedGarageCount(g), UnpackCarId(garageEntry.carId).c_str());
                 for (int16_t v : partsSheet->stage) std::printf(" %d", int(v));
                 std::printf("\n");
                 screens::ChangePartsContext c;
                 c.sheet = partsSheet.get();
                 c.data = partsData.get();
-                c.garageCar = &g.cars[garageIndex];
+                c.garageCar = &garageEntry;
                 std::memcpy(&c.powerLimit, raceBlock.data() + 0x586, 2);
                 std::memcpy(&c.restrictions, raceBlock.data() + 0x588, 2);
                 return c;
             };
             parts.commit = [&]() { // 0x80056FF0
-                career::GarageBlock& g = garage == 0 ? *reinterpret_cast<career::GarageBlock*>(menus.MutableCareer().data() + 0x3C74)
-                                                     : *reinterpret_cast<career::GarageBlock*>(guest.data());
+                auto g=garage==0 ? menus.MutableGarageBlock(0) : std::span<uint8_t>(guest);
+                auto& garageEntry=arcade::ExpandedGarageCar(g,garageIndex);
                 sim::CarParams record{};
                 CarConfig slotConfig;
                 std::memcpy(&slotConfig, raceBlock.data() + 0x64, sizeof slotConfig);
@@ -437,10 +439,11 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
                 career::SettingsCommit out;
                 out.raceRecord = &record;
                 out.raceSlotConfig = &slotConfig;
-                out.garageCar = &g.cars[garageIndex];
+                out.garageCar = &garageEntry;
                 career::CommitSettings(*partsSheet, partsData->tables, career::BuildScratch{scratch.data()}, out);
                 std::memcpy(raceBlock.data() + 0x64, &slotConfig, sizeof slotConfig);
                 if (garage == 1) menus.SetGuestGarage(guest);
+                else menus.SaveExpandedGarage();
             };
         }
         ArcadeSessionOutcome o = RunArcadeSessionViews(window, *sessionAssets, vol, in, true, carId, int(paint), options.squarePixels, false, sounds, music, cardsIn,
@@ -763,16 +766,28 @@ bool RunArcadeBattleSession(GameWindow& window, const DiscImage& disc, const Gtf
 } // namespace
 
 int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeModeOptions& options) {
+    auto loadTime=std::chrono::steady_clock::now();
+    const auto traceLoad=[&](const char* stage){
+        const auto now=std::chrono::steady_clock::now();
+        std::printf("startup: Arcade %s %.1f ms\n",stage,std::chrono::duration<double,std::milli>(now-loadTime).count());
+        loadTime=now;
+    };
     const TitleAssets titleAssets = TitleAssets::LoadArcade(disc, vol);
+    traceLoad("title assets");
     const arcade::ArcadeMenuAssets menuAssets = arcade::ArcadeMenuAssets::Load(disc, vol);
+    traceLoad("menu assets");
     const ArcadeData arcadeData = ArcadeData::Load(vol);
+    traceLoad("arcade data");
     const CarInfoDirectory cars = CarInfoDirectory::Load(vol);
+    traceLoad("car catalogue");
     const CourseInfoTable courses = ParseCourseInfo(vol.Read(".crsinfo"));
     const std::vector<uint8_t> careerBlock = NewCareerBlock(disc, vol);
+    traceLoad("course and career data");
     const arcade::ArcadeSetupData setupData{arcadeData, menuAssets.data, cars, courses};
     std::optional<RaceMenuAssets> postAssets; // the race overlay's post-race views (arcade_post_race.h)
     try {
         postAssets = LoadArcadeRaceMenuAssets(disc, vol);
+        traceLoad("race menu assets");
     } catch (const std::exception& e) {
         std::printf("arcade: no post-race views (%s); the race returns to the menus\n", e.what());
     }
@@ -825,7 +840,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
                 audioEvents = std::fopen((options.recordAudio + ".events.txt").c_str(), "w");
                 if (audioEvents) sfx->SetEventLog(audioEvents);
             }
-            if (!sfx->OpenDevice(error)) {
+            if (!sfx->OpenDevice(error,window.Pacing() && !VrDeterministic())) {
                 std::printf("arcade: no sound device for the effects (%s)\n", error.c_str());
                 sfx.reset();
             }
@@ -889,6 +904,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         return 0;
     }
     arcade::ArcadeMenus menus(menuAssets, arcadeData, cars, careerBlock);
+    if (!options.card1Path.empty()) {
+        try {menus.SetExpandedGaragePath(options.card1Path+".arcade-garage");}
+        catch (const std::exception& e) {std::printf("Arcade expanded garage: %s\n",e.what());}
+    }
     menus.SetCards({shell::CardSlot{options.card1Path}, shell::CardSlot{options.card2Path}}); // LOAD GUEST GARAGE
     // Dev aid: GT2_ARCADE_RACE_SETUP=<file> (a RaceCaptureSetup: gt2verify --race-capture's <capture>.setup or --arcade-setup-out)
     // runs that race block's race and what follows it (the mode 6 session or the road race session) on the new game's career,
@@ -964,7 +983,13 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     int repeatTimer = 0, repeatTimer2 = 0, races = 0;
     const auto fieldTime = std::chrono::nanoseconds(16'683'333);
     for (;;) {
-        if (!window.BeginFrame()) break;
+        SetArcadeGarageCheatContext([&]() {
+            if (screen != Screen::kMenus) return std::string("Enter Arcade Mode first.");
+            return menus.AddAllCarsToGarage();
+        });
+        const bool frameOpen=window.BeginFrame();
+        SetArcadeGarageCheatContext({});
+        if (!frameOpen) break;
         const int field = window.Field();
         uint32_t held = 0;
         for (int k : {gt2::keys::kUp, gt2::keys::kDown, gt2::keys::kLeft, gt2::keys::kRight, gt2::keys::kReturn, gt2::keys::kSpace, gt2::keys::kBack, gt2::keys::kEscape, int('S'), int('Q'), int('W'), gt2::keys::kDelete})
@@ -1180,6 +1205,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         }
 
         std::optional<menu::MenuCarProjection> carProjection;
+        size_t carLayerAt=1;
         std::array<std::optional<menu::MenuCarProjection>, 2> battleCars; // the 2PLAYER BATTLE page's two cars (arcade_battle.h)
         const arcade::ArcadeBattlePage* battle = screen == Screen::kMenus ? menus.BattleShown() : nullptr;
         if (battle && (battle->CarShown(0) || battle->CarShown(1))) {
@@ -1193,6 +1219,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
                 at += floor.size();
                 battleCars[size_t(p)] = battle->Projection(p, true);
             }
+            carLayerAt=at;
         } else if (screen == Screen::kMenus && menus.CarShown()) {
             if (menus.CarId() != shownCar) {
                 shownCar = menus.CarId();
@@ -1200,25 +1227,30 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             }
             const std::vector<MenuPrim> floor = menus.CarPage().Floor();
             prims.insert(prims.begin() + 1, floor.begin(), floor.end()); // the car environment is drawn before the view's OT
+            carLayerAt=1+floor.size();
             carProjection = menus.CarPage().Projection(true);
         } else {
             shownCar = 0;
         }
         std::vector<gt2view::DrawItem> items;
-        view->Build(prims, TitleAssets::kScreenWidth, renderer->AspectRatio(), items, options.squarePixels);
+        std::vector<gt2view::DrawItem> carItems;
         for (int p = 0; p < 2; p++) {
             if (!battleCars[size_t(p)]) continue;
-            const size_t before = items.size();
-            carView->AppendPair(items, p, *battleCars[size_t(p)], battle->Paint(p), renderer->AspectRatio(), options.squarePixels);
-            if (items.size() > before) items[before].clearDepth = 1;
+            const size_t before = carItems.size();
+            carView->AppendPair(carItems, p, *battleCars[size_t(p)], battle->Paint(p), renderer->AspectRatio(), options.squarePixels);
+            if (carItems.size() > before) carItems[before].clearDepth = 1;
         }
         if (carProjection) {
-            const size_t before = items.size();
-            carView->Append(items, *carProjection, menus.CarPaint(), renderer->AspectRatio(), options.squarePixels);
+            const size_t before = carItems.size();
+            carView->Append(carItems, *carProjection, menus.CarPaint(), renderer->AspectRatio(), options.squarePixels);
             // TitleView's 2D quads write depth 1 (vk_scene_renderer.h): clear the depth in the car's viewport first.
-            if (items.size() > before) items[before].clearDepth = 1;
-            if (std::getenv("GT2_ARCADE_TRACE")) std::printf("arcade f%d: car %s, %zu car item(s)\n", field, UnpackCarId(shownCar).c_str(), items.size() - before);
+            if (carItems.size() > before) carItems[before].clearDepth = 1;
+            if (std::getenv("GT2_ARCADE_TRACE")) std::printf("arcade f%d: car %s, %zu car item(s)\n", field, UnpackCarId(shownCar).c_str(), carItems.size() - before);
         }
+        if(carProjection)gt2view::AppendCockpitBadge(prims,carView->HasNativeInterior(),12,96);
+        for(int p=0;p<2;++p)if(battleCars[size_t(p)])
+            gt2view::AppendCockpitBadge(prims,carView->HasNativeInterior(p),battleCars[size_t(p)]->x0+8,battleCars[size_t(p)]->y0+28);
+        view->Build(prims, TitleAssets::kScreenWidth, renderer->AspectRatio(), items, options.squarePixels, carLayerAt, carItems);
         std::string shotPath, comparePath;
         for (size_t k = 0; k < options.shots.size(); k++)
             if (options.shots[k].first == field) {

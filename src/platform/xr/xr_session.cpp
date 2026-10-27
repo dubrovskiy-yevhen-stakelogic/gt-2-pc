@@ -764,6 +764,9 @@ void Session::SubmitFrame(VkImage image) {
 // shows (and what its capture writes). The caller has already waited for the rendering to finish.
 bool Session::CopyToQuad(VkImage src) {
     Impl& s = *impl_;
+    auto check = [](VkResult result, const char* operation) {
+        if (result != VK_SUCCESS) throw std::runtime_error(std::string("OpenXR cinema Vulkan: ") + operation + " failed (" + std::to_string(result) + ")");
+    };
     XrSwapchainImageAcquireInfo ai{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
     if (XR_FAILED(s.api.xrAcquireSwapchainImage(s.quad, &ai, &s.quadIndex))) return false;
     XrSwapchainImageWaitInfo wi{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
@@ -771,10 +774,10 @@ bool Session::CopyToQuad(VkImage src) {
     if (XR_FAILED(s.api.xrWaitSwapchainImage(s.quad, &wi))) return false;
     VkImage dst = s.quadImages[s.quadIndex];
 
-    vkResetCommandBuffer(s.cmd, 0);
+    check(vkResetCommandBuffer(s.cmd, 0), "vkResetCommandBuffer");
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(s.cmd, &bi);
+    check(vkBeginCommandBuffer(s.cmd, &bi), "vkBeginCommandBuffer");
     auto barrier = [&](VkImage image, VkImageLayout from, VkImageLayout to, VkAccessFlags srcAccess, VkAccessFlags dstAccess) {
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
         b.srcAccessMask = srcAccess;
@@ -794,14 +797,14 @@ bool Session::CopyToQuad(VkImage src) {
     vkCmdCopyImage(s.cmd, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     barrier(dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
-    vkEndCommandBuffer(s.cmd);
+    check(vkEndCommandBuffer(s.cmd), "vkEndCommandBuffer");
 
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1;
     si.pCommandBuffers = &s.cmd;
-    vkResetFences(vkDevice_, 1, &s.fence);
-    vkQueueSubmit(vkQueue_, 1, &si, s.fence);
-    vkWaitForFences(vkDevice_, 1, &s.fence, VK_TRUE, UINT64_MAX);
+    check(vkResetFences(vkDevice_, 1, &s.fence), "vkResetFences");
+    check(vkQueueSubmit(vkQueue_, 1, &si, s.fence), "vkQueueSubmit");
+    check(vkWaitForFences(vkDevice_, 1, &s.fence, VK_TRUE, UINT64_MAX), "vkWaitForFences");
 
     XrSwapchainImageReleaseInfo ri{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
     return s.api.xrReleaseSwapchainImage(s.quad, &ri) == XR_SUCCESS;

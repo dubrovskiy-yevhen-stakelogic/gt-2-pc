@@ -1,4 +1,5 @@
 #include "game/arcade/arcade_setup.h"
+#include "game/arcade/expanded_garage.h"
 #include "game/pc_features.h"
 
 #include <algorithm>
@@ -267,9 +268,9 @@ ArcadeRaceSetup BuildBattle(const ArcadeSetupData& d, ArcadeRaceSetup out, std::
             std::memcpy(block.data() + slot + 8, &config, sizeof(config));
             local[i] = ConfigFromCarSpec(d.data.Tables(), spec, false);
         } else { // a garage car: its configuration; the entry is made at the race load (ovl3 0x8001290C, RebuildGarageEntries)
-            if (g > 1 || garages[size_t(g)].size() < kGarageCarsAt + 100 * kGarageCarBytes) throw std::invalid_argument("arcade setup: a garage car needs its garage block");
+            if (g > 1 || garages[size_t(g)].size() < 4) throw std::invalid_argument("arcade setup: a garage car needs its garage block");
             const int16_t index = Rd<int16_t>(sel, Sel2P::kGarageSlot + 2 * i);
-            if (index < 0 || index >= 100) throw std::invalid_argument("arcade setup: garage index");
+            if (index < 0 || index >= ExpandedGarageCount(garages[size_t(g)])) throw std::invalid_argument("arcade setup: garage index");
             garageCars[i] = garages[size_t(g)].subspan(kGarageCarsAt + size_t(index) * kGarageCarBytes, kGarageCarBytes);
             std::memcpy(&local[i], garageCars[i].data() + 8, sizeof(CarConfig));
             garageFlag = true;
@@ -303,7 +304,7 @@ ArcadeRaceSetup BuildArcadeRace(const ArcadeSetupData& d, std::span<const uint8_
     std::span<const uint8_t> garageCar;
     if (fromGarage) {
         const int16_t index = Rd<int16_t>(sel, Sel::kGarageSlot);
-        if (garageBlock.size() < kGarageCarsAt + 100 * kGarageCarBytes || index < 0 || index >= 100)
+        if (index < 0 || index >= ExpandedGarageCount(garageBlock))
             throw std::invalid_argument("arcade setup: a garage car needs its garage block");
         garageCar = garageBlock.subspan(kGarageCarsAt + size_t(index) * kGarageCarBytes, kGarageCarBytes);
     }
@@ -517,7 +518,7 @@ void GarageEntry(ArcadeRaceSetup& setup, size_t entry, int32_t grid, uint8_t kin
 }
 
 career::GarageCar& GarageCarAt(std::span<uint8_t> garageBlock, int16_t index) {
-    if (garageBlock.size() < kGarageCarsAt + 100 * kGarageCarBytes || index < 0 || index >= 100) throw std::invalid_argument("arcade setup: garage block / index");
+    if (index < 0 || index >= ExpandedGarageCount(garageBlock)) throw std::invalid_argument("arcade setup: garage block / index");
     return *reinterpret_cast<career::GarageCar*>(garageBlock.data() + kGarageCarsAt + size_t(index) * kGarageCarBytes);
 }
 
@@ -552,7 +553,7 @@ void RebuildGarageEntry(ArcadeRaceSetup& setup, std::span<uint8_t> garageBlock, 
     if (mode != 4 && mode != 6) return;
     const int16_t g = Rd<int16_t>(sel, Sel::kGarage), index = Rd<int16_t>(sel, Sel::kGarageSlot);
     if (g < 0) return;
-    if (garageBlock.size() < kGarageCarsAt + 100 * kGarageCarBytes || index < 0 || index >= 100) throw std::invalid_argument("arcade setup: garage block / index");
+    if (index < 0 || index >= ExpandedGarageCount(garageBlock)) throw std::invalid_argument("arcade setup: garage block / index");
     career::GarageCar& car = *reinterpret_cast<career::GarageCar*>(garageBlock.data() + kGarageCarsAt + size_t(index) * kGarageCarBytes);
     // 0x80011BE8(garage, index, rally)
     auto sheet = std::make_unique<career::TuneSheet>();

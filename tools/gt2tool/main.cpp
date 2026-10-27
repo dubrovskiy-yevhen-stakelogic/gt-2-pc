@@ -71,6 +71,7 @@ int Usage() {
               "\n  gt2tool replay-add <disc.bin> <card.mcd> <source>[#N] [title]     adds replay N of a card / replay file / disc:<vol path> to the card"
               "\n  gt2tool career-cars <disc.bin> <save>                              garage: figures, parts owned, sheet stages, available settings"
               "\n  gt2tool career-buy <disc.bin> <save> <car-id> <out> [--paint c] [--money N]   buy a car at its catalogue price (0x8001796C)"
+              "\n  gt2tool career-add <disc.bin> <save> <out> <car-id>...              add missing stock cars for free, preserving progress (new output only)"
               "\n  gt2tool career-part <disc.bin> <save> <car> <kind-hex> <out> [--buy] [--remove] [--body N]   buy / fit (0x80017D6C) / remove a part"
               "\n  gt2tool career-set <disc.bin> <save> <car> <setting> <entry> <delta> <out> [--reset]   settings screen (0x8005FC9C / 0x80054D10 / 0x8005F9DC)"
               "\n  gt2tool menu-page <disc.bin> <page> [--png out.png] [--compare cap.vram.bin [--side out.png]] [--money N] [--day N] [--no-cursor]   GM page items + render"
@@ -1203,8 +1204,45 @@ int CmdCareerCars(const GtfsVolume& vol, const career::CareerData& d, const std:
     return 0;
 }
 
-// career-buy <save> <car id> <out> [--paint c] [--money N]: 0x8001796C (a new car at its catalogue price; --money sets
-// the credits first, a test aid).
+// Add stock cars using the same zero-price purchase as the in-game car cheat.
+int CmdCareerAdd(const career::CareerData& d, int argc, char** argv) {
+    using namespace gt2::career;
+    if (std::filesystem::exists(argv[4])) throw std::runtime_error("Output already exists; original retained");
+    CareerFile f = CareerFile::Load(argv[3]);
+    if (!f.save.CrcOk()) throw std::runtime_error("Source save CRC mismatch; original retained");
+    const CareerState before = f.save.state;
+    auto& g = f.save.state.garage;
+    if (g.count < 0 || g.count > kGarageCapacity) throw std::runtime_error("Invalid garage count");
+    auto sheet = std::make_unique<TuneSheet>();
+    std::array<uint8_t, 0x400> scratch{};
+    for (int i = 5; i < argc; ++i) {
+        const uint32_t id = PackCarId(argv[i]);
+        const auto index = d.cars.IndexOf(id);
+        if (index < 0 || FirstRowOfCar(d.tables, 30, id) < 0) throw std::runtime_error("Unknown drivable car: " + std::string(argv[i]));
+        const auto& info = d.cars.At(size_t(index));
+        if (info.paintIds.empty()) throw std::runtime_error("Car has no paint");
+        if (std::any_of(g.cars, g.cars + g.count, [&](const career::GarageCar& c) { return c.carId == id && c.modelId == id; })) {
+            std::printf("already present: %s\n", argv[i]);
+            continue;
+        }
+        if (g.count >= kGarageCapacity) throw std::runtime_error("Garage full; original retained");
+        if (BuyCar(g, id, info.paintIds.front(), 0, d, *sheet, {scratch.data()}) != 1)
+            throw std::runtime_error("Cannot add car; original retained");
+        std::printf("added: %s at slot %d\n", argv[i], g.count - 1);
+    }
+    // Check every byte outside the appended slots and count, including money and current car.
+    CareerState unchanged = f.save.state;
+    unchanged.garage.count = before.garage.count;
+    for (int i = before.garage.count; i < g.count; ++i) unchanged.garage.cars[i] = before.garage.cars[i];
+    if (std::memcmp(&unchanged, &before, sizeof(before)) != 0) throw std::runtime_error("Unexpected career modification");
+    f.Write(argv[4]);
+    const auto reread = LoadCareer(argv[4]);
+    if (!reread.CrcOk() || std::memcmp(&reread.state, &f.save.state, sizeof(CareerState)) != 0)
+        throw std::runtime_error("Output verification failed");
+    return 0;
+}
+
+// career-buy: a catalogue-price purchase; --money sets the credits first as a test aid.
 int CmdCareerBuy(const GtfsVolume& vol, const career::CareerData& d, int argc, char** argv) {
     using namespace gt2::career;
     CareerFile f = CareerFile::Load(argv[3]);
@@ -1345,6 +1383,7 @@ int main(int argc, char** argv) {
         if (cmd.rfind("career-", 0) == 0) {
             const career::CareerData d = career::CareerData::Load(disc, vol);
             if (cmd == "career-cars" && argc == 4) return CmdCareerCars(vol, d, argv[3]);
+            if (cmd == "career-add" && argc >= 6) return CmdCareerAdd(d, argc, argv);
             if (cmd == "career-buy" && argc >= 6) return CmdCareerBuy(vol, d, argc, argv);
             if (cmd == "career-part" && argc >= 7) return CmdCareerPart(vol, d, argc, argv);
             if (cmd == "career-set" && argc >= 9) return CmdCareerSet(vol, d, argc, argv);

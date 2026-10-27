@@ -2,6 +2,14 @@
 
 Neural HD preparation is available on Windows and macOS. Compatible platforms load the same prepared files. Neural upscaling never runs while playing. The [Linux installer](LINUX-INSTALL.md) supports original game assets and optional BIOS capture without Wine; native Linux HD preparation is not included.
 
+## Windows preparation time and progress
+
+HD creation is local neural processing, separate from copying the game or installing the Quest APK. Simulation alone contains 461 exported pictures in the US v1.2 profile; full-screen films add many frames. A slower GPU can take hours. For a quick installation choose `-HdMedia Original`; run `PREPARE-HD.bat` later if desired. The interactive installer now asks first and defaults to Original. Menus and movies remain explicit options. Command-line installs with a supplied disc retain the Menus default unless `-HdMedia` is specified.
+
+The old upscaler printed percentages for tiles within each picture. Values such as 93.75% followed by 0% normally meant the next picture, not a restarted installation. Windows preparation now reports the named group, verified picture count and elapsed time. A checkpoint after each batch of at most 32 pictures preserves completed work across failures. Restart with the same runtime/cache to reuse it; changed inputs, model files or damaged cached outputs are rebuilt. At most the interrupted batch is repeated. Full native output, including GPU information and errors, is retained in `upscale-last-batch.log` inside the group's cache directory.
+
+Tile size remains 128 by default. `prepare-hd.ps1 -Tile 0` enables automatic selection, as in Road Rash; `-Gpu N` selects a specific Vulkan GPU. A three-image RTX 4090 check took 9.15 seconds at tile 128 and 13.85 seconds at automatic size, so automatic size is not assumed to be faster. No speedup is guaranteed without measuring the player's GPU. Verified original menu exports are also reused. Quest copying labels HD media, game assets, disc images and verification separately; ADB's percentage still applies to the current transfer group.
+
 ## macOS
 
 Install 0.6.0, import your discs, close the game and run **PREPARE-HD.command**.
@@ -36,10 +44,11 @@ The installer downloads a SHA-256-pinned Real-ESRGAN NCNN Vulkan package and use
 
 ## Coverage
 
-- The two GT2 startup pictures, title background and GT Mode common backgrounds are reconstructed from the selected US/European disc and upscaled.
+- The two GT2 startup pictures, title background and GT Mode common backgrounds are reconstructed from the selected US/European disc and upscaled. Reconstruction is bounded against a bicubic enlargement of the original: neural changes are limited to 10 colour levels per channel, preserving source alpha. This reduces invented small lettering and logo details at the cost of some sharpness. Existing neural outputs are reused; the bounded pass checkpoints each picture using source, neural and output hashes.
 - Full-screen Arcade intro and endings (movie IDs 24, 25, 26) are decoded with GT2's native movie decoder, upscaled and repacked with the original audio. Video reconstruction is bounded against a bicubic enlargement of each original frame: neural changes are limited to 10 colour levels per channel. This trades some sharpness for fewer invented details and avoids mixing unrelated frames at cuts. Previously prepared neural frames are reused; older unbounded movie containers are rebuilt.
 - Pictures/frames normally use 4x dimensions. Sources exceeding 512 pixels in either dimension are reduced after neural processing to stay within 2048x2048; 640-pixel pictures and endings therefore use 2x dimensions.
 - Menu fonts/buttons, GT Mode page-specific captions, and race HUD sheets/maps are prepared as 4x indexed atlases using edge-directed Scale4x. Both 4-bit and 8-bit source pages are supported. The runtime retains native palettes, fades and transparency. These are the fallback atlases; selected shared menu and HUD sheets also receive the separate contour pass described below.
+- GT Mode page artwork is packed into independently placed 16x8 tiles. These tiles are enlarged separately with clamped boundaries: unrelated neighbours in the packed dictionary must not create dots, pinholes or spikes in lettering. Existing UI caches receive a one-time tile repair during HD preparation, without repeating neural processing.
 - World/car textures and the small course-selection movie previews retain their original assets. GT Mode pages with transparent car-view cutouts keep their original background rendering to preserve those holes. This is not a complete HD replacement of every game asset.
 - AI processing can smooth detail or alter lettering. It cannot recover detail absent from the source.
 
@@ -67,6 +76,6 @@ Course-map sprites are enlarged independently inside their 96x96 source rectangl
 
 HD preparation applies an offline CPU adaptation of Hyllian's MIT xBR-lv3 contour rules to title-list lettering, shared Arcade menu/font sheets, GT Mode common fonts/items, and race HUD gauge/number sheets. This replaces the former neural text pass, which could change letter shapes. Both transparent and fully opaque palettes are processed, including Load Guest Garage, Road Race and Time Trial. Pictures and movies retain their separate Real-ESRGAN path.
 
-Each HD texel stores two original palette indices and a blend weight. Runtime filtering spans adjacent HD subpixels, retaining original colours, fades and transparency without a source-sized blur. The xBR neighbourhood search runs only during installation. The tightly packed nine-pixel race-caption font and page-specific GT Mode artwork retain their indexed fallback. Original low-resolution shading and small glyph details can remain visible; this is contour smoothing, not replacement typography.
+Each HD texel stores two original palette indices and a blend weight. Runtime filtering spans adjacent HD subpixels, retaining original colours, fades and transparency without a source-sized blur. The xBR neighbourhood search runs only during installation. Shared fonts and HUD sprites use rectangles from the game's own tables: font neighbours outside a glyph are transparent, while HUD sampling clamps to the sprite edge. The versioned preparation cache rebuilds these atlases; the runtime format remains compatible with 0.8.4. The tightly packed nine-pixel race-caption font and page-specific GT Mode artwork retain their indexed fallback. Original low-resolution shading and small glyph details can remain visible; this is contour smoothing, not replacement typography.
 
 The files are `hd/fonts/<page>-<palette>.png` and `hd/fonts/index.txt`, with format `palette-contours4x-v1`. Preparation uses a separate versioned cache; old neural packs are rejected by the runtime and fall back to indexed UI until HD preparation is rerun. Generated atlases are not supplied in the public source folder.

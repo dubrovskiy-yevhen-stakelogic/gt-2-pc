@@ -1,0 +1,366 @@
+{
+  "56": {
+    "name": "Isuzu",
+    "gt2Maker": 255
+  },
+  "3": {
+    "name": "Alfa Romeo",
+    "gt2Maker": 1
+  },
+  "28": {
+    "name": "Nissan",
+    "gt2Maker": 23
+  },
+  "12": {
+    "name": "Fiat",
+    "gt2Maker": 9
+  },
+  "86": {
+    "name": "Alpine",
+    "gt2Maker": 255
+  },
+  "39": {
+    "name": "Suzuki",
+    "gt2Maker": 31
+  },
+  "7": {
+    "name": "Chevrolet",
+    "gt2Maker": 5
+  },
+  "43": {
+    "name": "Toyota",
+    "gt2Maker": 33
+  },
+  "15": {
+    "name": "Honda",
+    "gt2Maker": 11
+  },
+  "34": {
+    "name": "Renault",
+    "gt2Maker": 27
+  },
+  "8": {
+    "name": "Chrysler",
+    "gt2Maker": 255
+  },
+  "55": {
+    "name": "Plymouth",
+    "gt2Maker": 26
+  },
+  "11": {
+    "name": "Dodge",
+    "gt2Maker": 8
+  },
+  "20": {
+    "name": "Lotus",
+    "gt2Maker": 17
+  },
+  "13": {
+    "name": "Ford",
+    "gt2Maker": 10
+  },
+  "25": {
+    "name": "Mitsubishi",
+    "gt2Maker": 22
+  },
+  "46": {
+    "name": "Volkswagen",
+    "gt2Maker": 38
+  },
+  "38": {
+    "name": "Subaru",
+    "gt2Maker": 30
+  },
+  "51": {
+    "name": "MINI",
+    "gt2Maker": 255
+  },
+  "10": {
+    "name": "Daihatsu",
+    "gt2Maker": 7
+  },
+  "52": {
+    "name": "Pontiac",
+    "gt2Maker": 255
+  },
+  "21": {
+    "name": "Mazda",
+    "gt2Maker": 18
+  },
+  "18": {
+    "name": "Lancia",
+    "gt2Maker": 14
+  },
+  "0": {
+    "name": "Sileighty",
+    "gt2Maker": 23
+  },
+  "32": {
+    "name": "Peugeot",
+    "gt2Maker": 25
+  },
+  "31": {
+    "name": "Panoz",
+    "gt2Maker": 255
+  },
+  "47": {
+    "name": "ASL",
+    "gt2Maker": 255
+  },
+  "37": {
+    "name": "Spoon",
+    "gt2Maker": 255
+  },
+  "57": {
+    "name": "Autobianchi",
+    "gt2Maker": 255
+  },
+  "9": {
+    "name": "Citroen",
+    "gt2Maker": 6
+  },
+  "44": {
+    "name": "TVR",
+    "gt2Maker": 34
+  },
+  "35": {
+    "name": "RUF",
+    "gt2Maker": 28
+  },
+  "90": {
+    "name": "TRIAL",
+    "gt2Maker": 255
+  },
+  "22": {
+    "name": "Mercedes-Benz / AMG",
+    "gt2Maker": 19
+  },
+  "27": {
+    "name": "NISMO",
+    "gt2Maker": 23
+  },
+  "6": {
+    "name": "BMW",
+    "gt2Maker": 4
+  },
+  "92": {
+    "name": "Toyota Modellista",
+    "gt2Maker": 255
+  },
+  "24": {
+    "name": "Mine's",
+    "gt2Maker": 255
+  },
+  "77": {
+    "name": "Pescarolo",
+    "gt2Maker": 255
+  },
+  "29": {
+    "name": "Opel",
+    "gt2Maker": 24
+  },
+  "48": {
+    "name": "DOME",
+    "gt2Maker": 255
+  },
+  "54": {
+    "name": "Cadillac",
+    "gt2Maker": 255
+  },
+  "36": {
+    "name": "Shelby",
+    "gt2Maker": 29
+  },
+  "5": {
+    "name": "Audi / Auto Union",
+    "gt2Maker": 3
+  },
+  "30": {
+    "name": "Pagani",
+    "gt2Maker": 255
+  },
+  "17": {
+    "name": "Jaguar",
+    "gt2Maker": 13
+  },
+  "91": {
+    "name": "Ford Australia",
+    "gt2Maker": 255
+  },
+  "16": {
+    "name": "Hyundai",
+    "gt2Maker": 255
+  },
+  "60": {
+    "name": "Saleen",
+    "gt2Maker": 255
+  },
+  "59": {
+    "name": "AMUSE",
+    "gt2Maker": 255
+  },
+  "88": {
+    "name": "NIKE",
+    "gt2Maker": 255
+  },
+  "2": {
+    "name": "Acura",
+    "gt2Maker": 0
+  },
+  "53": {
+    "name": "Spyker",
+    "gt2Maker": 255
+  },
+  "4": {
+    "name": "Aston Martin",
+    "gt2Maker": 2
+  },
+  "49": {
+    "name": "Infiniti",
+    "gt2Maker": 255
+  },
+  "50": {
+    "name": "Lexus",
+    "gt2Maker": 255
+  },
+  "26": {
+    "name": "MUGEN",
+    "gt2Maker": 255
+  },
+  "19": {
+    "name": "Lister",
+    "gt2Maker": 16
+  },
+  "42": {
+    "name": "Tom's",
+    "gt2Maker": 255
+  },
+  "41": {
+    "name": "Tommy kaira",
+    "gt2Maker": 32
+  },
+  "62": {
+    "name": "Jay Leno",
+    "gt2Maker": 255
+  },
+  "63": {
+    "name": "BUICK",
+    "gt2Maker": 255
+  },
+  "64": {
+    "name": "Callaway",
+    "gt2Maker": 255
+  },
+  "66": {
+    "name": "EAGLE",
+    "gt2Maker": 255
+  },
+  "67": {
+    "name": "Mercury",
+    "gt2Maker": 255
+  },
+  "23": {
+    "name": "MG",
+    "gt2Maker": 21
+  },
+  "68": {
+    "name": "Triumph",
+    "gt2Maker": 255
+  },
+  "69": {
+    "name": "Volvo",
+    "gt2Maker": 255
+  },
+  "71": {
+    "name": "Jensen",
+    "gt2Maker": 255
+  },
+  "72": {
+    "name": "Marcos",
+    "gt2Maker": 255
+  },
+  "75": {
+    "name": "Cizeta",
+    "gt2Maker": 255
+  },
+  "58": {
+    "name": "Ginetta",
+    "gt2Maker": 255
+  },
+  "76": {
+    "name": "HKS",
+    "gt2Maker": 255
+  },
+  "14": {
+    "name": "Gillet",
+    "gt2Maker": 255
+  },
+  "74": {
+    "name": "BLITZ",
+    "gt2Maker": 255
+  },
+  "70": {
+    "name": "Hommell",
+    "gt2Maker": 255
+  },
+  "87": {
+    "name": "RE Amemiya",
+    "gt2Maker": 255
+  },
+  "85": {
+    "name": "Holden",
+    "gt2Maker": 255
+  },
+  "79": {
+    "name": "Opera Performance",
+    "gt2Maker": 255
+  },
+  "80": {
+    "name": "Caterham",
+    "gt2Maker": 255
+  },
+  "81": {
+    "name": "AC Cars",
+    "gt2Maker": 255
+  },
+  "82": {
+    "name": "Bentley",
+    "gt2Maker": 255
+  },
+  "78": {
+    "name": "FPV",
+    "gt2Maker": 255
+  },
+  "83": {
+    "name": "Seat",
+    "gt2Maker": 255
+  },
+  "84": {
+    "name": "Land Rover",
+    "gt2Maker": 255
+  },
+  "65": {
+    "name": "DMC",
+    "gt2Maker": 255
+  },
+  "73": {
+    "name": "SCION",
+    "gt2Maker": 255
+  },
+  "33": {
+    "name": "Gran Turismo",
+    "gt2Maker": 255
+  },
+  "93": {
+    "name": "Chaparral",
+    "gt2Maker": 255
+  },
+  "94": {
+    "name": "HPA Motorsports",
+    "gt2Maker": 255
+  },
+  "96": {
+    "name": "Proto Motors",
+    "gt2Maker": 255
+  }
+}

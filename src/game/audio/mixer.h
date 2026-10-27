@@ -82,6 +82,8 @@ public:
     void SetStream(StreamSource* source);
     // Freeze voices, reverb and attached music together; the output buffer stays silent.
     void SetPaused(bool paused);
+    // Pre-race/results menus keep music playing while race voices are frozen.
+    void SetVoicesPaused(bool paused);
 
     // Offline / test: runs the reverb unit alone on `frames` stereo frames of 16-bit-scale input (voice outputs
     // after their volumes, as the EON voices would send them) and returns its output (16-bit scale, before any
@@ -133,6 +135,7 @@ private:
     std::vector<float> wet_; // the EON voices' sum of one Mix call
     StreamSource* stream_ = nullptr;
     bool paused_ = false;
+    bool voicesPaused_ = false;
     mutable std::mutex mutex_;
 };
 

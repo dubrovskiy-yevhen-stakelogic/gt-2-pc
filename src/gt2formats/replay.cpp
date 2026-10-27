@@ -44,6 +44,14 @@ ReplayFrame FrameOfPad(const LogicalPad& pad) {
     f.steer = uint8_t(steer);
     f.throttle = uint8_t(throttle);
     f.brake = uint8_t(brake);
+    if (pad.fineSteering && (pad.analog & 1)) {
+        // 0x40 extends only steering. 0x80 remains the separate physical-wheel
+        // protocol, which also changes pedals, gearbox and steering physics.
+        const uint16_t axis = std::min<uint16_t>(pad.steerAxis,4095);
+        f.flags |= 0x40;
+        f.steer = uint8_t(axis >> 4);
+        f.wheelFine = axis & 15;
+    }
     return f;
 }
 
@@ -71,11 +79,14 @@ sim::PadRecord PadOfFrame(const ReplayFrame& frame, std::span<const uint16_t, 16
         }
         return pad;
     }
-    pad.flags = uint16_t(flags);
+    pad.flags = uint16_t(flags & ~0x40u);
     uint16_t steer;
     if ((flags & 1) == 0) {
         steer = uint16_t((buttons & 1) * 2);
         if (buttons & 2) steer = uint16_t(steer - 2);
+    } else if (flags & 0x40) {
+        const int axis = (frame.steer << 4) | (frame.wheelFine & 15);
+        steer = uint16_t(axis < 2048 ? (2048-axis)*2 : -(axis-2048)*4096/2047);
     } else {
         steer = uint16_t((0x80u - frame.steer) * 0x20u);
     }
@@ -100,7 +111,7 @@ ReplayStream ReplayStream::FromBytes(std::span<const uint8_t> bytes) {
     s.bytes_.assign(bytes.begin(), bytes.end());
     const size_t size = kHeaderSize + s.Capacity();
     if (s.bytes_.size() < size) s.bytes_.resize(size, 0);
-    if (s.Capacity() >= 2 && (s.bytes_[0x15] & 0x80)) s.wheelFine_ = uint16_t(s.bytes_[size - 2] | (s.bytes_[size - 1] << 8));
+    if (s.Capacity() >= 2 && (s.bytes_[0x15] & 0xc0)) s.wheelFine_ = uint16_t(s.bytes_[size - 2] | (s.bytes_[size - 1] << 8));
     return s;
 }
 
@@ -140,7 +151,7 @@ void ReplayStream::Record(const ReplayFrame& frame) { // 0x800166CC
         if (frame.buttons != bytes_[0x16]) header |= 0x10;
         if (frame.steer != bytes_[0x17]) header |= 0x20;
         if (b3 != bytes_[0x18]) header |= 0x40;
-        if ((frame.flags & 0x80) && (!(bytes_[0x15] & 0x80) || frame.wheelFine != wheelFine_)) header |= 0x40;
+        if ((frame.flags & 0xc0) && (!(bytes_[0x15] & 0xc0) || frame.wheelFine != wheelFine_)) header |= 0x40;
         if (header == 0) {
             Put32(0x08, I32(0x08) + 1);
             return;
@@ -161,7 +172,7 @@ void ReplayStream::CacheWheelFine(uint16_t value) {
     // GhostSession reconstructs a stream from bytes every tick. Reserve the
     // final two capacity bytes for the native cache; the 17-byte full margin
     // keeps encoded runs below them. Original streams never write this cache.
-    if ((bytes_[0x15] & 0x80) && Capacity() >= 2) {
+    if ((bytes_[0x15] & 0xc0) && Capacity() >= 2) {
         const size_t end = kHeaderSize + Capacity();
         bytes_[end - 2] = uint8_t(value); bytes_[end - 1] = uint8_t(value >> 8);
     }
@@ -178,7 +189,7 @@ void ReplayStream::Flush() { // 0x80016598
     if (header & 0x20) Data(p++) = bytes_[0x17];
     if (header & 0x40) {
         Data(p++) = bytes_[0x18];
-        if (bytes_[0x15] & 0x80) { Data(p++) = uint8_t(wheelFine_); Data(p++) = uint8_t(wheelFine_ >> 8); }
+        if (bytes_[0x15] & 0xc0) { Data(p++) = uint8_t(wheelFine_); Data(p++) = uint8_t(wheelFine_ >> 8); }
     }
     const int32_t count = run >> 3;
     if (header & 0x80) {
@@ -235,7 +246,7 @@ void ReplayStream::Read(ReplayFrame& frame) { // 0x80016428
         if (header & 0x20) bytes_[0x17] = b2 = Data(p++);
         if (header & 0x40) {
             bytes_[0x18] = uint8_t(b3 = Data(p++));
-            if (b0 & 0x80) { const uint8_t low = Data(p++); CacheWheelFine(uint16_t(low | (uint16_t(Data(p++)) << 8))); }
+            if (b0 & 0xc0) { const uint8_t low = Data(p++); CacheWheelFine(uint16_t(low | (uint16_t(Data(p++)) << 8))); }
         }
         run = 0;
         if (header & 0x80) {
@@ -265,7 +276,7 @@ void ReplayStream::Read(ReplayFrame& frame) { // 0x80016428
     frame.buttons = b1;
     frame.steer = b2;
     frame.brake = uint8_t(b3 >> 4);
-    frame.wheelFine = (b0 & 0x80) ? wheelFine_ : 0;
+    frame.wheelFine = (b0 & 0xc0) ? wheelFine_ : 0;
 }
 
 // ---------------------------------------------------------------- the file

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GT4ToolDirectory Condition="'$(GT4ToolDirectory)'==''">../work/gt4-tools/bin</GT4ToolDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="gt4_vif_checks.cs" />
+    <Reference Include="PDTools.Files"><HintPath>$(GT4ToolDirectory)/PDTools.Files.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

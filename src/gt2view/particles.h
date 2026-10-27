@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -105,6 +106,30 @@ public:
 // The sprite textures' VRAM places (0x8002EB08 rewrites the TIM headers of crstim.arc entries 1 and 2).
 struct SmokeTexturePlacement { uint32_t arcEntry; int imageX, imageY, clutX, clutY; };
 inline constexpr SmokeTexturePlacement kSmokeTextures[2] = {{2, 608, 0, 352, 510}, {1, 624, 0, 368, 510}}; // kind 0, kind 1
+
+inline bool SmokePaletteHasOpaque(std::span<const uint16_t> palette) {
+    for (uint16_t colour : palette) if (colour != 0 && !(colour & 0x8000)) return true;
+    return false;
+}
+
+// A mixed or unknown sprite range keeps both PS1 passes. The retail tyre-smoke
+// palette has only transparent/STP texels, so its opaque pass shades and discards
+// every fragment without changing the image or depth.
+inline bool SmokeOpaquePassRequired(std::span<const SceneVertex> vertices, const std::array<bool, 2>& opaque) {
+    for (size_t i = 0; i < vertices.size(); i += 3) {
+        const uint32_t clut = vertices[i].clut;
+        bool found = false;
+        for (size_t kind = 0; kind < 2; ++kind) {
+            const auto& t = kSmokeTextures[kind];
+            if (clut != (uint32_t(t.clutX) | (uint32_t(t.clutY) << 16))) continue;
+            if (opaque[kind]) return true;
+            found = true;
+            break;
+        }
+        if (!found) return true;
+    }
+    return false;
+}
 
 // Dev aid for tools/gt2play (--smoke-log): the pool mirrored from the running original. At the original's update
 // call (0x80016978) the mirror runs Update(); at its draw call (0x8002EB60) the mirror spawns from the guest's cars

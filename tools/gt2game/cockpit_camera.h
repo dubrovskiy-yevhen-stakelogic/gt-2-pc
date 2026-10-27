@@ -11,13 +11,26 @@ struct CockpitSettings {
     bool enabled = true;
     bool steeringWheel = true;
     bool mirror = true;
+    bool sideMirrors = true;
     int mirrorScalePercent = 100;
     int seatHeightCm = 0;
     int seatBackCm = 0;
 };
 
 inline float CockpitSeatBack(const CockpitSettings& settings, bool desktop = false) {
+    // Furniture offset retains its existing reference. Eye tuning is separate.
     return .15f + settings.seatBackCm * .01f + (desktop ? .18f : 0.f);
+}
+
+// Eye tuning is independent of furniture: authored cabins sit 30 cm forward
+// of the furniture reference, generated cabins 10 cm forward (+Z is back).
+inline float CockpitEyeBack(const gt2view::CockpitFit& fit, const CockpitSettings& settings, bool desktop = false) {
+    return CockpitSeatBack(settings,desktop)-(fit.nativeInterior ? .30f : .10f);
+}
+
+inline float CockpitSeatHeight(const gt2view::CockpitFit& fit,const CockpitSettings& settings) {
+    (void)fit;
+    return settings.seatHeightCm*.01f;
 }
 
 // Tracking remains in seated metres. Only its presentation parent follows the
@@ -25,8 +38,16 @@ inline float CockpitSeatBack(const CockpitSettings& settings, bool desktop = fal
 inline std::array<float,16> CockpitControlsLocal(const gt2view::CockpitFit& fit, const CockpitSettings& settings,
                                                float scale, const float rigSeat[3]) {
     return {scale,0,0,0, 0,scale,0,0, 0,0,scale,0,
-            fit.eye[0]+rigSeat[0],fit.eye[1]+settings.seatHeightCm*.01f+rigSeat[1],
-            fit.eye[2]+CockpitSeatBack(settings)+rigSeat[2],1};
+            fit.eye[0]+rigSeat[0],fit.eye[1]+CockpitSeatHeight(fit,settings)+rigSeat[1],
+            fit.eye[2]+CockpitEyeBack(fit,settings)+rigSeat[2],1};
+}
+
+// Invert the tracking parent for interaction/rendering without relocating the
+// dashboard wheel. Moving the seat changes reach, never the car-local anchor.
+inline std::array<float,3> CockpitWheelTrackingCenter(const std::array<float,3>& hub,
+                                                    const std::array<float,16>& controls) {
+    return {(hub[0]-controls[12])/controls[0], (hub[1]-controls[13])/controls[5],
+            (hub[2]-controls[14])/controls[10]};
 }
 
 inline bool CockpitShown(const gt2::camera::RaceCamera& camera, bool enabled, bool replay, bool oldCamera, uint32_t hold) {
@@ -36,10 +57,11 @@ inline bool CockpitShown(const gt2::camera::RaceCamera& camera, bool enabled, bo
         camera.target == 0 && camera.hideTarget && !camera.external;
 }
 
+
 inline void PlaceCockpitEye(gt2::camera::CameraProjection& camera, const float model[16],
                             const gt2view::CockpitFit& fit, const CockpitSettings& settings, bool desktop = false) {
-    const float local[] = {fit.eye[0], fit.eye[1] + settings.seatHeightCm * .01f,
-                          fit.eye[2] + CockpitSeatBack(settings, desktop)};
+    const float local[] = {fit.eye[0], fit.eye[1] + CockpitSeatHeight(fit,settings),
+                          fit.eye[2] + CockpitEyeBack(fit,settings, desktop)};
     for (int row = 0; row < 3; ++row)
         camera.eye[row] = model[12 + row] + model[row] * local[0] + model[4 + row] * local[1] + model[8 + row] * local[2];
     for (int row = 0; row < 3; ++row)

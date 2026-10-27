@@ -5,6 +5,9 @@
 #include <stdexcept>
 
 #include "gt2vfs/gtfs.h"
+#include "gt2formats/json.h"
+#include "gt2formats/car_info.h"
+#include <algorithm>
 
 namespace gt2 {
 namespace {
@@ -292,10 +295,12 @@ MenuPages MenuPages::Load(const GtfsVolume& vol, const std::string& language) {
     if (!dat) throw std::runtime_error("no " + dir + "gtmenudat.dat");
     m.dat_ = vol.ReadStored(*dat);
     m.solo_ = ParseSoloData(vol.Read(dir + "solodata.dat"));
+    m.LoadExpansion(vol);
     return m;
 }
 
 uint32_t MenuPages::Resolve(uint32_t id) const {
+    if (expansionPages_.contains(id)) return id;
     if (id & 0x80000000u) {
         const uint32_t i = id & 0x7FFFFFFFu;
         if (i >= solo_.pages.size()) throw std::out_of_range("message page " + Hex(id, 8) + " not in solodata");
@@ -307,6 +312,96 @@ uint32_t MenuPages::Resolve(uint32_t id) const {
 
 std::vector<uint8_t> MenuPages::Bytes(uint32_t id) const { return MenuPackEntry(dat_, index_, Resolve(id), true); }
 
-MenuPage MenuPages::Page(uint32_t id) const { return ParseMenuPage(Bytes(id), Resolve(id)); }
+MenuPage MenuPages::Page(uint32_t id) const {
+    if (const auto found = expansionPages_.find(id); found != expansionPages_.end()) return found->second;
+    auto page = ParseMenuPage(Bytes(id), Resolve(id));
+    const bool dealer=std::any_of(page.items.begin(),page.items.end(),[](const auto& it){return it.Type()==6;});
+    if ((id == 0 || dealer) && !expansionPages_.empty()) {
+        MenuItem shop;
+        shop.x0=180; shop.y0=310; shop.x1=335; shop.y1=334;
+        if(dealer) {shop.x0=330;shop.y0=18;shop.x1=495;shop.y1=38;}
+        shop.flags=menu_item_flag::kAction;
+        const uint32_t target=0x10000;
+        std::memcpy(shop.data.data(), &target, sizeof target);
+        shop.nativeLabel="GT4 Showroom";
+        page.items.push_back(std::move(shop));
+    }
+    return page;
+}
+
+void MenuPages::LoadExpansion(const GtfsVolume& vol) {
+    const auto* file=vol.Find("carparam/gt4_expansion.json");
+    if (!file) return;
+    const auto bytes=vol.Read(*file);
+    const auto doc=json::Parse(std::string_view(reinterpret_cast<const char*>(bytes.data()),bytes.size()));
+    if (doc.StringOr("format","")!="gt2-car-expansion" || doc.IntOr("version",0)!=1)
+        throw std::runtime_error("unsupported showroom catalogue");
+    const auto& cars=doc.Require("cars");
+    if (!cars.IsArray() || cars.Size()>2048) throw std::runtime_error("invalid showroom car count");
+    std::map<int,std::vector<const json::Value*>> makers;
+    for (size_t i=0;i<cars.Size();++i) makers[int(cars.At(i).IntAt("maker"))].push_back(&cars.At(i));
+    auto item=[](int y, std::string label, uint16_t type, uint32_t target, uint32_t car=0) {
+        MenuItem it;it.x0=28;it.x1=484;it.y0=int16_t(y-20);it.y1=int16_t(y);
+        it.flags=type; if (type==0 || type==6) it.flags|=menu_item_flag::kAction;
+        if (type==6) it.flags|=menu_item_flag::kHidePrice;
+        std::memcpy(it.data.data(),&target,4);std::memcpy(it.data.data()+4,&car,4);
+        it.nativeLabel=std::move(label);return it;
+    };
+    auto page=[&](uint32_t id, uint32_t back, const std::string& title) {
+        MenuPage p;p.id=id;p.back=back;p.flags=0x00FF00FF;p.nativePanel=true;
+        p.picture=0;p.items.push_back(item(32,title,0xFFFF,0));
+        return p;
+    };
+    std::vector<std::pair<std::string,uint32_t>> brands;
+    uint32_t next=0x11000;
+    for (auto& [maker,list]:makers) {
+        (void)maker;
+        std::sort(list.begin(),list.end(),[](const auto* a,const auto* b){return a->Require("name").AsString()<b->Require("name").AsString();});
+        const std::string brand=list.front()->Require("makerName").AsString();
+        const uint32_t first=next;const size_t pages=(list.size()+6)/7;next+=uint32_t(pages);
+        brands.emplace_back(brand,first);
+        for(size_t pi=0;pi<pages;++pi) {
+            auto p=page(first+uint32_t(pi),0x10000,brand+"  "+std::to_string(pi+1)+"/"+std::to_string(pages));
+            for(size_t j=0;j<7 && pi*7+j<list.size();++j) {
+                const auto& c=*list[pi*7+j];const auto id=PackCarId(c.Require("id").AsString());const uint32_t detail=next++;
+                auto name=c.Require("name").AsString();if(name.size()>53) name=name.substr(0,50)+"...";
+                auto it=item(75+int(j)*43,name,6,detail,id);if(j==0)it.flags|=menu_item_flag::kDefault;p.items.push_back(std::move(it));
+                p.items.push_back(item(92+int(j)*43,"Cr. "+std::to_string(c.IntAt("price")),0xFFFF,0));
+                auto d=page(detail,p.id,c.Require("name").AsString());
+                d.items.push_back(item(80,"GT4 / "+std::to_string(c.IntAt("year")),0xFFFF,0));
+                d.items.push_back(item(115,std::to_string(c.IntAt("mass"))+" kg",0xFFFF,0));
+                static constexpr const char* drive[]={"FR","FF","4WD","MR","RR"};
+                const auto dr=c.IntAt("drive");if(dr<0 || dr>4)throw std::runtime_error("invalid showroom drivetrain");
+                d.items.push_back(item(150,std::string(drive[dr])+" / "+std::to_string(c.Require("gears").Size())+" gears",0xFFFF,0));
+                d.items.push_back(item(185,"Cr. "+std::to_string(c.IntAt("price")),0xFFFF,0));
+                d.items.push_back(item(220,"",0xB9,0));
+                d.items.push_back(item(255,"",0xBA,0));
+                MenuItem viewport;viewport.flags=0x0A;viewport.x0=250;viewport.y0=60;viewport.x1=505;viewport.y1=290;
+                d.items.push_back(viewport);
+                auto buy=item(320,"Buy car",4,0);buy.flags|=menu_item_flag::kDefault;d.items.push_back(std::move(buy));
+                d.items.push_back(item(380,"Back",0x12,0));
+                expansionPages_.emplace(detail,std::move(d));
+                solo_.cars.emplace_back(id,detail);
+            }
+            if(pi) {auto it=item(397,"Previous",0,first+uint32_t(pi)-1);it.x1=170;p.items.push_back(std::move(it));}
+            if(pi+1<pages) {auto it=item(397,"Next",0,first+uint32_t(pi)+1);it.x0=350;p.items.push_back(std::move(it));}
+            p.items.push_back(item(435,"Manufacturers",0,0x10000));
+            expansionPages_.emplace(p.id,std::move(p));
+        }
+    }
+    std::sort(brands.begin(),brands.end());
+    const size_t pages=(brands.size()+11)/12;
+    for(size_t pi=0;pi<pages;++pi) {
+        auto p=page(0x10000+uint32_t(pi),0,"GT4 Showroom  "+std::to_string(pi+1)+"/"+std::to_string(pages));
+        for(size_t j=0;j<12 && pi*12+j<brands.size();++j) {
+            const auto& [name,target]=brands[pi*12+j];auto it=item(72+int(j)*26,name,0,target);
+            if(j==0)it.flags|=menu_item_flag::kDefault;p.items.push_back(std::move(it));
+        }
+        if(pi){auto it=item(397,"Previous",0,p.id-1);it.x1=170;p.items.push_back(std::move(it));}
+        if(pi+1<pages){auto it=item(397,"Next",0,p.id+1);it.x0=350;p.items.push_back(std::move(it));}
+        p.items.push_back(item(435,"GT World",0,0));expansionPages_.emplace(p.id,std::move(p));
+    }
+    std::sort(solo_.cars.begin(),solo_.cars.end());
+}
 
 } // namespace gt2

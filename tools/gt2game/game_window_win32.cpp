@@ -122,10 +122,16 @@ Win32Window::Win32Window(const std::string& title, int clientWidth, int clientHe
                           nullptr, nullptr, hinst, nullptr);
     if (!hwnd_) throw std::runtime_error("CreateWindow failed");
     SetWindowLongPtrA(hwnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-    const bool noFocus = WindowNoFocus() || std::getenv("GT2_NO_FOCUS") != nullptr;
-    canFullscreen_ = withRenderer && !VrMode();
+    const char* windowMode=std::getenv("GT2_WINDOW");
+    const bool hidden=windowMode && std::string(windowMode)=="hidden";
+    const bool noFocus = hidden || WindowNoFocus() || std::getenv("GT2_NO_FOCUS") != nullptr;
+    canFullscreen_ = !hidden && withRenderer && !VrMode();
     if (canFullscreen_ && !noFocus && !WindowedMode()) ToggleFullscreen();
-    if (noFocus) {
+    if (hidden) {
+        // Keep a normal-sized Vulkan surface without ever showing its HWND.
+        // Unlike minimization, this preserves screenshot and stereo rendering.
+        std::printf("window: hidden render test\n");
+    } else if (noFocus) {
         // Not ShowWindow: the FIRST ShowWindow of a process takes its command from the launcher's STARTUPINFO, so
         // SW_SHOWNOACTIVATE can be turned back into "show and activate" by whoever started the run. SetWindowPos
         // shows the window without ever activating it, whatever the launcher asked for.

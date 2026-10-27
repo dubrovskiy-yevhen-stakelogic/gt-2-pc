@@ -1,4 +1,5 @@
 #include "game/arcade/arcade_car_page.h"
+#include "game/arcade/expanded_garage.h"
 
 #include <algorithm>
 #include <cstring>
@@ -615,6 +616,9 @@ void ArcNameLogo::Set(const ArcadeMenuAssets& a, MenuVram& vram, int model, uint
     if (loaded[size_t(slot)] && ids[size_t(slot)] == carId) return;
     loaded[size_t(slot)] = false;
     ids[size_t(slot)] = carId;
+    // The decorative large font has no glyphs for several lowercase letters.
+    // The complete menu text font is required for arbitrary catalogue names.
+    textNames[size_t(slot)].clear();textFont=&a.fonts[1];
     std::vector<uint8_t> file;
     std::span<const uint8_t> tim;
     if (model < 0) {
@@ -630,10 +634,9 @@ void ArcNameLogo::Set(const ArcadeMenuAssets& a, MenuVram& vram, int model, uint
             if (!named) named = a.vol->Find(path + ".gz");
             if (named) break;
         }
-        if (!named)
-            for (const GtfsEntry& f : a.vol->Files())
-                if (f.path.rfind("carlogo/", 0) == 0 && (!named || f.index < named->index)) named = &f;
-        if (!named) throw std::runtime_error("arcade car page: no carlogo/ files");
+        if (!named) {
+            textNames[size_t(slot)]=a.CarName(carId);loaded[size_t(slot)]=true;return;
+        }
         const GtfsEntry* next = nullptr;
         for (const GtfsEntry& f : a.vol->Files())
             if (f.index == named->index + 1) next = &f;
@@ -665,6 +668,13 @@ void ArcNameLogo::Draw(MenuOtSlot& ot, uint32_t carId, int x, int y, int brightn
     for (; i < 2; i++)
         if (ids[size_t(i)] == carId && loaded[size_t(i)]) break;
     if (i >= 2) return;
+    if(!textNames[size_t(i)].empty()) {
+        TextCtx c;c.ot=&ot;c.font=textFont;
+        c.colour=uint32_t(brightness)*0x010101u;
+        const int width=scale>0?140:280;
+        DrawTextScaled(c,textNames[size_t(i)],x-width/2,y+(centred?6:22),width);
+        return;
+    }
     const uint16_t clut = uint16_t(((tpage & 0x10) << 10) | ((tpage & 0xF) * 4 + i * 0x2000));
     if (scale > 0) { // 0x8007E774: POLY_FT4 (x -+ w * scale >> 8; not centred: y + 2 .. y + (h * scale >> 7) + 2)
         const int16_t hw = int16_t(uint32_t(w[size_t(i)] * scale) >> 8);
@@ -1009,8 +1019,7 @@ void AddChip(MenuOtSlot& ot, int x, int y, int w, int h, uint16_t colour, int a)
 } // namespace
 
 int GarageCount(std::span<const uint8_t> garage) {
-    if (garage.size() < kGarageStride) throw std::out_of_range("arcade garage: block too short");
-    return S16(garage, 0);
+    return ExpandedGarageCount(garage);
 }
 
 ArcGarageEntry GarageEntryOf(std::span<const uint8_t> car) { // 0x80019E88
@@ -1031,7 +1040,7 @@ ArcGarageEntry GarageEntryOf(std::span<const uint8_t> car) { // 0x80019E88
 
 std::vector<ArcGarageEntry> GarageSummary(std::span<const uint8_t> garage) { // 0x80019F44
     std::vector<ArcGarageEntry> out;
-    const int n = std::clamp(GarageCount(garage), 0, 100);
+    const int n = GarageCount(garage);
     for (int i = 0; i < n; i++) out.push_back(GarageEntryOf(garage.subspan(4 + size_t(i) * kGarageCarSize, kGarageCarSize)));
     return out;
 }
@@ -1058,7 +1067,9 @@ void ArcadeCarPage::EnterGarage(int garage, bool reenter, std::span<const uint8_
     if (!reenter) {
         garage_ = garage;
         rally_ = rally;
-        garageBlock_.assign(block.begin(), block.begin() + std::ptrdiff_t(kGarageStride));
+        garageBlock_.assign(block.begin(), block.end());
+        order_.resize(size_t(GarageCount(block)));
+        for (size_t i=0;i<order_.size();++i) order_[i]=int16_t(i);
         garageInfo_ = GarageSummary(block);
         carHidden_ = 0x18;
         reopenTimer_ = -1;
@@ -1083,7 +1094,7 @@ void ArcadeCarPage::EnterGarage(int garage, bool reenter, std::span<const uint8_
         camera_ = CarCamera();
         logo_.Clear();
         specs_.Init(a_);
-        for (int i = 0; i < 100; i++) order_[size_t(i)] = int16_t(i);
+
         return;
     }
     carHidden_ = 0x18;
@@ -1096,7 +1107,7 @@ void ArcadeCarPage::EnterGarage(int garage, bool reenter, std::span<const uint8_
 }
 
 int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidget& w, int row, const MenuListRowDraw* d) { // 0x8001F50C
-    if (row < 0 || row >= 100) throw std::out_of_range("arcade garage list: row");
+    if (row < 0 || !g.info || size_t(row) >= g.info->size()) throw std::out_of_range("arcade garage list: row");
     const int index = g.order[row];
     const ArcGarageEntry& e = g.info->at(size_t(index));
     if (command == kMenuListEnabled) return g.rally ? (e.rally != 0 ? 1 : 0) : 1;
@@ -1129,7 +1140,10 @@ int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidge
     const uint32_t model = U32(car, 0x8C);
     const int32_t info = cars_.IndexOf(model);
     const CarInfoRecord& r = cars_.At(info < 0 ? 0 : size_t(info));
-    DrawText(c, r.rawName, x - 100, y + 8, 1); // 0x800609F8 of the model
+    const std::string hp = Format(a_.data.Text(kFmtHp), {D((e.power * 1000) / 0x3F6)});
+    const int hw = NumberWidth(c, hp, 1, 0);
+    const auto name=a_.CarName(info<0?U32(car,0):model);
+    DrawText(c, FitText(*c.font,name,200-hw-7), x - 100, y + 8, 1);
     uint16_t chip = 0;                         // 0x80060C38(model, paint)
     {
         auto lower = [](int32_t ch) { return uint32_t(ch - 0x41) < 0x1A ? ch + 0x20 : ch; };
@@ -1142,8 +1156,6 @@ int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidge
         chip = r.chipColors.at(k);
     }
     AddChip(*ot, x - 116, y - 8, 9, 16, chip, v);
-    const std::string hp = Format(a_.data.Text(kFmtHp), {D((e.power * 1000) / 0x3F6)});
-    const int hw = NumberWidth(c, hp, 1, 0);
     DrawNumber(c, hp, x - (hw - 100), y + 8, 1, -3, 0);
     const std::string letter = a_.data.Text(a_.data.ovl2.Get<uint32_t>(kClassLetters + uint32_t(e.cls) * 4));
     DrawText(c, letter, (x + 110) - (TextWidth(c, letter, 1) >> 1), y + 8, 1); // 0x8006ACC4

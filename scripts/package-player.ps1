@@ -1,15 +1,24 @@
 param(
     [Parameter(Mandatory)][string]$OpenXRLoader,
     [string]$BuildDir = 'build_update',
-    [string]$Apk = 'dist/GT2-VR-0.8.1.apk',
+    [string]$Apk,
     [Parameter(Mandatory)][string]$AndroidSdk,
-    [string]$Output = 'dist/GT2-native-0.8.1',
+    [string]$Output,
     [string]$SourceManifest,
     [switch]$AllowUncommitted,
     [switch]$FileSystem
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot
+$project = Get-Content -LiteralPath (Join-Path $repo 'CMakeLists.txt') -Raw
+if ($project -notmatch 'project\(gt2pc VERSION ([0-9]+\.[0-9]+\.[0-9]+) ') { throw 'Cannot determine source version.' }
+$version = $Matches[1]
+if (!$Apk) { $Apk = "dist/GT2-VR-$version.apk" }
+if (!$Output) { $Output = "dist/GT2-native-$version" }
+$gradle = Get-Content -LiteralPath (Join-Path $repo 'android/app/build.gradle') -Raw
+if ($gradle -notmatch 'versionCode ([0-9]+)') { throw 'Cannot determine Android version code.' }
+$versionCode = [int]$Matches[1]
+$apkName = "GT2-VR-$version.apk"
 function Full([string]$p) { if ([IO.Path]::IsPathRooted($p)) { return [IO.Path]::GetFullPath($p) }; return [IO.Path]::GetFullPath((Join-Path $repo $p)) }
 $Output = Full $Output
 $BuildDir = Full $BuildDir
@@ -33,7 +42,7 @@ $sourceManifestHash = $null
 if ($SourceManifest) {
     $SourceManifest = Full $SourceManifest
     $sourceSnapshot = Get-Content -LiteralPath $SourceManifest -Raw | ConvertFrom-Json
-    if ($sourceSnapshot.version -ne '0.8.1') { throw 'Unexpected source snapshot version.' }
+    if ($sourceSnapshot.version -ne $version) { throw 'Unexpected source snapshot version.' }
     $sourceFiles = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem:$FileSystem)
     if (@(Compare-Object $sourceFiles @($sourceSnapshot.files.path)).Count -or $sourceFiles.Count -ne $sourceSnapshot.files.Count) { throw 'Source snapshot inventory differs from the working source.' }
     foreach ($entry in $sourceSnapshot.files) {
@@ -45,7 +54,7 @@ $bin = Join-Path $AndroidSdk 'build-tools/35.0.0'
 & (Join-Path $bin 'apksigner.bat') verify $Apk
 if ($LASTEXITCODE -ne 0) { throw 'APK signature is invalid.' }
 $badging = @(& (Join-Path $bin 'aapt.exe') dump badging $Apk) -join "`n"
-if ($LASTEXITCODE -ne 0 -or $badging -notmatch "versionName='0.8.1'" -or $badging -notmatch "versionCode='25'" -or $badging -match 'application-debuggable') { throw 'APK release metadata is wrong.' }
+if ($LASTEXITCODE -ne 0 -or $badging -notmatch "versionName='$([regex]::Escape($version))'" -or $badging -notmatch "versionCode='$versionCode'" -or $badging -match 'application-debuggable') { throw 'APK release metadata is wrong.' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $apkZip = [IO.Compression.ZipFile]::OpenRead($Apk)
 try {
@@ -53,15 +62,19 @@ try {
     if ($libs.Count -ne 2 -or 'lib/arm64-v8a/libgt2game.so' -notin $libs -or 'lib/arm64-v8a/libopenxr_loader.so' -notin $libs) { throw 'Unexpected APK native libraries.' }
     if (@($apkZip.Entries | Where-Object FullName -Match '^assets/').Count) { throw 'Unexpected APK assets; review the payload.' }
 } finally { $apkZip.Dispose() }
-foreach ($name in @('gt2game.exe','gt2install.exe','gt2checks.exe','gt2media.exe','gt2bootcapture.exe')) { if (!(Test-Path -LiteralPath (Join-Path $BuildDir $name))) { throw "Missing Windows executable: $name" } }
+$executables = @('gt2game.exe','gt2install.exe','gt2checks.exe','gt2media.exe','gt2bootcapture.exe','gt2tool.exe',
+    'gt4assettool.exe','gt4nativemetadata.exe','gt4materialmetadata.exe','gt4specdbexport.exe','gt4showroomexport.exe')
+foreach ($name in $executables) { if (!(Test-Path -LiteralPath (Join-Path $BuildDir $name))) { throw "Missing Windows executable: $name" } }
 if (!(Test-Path -LiteralPath $OpenXRLoader -PathType Leaf)) { throw 'Supply the official x64 Khronos openxr_loader.dll.' }
 foreach ($dir in @('','tools','scripts','docs','LICENSES')) { New-Item -ItemType Directory -Force -Path (Join-Path $Output $dir) | Out-Null }
 Copy-Item -LiteralPath $OpenXRLoader -Destination (Join-Path $Output 'tools/openxr_loader.dll')
-Copy-Item -LiteralPath $Apk -Destination (Join-Path $Output 'GT2-VR-0.8.1.apk')
-foreach ($name in @('gt2game.exe','gt2install.exe','gt2checks.exe','gt2media.exe','gt2bootcapture.exe')) { Copy-Item -LiteralPath (Join-Path $BuildDir $name) -Destination (Join-Path $Output "tools/$name") }
-foreach ($name in @('transfer-saves.ps1','platform-tools.ps1','install-player.ps1','install.ps1','install-quest.ps1','collect-profiler-quest.ps1','prepare-hd.ps1','prepare-hd-wizard.ps1','install-linux.py','gt2_disc.py','gt2_boot.py','linux-downloads.json')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $Output "scripts/$name") }
+Copy-Item -LiteralPath $Apk -Destination (Join-Path $Output $apkName)
+foreach ($name in $executables) { Copy-Item -LiteralPath (Join-Path $BuildDir $name) -Destination (Join-Path $Output "tools/$name") }
+foreach ($name in @('transfer-saves.ps1','platform-tools.ps1','install-player.ps1','install.ps1','install-quest.ps1','package-quest-gt4.py','collect-profiler-quest.ps1','prepare-hd.ps1','hd-upscale.ps1','prepare-hd-wizard.ps1','install-linux.py','gt2_disc.py','gt2_boot.py','linux-downloads.json')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $Output "scripts/$name") }
 foreach ($name in @('README.md','THIRD_PARTY.md','LICENSE','CHANGELOG.md','PREPARE-HD.bat','INSTALL-LINUX.sh','TRANSFER_QUEST_SAVES_TO_PC.bat','TRANSFER_PC_SAVES_TO_QUEST.bat')) { Copy-Item -LiteralPath (Join-Path $repo $name) -Destination (Join-Path $Output $name) }
-foreach ($name in @('PCVR.md','SAVE-TRANSFER.md','PLAYER-INSTALL.md','QUEST.md','VALIDATION.md','HD-MEDIA.md','MIPMAPS.md','LINUX-INSTALL.md','WHEELS.md','WHEEL-PROFILES.md','COCKPIT.md','images/cockpit-0.5.0.png','wheel-profile-provenance.json')) {
+$publicDocs = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem |
+    Where-Object { $_.StartsWith('docs/') } | ForEach-Object { $_.Substring(5) })
+foreach ($name in $publicDocs) {
     $destination = Join-Path $Output "docs/$name"
     New-Item -ItemType Directory -Force -Path (Split-Path $destination) | Out-Null
     Copy-Item -LiteralPath (Join-Path $repo "docs/$name") -Destination $destination
@@ -98,7 +111,7 @@ pause
 $files = @(Get-ChildItem -LiteralPath $Output -Recurse -File | Sort-Object FullName | ForEach-Object {
     [ordered]@{ path=$_.FullName.Substring($Output.Length+1).Replace('\','/'); bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
 })
-[ordered]@{ version='0.8.1'; versionCode=25; sourceCommit=$revision; sourceDirty=$sourceDirty; sourceProvenance=$(if ($FileSystem) { 'filesystem-sha256' } else { 'git' }); sourceManifestSha256=$sourceManifestHash; package='io.github.gt2pc.quest'; abi='arm64-v8a'; debuggable=$false; files=$files } |
+[ordered]@{ version=$version; versionCode=$versionCode; sourceCommit=$revision; sourceDirty=$sourceDirty; sourceProvenance=$(if ($FileSystem) { 'filesystem-sha256' } else { 'git' }); sourceManifestSha256=$sourceManifestHash; package='io.github.gt2pc.quest'; abi='arm64-v8a'; debuggable=$false; files=$files } |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $Output 'release-manifest.json') -Encoding UTF8
 & (Join-Path $Output 'scripts/install-player.ps1') -VerifyOnly
 $prefix = [IO.Path]::GetFileName($Output) + '/'

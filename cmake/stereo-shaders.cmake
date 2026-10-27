@@ -9,6 +9,6 @@ foreach(mode stereo stereo_mv stereo_cached stereo_cached_mv)
   endif()
   add_custom_command(OUTPUT "${output}"
     COMMAND "${GT2_GLSLC}" -O -mfmt=c ${defines} -fshader-stage=vertex -o "${output}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_stereo.vert"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_stereo.vert" VERBATIM)
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_stereo.vert" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl" VERBATIM)
   list(APPEND GT2VK_SHADER_OUTPUTS "${output}")
 endforeach()

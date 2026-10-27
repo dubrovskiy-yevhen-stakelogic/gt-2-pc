@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <cstdlib>
+#include <algorithm>
 
 #include "gt2vfs/inflate.h"
 
@@ -70,6 +72,37 @@ GtfsVolume::GtfsVolume(const DiscImage& disc) : disc_(disc) {
         throw std::runtime_error("GT2.VOL: unterminated directory");
     };
     walk(0, "", 0);
+    std::filesystem::path expansion;
+    if (const char* configured = std::getenv("GT2_CAR_EXPANSION")) expansion = configured;
+    else if (!disc_.DataDirectory().empty()) expansion = std::filesystem::path(disc_.DataDirectory()) / "expansions" / "gt4";
+    if (!expansion.empty() && std::filesystem::is_regular_file(expansion / "catalogue.version")) {
+        std::ifstream version(expansion / "catalogue.version", std::ios::binary);
+        std::string format; std::getline(version, format);
+        // Packs created on Windows may use CRLF; getline only removes LF on Android.
+        if (!format.empty() && format.back() == '\r') format.pop_back();
+        if (format != "gt2-car-expansion-1") throw std::runtime_error("unsupported car expansion");
+        const auto root = std::filesystem::canonical(expansion / "assets");
+        std::vector<std::pair<std::string,std::string>> added;
+        for (const auto& file : std::filesystem::recursive_directory_iterator(root)) {
+            if (!file.is_regular_file()) continue;
+            const auto actual = std::filesystem::canonical(file.path());
+            const auto relative = actual.lexically_relative(root);
+            if (relative.empty() || *relative.begin() == "..") throw std::runtime_error("car expansion asset escapes root");
+            const auto name = file.path().lexically_relative(root).generic_string();
+            // No executable, audio or track overrides through the car catalogue layer.
+            if (!(name.starts_with("carobj/") || name.starts_with("carparam/") || name.starts_with(".carinfo") || name == ".carcolor" || name == ".cclatain"))
+                throw std::runtime_error("unsupported car expansion asset: " + name);
+            if (file.file_size() > 32 * 1024 * 1024 || added.size() >= 8192)
+                throw std::runtime_error("car expansion exceeds asset limits");
+            added.emplace_back(name, actual.string());
+        }
+        std::sort(added.begin(), added.end());
+        uint32_t index = 0x10000;
+        for (const auto& [name, path] : added) {
+            expansionFiles_.emplace(name,path);
+            if (!Find(name)) files_.push_back({name,0,0,uint32_t(std::filesystem::file_size(path)),index++});
+        }
+    }
 }
 
 const GtfsEntry* GtfsVolume::Find(const std::string& path) const {
@@ -83,12 +116,25 @@ const GtfsEntry* GtfsVolume::Find(const std::string& path) const {
 }
 
 std::vector<uint8_t> GtfsVolume::ReadStored(const GtfsEntry& e) const {
+    if (const auto found = expansionFiles_.find(e.path); found != expansionFiles_.end()) {
+        std::ifstream in(found->second, std::ios::binary);
+        const auto size = std::filesystem::file_size(found->second);
+        if (size > 32 * 1024 * 1024) throw std::runtime_error("car expansion asset too large");
+        std::vector<uint8_t> data(static_cast<size_t>(size));
+        if (!in.read(reinterpret_cast<char*>(data.data()), std::streamsize(data.size())))
+            throw std::runtime_error("cannot read car expansion asset: " + e.path);
+        return data;
+    }
     std::vector<uint8_t> data(e.size);
     disc_.ReadForm1(vol_.lba, e.offset, data.data(), data.size());
     return data;
 }
 
 std::vector<uint8_t> GtfsVolume::Read(const GtfsEntry& e) const {
+    if (const auto found = expansionFiles_.find(e.path); found != expansionFiles_.end()) {
+        auto data = ReadStored(e);
+        return IsGzip(data) ? Gunzip(data) : data;
+    }
     if (!disc_.DataDirectory().empty()) {
         const auto path = std::filesystem::path(disc_.DataDirectory()) / "assets" / e.path;
         if (std::filesystem::is_regular_file(path)) {

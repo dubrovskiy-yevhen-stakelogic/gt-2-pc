@@ -270,10 +270,14 @@ public:
     void SetDrivingActive(bool active) override { drivingActive_ = active; if (!active) driving_.Reset(); }
     void SetVrMenuActive(bool active) override { vrMenuActive_ = active; driving_.Reset(); steering_ = 0; }
     bool PhysicalSteering(float& value) const override {
-        value = steering_; return pad_->active && drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
+        value = steering_; return pad_->active && drivingActive_ && !vrMenuActive_ &&
+            ((OverlayDrivingSettings().mode == 1 && (driving_.Grabbed(0) || driving_.Grabbed(1))) ||
+             (OverlayDrivingSettings().mode == 2 && driving_.MotionCalibrated()));
     }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
-        if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, OverlayDrivingSettings(), vehicleFrame ? vehicleFrame : drivingMatrix_);
+        if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) {
+            hands_->Append(items, tracking_, driving_, EffectiveDrivingSettings(OverlayDrivingSettings()), vehicleFrame ? vehicleFrame : drivingMatrix_);
+        }
     }
     std::unique_ptr<gt2::input::Device> CreateInputDevice() override {
         return std::make_unique<XrPadDevice>(pad_);
@@ -327,8 +331,13 @@ private:
             tracking_.gripPose[h] = recenter_.Apply(tracking_.gripPose[h]);
             tracking_.aimPose[h] = recenter_.Apply(tracking_.aimPose[h]);
         }
-        steering_ = driving_.Update(tracking_,OverlayDrivingSettings(),drivingActive_ && !vrMenuActive_);
+        const auto displayTime = session_->LastDisplayTime();
+        const auto elapsed = lastDrivingTime_ == Clock::time_point{} ? session_->Period() : displayTime-lastDrivingTime_;
+        lastDrivingTime_ = displayTime;
+        steering_ = driving_.Update(tracking_,EffectiveDrivingSettings(OverlayDrivingSettings()),drivingActive_ && !vrMenuActive_,
+            std::chrono::duration<float>(elapsed).count());
     }
+    Clock::time_point lastDrivingTime_{};
     gt2::vr::DrivingController driving_;
     gt2::vr::TrackedControllers tracking_;
     std::unique_ptr<gt2view::VrDrivingVisuals> hands_;
@@ -434,21 +443,25 @@ void XrWindow::ConfigureVr() {
 }
 
 XrWindow::~XrWindow() {
-    if (renderer_) renderer_->WaitFrame();
-    // A clean exit: ask the runtime to end the session and walk its state machine down (FOCUSED -> ... -> STOPPING,
-    // xrEndSession, IDLE -> EXITING) before anything Vulkan is destroyed.
-    if (session_) {
-        session_->RequestExit();
-        const auto deadline = Clock::now() + std::chrono::seconds(3);
-        while (!session_->Quit() && Clock::now() < deadline) {
-            if (!session_->PollEvents()) break;
-            if (session_->Running()) {
-                if (session_->BeginFrame()) session_->SubmitFrame(VK_NULL_HANDLE);
-            } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    try {
+        if (renderer_) renderer_->WaitFrame();
+        // A clean exit: ask the runtime to end the session and walk its state machine down (FOCUSED -> ... -> STOPPING,
+        // xrEndSession, IDLE -> EXITING) before anything Vulkan is destroyed.
+        if (session_) {
+            session_->RequestExit();
+            const auto deadline = Clock::now() + std::chrono::seconds(3);
+            while (!session_->Quit() && Clock::now() < deadline) {
+                if (!session_->PollEvents()) break;
+                if (session_->Running()) {
+                    if (session_->BeginFrame()) session_->SubmitFrame(VK_NULL_HANDLE);
+                } else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
             }
+            std::printf("xr: %lld compositor frames, session %s\n", session_->FrameIndex(), session_->StateName());
         }
-        std::printf("xr: %lld compositor frames, session %s\n", session_->FrameIndex(), session_->StateName());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "xr: cleanup after graphics failure: %s\n", e.what());
     }
     if (poseLog_) std::fclose(poseLog_);
     poseLog_ = nullptr;
@@ -573,7 +586,9 @@ bool XrWindow::BeginStereoScene(const gt2::vr::Camera& camera, gt2::vr::View& vi
 
 void XrWindow::EndRenderFrame() {
     everDrawn_ = !stereoFrame_ || everDrawn_; // the offscreen image still holds the last mono frame
+    const auto waitStarted=Clock::now();
     renderer_->WaitFrame(); // the frame's queue work is done before the compositor's image is copied from it
+    const auto renderDone=Clock::now();
     if (frameOpen_) {
         if (stereoFrame_) {
             // With MSAA the depth attachment is multisampled and cannot be handed to the compositor as it is.
@@ -584,6 +599,11 @@ void XrWindow::EndRenderFrame() {
         }
     }
     const bool wasStereo = stereoFrame_;
+    const auto xrDone=Clock::now();
+    if(!stereoFrame_ && xrDone-waitStarted>std::chrono::milliseconds(100))
+        std::printf("xr: slow mono completion, render wait %.1f ms, GPU %.1f ms, compositor %.1f ms\n",
+            std::chrono::duration<double,std::milli>(renderDone-waitStarted).count(),renderer_->GpuMilliseconds(),
+            std::chrono::duration<double,std::milli>(xrDone-renderDone).count());
     lastStereo_ = wasStereo;
     stereoFrame_ = false;
     frameOpen_ = false;

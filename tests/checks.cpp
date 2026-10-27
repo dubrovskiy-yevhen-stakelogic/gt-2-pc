@@ -164,12 +164,15 @@ static void CheckPcChanges(const char* discPath) {
           (word(input::pad_object::kAnalogFlags) & 12) == 12, "decoded Bluetooth R2 reaches native logical gas without brake");
 
     shell::GraphicsSettings graphics;
+    Check(!graphics.modernCarReflections,"legacy car reflections remain the default");
+    graphics.Parse("modern_car_reflections", "1");
     graphics.Parse("render_height", "2160");
     shell::GraphicsSettings restored;
     std::istringstream settings(graphics.Serialize());
     std::string line;
     while (std::getline(settings, line)) { const auto at = line.find('='); if (at != std::string::npos) restored.Parse(line.substr(0, at), line.substr(at + 1)); }
     Check(restored == graphics && restored.renderHeight * 16 / 9 == 3840, "4K fixed resolution survives settings round trip");
+    Check(restored.modernCarReflections,"modern car reflections survive settings round trip");
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
 
@@ -221,6 +224,26 @@ static void CheckPcChanges(const char* discPath) {
     std::fill(referenceMixed.begin(), referenceMixed.end(), 0.0f);
     raceMixer->Mix(mixed.data(), 2048); referenceMixer->Mix(referenceMixed.data(), 2048);
     Check(mixed == referenceMixed && raceMixer->ActiveVoices() == 1, "looping race voice resumes sample-identically");
+    raceMixer->SetVoicesPaused(true);
+    raceMixer->SetStream(&raceStream);
+    std::fill(mixed.begin(), mixed.end(), 0.0f);
+    raceMixer->Mix(mixed.data(), 2048);
+    Check(raceStream.cursor == 2048 && std::all_of(mixed.begin(), mixed.end(), [](float f) { return f == .25f; }),
+          "voice-only pause leaves the independent music stream available");
+    raceMixer->SetPaused(true);
+    std::fill(mixed.begin(), mixed.end(), 0.0f);
+    raceMixer->Mix(mixed.data(), 2048);
+    Check(raceStream.cursor == 2048 && std::all_of(mixed.begin(), mixed.end(), [](float f) { return f == 0; }),
+          "full menu pause silences both the previously paused engine and active race music");
+    raceMixer->SetPaused(false);
+    raceMixer->SetStream(nullptr);
+    std::fill(mixed.begin(), mixed.end(), 0.0f);
+    raceMixer->Mix(mixed.data(), 2048);
+    Check(std::all_of(mixed.begin(), mixed.end(), [](float f) { return f == 0; }), "menu without music has no lingering engine sound");
+    raceMixer->SetVoicesPaused(false);
+    std::fill(referenceMixed.begin(), referenceMixed.end(), 0.0f);
+    raceMixer->Mix(mixed.data(), 2048); referenceMixer->Mix(referenceMixed.data(), 2048);
+    Check(mixed == referenceMixed, "restarting driving resumes race voices without advancing them in menus");
     if (discPath) {
         DiscImage disc(discPath);
         const auto exe = LoadExeImage(disc);

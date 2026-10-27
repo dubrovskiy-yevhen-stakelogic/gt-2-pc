@@ -698,6 +698,10 @@ MenuFrame BuildMenuFrame(const MenuAssets& assets, const MenuPage& page, const M
         }
 
     // Items (0x8001B9AC).
+    if (page.nativePanel) {
+        MenuPrim panel;panel.kind=MenuPrim::kTile;panel.w=512;panel.h=448;panel.colour[0]=0x18120E;
+        list.push_back(panel);
+    }
     std::vector<MenuPrim> prims, custom, late;
     MenuTextWriter text(assets.fonts, prims);
     auto Widen = MenuTextWriter::Widen;
@@ -706,6 +710,15 @@ MenuFrame BuildMenuFrame(const MenuAssets& assets, const MenuPage& page, const M
     const GuestImage& o4 = assets.ovl4;
     char buf[64];
     for (const MenuItem& it : page.items) {
+        if (!it.nativeLabel.empty()) {
+            auto label=Widen(it.nativeLabel);
+            if (text.Width(label,true,false)>it.x1-it.x0) {
+                size_t n=label.size();while(n>1 && text.Width(label.substr(0,n),true,false)>it.x1-it.x0) --n;
+                const auto space=label.rfind(u' ',n);if(space!=std::u16string::npos && space>0)n=space;
+                text.Left(label.substr(0,n),true,false,it.x0,it.y1,0xE8E0D0);
+                text.Left(label.substr(n+(label[n]==u' ')),true,false,it.x0,it.y1+18,0xE8E0D0);
+            } else text.Left(label,true,false,it.x0,it.y1,0xE8E0D0);
+        }
         const bool second = it.Has(kSecondFont);
         uint16_t type = it.Type();
         const size_t before = prims.size(), customBefore = custom.size();
@@ -756,6 +769,8 @@ MenuFrame BuildMenuFrame(const MenuAssets& assets, const MenuPage& page, const M
             if (!it.Has(kHidePrice) && state.carPrice)
                 if (const std::optional<uint32_t> price = state.carPrice(it.CarId()))
                     text.Right(Widen(Thousands(*price)), false, second, it.x1 - 0x50, it.y1 + 0x14, 0x2808080u);
+            if(state.carHasNativeCockpit && state.carHasNativeCockpit(it.CarId()))
+                text.Right(u"Cockpit", true, false, it.x1, it.y1 + 0x14, 0x80C0A0u);
             break;
         case 0x47:
             if (!state.currentCar.empty()) text.Left(Widen(state.currentCar), true, second, it.x0, it.y1, kTextColour); // 0x8001B818 simplified

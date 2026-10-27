@@ -5,6 +5,7 @@
 #include "gt2formats/gt_menu_images.h"
 #include "gt2formats/title_assets.h"
 #include "gt2formats/png_reader.h"
+#include "gt2formats/sha1.h"
 #include "gt2formats/str_video.h"
 #include "gt2export/png_deflate.h"
 #include "gt2vfs/disc_image.h"
@@ -29,8 +30,45 @@ void Png(const fs::path& path,int w,int h,const std::vector<uint8_t>& rgb) {
 }
 int main(int argc,char** argv) {
     try {
-        if(argc<3) throw std::runtime_error("gt2media images <disc> <out> | movie <disc> <id> <out> | pack <frames> <out.gtm> [original-frames] | unpack <movie.gtm> <frames> | inspect <movie.gtm> | frame <movie.gtm> <index> <out.png>");
+        if(argc<3) throw std::runtime_error("gt2media images <disc> <out> | compose-images <original> <neural> <output> | fonts <disc> <out> | movie <disc> <id> <out> | pack <frames> <out.gtm> [original-frames] | unpack <movie.gtm> <frames> | inspect <movie.gtm> | frame <movie.gtm> <index> <out.png>");
         const std::string command=argv[1];
+        if(command=="compose-images") {
+            if(argc!=5) throw std::runtime_error("compose-images <original> <neural> <output>");
+            const fs::path original=argv[2],neural=argv[3],out=argv[4];
+            if(fs::equivalent(original,neural) || fs::weakly_canonical(out)==fs::weakly_canonical(neural) ||
+               fs::weakly_canonical(out)==fs::weakly_canonical(original)) throw std::runtime_error("picture output must be separate from its sources");
+            fs::create_directories(out);size_t count=0;
+            const auto digest=[](const fs::path& path) {
+                std::ifstream f(path,std::ios::binary);
+                if(!f) throw std::runtime_error("cannot read picture: "+path.string());
+                const std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(f),std::istreambuf_iterator<char>()};
+                return gt2::Sha1Hex(bytes);
+            };
+            for(const auto& file:fs::directory_iterator(original)) {
+                if(file.path().extension()!=".png") continue;
+                const auto target=out/file.path().filename(),input=neural/file.path().filename();
+                const auto signature=digest(file.path())+":"+digest(input);
+                const auto stamp=target.string()+".source-bounded-v1";
+                std::string cached,outputHash;std::ifstream(stamp)>>cached>>outputHash;
+                if(cached==signature && fs::is_regular_file(target) && digest(target)==outputHash) {++count;continue;}
+                const auto source=gt2::ReadPngFile(file.path().string());
+                auto enhanced=gt2::ReadPngFile(input.string());
+                if(int64_t(enhanced.width)*source.height!=int64_t(enhanced.height)*source.width)
+                    throw std::runtime_error("HD picture aspect mismatch: "+file.path().filename().string());
+                // The same deterministic source bound used for movies. Local
+                // text damage cannot hide inside a low whole-image mean error.
+                gt2::hd::ConstrainMovieFrame(enhanced.rgba,enhanced.width,enhanced.height,source.rgba,source.width,source.height);
+                for(int y=0;y<enhanced.height;++y) for(int x=0;x<enhanced.width;++x)
+                    enhanced.rgba[(size_t(y)*enhanced.width+x)*4+3]=source.rgba[
+                        (size_t(y*source.height/enhanced.height)*source.width+x*source.width/enhanced.width)*4+3];
+                gt2::WritePngRgbaCompressed(target.string(),enhanced.width,enhanced.height,enhanced.rgba);
+                std::ofstream state(stamp,std::ios::trunc);state<<signature<<' '<<digest(target)<<'\n';
+                if(!state) throw std::runtime_error("cannot checkpoint HD picture");
+                if(++count%32==0) std::cout<<"Source-bounded HD pictures: "<<count<<std::endl;
+            }
+            if(!count) throw std::runtime_error("no source pictures");
+            std::cout<<"Prepared "<<count<<" source-bounded HD pictures\n";return 0;
+        }
         if(command=="fit-images") {
             for(const auto& file:fs::directory_iterator(argv[2])) {
                 if(file.path().extension()!=".png") continue;
@@ -104,12 +142,14 @@ int main(int argc,char** argv) {
         }
         gt2::DiscImage disc(argv[2]);const auto& profile=gt2::ProfileOf(disc);gt2::GtfsVolume vol(disc);
         if(command=="fonts") { if(argc!=4) throw std::runtime_error("fonts arguments"); ExportFonts(disc,vol,argv[3]);return 0; }
-        if(command=="ui-maps") {
-            if(argc!=4) throw std::runtime_error("ui-maps arguments");
+        if(command=="ui-maps" || command=="ui-tiles") {
+            if(argc!=4 && !(command=="ui-tiles" && argc==5)) throw std::runtime_error("UI repair arguments");
             const fs::path out=argv[3]; std::set<std::string> keys; std::string key;
             std::ifstream previous(out/"index.txt"); std::getline(previous,key);
             while(previous>>key) if(key.size()==16) keys.insert(key);
-            previous.close(); ExportUiMaps(vol,out,keys);
+            previous.close();
+            if(command=="ui-maps") ExportUiMaps(vol,out,keys);
+            else ExportUiTiles(disc,vol,out,keys,argc==5?std::stoi(argv[4]):-1);
             std::ofstream index(out/"index.txt"); index<<"indexed-scale4x-v2\n";
             for(const auto& entry:keys) index<<entry<<'\n';
             return 0;

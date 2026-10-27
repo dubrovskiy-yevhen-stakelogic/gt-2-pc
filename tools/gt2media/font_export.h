@@ -2,18 +2,34 @@
 #include "gt2formats/hd_ui.h"
 #include "gt2formats/ui_contours.h"
 #include <set>
+#include <map>
 
 inline std::string FontKey(const std::string& page,uint16_t clut) {
     char tail[8]; std::snprintf(tail,sizeof(tail),"-%04x",unsigned(clut)); return page+tail;
 }
 inline void ExportFonts(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,const std::filesystem::path& out) {
     namespace fs=std::filesystem; fs::create_directories(out); std::set<std::string> keys;
+    std::ofstream audit;
+    if(const char* path=std::getenv("GT2_HD_FONT_AUDIT")) {audit.open(path);if(!audit) throw std::runtime_error("cannot open font audit");}
+    struct Region {int x,y,w,h;bool font;};
+    std::map<int,std::vector<Region>> regions;
+    const auto add=[&](int page,int x,int y,int w,int h,bool font=true) {
+        if(w>0 && h>0 && x>=0 && y>=0 && x+w<=256 && y+h<=256) {
+            auto& list=regions[page&31];
+            if(std::none_of(list.begin(),list.end(),[&](const auto& r){return r.x==x && r.y==y && r.w==w && r.h==h && r.font==font;}))
+                list.push_back({x,y,w,h,font});
+        }
+    };
     const auto save=[&](const std::vector<uint16_t>& v,int page,uint16_t clut) {
         const int px=(page&15)*64,py=(page&16)*16,cx=(clut&63)*16,cy=clut>>6;
         const auto* palette=v.data()+cy*1024+cx; std::set<uint16_t> colours(palette,palette+16);
         if(colours.size()<2) return;
         const auto key=FontKey(gt2::hd::UiPageKey(v.data()+py*1024+px),clut);
         if(!keys.insert(key).second) return;
+        if(audit) {
+            audit<<"PAGE "<<key<<' '<<page;for(int i=0;i<16;++i) audit<<' '<<palette[i];audit<<'\n';
+            for(const auto& r:regions[page&31]) audit<<"REGION "<<key<<' '<<r.x<<' '<<r.y<<' '<<r.w<<' '<<r.h<<' '<<r.font<<'\n';
+        }
         if(fs::is_regular_file(out/(key+".png"))) {
             try {const auto cached=gt2::ReadPngFile((out/(key+".png")).string());if(cached.width==1024 && cached.height==1024) return;}
             catch(const std::exception&) {}
@@ -22,7 +38,15 @@ inline void ExportFonts(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,co
         for(int y=0;y<256;++y) for(int x=0;x<256;++x)
             indices[size_t(y*256+x)]=uint8_t((v[(py+y)*1024+px+x/4]>>((x%4)*4))&15);
         std::array<uint16_t,16> coloursArray{};std::copy_n(palette,16,coloursArray.begin());
-        gt2::WritePngRgbaCompressed((out/(key+".png")).string(),1024,1024,gt2::hd::SmoothUiContours4x(indices,coloursArray));
+        auto enlarged=gt2::hd::SmoothUiContours4x(indices,coloursArray);
+        // The game's glyph/sprite rectangles, not guessed grids. Each contour
+        // search is restricted to that rectangle, preserving its own edges.
+        for(const auto& r:regions[page&31]) {
+            const auto part=gt2::hd::SmoothUiContours4x(indices,coloursArray,256,r.x,r.y,r.w,r.h,r.font);
+            for(int y=0;y<r.h*4;++y) std::copy_n(part.data()+size_t(y)*r.w*16,r.w*16,
+                enlarged.data()+(size_t(r.y*4+y)*1024+r.x*4)*4);
+        }
+        gt2::WritePngRgbaCompressed((out/(key+".png")).string(),1024,1024,enlarged);
     };
     const auto tim=[&](const std::vector<uint16_t>& v,const std::vector<uint8_t>& bytes,int page) {
         const auto u32=[&](size_t at) {return uint32_t(bytes.at(at))|uint32_t(bytes.at(at+1))<<8|uint32_t(bytes.at(at+2))<<16|uint32_t(bytes.at(at+3))<<24;};
@@ -34,6 +58,10 @@ inline void ExportFonts(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,co
     };
     const auto& profile=gt2::ProfileOf(disc);
     auto title=profile.arcade?gt2::TitleAssets::LoadArcade(disc,vol):gt2::TitleAssets::Load(disc,vol);
+    for(const auto& font:title.fonts) for(uint32_t code=0;code<256;++code) {
+        std::vector<gt2::HudFontSprite> sprites;font.Glyph(code,0,0,sprites);
+        for(const auto& g:sprites) add(g.tpage,g.u,g.v,g.w,g.h);
+    }
     for(const auto& entry: {std::pair{"arcade/title_item.tim",12}, {"arcade/arc_font.tim",30}, {"arcade/topmenu_panels_us.tim",14}})
         tim(title.vram.Words(),vol.Read(entry.first),entry.second);
     if(profile.arcade) {
@@ -44,6 +72,8 @@ inline void ExportFonts(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,co
             tim(v.Words(),vol.Read(entry.first),entry.second);
     } else {
         const auto assets=gt2::MenuAssets::Load(disc,vol);gt2::MenuVram v;
+        for(const auto* font:{&assets.fonts.a,&assets.fonts.b})
+            for(const auto& g:font->glyphs) add(g.tpage,g.u,g.v,g.w,g.h);
         v.UploadTimToPage(assets.fontTim,10);v.UploadTimToPage(assets.itemsTim,24);v.UploadTimToPage(assets.cursorTim,9);
         tim(v.Words(),assets.fontTim,10);tim(v.Words(),assets.itemsTim,24);
     }
@@ -51,6 +81,13 @@ inline void ExportFonts(const gt2::DiscImage& disc,const gt2::GtfsVolume& vol,co
     const auto upload=[&](int x,int y,int w,int h,const uint16_t* data) {for(int row=0;row<h;++row) std::copy_n(data+row*w,w,v.data()+(y+row)*1024+x);};
     // The tightly packed nine-pixel caption font retains its indexed fallback.
     const auto sheet=gt2::LoadHudSheet(vol);const auto tables=gt2::LoadHudTables(gt2::LoadOverlayImage(disc,0));
+    const auto hud=[&](const auto& d){add(d.tpage,d.u,d.v,d.w,d.h,false);};
+    for(const auto& d:tables.speedDigits) hud(d);
+    for(const auto& d:tables.strip) hud(d);
+    for(const auto& d:tables.badges) hud(d);
+    for(const auto& d:tables.faces) hud(d);
+    for(const auto& d:tables.turbo) hud(d);
+    hud(tables.unitKmh);hud(tables.unitMph);
     std::set<uint16_t> cluts;
     for(const auto& d:tables.speedDigits) cluts.insert(d.clut);
     for(const auto& d:tables.strip) cluts.insert(d.clut);

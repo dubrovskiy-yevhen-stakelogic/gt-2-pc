@@ -86,10 +86,11 @@ class SceneAssets;
 // colour 0x40 as 0x8001A8A4 sets it.
 class MenuCarView {
 public:
-    MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol);
+    MenuCarView(SceneRenderer& renderer, const gt2::GtfsVolume& vol, SceneAssets* sharedAssets = nullptr);
     ~MenuCarView();
     // Loads the car of `modelId` (packed id) when it is not the one loaded; false when it cannot be loaded.
     bool Use(uint32_t modelId);
+    bool HasNativeInterior(int which=-1) const;
     // Appends the car's items: `projection` = the car's camera (menu::MenuCarProject with the yaw).
     void Append(std::vector<DrawItem>& items, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect, bool squarePixels);
     // The frame size of the projection's pixels (default 512 x 480; the race overlay's views: 352 x 480).
@@ -113,6 +114,8 @@ private:
     SceneRenderer& renderer_;
     const gt2::GtfsVolume& vol_;
     std::unique_ptr<SceneAssets> assets_;
+    SceneAssets* sharedAssets_ = nullptr;
+    SceneAssets* Assets() const { return sharedAssets_ ? sharedAssets_ : assets_.get(); }
     uint32_t model_ = 0;
     int slot_ = -1;
     int32_t lift_ = 0;

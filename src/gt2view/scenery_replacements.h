@@ -44,6 +44,18 @@ class SceneryDetailIndex {
     static std::array<int,3> Cell(const std::array<float,3>& p) {
         return {int(std::floor(p[0]/8)),int(std::floor(p[1]/8)),int(std::floor(p[2]/8))};
     }
+    static bool CoarseRoadCorner(const std::array<float,3>& p,const Triangle& t,float tolerance) {
+        const float dx=t.b[0]-t.a[0],dz=t.b[2]-t.a[2],ex=t.c[0]-t.a[0],ez=t.c[2]-t.a[2];
+        const float determinant=dx*ez-dz*ex;
+        if(std::abs(determinant)<.01f)return false;
+        const float u=((p[0]-t.a[0])*ez-(p[2]-t.a[2])*ex)/determinant;
+        const float v=(dx*(p[2]-t.a[2])-dz*(p[0]-t.a[0]))/determinant;
+        if(u<-.001f || v<-.001f || u+v>1.001f)return false;
+        const float height=t.a[1]+u*(t.b[1]-t.a[1])+v*(t.c[1]-t.a[1]);
+        const float slopeX=((t.b[1]-t.a[1])*ez-(t.c[1]-t.a[1])*dz)/determinant;
+        const float slopeZ=(dx*(t.c[1]-t.a[1])-ex*(t.b[1]-t.a[1]))/determinant;
+        return slopeX*slopeX+slopeZ*slopeZ<1.f && std::abs(p[1]-height)<=1.5f+tolerance;
+    }
 public:
     explicit SceneryDetailIndex(const gt2::Track& track) : track_(track) {
         for(size_t ci=0;ci<track.chunks.size();++ci) {
@@ -187,7 +199,28 @@ public:
             }
             // Three anchors identify a surface patch; coarse quads can have a
             // fourth corner lifted by their reduced subdivision (Midfield road).
-            if(anchoredCorners<3) { chunks.clear();continue; }
+            if(anchoredCorners<3) {
+                // A coarse banked quad can have only two boundary anchors; its
+                // other corners still lie over the detailed road. Require both
+                // real 3D anchors and every remaining corner's road footprint.
+                // A floating independent mesh has no anchors and is retained.
+                bool footprint=p.IsQuad() && anchoredCorners>=2;
+                for(size_t k=0;k<4 && footprint;++k) {
+                    const auto vi=p.vertex[k];if(!matches[vi].empty())continue;
+                    const auto& v=model.vertices[vi];std::array<float,3> position{};
+                    for(size_t axis=0;axis<3;++axis)position[axis]=matrix[axis]*v.x+matrix[4+axis]*v.y+matrix[8+axis]*v.z+matrix[12+axis]+registration[axis];
+                    auto lo=position,hi=position;lo[1]-=1.5f+tolerance;hi[1]+=1.5f+tolerance;
+                    const auto a=Cell(lo),b=Cell(hi);bool found=false;
+                    for(int x=a[0];x<=b[0];++x)for(int y=a[1];y<=b[1];++y)for(int z=a[2];z<=b[2];++z) {
+                        const auto cell=triangleCells_.find({x,y,z});if(cell==triangleCells_.end())continue;
+                        for(auto ti:cell->second)if(CoarseRoadCorner(position,triangles_[ti],tolerance)) {
+                            found=true;chunks.push_back(triangles_[ti].chunk);
+                        }
+                    }
+                    footprint=found;
+                }
+                if(!footprint){chunks.clear();continue;}
+            }
             std::sort(chunks.begin(),chunks.end());
             chunks.erase(std::unique(chunks.begin(),chunks.end()),chunks.end());
             for(size_t k=0;k<(p.IsQuad()?4u:3u);++k) sharedBoundary[p.vertex[k]]=true;

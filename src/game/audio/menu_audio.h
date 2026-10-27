@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "game/audio/audio_device.h"
+#include "game/audio/frame_clock.h"
 #include "game/audio/car_sound.h"
 #include "game/audio/mixer.h"
 #include "game/audio/sequencer.h"
@@ -45,8 +46,8 @@ public:
     void LoadArcade(const GtfsVolume& vol, const GuestImage& exe);
     // 0x800256EC(music, 0): the sequence from the beginning at once; `musicVolume` = the career's music volume (career + 0xB3).
     void StartArcadeMusic(uint8_t musicVolume);
-    bool OpenDevice(std::string& error) { return device_.Open(mixer_, error); }
-    bool RecordTo(const std::string& path) { return device_.Record(path); } // dev aid: call before OpenDevice
+    bool OpenDevice(std::string& error,bool realtime=true);
+    bool RecordTo(const std::string& path) { recording_=device_.Record(path);return recording_; } // dev aid: call before OpenDevice
     void SetReverbEnabled(bool enabled) { mixer_.SetReverbEnabled(enabled); }
 
     // 0x80060840(id): 0 buzzer, 1 accept, 2 back, 3 car wash done, 5 cursor move, 6 list move (4, 7, 8: title / card /
@@ -58,12 +59,16 @@ public:
     void StopMusic();
     // Once per view update (60 Hz): 0x80019028 (the start countdown), the sequencer tick, the driver's handle poll.
     void Frame();
-    int CurrentTrack() const { return requested_; }
+    int CurrentTrack() const { std::lock_guard lock(stateMutex_);return requested_; }
     // Dev aid: one line per effect, track start and sequence note ("<frame> note <track> <note> <velocity> <length>
     // <program>"), frames counted by Frame().
     void SetEventLog(std::FILE* log);
 
 private:
+    void TickFrame(); // caller holds stateMutex_
+    mutable std::mutex stateMutex_;
+    AudioFrameClock clock_;
+    bool recording_=false;
     std::FILE* log_ = nullptr;
     int frame_ = 0;
     void StartTrack(int track); // 0x800228D4

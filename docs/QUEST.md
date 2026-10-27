@@ -1,4 +1,4 @@
-# Quest 3 standalone — 0.8.1
+# Quest 3 standalone — 0.9.0
 
 The Android ARM64 build runs locally on Quest 3. Menus, startup artwork and movies use a theatre screen; single-player driving and replays use head-tracked stereo. Two-player split-screen stays on the theatre screen. No streaming PC is required.
 
@@ -19,6 +19,7 @@ For the precompiled release, follow [PLAYER-INSTALL.md](PLAYER-INSTALL.md). Ever
 | A / B during a movie | Skip |
 | Left Menu | Original race pause / Continue |
 | Both grips + left Menu | Open VR settings; Menu closes |
+| Hold left Menu for at least one second | Open VR settings without a chord |
 | L3 + R3 (both stick clicks) | Alternative VR settings shortcut, without grips |
 | Headset system recenter | Recenter the driving viewpoint |
 
@@ -28,7 +29,9 @@ In VR settings, stick up/down or X/Y selects rows. Left/right triggers decrease/
 
 Controls > Steering and wheel selects **Stick**, **Virtual wheel** or **Motion**. Accelerator and brake remain independent trigger controls. Controls also exposes the driving button bindings, selected steering stick, motion hand and automatic brake-to-reverse.
 
-Virtual wheel supports one or both hands. Grab near a side of the wheel with that hand's grip. Its continuous angle, grip hysteresis, hand transitions and tracking-loss handling follow the MiamiVR implementation. Wheel lock is 80 degrees with a 3% dead zone. Height, distance and radius are adjustable. While a hand holds the wheel, all its fingers remain closed regardless of trigger pressure; releasing it restores tracked finger poses.
+Virtual wheel supports one or both hands. Grab near a side of the wheel with that hand's grip. **Wheel grip: Hold** releases on button release; **Toggle** grabs with one press and releases with the next press of the same hand. Each hand latches independently. Tracking loss, opening settings and leaving driving release the wheel. A grip held when leaving settings must be released before a new toggle press. While a hand holds the wheel, all its fingers remain closed regardless of trigger pressure.
+
+**Steering sensitivity** (50–200%, default 100%) adjusts the response near centre for Virtual wheel and Motion. Lower values make small corrections gentler while retaining full steering at 80 degrees. **Steering dead zone** (0–10%, default 3%) controls how far to turn before steering begins; try 0–1% for small corrections, increasing it if tracking jitters. Height, distance and radius remain adjustable. VR steering reaches physics and native replays as a 12-bit axis (4096 positions), with the original GT2 analogue steering dynamics, pedals and transmission. Original PS1 replay frames are unchanged; new fine-steering replays require this version or newer.
 
 Motion: hold the selected controller's grip to establish neutral, then rotate your fist clockwise/counter-clockwise like a wheel. Relative wrist twist around the initial forearm axis controls steering. Releasing the accelerator does not release steering. Release/regrip to establish a new neutral; pausing, tracking loss and recentering clear the reference.
 
@@ -88,17 +91,28 @@ $env:VULKAN_SDK = 'C:\VulkanSDK\<version>'
 .\scripts\build-quest-release.ps1 -AndroidSdk 'C:\Android\Sdk' -JavaDirectory 'C:\Java\jdk-21' -Gradle 'C:\Gradle\bin\gradle.bat' -InitializeSigningKey
 ```
 
-Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.8.1.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
+Debug output: `android/app/build/outputs/apk/debug/app-debug.apk`. Public release: `dist/GT2-VR-0.9.0.apk`, ARM64, non-debuggable and signed. The release script stores its private key under `work/signing/release`; retain a private backup and use the same key for future updates. Credentials are protected with Windows DPAPI for the creating account. Use `-InitializeSigningKey` only for a new identity. It never replaces an existing key.
 
 If an offline cache lacks Android lint dependencies, `-SkipLint` explicitly omits the lint tasks. Compilation, APK signing and alignment checks still run; record the missing lint coverage when validating that build.
 
-The public version is 0.8.1. APKs signed with different keys cannot replace each other in place. An incompatible signature must never be handled by automatically uninstalling the installed application.
+APKs signed with different keys cannot replace each other in place. An incompatible signature must never be handled by automatically uninstalling the installed application.
 
 ```powershell
 .\scripts\install-quest.ps1 -Adb 'C:\Android\Sdk\platform-tools\adb.exe' -BothDiscs
 ```
 
 Source deployment defaults to the debug APK and does not launch it. It installs with `-r`, copies changed game data, verifies raw-disc SHA-256 and tests access through the application's UID. The public player installer passes its release APK explicitly. Data lives under `/sdcard/Android/data/io.github.gt2pc.quest/files`; private debug logs can be retrieved with `adb shell run-as io.github.gt2pc.quest`.
+
+### Installing a prepared GT4 catalogue
+
+For a locally prepared, complete native GT4 model set, Python 3.11+ can create a deployment bundle. Supply the model-set manifest directory, its native overlay directory, and the matching Arcade/Simulation expansion directories produced from your owned data:
+
+```powershell
+python scripts/package-quest-gt4.py --pack <model-set> --native <native-overlay> --arcade-expansion <arcade-expansion> --simulation-expansion <simulation-expansion> --output <new-bundle.tar>
+.\scripts\install-quest.ps1 -Adb <adb.exe> -Serial <headset-serial> -Runtime <prepared-runtime> -BothDiscs -Gt4Bundle <new-bundle.tar> -Python <python.exe>
+```
+
+Build the current source-kit APK first. The installer verifies the bundle before installation, transfers it as one file, verifies the transferred hash, and checks every extracted model/catalogue file. The two discs share one model set. The bundle never contains saves, settings, disc images or HD menus. Existing preferences remain unchanged; enable **Cockpit / driver view > GT4 model set** in the game's settings when desired. Retain your previous model bundle for rollback.
 
 Optional offline media preparation captures the complete, unskippable PlayStation startup and boot audio from a local BIOS dump. It also prepares HD backgrounds/movies and enlarged menu/HUD atlases; see [HD media](HD-MEDIA.md). Smooth + mipmaps filtering reduces distant texture aliasing. Disc publisher/warning artwork and existing Arcade movies remain supported. Build, signing and desktop tests do not replace headset checks of comfort, controls and sustained performance.
 

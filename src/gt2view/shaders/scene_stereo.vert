@@ -1,4 +1,5 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
 // The stereo variant of scene.vert (docs/research/vr_port_plan.md). The draw list is built once, in the space
 // "world - refEye" (DrawItem::mvp), and this shader applies the eye's own view-projection:
 //   space 0 (kWorld)  worldVP[v] . mvp . pos
@@ -27,6 +28,9 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
     uint space;   // DrawItem::space
     uint eye;     // the two-pass path's array layer
+    uvec2 reserved;
+    vec4 hudClip;
+    vec4 nativeModelRotation;
 } pc;
 
 layout(set = 0, binding = 2) uniform Views {
@@ -37,10 +41,8 @@ layout(set = 0, binding = 2) uniform Views {
 
 layout(location = 0) out vec2 outTexel;
 layout(location = 1) out vec3 outColor;
-#ifndef GT2_CACHED
 layout(location = 2) flat out uint outPage;
 layout(location = 3) flat out uint outClut;
-#endif
 layout(location = 4) flat out uint outFlags;
 // The same texel / colour interpolated linearly in screen space, like the PS1 GPU (the affine option).
 layout(location = 5) noperspective out vec2 outTexelAffine;
@@ -49,8 +51,10 @@ layout(location = 7) flat out vec4 outRect;
 layout(location = 8) out vec3 outScreen;
 
 layout(location = 9) flat out uint outCache;
+layout(location = 10) out vec3 outPaintView;
 layout(std430, set = 0, binding = 4) readonly buffer MaterialTable { uvec4 entries[]; } materials;
 uint cachedPage() {
+    if((inFlags & 64u)!=0u)return 0u;
     if ((inFlags & 1u) == 0u || (inFlags & (24u | 65536u | 131072u | 262144u)) != 0u) return 0u;
     uint clut = inClut;
     if ((inFlags & 4u) != 0u) {
@@ -58,7 +62,11 @@ uint cachedPage() {
         if ((clut & 65535u) == 224u && pc.brakeLit != 0u) clut += 16u;
     }
     uint key = clut | (((inFlags >> 8) & 3u) << 28);
-    uint at = ((inPage * 73856093u) ^ (key * 19349663u)) & 4095u;
+    // Must match DecodedTextureCache::Bucket, including the high CLUT row bits.
+    uint at = (inPage * 73856093u) ^ (key * 19349663u);
+    at ^= at >> 16;
+    at *= 0x7feb352du;
+    at = (at ^ (at >> 15)) & 4095u;
     for (uint i = 0u; i < 16u; ++i, at = (at + 1u) & 4095u) {
         uvec4 e = materials.entries[at];
         if (e.w == 0u) break;
@@ -66,6 +74,9 @@ uint cachedPage() {
     }
     return 0u;
 }
+#ifndef GT2_CACHED
+#include "native_model_vertex.glsl"
+#endif
 void main() {
     outCache = cachedPage();
 #ifdef GT2_MULTIVIEW
@@ -88,10 +99,36 @@ void main() {
     gl_Position.z *= 1.0 + float((inFlags >> 12) & 3u) * 2e-5;
     outTexel = inTexel;
     outColor = inColor;
+    outPaintView=vec3(0,0,-1);
 #ifndef GT2_CACHED
+    outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
+    if((inFlags & 64u)!=0u) {
+        vec3 sourceNormal=nativeVertices.entries[gl_VertexIndex-1228800].xyz;
+        if(pc.space==0u) {
+            mat3 basis=nativeProjectedBasis(views.worldVP[v]);
+            vec3 ray=transpose(basis)*nativeProjectedRay(p.xyz,views.worldVP[v]);
+            nativeVertex(mat3(pc.mvp)*sourceNormal,-ray,ray,basis,transpose(basis));
+        }
+        else {
+            vec3 ray=nativeProjectedRay(inPos,pc.mvp);
+            nativeVertex(nativeProjectedNormal(sourceNormal,pc.mvp),-ray,ray,mat3(1),nativeModelBasis()*transpose(nativeProjectedBasis(pc.mvp)));
+        }
+    } else
+#endif
+    if ((inFlags & 268435456u)!=0u) {
+        mat3 basis=mat3(pc.mvp);
+        // Remove projection/scale magnitude; only orientation drives the sheen.
+        vec3 right=normalize(vec3(basis[0].x,basis[1].x,basis[2].x));
+        vec3 down=normalize(vec3(basis[0].y,basis[1].y,basis[2].y));
+        vec3 forward=normalize(cross(right,down));
+        if(pc.space==0u) {
+            // Both eyes share world normals and the reference-eye ray. Asymmetric
+            // projection and eye translation affect visibility, never the material.
+            outColor=basis*inColor;outPaintView=p.xyz;
+        } else outColor=vec3(dot(right,inColor),-dot(down,inColor),-dot(forward,inColor));
+    }
     outPage = inPage;
     outClut = inClut;
-#endif
     outFlags = inFlags;
     outTexelAffine = inTexel;
     outColorAffine = inColor;

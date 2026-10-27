@@ -55,7 +55,10 @@ struct ArcadeMenuAssets {
     std::vector<uint8_t> globalText;
     ArcadeMenuData data;
     std::vector<uint8_t> carLogos;
+    std::map<uint32_t,std::string> carNames;
+    std::string CarName(uint32_t id) const;
     CourseInfoTable courses; // .crsinfo (the course records' index, 0x80060DC4)
+    const DiscImage* disc = nullptr;
     const GtfsVolume* vol = nullptr; // the car name logos of the garages' cars (carlogo/, 0x80016FB4) are read when a car is chosen
     std::map<std::string, CoursePicture> coursePictures; // arcade/course_map of every course of the lists (gt2formats/course_map.h)
     static ArcadeMenuAssets Load(const DiscImage& disc, const GtfsVolume& vol, uint8_t language = 1);
@@ -162,6 +165,10 @@ public:
     ArcadeRaceSetup BuildRace(const ArcadeSetupData& d, uint32_t p1, uint32_t p2, uint32_t vsync);
     // The garage blocks (0x4028 bytes): 0 = career + 0x3C74 (home), 1 = the guest garage (RAM 0x801D0FDC, behind the career).
     std::span<const uint8_t> GarageBlock(int g) const;
+    void SetExpandedGaragePath(const std::string& path);
+    std::string AddAllCarsToGarage();
+    void SaveExpandedGarage();
+    std::span<uint8_t> MutableGarageBlock(int g);
     void SetGuestGarage(std::span<const uint8_t> block);
     // The course movie decoder of COURSE SELECTION (arcade_course_page.h CourseMovieSource; null = no previews).
     void SetCourseMovieSource(CourseMovieSource* source);
@@ -205,6 +212,8 @@ private:
     const CarInfoDirectory& cars_;
     std::vector<uint8_t> career_;
     std::vector<uint8_t> guestGarage_;
+    std::vector<uint8_t> expandedGarage_;
+    std::string expandedGaragePath_;
     std::unique_ptr<career::CareerData> gtData_; // the GT-mode tables for the garage cars' records (member 3 loads them)
     std::array<uint8_t, kMenuRegionSize> region_{};
     ClassUnlocks unlocks_;

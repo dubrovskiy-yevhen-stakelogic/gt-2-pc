@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "gt2formats/json.h"
+#include "gt2vfs/inflate.h"
 
 namespace gt2 {
 namespace {
@@ -22,6 +23,7 @@ std::vector<uint8_t> ReadBinaryFile(const std::string& path) {
     uint8_t buf[65536];
     for (size_t n; (n = std::fread(buf, 1, sizeof(buf), f)) > 0;) data.insert(data.end(), buf, buf + n);
     std::fclose(f);
+    if(IsGzip(data))return Gunzip(data);
     return data;
 }
 
@@ -241,14 +243,45 @@ struct Reader {
                 GltfMaterial mat;
                 mat.name = m.StringOr("name", "");
                 mat.doubleSided = m.BoolOr("doubleSided", false);
+                mat.alphaBlend = m.StringOr("alphaMode", "") == "BLEND";
+                mat.explicitOpaque = m.StringOr("alphaMode", "") == "OPAQUE";
                 if (const Value* extras = m.Get("extras"))
                     if (const Value* g = extras->IsObject() ? extras->Get("gt2pc") : nullptr)
-                        if (g->IsObject()) mat.reflection = g->BoolOr("reflection", false);
+                        if (g->IsObject()) {
+                            mat.reflection = g->BoolOr("reflection", false);
+                            mat.interiorOnly=g->BoolOr("interiorOnly",false);
+                            mat.exteriorOnly=g->BoolOr("exteriorOnly",false);
+                            mat.cockpitControl=g->BoolOr("cockpitControl",false);
+                            if(mat.interiorOnly && mat.exteriorOnly)throw std::runtime_error("contradictory cabin visibility");
+                            mat.rearView = g->BoolOr("rearView", false);
+                            mat.emissive = g->BoolOr("emissive", false);
+                            mat.lampStates = uint32_t(g->IntOr("lampStates",0));
+                            mat.wheelAttachment=int(g->IntOr("wheelAttachment",-1));
+                            mat.wheelSpinning=g->BoolOr("wheelSpinning",false);
+                            if(mat.wheelAttachment < -1 || mat.wheelAttachment > 3)
+                                throw std::runtime_error("gltf: invalid wheel attachment");
+                            if(const auto* n=g->Get("nativeGt4")) {
+                                mat.nativeGt4Type=int(n->IntOr("type",-1));
+                                mat.nativeTextureFunction=int(n->IntOr("textureFunction",0));
+                                mat.nativeTextureAlpha=int(n->IntOr("textureAlpha",1));
+                                const auto& values=n->Require("values");
+                                if(values.Size()!=17)throw std::runtime_error("gltf: invalid native GT4 material");
+                                for(size_t k=0;k<17;++k)mat.nativeGt4Values[k]=float(values.At(k).AsDouble());
+                                mat.nativeAlphaFunc=int(n->IntOr("alphaFunc",-1));mat.nativeAlphaRef=int(n->IntOr("alphaRef",0));
+                                mat.nativeAlphaFail=int(n->IntOr("alphaFail",0));mat.nativeCull=n->BoolOr("cull",false);
+                                mat.nativeDepthWrite=n->BoolOr("depthWrite",true);mat.nativeBlendEquation=int(n->IntOr("blendEquation",0x44));
+                            }
+                        }
                 if (const Value* pbr = m.Get("pbrMetallicRoughness")) {
                     if (const Value* f = pbr->Get("baseColorFactor"))
                         for (size_t k = 0; k < 4 && k < f->Size(); k++) mat.baseColorFactor[k] = float(f->At(k).AsDouble());
                     if (const Value* t = pbr->Get("baseColorTexture")) {
                         const Value& tex = Item("textures", t->IntAt("index"));
+                        if (const Value* sampler = tex.Get("sampler")) {
+                            const Value& s = Item("samplers", sampler->AsInt());
+                            mat.clampU = s.IntOr("wrapS", 10497) == 33071;
+                            mat.clampV = s.IntOr("wrapT", 10497) == 33071;
+                        }
                         if (const Value* src = tex.Get("source")) {
                             const int64_t image = src->AsInt();
                             if (image >= 0 && size_t(image) < out.images.size()) mat.baseColorImage = int(image);

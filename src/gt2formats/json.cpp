@@ -1,4 +1,5 @@
 #include "gt2formats/json.h"
+#include "gt2vfs/inflate.h"
 
 #include <cmath>
 #include <cstdio>
@@ -360,6 +361,8 @@ Value ReadFile(const std::string& path) {
     char buf[65536];
     for (size_t n; (n = std::fread(buf, 1, sizeof(buf), f)) > 0;) text.append(buf, n);
     std::fclose(f);
+    const std::span<const uint8_t> bytes(reinterpret_cast<const uint8_t*>(text.data()),text.size());
+    if(IsGzip(bytes)) {const auto decoded=Gunzip(bytes);text.assign(reinterpret_cast<const char*>(decoded.data()),decoded.size());}
     if (text.size() >= 3 && uint8_t(text[0]) == 0xEF && uint8_t(text[1]) == 0xBB && uint8_t(text[2]) == 0xBF) text.erase(0, 3); // UTF-8 BOM
     try {
         return Parse(text);

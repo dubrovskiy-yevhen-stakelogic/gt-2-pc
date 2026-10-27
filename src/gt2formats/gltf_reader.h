@@ -25,9 +25,25 @@ struct GltfMaterial {
     std::array<float, 4> baseColorFactor{1, 1, 1, 1};
     int baseColorImage = -1; // index into GltfMesh::images, -1 = untextured
     bool doubleSided = false;
+    bool clampU = false, clampV = false, explicitOpaque = false;
     // "extras": {"gt2pc": {"reflection": true}} - the material's triangles take the game's reflection pass (the .cdo's
     // renderFlags bit 15; docs/formats/car_json.md "Reflections").
     bool reflection = false;
+    bool interiorOnly = false, exteriorOnly = false;
+    bool cockpitControl = false; // reviewed authored wheel, tiller or grips
+    bool alphaBlend = false, emissive = false;
+    uint32_t lampStates = 0;
+    int wheelAttachment = -1;
+    bool wheelSpinning = false;
+    bool rearView = false; // extras.gt2pc.rearView: reuse the cockpit mirror image
+    // Authored CAR4 draw routine and material, supplied only by our owned-data
+    // development importer. A negative routine selects the ordinary glTF path.
+    int nativeGt4Type = -1;
+    std::array<float,17> nativeGt4Values{};
+    int nativeAlphaFunc = -1, nativeAlphaRef = 0, nativeAlphaFail = 0;
+    bool nativeCull = false, nativeDepthWrite = true;
+    int nativeBlendEquation = 0x44;
+    int nativeTextureFunction = 0, nativeTextureAlpha = 1;
 };
 
 // One triangle list in world (scene) space: the node transforms are already applied.

@@ -10,11 +10,20 @@ float Unwrap(float a, float reference) { return reference + Wrap(a-reference); }
 float DeadZone(float value, float zone) {
     return std::abs(value) <= zone ? 0 : std::copysign((std::abs(value)-zone)/(1-zone), value);
 }
+float Steering(float angle, const DrivingSettings& s) {
+    const float v = DeadZone(std::clamp(angle/DrivingController::maxWheelAngle,-1.f,1.f),
+        std::clamp(s.deadZonePercent,0,10)*.01f);
+    return -std::copysign(std::pow(std::abs(v),100.f/std::clamp(s.sensitivity,50,200)),v);
+}
 }
 void DrivingController::Reset() { *this = {}; }
-float DrivingController::Update(const TrackedControllers& in, const DrivingSettings& s, bool active) {
+float DrivingController::Update(const TrackedControllers& in, const DrivingSettings& s, bool active, float elapsedSeconds) {
     if (!active || s.mode == 0) { Reset(); return 0; }
-    if (mode_ != s.mode || hand_ != s.motionHand) { Reset(); mode_ = s.mode; hand_ = s.motionHand; }
+    if (mode_ != s.mode || hand_ != s.motionHand || toggleGrip_ != s.toggleGrip) {
+        Reset(); mode_ = s.mode; hand_ = s.motionHand; toggleGrip_ = s.toggleGrip;
+        // A grip already held when leaving a menu is not a new toggle press.
+        if (s.toggleGrip) for (int h=0;h<2;++h) gripDown_[h] = in.grip[h] > .30f;
+    }
     if (s.mode == 2) {
         const int hand = std::clamp(s.motionHand, 0, 1);
         if (in.grip[hand] <= .30f || !in.gripValid[hand]) {
@@ -40,24 +49,28 @@ float DrivingController::Update(const TrackedControllers& in, const DrivingSetti
                     -q[3]*r[2]+q[2]*r[3]-q[0]*r[1]+q[1]*r[0],
                     q[3]*r[3]+q[0]*r[0]+q[1]*r[1]+q[2]*r[2]};
         const float twist=d[0]*motionAxis_[0]+d[1]*motionAxis_[1]+d[2]*motionAxis_[2];
-        if(twist*twist+d[3]*d[3]<1e-6f)return -DeadZone(physicalAngle_/maxWheelAngle,.03f);
+        if(twist*twist+d[3]*d[3]<1e-6f)return Steering(physicalAngle_,s);
         physicalAngle_=std::clamp(Wrap(2*std::atan2(twist,d[3])),-maxWheelAngle,maxWheelAngle);
-        return -DeadZone(physicalAngle_/maxWheelAngle,.03f);
+        return Steering(physicalAngle_,s);
     }
-    const float cy = s.wheelHeightCm*.01f, cz = -s.wheelDistanceCm*.01f, radius = s.wheelRadiusCm*.01f;
+    const auto center = DrivingWheelCenter(s);
+    const float cx = center[0], cy = center[1], cz = center[2], radius = s.wheelRadiusCm*.01f;
     bool just[2]{};
     for (int h = 0; h < 2; ++h) {
         const auto& p = in.gripPose[h].position;
-        const float dx = p[0]-(h == 0 ? -radius : radius), dy = p[1]-cy, dz = p[2]-cz;
-        if (grabbed_[h] && (!in.gripValid[h] || in.grip[h] <= .30f)) {
+        const float dx = p[0]-cx-(h == 0 ? -radius : radius), dy = p[1]-cy, dz = p[2]-cz;
+        const bool pressed = in.grip[h] >= .65f && !gripDown_[h];
+        const bool release = grabbed_[h] && (!in.gripValid[h] ||
+            (s.toggleGrip ? pressed : in.grip[h] <= .30f));
+        if (release) {
             grabbed_[h] = angleValid_[h] = spokeUsable_[h] = false;
         }
-        if (!grabbed_[h] && in.gripValid[h] && in.grip[h] >= .65f && !gripDown_[h] && dx*dx+dy*dy+dz*dz <= .23f*.23f)
+        if (!release && !grabbed_[h] && in.gripValid[h] && pressed && dx*dx+dy*dy+dz*dz <= .23f*.23f)
             grabbed_[h] = just[h] = true;
         if (in.grip[h] <= .30f) gripDown_[h] = false;
         else if (in.grip[h] >= .65f) gripDown_[h] = true;
         if (just[h]) {
-            reference_[h] = Wrap(std::atan2(p[1]-cy,p[0])-physicalAngle_);
+            reference_[h] = Wrap(std::atan2(p[1]-cy,p[0]-cx)-physicalAngle_);
             continuous_[h] = physicalAngle_; angleValid_[h] = spokeUsable_[h] = true;
         }
     }
@@ -71,14 +84,14 @@ float DrivingController::Update(const TrackedControllers& in, const DrivingSetti
         angle = Unwrap(Wrap(chord-twoReference_),twoContinuous_); twoContinuous_ = angle;
         for (int h = 0; h < 2; ++h) {
             const auto& p = in.gripPose[h].position;
-            reference_[h] = Wrap(std::atan2(p[1]-cy,p[0])-angle);
+            reference_[h] = Wrap(std::atan2(p[1]-cy,p[0]-cx)-angle);
             continuous_[h] = angle; angleValid_[h] = true;
         }
     } else {
         twoValid_ = false;
         for (int h = 0; h < 2; ++h) if (grabbed_[h]) {
             const auto& p = in.gripPose[h].position;
-            const float x = p[0], y = p[1]-cy, raw = std::atan2(y,x);
+            const float x = p[0]-cx, y = p[1]-cy, raw = std::atan2(y,x);
             angle = continuous_[h];
             const bool usable = x*x+y*y >= .06f*.06f;
             bool reseat = !angleValid_[h];
@@ -95,6 +108,16 @@ float DrivingController::Update(const TrackedControllers& in, const DrivingSetti
     }
     physicalAngle_ = std::clamp(angle,-maxWheelAngle,maxWheelAngle);
     // Wheel angle is counter-clockwise (left); the PS1 analogue axis is positive right.
-    return -DeadZone(std::clamp(angle/maxWheelAngle,-1.f,1.f), .03f);
+    const float target = Steering(physicalAngle_,s);
+    if (!grabbed_[0] && !grabbed_[1]) return steering_ = 0;
+    const float responseSeconds = (100-std::clamp(s.sensitivity,50,100))*.0036f;
+    if (responseSeconds == 0) return steering_ = target;
+    // Smooth every change, including small corrections. A slew-rate cap alone
+    // passed those straight through because their delta was below its limit.
+    // At 50%, 90% of any new target takes about 414 ms (75%: 207 ms).
+    // The visible wheel still follows the hands; only the vehicle input eases.
+    const float dt = std::clamp(elapsedSeconds,0.f,.05f);
+    steering_ += (target-steering_)*(-std::expm1(-dt/responseSeconds));
+    return steering_;
 }
 }

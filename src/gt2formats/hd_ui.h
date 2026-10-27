@@ -30,10 +30,12 @@ inline std::string UiPageKey(const uint16_t* words, uint32_t stride = 1024, uint
     char key[32]; std::snprintf(key, sizeof(key), "%016llx", static_cast<unsigned long long>(hash));
     return key;
 }
-inline std::vector<uint8_t> ScaleUi2x(const std::vector<uint8_t>& src, int size) {
-    std::vector<uint8_t> dst(size_t(size) * size * 4);
-    const auto at = [&](int x, int y) { return src[size_t(std::clamp(y, 0, size-1)) * size + std::clamp(x, 0, size-1)]; };
-    for (int y = 0; y < size; ++y) for (int x = 0; x < size; ++x) {
+inline std::vector<uint8_t> ScaleUi2x(const std::vector<uint8_t>& src, int size, int height=0) {
+    if(!height) height=size;
+    if(size<=0 || height<=0 || src.size()!=size_t(size)*height) throw std::runtime_error("invalid UI dimensions");
+    std::vector<uint8_t> dst(size_t(size) * height * 4);
+    const auto at = [&](int x, int y) { return src[size_t(std::clamp(y, 0, height-1)) * size + std::clamp(x, 0, size-1)]; };
+    for (int y = 0; y < height; ++y) for (int x = 0; x < size; ++x) {
         const auto b=at(x,y-1), d=at(x-1,y), e=at(x,y), f=at(x+1,y), h=at(x,y+1);
         const size_t p = size_t(y*2) * size*2 + x*2;
         dst[p] = b!=h && d!=f && d==b ? d:e;
@@ -57,6 +59,19 @@ inline std::vector<uint8_t> EnlargeUiRegion(const uint16_t* words, int x, int y,
         pixels[size_t(row)*size+col]=uint8_t((words[(y+row)*1024+u/4] >> ((u%4)*4))&15);
     }
     return ScaleUi2x(ScaleUi2x(pixels,size),size*2);
+}
+// GT Mode page artwork is a dictionary of independently placed 16x8 tiles.
+// Adjacent dictionary entries are not neighbours in the displayed picture.
+inline std::vector<uint8_t> EnlargeMenuTilePage(const uint16_t* words) {
+    std::vector<uint8_t> page(1024*1024);
+    for(int y=0;y<256;y+=8) for(int x=0;x<256;x+=16) {
+        std::vector<uint8_t> tile(16*8);
+        for(int row=0;row<8;++row) for(int col=0;col<16;++col)
+            tile[size_t(row)*16+col]=uint8_t((words[(y+row)*1024+(x+col)/4]>>(((x+col)%4)*4))&15);
+        const auto enlarged=ScaleUi2x(ScaleUi2x(tile,16,8),32,16);
+        for(int row=0;row<32;++row) std::copy_n(enlarged.data()+row*64,64,page.data()+(y*4+row)*1024+x*4);
+    }
+    return page;
 }
 
 }

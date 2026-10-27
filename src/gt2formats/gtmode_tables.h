@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <map>
 #include <span>
 #include <string>
 #include <utility>
@@ -38,6 +39,7 @@ struct CarInfoRecord {
     std::string rawName;            // the bytes 0x80060AE8 returns (entry + 3 x paints + 1): the 0x7F padding + the name
     std::vector<uint16_t> chipColors;
     std::vector<uint8_t> paintIds;  // one character per paint (the used-car / event paint codes use these)
+    size_t retailPaintCount = 0;
 
     size_t PaintCount() const { return ((word >> 18) & 0x1F) + 1; }
     uint8_t RegionMask() const { return uint8_t((word >> 23) & 0xF); }
@@ -53,12 +55,18 @@ public:
     explicit CarInfoDirectory(std::vector<uint8_t> data);
     static CarInfoDirectory Load(const GtfsVolume& vol, const std::string& path = ".carinfoa");
     size_t Count() const { return records_.size(); }
-    const CarInfoRecord& At(size_t index) const { return records_.at(index); }
+    // Identity/region queries do not need native paint materials. In particular,
+    // building a name list must not inflate every GT4 car's paint catalogue.
+    const CarInfoRecord& BaseAt(size_t index) const { return records_.at(index); }
+    const CarInfoRecord& At(size_t index) const;
     int32_t IndexOf(uint32_t carId) const; // -1 when absent
     const CarInfoRecord* Find(uint32_t carId) const;
 
 private:
     std::vector<CarInfoRecord> records_;
+    mutable std::vector<std::optional<CarInfoRecord>> nativeRecords_;
+    mutable std::string nativeRoot_;
+    mutable std::map<std::string,std::string> nativePaintEntries_;
 };
 
 // ---------------------------------------------------------------- .usedcar_usa ("UCAR")

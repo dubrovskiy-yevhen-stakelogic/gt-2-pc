@@ -1163,7 +1163,7 @@ bool MenuRuntime::DrawDynamic(const MenuAssets& assets, const MenuItem& it, std:
             const int32_t ci = data_.career.cars.IndexOf(car_.carId);
             const CarInfoRecord* r = data_.career.cars.Find(car_.carId);
             if (ci >= 0 && r) {
-                const std::vector<uint16_t> names = data_.colours->NameIndices(size_t(ci), r->PaintCount());
+                const std::vector<uint16_t> names = data_.colours->NameIndices(size_t(ci), r->retailPaintCount?r->retailPaintCount:r->PaintCount());
                 if (car_.paintIndex < int(names.size())) rightWide(data_.colours->Name(names[size_t(car_.paintIndex)]));
             }
         }
@@ -1354,6 +1354,11 @@ MenuRenderState MenuRuntime::RenderState(const MenuAssets& assets) const {
     const career::CareerState& s = actions_.Career();
     st.money = s.garage.money;
     st.day = s.record.days;
+    if(!cockpitCatalogue_ || cockpitCatalogueRoot_!=gt4ModelSetRoot) {
+        cockpitCatalogueRoot_=gt4ModelSetRoot;
+        cockpitCatalogue_.emplace(cockpitCatalogueRoot_);
+    }
+    st.carHasNativeCockpit = [this](uint32_t id) { return cockpitCatalogue_->HasNativeInterior(UnpackCarId(id)); };
     st.carPrice = [this](uint32_t id) -> std::optional<uint32_t> { return uint32_t(career::CataloguePrice(data_.career.tables, id)); };
     st.eventInfo = [this](const std::string& name) -> std::optional<MenuRenderState::EventInfo> {
         const int32_t i = career::MenuEventIndex(data_.events, name); // 0x800188B0 (0 when absent, like the original)

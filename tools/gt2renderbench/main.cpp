@@ -4,6 +4,7 @@
 #include "gt2view/hd_picture.h"
 #include <filesystem>
 #include "gt2view/vr_driving_visuals.h"
+#include "gt2view/scene_assets.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -94,6 +95,32 @@ int main(int argc, char** argv) {
         gt2view::VkSceneRenderer renderer(context, {1280, 960}, VK_FORMAT_R8G8B8A8_UNORM);
         std::vector<gt2view::DrawItem> items; size_t sceneCount = 0;
         renderer.LoadCapture(argv[1], items, sceneCount);
+        if(const char* skip=std::getenv("GT2_BENCH_SKIP")) {
+            const std::string category=skip;size_t removed=0;
+            for(size_t i=0;i<items.size();++i){auto& item=items[i];
+                const auto first=item.firstVertex;
+                const bool sky=first>=gt2view::SceneAssets::kBackdropVertexBase && first<gt2view::SceneAssets::kOverlayVertexBase;
+                const bool car=first>=gt2view::SceneRenderer::kModelSetVertexBase && first<gt2view::SceneRenderer::kModelSetVertexBase+8*gt2view::SceneRenderer::kModelSetVertexStride;
+                const bool road=first<gt2view::SceneAssets::kCarVertexBase;
+                if((category=="sky" && sky) || (category=="car" && car) || (category=="road" && road)){
+                    if(i<sceneCount)++removed;item.vertexCount=0;
+                }
+            }
+            std::erase_if(items,[](const auto& item){return item.vertexCount==0;});sceneCount-=removed;
+            std::printf("Diagnostic omission: %s, %zu scene draws\n",skip,removed);
+        }
+        if(const char* paint=std::getenv("GT2_BENCH_PAINT");paint && std::atoi(paint)==0) {
+            std::ifstream file(argv[1],std::ios::binary);uint32_t header[7]{};
+            file.read(reinterpret_cast<char*>(header),sizeof(header));file.seekg(40);
+            std::vector<gt2view::SceneVertex> vertices(header[2]);
+            file.read(reinterpret_cast<char*>(vertices.data()),vertices.size()*sizeof(vertices[0]));
+            if(!file)throw std::runtime_error("cannot read paint workload vertices");
+            size_t removedScene=0;
+            for(size_t i=0;i<items.size();++i)if(items[i].firstVertex<vertices.size() && (vertices[items[i].firstVertex].flags&gt2view::kModelReflection)) {
+                if(i<sceneCount)++removedScene;items[i].vertexCount=0;
+            }
+            std::erase_if(items,[](const auto& item){return item.vertexCount==0;});sceneCount-=removedScene;
+        }
         if(const char* hdRoot=std::getenv("GT2_BENCH_HD_ROOT")) {
             std::string profile; std::ifstream(std::filesystem::path(hdRoot)/"hd/profile.txt")>>profile;
             gt2::hd::SetRoot(hdRoot,profile); gt2::hd::SetEnabled(true);
@@ -144,6 +171,7 @@ int main(int argc, char** argv) {
             file.read(reinterpret_cast<char*>(&externalTexel),4);
             if(!file)throw std::runtime_error("cannot read upload fixture");
         }
+        if(std::getenv("GT2_BENCH_SKY_LAST"))gt2view::DeferOpaqueBackdrop(items);
         const auto capturedItems=items; const size_t capturedScene=sceneCount;
         const char* handMode=std::getenv("GT2_BENCH_HANDS");
         const bool combined=handMode && std::atoi(handMode)>=2;
@@ -174,8 +202,22 @@ int main(int argc, char** argv) {
         const char* mipOption=std::getenv("GT2_BENCH_MIPS");
         options.mipmaps=!mipOption || std::atoi(mipOption)!=0;
         renderer.SetOptions(options);
-        renderer.CreateStereoTarget({uint32_t(1680 * scale / 100), uint32_t(1760 * scale / 100)}, VK_FORMAT_R8G8B8A8_UNORM, true);
+        const char* multiview=std::getenv("GT2_BENCH_MULTIVIEW");
+        const bool singlePass=!multiview || std::atoi(multiview)!=0;
+        renderer.CreateStereoTarget({uint32_t(1680 * scale / 100), uint32_t(1760 * scale / 100)}, VK_FORMAT_R8G8B8A8_UNORM,singlePass);
+        std::printf("Stereo mode: %s; paint: %s\n",singlePass?"single-pass":"two passes",std::getenv("GT2_BENCH_PAINT")?std::getenv("GT2_BENCH_PAINT"):"1");
         if (argc > 7 && std::atoi(argv[7])) renderer.SetExternalStereoImage(renderer.StereoImage());
+        // Reuse allocations/pipelines for a paired sky workload. Each phase
+        // still gets its own warm-up and timed samples; only startup work is
+        // shared. ABBA brackets clock/temperature drift without app launches.
+        const bool skyPair=std::getenv("GT2_BENCH_SKY_PAIR")!=nullptr;
+        for(int phase=0;phase<(skyPair?4:1);++phase){
+        if(skyPair){
+            items=capturedItems;
+            const bool deferred=phase==1 || phase==2;
+            if(deferred)gt2view::DeferOpaqueBackdrop(items);
+            std::printf("Sky pair phase %d deferred=%d\n",phase,int(deferred));
+        }
         std::vector<double> gpu; double elapsed = 0, handBuild = 0;
         for (int f = -60; f < frames; ++f) {
             const auto start = std::chrono::steady_clock::now();
@@ -209,6 +251,7 @@ int main(int argc, char** argv) {
         std::printf("%d%% %dxMSAA smooth=%d draws=%zu scene=%zu: GPU avg %.3f ms p95 %.3f p99 %.3f; CPU+GPU %.3f ms\n",
             scale, samples, int(options.smoothTextures), items.size(), sceneCount, sum / frames, gpu[size_t(frames * 95 / 100)], gpu[size_t(frames * 99 / 100)], elapsed / frames);
         std::printf("Cached materials: %u / %u\n", renderer.CachedMaterials(), renderer.CachedMaterials() + renderer.UncachedMaterials());
+        }
         if (std::getenv("GT2_VK_VALIDATION")) {
             for (int level : {0, 1, 3, 2}) { renderer.SetFoveation(level); renderer.DrawStereo(items, {}, sceneCount); renderer.WaitFrame(); }
             for (uint32_t msaa : {1u, 4u, 2u}) { options.msaa = msaa; renderer.SetOptions(options); renderer.DrawStereo(items, {}, sceneCount); renderer.WaitFrame(); }

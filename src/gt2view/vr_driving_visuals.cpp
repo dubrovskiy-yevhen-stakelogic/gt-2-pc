@@ -57,11 +57,15 @@ void VrDrivingVisuals::Append(std::vector<DrawItem>& items,const gt2::vr::Tracke
     auto draw=[&](uint32_t offset,uint32_t count,V right,V up,V back,V position){
         float local[16] = {right.x,right.y,right.z,0,up.x,up.y,up.z,0,back.x,back.y,back.z,0,position.x,position.y,position.z,1};
         DrawItem item;item.firstVertex=SceneRenderer::kVrDrivingVertexBase+offset;item.vertexCount=count;item.space=kSpaceWorld;
+        // Hands and the interactive wheel share the seated geometry depth range
+        // on every backend, including Quest's Android submission path.
+        item.cabinDepth=2;
         for(int c=0;c<4;++c)for(int r=0;r<4;++r)for(int k=0;k<4;++k)item.mvp[c*4+r]+=matrix[k*4+r]*local[c*4+k];
         items.push_back(item);
     };
     constexpr float pi=3.14159265358979323846f;
-    const V center{0,settings.wheelHeightCm*.01f,-settings.wheelDistanceCm*.01f};
+    const auto anchor=gt2::vr::DrivingWheelCenter(settings);
+    const V center{anchor[0],anchor[1],anchor[2]};
     const float radius=settings.wheelRadiusCm*.01f,angle=controls.Angle();
     const V rimRight{std::cos(angle),std::sin(angle),0},rimUp{-std::sin(angle),std::cos(angle),0};
     if(settings.mode==1){

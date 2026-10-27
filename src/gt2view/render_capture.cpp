@@ -6,8 +6,8 @@
 
 namespace gt2view {
 // Private benchmark captures contain game assets; write only to the user's chosen path.
-// Version 1 is little-endian, fixed-width POD, shared by x64 and Android ARM64.
-static_assert(sizeof(SceneVertex) == 44 && sizeof(DrawItem) == 112);
+// Version 4 adds native model rotation; versions 1 through 3 remain readable.
+static_assert(sizeof(SceneVertex) == 44 && sizeof(DrawItem) == 136 && offsetof(DrawItem,cabinDepth)==112 && offsetof(DrawItem,softParticle)==116);
 void VkSceneRenderer::SaveCapture(const std::string& path, const std::vector<DrawItem>& items, size_t sceneItems) {
     WaitFrame();
     FlushFrameUploads();
@@ -17,10 +17,21 @@ void VkSceneRenderer::SaveCapture(const std::string& path, const std::vector<Dra
         vertices = std::max(vertices, item.firstVertex + item.vertexCount);
     }
     std::ofstream out(path, std::ios::binary);
-    const uint32_t header[] = {0x43543247, 1, vertices, kVramWidth * kVramRows, kExternalTexels, uint32_t(items.size()), uint32_t(sceneItems)};
+    const uint32_t header[] = {0x43543247, 4, vertices, kVramWidth * kVramRows, kExternalTexels, uint32_t(items.size()), uint32_t(sceneItems)};
     auto write = [&](const void* data, size_t bytes) { out.write(static_cast<const char*>(data), std::streamsize(bytes)); };
     write(header, sizeof(header)); write(clearColor, sizeof(clearColor));
-    write(vertexBuffer_.mapped, size_t(vertices) * sizeof(SceneVertex));
+    // Captures store portable external-texture addresses, never atlas offsets
+    // belonging to this renderer instance. Replay can promote them again.
+    const uint32_t prefix=std::min(vertices,kModelSetVertexBase);
+    write(vertexBuffer_.mapped, size_t(prefix) * sizeof(SceneVertex));
+    const auto* mapped=static_cast<const SceneVertex*>(vertexBuffer_.mapped);
+    std::vector<SceneVertex> models(mapped+prefix,mapped+vertices);
+    for (auto& vertex:models) if (vertex.flags & kModelAtlasTexture) {
+        uint32_t source=0;
+        if (!modelAtlas_.Source(vertex.page,source)) throw std::runtime_error("capture: missing model atlas source");
+        vertex.page=source;vertex.flags&=~kModelAtlasTexture;
+    }
+    write(models.data(), models.size()*sizeof(SceneVertex));
     write(textureBuffer_.mapped, size_t(header[3]) * sizeof(uint32_t));
     write(externalBuffer_.mapped, size_t(header[4]) * sizeof(uint32_t));
     write(items.data(), items.size() * sizeof(DrawItem));
@@ -34,7 +45,7 @@ void VkSceneRenderer::LoadCapture(const std::string& path, std::vector<DrawItem>
         if (!in.read(static_cast<char*>(data), std::streamsize(bytes))) throw std::runtime_error("truncated render capture: " + path);
     };
     uint32_t h[7]{}; read(h, sizeof(h));
-    if (h[0] != 0x43543247 || h[1] != 1 || h[2] > kMaxVertices || (h[3] > kVramWidth * kVramRows || h[3] < kVramWidth * 2048) ||
+    if (h[0] != 0x43543247 || (h[1] < 1 || h[1] > 4) || h[2] > kMaxVertices || (h[3] > kVramWidth * kVramRows || h[3] < kVramWidth * 2048) ||
         (h[4] != kExternalTexels && h[4] != kVrHandTexelBase) || h[5] > 100000 || h[6] > h[5]) throw std::runtime_error("invalid render capture header");
     read(clearColor, sizeof(clearColor));
     std::vector<SceneVertex> vertices(h[2]); read(vertices.data(), vertices.size() * sizeof(SceneVertex));
@@ -46,7 +57,19 @@ void VkSceneRenderer::LoadCapture(const std::string& path, std::vector<DrawItem>
     for (size_t i = 0; i < textureWords.size(); ++i)
         vramShadow_[i] = uint16_t(textureWords[i]);
     read(externalBuffer_.mapped, size_t(h[4]) * sizeof(uint32_t));
-    items.resize(h[5]); read(items.data(), items.size() * sizeof(DrawItem)); sceneItems = h[6];
+    modelSourcePixels_.clear();modelAtlas_=ModelTextureAtlas{};
+    const auto* external=static_cast<const uint32_t*>(externalBuffer_.mapped);
+    for (size_t i=kModelSetVertexBase;i<vertices.size();++i) {
+        const auto& vertex=vertices[i];
+        if (!(vertex.flags & kExternalTexture) || vertex.page<kModelSetTexelBase) continue;
+        const uint64_t count=uint64_t(vertex.clut&65535u)*(vertex.clut>>16);
+        if (uint64_t(vertex.page)+count>h[4]) throw std::runtime_error("capture: model texture out of range");
+        if (!modelSourcePixels_.count(vertex.page))
+            modelSourcePixels_[vertex.page].assign(external+vertex.page,external+vertex.page+size_t(count));
+    }
+    items.assign(h[5],DrawItem{});
+    for(auto& item:items)read(&item,h[1]==1?112:h[1]==2?116:h[1]==3?120:sizeof(DrawItem));
+    sceneItems = h[6];
     for (const auto& item : items)
         if (uint64_t(item.firstVertex) + item.vertexCount > vertices.size()) throw std::runtime_error("invalid capture draw range");
     decoded_.Invalidate(0, kVramRows);

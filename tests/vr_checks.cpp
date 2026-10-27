@@ -164,6 +164,84 @@ int main() {
         textures.Begin(); textures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
         Check(textures.pixels[2 * gt2view::DecodedTextureCache::kTexels] == 0, "direct-colour zero texels retain transparent coverage");
         {
+            gt2view::DecodedTextureCache pressure;
+            auto lookup = [&](uint32_t page, uint32_t clut) {
+                uint32_t bucket=gt2view::DecodedTextureCache::Bucket(page,clut);
+                for(uint32_t i=0;i<16;++i,bucket=(bucket+1)&4095u){
+                    const auto& e=pressure.table[bucket];
+                    if(!e[3]) break;
+                    if(e[0]==page && e[1]==clut) return e[2];
+                }
+                return 0u;
+            };
+            pressure.Begin();
+            // Distinct keys fill all 256 material slots, as successive menus do.
+            for(uint32_t i=0;i<256;++i) pressure.Prepare(i,2u<<28,vram.data(),512);
+            Check(pressure.hits==256 && pressure.misses==0,"texture cache reaches capacity");
+            pressure.Begin();
+            // Find a real collision, then evict the earlier key in that chain.
+            uint32_t collisionKey=256;
+            while(gt2view::DecodedTextureCache::Bucket(collisionKey,2u<<28)!=gt2view::DecodedTextureCache::Bucket(0,2u<<28))++collisionKey;
+            for(uint32_t i=0;i<255;++i) pressure.Protect(i,2u<<28);
+            pressure.Protect(collisionKey,2u<<28);
+            pressure.Prepare(collisionKey,2u<<28,vram.data(),512);
+            const auto collision=lookup(collisionKey,2u<<28);
+            pressure.Begin();
+            for(uint32_t i=1;i<255;++i) pressure.Protect(i,2u<<28);
+            pressure.Protect(collisionKey,2u<<28);pressure.Protect(8193,2u<<28);
+            pressure.Prepare(8193,2u<<28,vram.data(),512);
+            Check(collision!=0 && lookup(collisionKey,2u<<28)==collision && lookup(0,2u<<28)==0,
+                  "eviction tombstone preserves later colliding shader lookup");
+            pressure.Begin();pressure.Prepare(0,2u<<28,vram.data(),512);
+            const auto retained=lookup(0,2u<<28);
+            pressure.Begin();pressure.Protect(0,2u<<28);
+            pressure.Protect(512,2u<<28);
+            pressure.Prepare(512,2u<<28,vram.data(),512);
+            pressure.Prepare(0,2u<<28,vram.data(),512);
+            Check(pressure.misses==0 && lookup(512,2u<<28)!=0 && lookup(0,2u<<28)==retained,
+                  "full cache admits a new scene material without evicting a protected draw");
+            const auto admitted=lookup(512,2u<<28);
+            pressure.Begin();pressure.Protect(512,2u<<28);
+            pressure.Prepare(512,2u<<28,vram.data(),512);
+            Check(pressure.uploads.empty() && lookup(512,2u<<28)==admitted,"retained material needs no redundant decode");
+            // Repeated turnover exercises tombstones and collisions in GPU lookup.
+            for(uint32_t frame=0;frame<8;++frame){
+                pressure.Begin();
+                for(uint32_t i=0;i<256;++i) pressure.Protect(1024+frame*256+i,2u<<28);
+                for(uint32_t i=0;i<256;++i) pressure.Prepare(1024+frame*256+i,2u<<28,vram.data(),512);
+                Check(pressure.misses==0,"unused scene materials can be replaced repeatedly");
+                for(uint32_t i=0;i<256;++i) Check(lookup(1024+frame*256+i,2u<<28)!=0,"probe chain survives replacement");
+                pressure.Prepare(8192+frame,2u<<28,vram.data(),512);
+                Check(pressure.misses==1,"capacity overflow preserves all current-frame slots");
+            }
+        }
+        {
+            gt2view::DecodedTextureCache pressure;
+            pressure.Begin();
+            for(uint32_t i=0;i<256;++i)pressure.Prepare(i,2u<<28,vram.data(),512);
+            pressure.Begin();
+            for(uint32_t i=0;i<256;++i)pressure.Protect(i,2u<<28);
+            pressure.Protect(1024,2u<<28,true);
+            pressure.Prepare(1024,2u<<28,vram.data(),512,true);
+            Check(pressure.hits==1 && pressure.misses==0,"priority smoke admitted when all old slots are requested by the scene");
+            const auto priorityLayer=pressure.uploads.front();
+            for(uint32_t i=0;i<256;++i)pressure.Prepare(i,2u<<28,vram.data(),512);
+            Check(pressure.hits==256 && pressure.misses==1,"only one ordinary material falls back when priority exceeds capacity");
+            const auto tableBefore=pressure.table;
+            pressure.Prepare(2048,2u<<28,vram.data(),512,true);
+            Check(pressure.misses==2 && pressure.table==tableBefore,"late priority cannot evict a slot already used by a draw");
+            pressure.Begin();pressure.Protect(1024,2u<<28,true);
+            pressure.Prepare(1024,2u<<28,vram.data(),512,true);
+            Check(pressure.uploads.empty() && priorityLayer<512,"priority page remains resident across frames");
+        }
+        {
+            gt2view::DecodedTextureCache palettes;
+            palettes.Begin();
+            for(uint32_t row=0;row<32;++row)palettes.Prepare(576,352u|(row<<16),vram.data(),512);
+            Check(palettes.hits==32 && palettes.misses==0,
+                  "palette rows at the same X coordinate must not exhaust one probe chain");
+        }
+        {
             // UploadVram retains 16-bit CPU words; capture fixtures use 32-bit
             // GPU words. Both must produce identical palette and STP layers.
             gt2view::DecodedTextureCache cpuTextures, gpuTextures;

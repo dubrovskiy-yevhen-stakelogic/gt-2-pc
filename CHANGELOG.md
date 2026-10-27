@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.9.0 - GT4 cars, restored interiors and rendering fixes
+
+### GT4 cars
+
+- Add 722 selectable GT4 cars and 388 model replacements for existing GT2 entries. GT2 and GT4 cars can race together.
+- Browse and buy added cars through **GT4 Showroom** in Simulation. Existing cars and career progress are preserved; the Simulation garage retains its original 100-car limit.
+- Add the available catalogue to a separate Arcade garage through **Settings > Cheats > Arcade - add all cars to garage**. The extended Arcade garage supports up to 4,096 entries and saves independently of the career card.
+- Restore body paint variants, materials, lights, wheel positions and tyre dimensions. Fix disappearing rims and incorrect wheel colours when changing body paint.
+- Show the selected car's name when its original title graphic is unavailable. Fix clipped garage names and another car's logo appearing in previews.
+- Move the GT4 model switch to **Graphics**. Replacements default to enabled and remember the saved preference. Added GT4 cars keep their matching models when replacements for original GT2 cars are disabled.
+- Include GT4 import and installation tools in the source kit. Installation checks the prepared files, backs up replaced models and preserves saves and settings.
+
+### Cockpits and VR controls
+
+- Restore original interiors from **66 GT4 models across 89 catalogue entries**. Cars with restored cabins display **ORIGINAL INTERIOR** in Arcade and GT Mode previews. See [GT4 cars](README.md#gt4-cars) for the complete list and tested disc revision.
+- Restore missing seats, dashboard and door trim, including the Toyota SERA interior. Preserve open racing cockpits and unusual steering controls instead of fitting them with a closed cabin.
+- Correct driving-side and steering alignment. Remove the duplicate original steering rim when the interactive wheel is displayed.
+- Improve generated dashboards, seats, roof lining, pillars and door panels. Fix protruding dashboard corners, gaps around windscreens and bonnets, missing roof surfaces and interior panels showing through the body.
+- Correct driver positions and seat adjustment to fit the visible car. Keep the seat aligned with the camera and respect roof clearance.
+- Remove opaque or excessively tinted windscreen and side-window covers while preserving body panels, window frames and interior trim.
+- Improve live side-mirror placement and visibility for GT2 and GT4 cars; preserve exterior mirror paint.
+- Keep the cockpit, tracked hands, virtual steering wheel and race HUD visible correctly in both eyes. Fix raised terrain showing through cabin surfaces.
+- Add steering sensitivity, a centre dead zone and independent Hold/Toggle grip for each hand. Improve fine steering corrections and preserve them in replays.
+- Allow PCVR Touch controls and a desktop gamepad to work together without an unheld virtual wheel overriding gamepad steering.
+- Add **Original (hidden car)** to the camera cycle and remember the camera across races, retries and launches.
+
+### Reflections, wheels and roads
+
+- Remove the bright reflection film covering GT2 wheel arches.
+- Fix broken reflection bands on GT4 bodywork in desktop and VR views.
+- Improve reflection colour on dark paint and preserve night lighting and nearby scenery.
+- Keep GT2 wheels within their wheel arches during steering and suspension compression, including the Arcade RUF CTR2.
+- Correct GT4 body height and tyre contact on level roads and slopes. Fix GT2 cars sinking into the road after landing from a jump.
+- Keep car shadows on the road through climbs, crests and slope transitions.
+- Fix walls from overlapping track sections appearing through another road and flickering caused by overlapping asphalt.
+
+### Performance and startup
+
+- Reduce heavy tyre-smoke slowdown on supported VR hardware while preserving smoke density and the resolution of cars, scenery and HUD.
+- Improve texture handling in busy scenes and reduce stalls when position badges change during overtakes.
+- Improve rendering efficiency for imported cars and scenery.
+- Reduce Arcade startup delays with the GT4 catalogue installed. Show a loading screen immediately after selecting a disc.
+- Fix the prepared Windows launcher failing to start with an empty PowerShell path.
+- Remove test launchers and duplicate desktop shortcuts. **PLAY.bat** is the single desktop launcher; PCVR retains its runtime-specific choices.
+
+### HD media and installation
+
+- Show named progress and completed-picture counts during HD preparation. Resume completed batches after an interruption.
+- Offer Original, HD menus, or HD menus and movies before processing. Preserve prepared movies when updating menus.
+- Improve small lettering and logos in enlarged pictures. Fix dots and pinholes in GT Mode text, including My Home.
+- Update the complete package with the current source kit, Windows/PCVR and Quest builds, browser files and platform installation scripts.
+
+GT4 conversion requires a compatible disc image; converted game assets are not
+included in the download. GT4 cars use the GT2 vehicle simulation and do not
+reproduce GT4 handling exactly. The browser version does not load the native GT4
+model pack. **Generated cockpits can fit some cars incorrectly; the full catalogue
+has not been checked manually.**
+
 ## 0.8.1
 
 - Fixed European Simulation career races failing to start from the GO! button when event tables lay beyond the main UI data range.

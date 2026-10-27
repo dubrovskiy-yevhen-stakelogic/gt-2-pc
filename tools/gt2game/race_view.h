@@ -58,7 +58,7 @@ struct RaceViewConfig {
     bool deterministic = false;        // one simulation step per two frames (scripted runs, shots)
     // The race camera (game/camera: the original's cameras; C = the camera button, V held = look back). -1 = the
     // options (settings.txt: Camera Position / View Angle; new-game defaults Driver / Standard).
-    int cameraPosition = -1;           // --camera N: 0 Driver, 1 Chase 1, 2 Chase 2
+    int cameraPosition = -1;           // --camera N: 0 Cockpit, 1 Chase 1, 2 Chase 2, 3 Hidden car
     int viewAngle = -1;                // --view-angle N: 0 Narrow, 1 Standard, 2 Wide
     bool lookBack = false;             // --look-back: the look-back button held (screenshots)
     bool oldCamera = false;            // --old-camera: gt2game's former chase / bonnet / high camera (debugging only)

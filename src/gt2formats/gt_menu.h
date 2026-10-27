@@ -12,6 +12,7 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "gt2formats/gtmode_tables.h"
 
@@ -54,6 +55,7 @@ struct MenuItem {
     uint32_t flags = 0;                        // +08
     std::array<uint8_t, 0x40> data{};          // +0C..+4B: the item's data (union, see Target / Name / CarId)
     int group = -1;                            // the sprite group the item came with, -1 = the page's own list
+    std::string nativeLabel;                  // native expansion pages only; never part of a retail record
 
     uint16_t Type() const { return uint16_t(flags & menu_item_flag::kTypeMask); }
     bool Has(uint32_t flag) const { return (flags & flag) != 0; }
@@ -96,6 +98,7 @@ struct MenuPage {
     uint32_t back = 0xFFFFFFFFu;                // -> 0x800A8D70: page of the back button (circle); -1 none
     uint32_t picture = 0;                       // commonpic entry of the background (reloaded only when it changes)
     MenuPagePicture own;
+    bool nativePanel = false;
 
     uint8_t Maker() const { return uint8_t(flags & 0xFF); }        // used-car list maker (0x80020A0C), type-0x98 check
     bool KeepsHistory() const { return (flags & 0x100) != 0; }     // 0x8001D2CC: back returns to the previous page
@@ -134,6 +137,8 @@ private:
     MenuPackIndex index_;
     std::vector<uint8_t> dat_;
     SoloData solo_;
+    std::map<uint32_t, MenuPage> expansionPages_;
+    void LoadExpansion(const GtfsVolume& vol);
 };
 
 } // namespace gt2

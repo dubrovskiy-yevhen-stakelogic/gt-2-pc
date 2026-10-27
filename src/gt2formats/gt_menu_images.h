@@ -140,6 +140,7 @@ struct MenuRenderState {
     uint32_t day = 1;            // 0x801C99D8
     std::string currentCar;      // type 0x47 (0x8001B818); empty = no current car (nothing drawn)
     std::function<std::optional<uint32_t>(uint32_t carId)> carPrice;             // type 6 (0x800177D4)
+    std::function<bool(uint32_t carId)> carHasNativeCockpit;
     struct EventInfo { int32_t bonus = 0; std::array<int32_t, 6> prize{}; int16_t powerLimit = 0; int licence = -1; };
     std::function<std::optional<EventInfo>(const std::string& name)> eventInfo;  // event items (0x800188B0 + 0x800B5E88 records)
     std::function<int(const std::string& name)> eventResult;                     // 0x8005DB90 (0 = none)

@@ -1,0 +1,167 @@
+{
+  "project": "gt4-pc",
+  "snapshotDate": "2026-10-27",
+  "description": "Handwritten native car-parameter, showroom and arithmetic dependency closure; no game bytes or generated code. The export driver and packaging wrapper are maintained in gt2-play.",
+  "files": [
+    {
+      "source": "src/adhoc/showroom_pose.h",
+      "destination": "native/adhoc/showroom_pose.h",
+      "sha256": "49d96104e9dcd72f676931c758fa6675602832f65dcfed23f0a967f09cab4776"
+    },
+    {
+      "source": "src/game/guest/bytes.h",
+      "destination": "native/game/guest/bytes.h",
+      "sha256": "c08d44e72d454d70e9605db109b57b7de7c51f720b6f848de331ab388274981c"
+    },
+    {
+      "source": "src/game/guest/words.h",
+      "destination": "native/game/guest/words.h",
+      "sha256": "8c806747690be5db95a3b78c2c9b8afcf54d63daa2e5867d5e6089c5358e9928"
+    },
+    {
+      "source": "src/game/math/geom.cpp",
+      "destination": "native/game/math/geom.cpp",
+      "sha256": "64d5516fad114a3210ff918d3b4c5a99a6fdf31a24a0ce842f84820d60e4583c"
+    },
+    {
+      "source": "src/game/math/geom.h",
+      "destination": "native/game/math/geom.h",
+      "sha256": "1a075d72acf8431bf5b47bc84dbc3e400eff8849251d996583b17c8bdbb32401"
+    },
+    {
+      "source": "src/game/math/libm.cpp",
+      "destination": "native/game/math/libm.cpp",
+      "sha256": "7dbd69801bf7b5e301f36968413b6d3771bb56dfd85aa541912bb66075d083c2"
+    },
+    {
+      "source": "src/game/math/libm.h",
+      "destination": "native/game/math/libm.h",
+      "sha256": "3c39789776f1b59d2aeb5e7bda472d759bbee6a777b2563aa58d82c1ce9282b2"
+    },
+    {
+      "source": "src/game/math/motion_transform.h",
+      "destination": "native/game/math/motion_transform.h",
+      "sha256": "d02100612eb69e3856ecec657b7a7f98144a0bd8e8b02f3debdb02c37b35ef51"
+    },
+    {
+      "source": "src/game/math/quat.cpp",
+      "destination": "native/game/math/quat.cpp",
+      "sha256": "a9dbc625e9d7b4c4b03521b9e50ebff78f4a561fe4b05411ddc773fe8290ec42"
+    },
+    {
+      "source": "src/game/math/quat.h",
+      "destination": "native/game/math/quat.h",
+      "sha256": "702f7f3b02375732c0a0450adba28ec457797ebeace93ebff0de86c4967f9f62"
+    },
+    {
+      "source": "src/game/math/raw.h",
+      "destination": "native/game/math/raw.h",
+      "sha256": "45486e379cf6dc92347759abac02b63c05c8f7adf9c41823ebe7c8edbb5227ae"
+    },
+    {
+      "source": "src/game/math/trig.cpp",
+      "destination": "native/game/math/trig.cpp",
+      "sha256": "c26c5f4eed337c0fc91bda38867e90a6f6382c0c5e6ab63b0e473f832a3d25f6"
+    },
+    {
+      "source": "src/game/math/trig.h",
+      "destination": "native/game/math/trig.h",
+      "sha256": "171bf2177550221f19b4ebe86263ed4518772746fd5811ad9775a6a25c36bf86"
+    },
+    {
+      "source": "src/game/menu/garage_car.cpp",
+      "destination": "native/game/menu/garage_car.cpp",
+      "sha256": "baf0424cede5661d8db0569c81073f1b6b5c576d6cf2f91e6988f735126aefa5"
+    },
+    {
+      "source": "src/game/menu/garage_car.h",
+      "destination": "native/game/menu/garage_car.h",
+      "sha256": "d5306ef759d5d1d6cb532bc456ecdc7c82479b5e44a93220b7f7e0fe6a6edc4b"
+    },
+    {
+      "source": "src/game/physics/carparams.cpp",
+      "destination": "native/game/physics/carparams.cpp",
+      "sha256": "c8e4a0047b61729310e309095fff5f68ad7f576a3c2931211b1274954e0bc520"
+    },
+    {
+      "source": "src/game/physics/carparams.h",
+      "destination": "native/game/physics/carparams.h",
+      "sha256": "62c9256c3d226be3a6e0e247cbe99c6a2ef670539ef645d34ee1522bec81c7b9"
+    },
+    {
+      "source": "src/game/physics/carparams_guest.h",
+      "destination": "native/game/physics/carparams_guest.h",
+      "sha256": "3623666734565e30b54dd6f0ebc334be17725789b8ac57db46215447d8214d24"
+    },
+    {
+      "source": "src/game/physics/carparams_init.cpp",
+      "destination": "native/game/physics/carparams_init.cpp",
+      "sha256": "da38f74120682d554143c4d40b4769e9c2939625847b5089249a965c763fe371"
+    },
+    {
+      "source": "src/game/physics/carparams_init.h",
+      "destination": "native/game/physics/carparams_init.h",
+      "sha256": "70c18e769d928cfb08c7798ebdb5d70c64973532738410c46d4efbc91914b767"
+    },
+    {
+      "source": "src/game/physics/carparams_specdb.cpp",
+      "destination": "native/game/physics/carparams_specdb.cpp",
+      "sha256": "d094b28b1c40778e517e4a58a2290586cbc79afd5d18924b7b86725330f82d27"
+    },
+    {
+      "source": "src/game/physics/carparams_specdb.h",
+      "destination": "native/game/physics/carparams_specdb.h",
+      "sha256": "fedcda93157e90bae6766891a8eb38e9b7ddd30f58f9d346367fae8a47273cfb"
+    },
+    {
+      "source": "src/game/physics/drivetrain.cpp",
+      "destination": "native/game/physics/drivetrain.cpp",
+      "sha256": "fd48a028e9eb2a208ffa3f55252fca211d52a2cad35403a61fad33dc5a8afeb0"
+    },
+    {
+      "source": "src/game/physics/drivetrain.h",
+      "destination": "native/game/physics/drivetrain.h",
+      "sha256": "97460d0d47b8616966981e30e0a4a83b8beae8ba229c797ed1dfeb5c782deded"
+    },
+    {
+      "source": "src/game/physics/engine.cpp",
+      "destination": "native/game/physics/engine.cpp",
+      "sha256": "2435cd1a3eb66169024d034691f6bc3d1e0e0ad10a9c45f70ab8f1ad1afada10"
+    },
+    {
+      "source": "src/game/physics/engine.h",
+      "destination": "native/game/physics/engine.h",
+      "sha256": "c5aebc30b33e697280232e253c5a4c65f3776154c22a508fa9f0ef32efffb7e1"
+    },
+    {
+      "source": "src/game/physics/steering.cpp",
+      "destination": "native/game/physics/steering.cpp",
+      "sha256": "14ac1ca8edc14f028efb99ce6e249013b09552ae1ed853fd730ee90cbd8cb4ea"
+    },
+    {
+      "source": "src/game/physics/steering.h",
+      "destination": "native/game/physics/steering.h",
+      "sha256": "a1e576888dadc4a79fa40dc61b8485a9c74233d107e52802990524df85ab331c"
+    },
+    {
+      "source": "src/game/physics/wheel_ground.cpp",
+      "destination": "native/game/physics/wheel_ground.cpp",
+      "sha256": "22a58934571e00a8ce8418ae452aa4c0215bf055862f4171cb0818057f0bcf70"
+    },
+    {
+      "source": "src/game/physics/wheel_ground.h",
+      "destination": "native/game/physics/wheel_ground.h",
+      "sha256": "ae5f319491a57a0399f0965937295c03b6afcc595a43458c0f292e03671592f2"
+    },
+    {
+      "source": "src/specdb/localized_table_provider.h",
+      "destination": "native/specdb/localized_table_provider.h",
+      "sha256": "02440416d22205cccba067cb904bc380611c552eb11e4f60fd41022b58441799"
+    },
+    {
+      "source": "scripts/gt4_core.py",
+      "destination": "../../scripts/gt4_core.py",
+      "sha256": "e97c7d4f51cc638611491c37720a0e4aa6907d5dfe82614dd07be25a169dbb99"
+    }
+  ]
+}

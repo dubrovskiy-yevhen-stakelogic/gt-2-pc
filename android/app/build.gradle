@@ -7,8 +7,8 @@ android {
         applicationId 'io.github.gt2pc.quest'
         minSdk 32
         targetSdk 32
-        versionCode 25
-        versionName '0.8.1'
+        versionCode 49
+        versionName '0.9.0'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_static', '-DBUILD_TESTING=OFF'; targets 'gt2game' } }
     }

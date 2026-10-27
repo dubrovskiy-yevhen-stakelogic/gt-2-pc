@@ -3,7 +3,11 @@
 bool sampleMip(vec2 uv, vec3 color, out vec4 result) {
     if ((pc.options & 8u) == 0u) return false;
     vec2 dx = dFdx(uv), dy = dFdy(uv);
-    float xx = dot(dx, dx), yy = dot(dy, dy), xy = dot(dx, dy);
+    float xx = dot(dx, dx), yy = dot(dy, dy);
+    // The largest eigenvalue cannot exceed the trace. Magnified sprites use
+    // level zero, so avoid eigenvectors, logarithms and atlas mip bounds.
+    if (xx + yy <= 1.0) return false;
+    float xy = dot(dx, dy);
     float majorSquared = 0.5 * (xx + yy + sqrt(max((xx - yy) * (xx - yy) + 4.0 * xy * xy, 0.0)));
     float major = sqrt(max(majorSquared, 0.0));
     float minor = abs(dx.x * dy.y - dx.y * dy.x) / max(major, 0.0001);

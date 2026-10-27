@@ -219,7 +219,7 @@ void Panels::Append(float windowAspect, std::vector<gt2view::DrawItem>& items) {
             modelFrame_->SetInterpolatedPolygons(true); // as PanelView draws them (the dithered headers' pixel runs do not fit)
         }
         if (!modelView_) {
-            modelView_ = std::make_unique<gt2view::MenuCarView>(renderer_, vol_);
+            modelView_ = std::make_unique<gt2view::MenuCarView>(renderer_, vol_, carAssets_);
             modelView_->SetFrameSize(gt2::RaceMenuAssets::kScreenWidth, gt2::RaceMenuAssets::kScreenHeight);
         }
         const bool loaded = modelView_->Use(model_->trophy ? gt2::PackCarId("gtprz") : modelCar_);

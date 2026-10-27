@@ -26,6 +26,7 @@
 #include "gt2formats/gt_menu.h"
 #include "gt2formats/gt_menu_images.h"
 #include "gt2formats/gt_menu_list.h"
+#include "gt2formats/model_set.h"
 
 namespace gt2::menu {
 
@@ -271,6 +272,8 @@ public:
     std::vector<std::string> log;  // one line per page change / action / refusal (the program prints and clears it)
 
 private:
+    mutable std::optional<ModelSet> cockpitCatalogue_;
+    mutable std::filesystem::path cockpitCatalogueRoot_;
     SelectContext Context() const;
     void LoadPage(uint32_t id, uint32_t argument);    // 0x8001D2CC + the cursor placement of 0x8001B3AC
     void CursorUpdate(const PadState* pad);           // 0x8001E328 (pad null = input disabled)

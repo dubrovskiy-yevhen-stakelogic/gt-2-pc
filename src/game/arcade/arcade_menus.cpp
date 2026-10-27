@@ -1,4 +1,6 @@
 #include "game/arcade/arcade_menus.h"
+#include "game/arcade/expanded_garage.h"
+#include <filesystem>
 #include "gt2formats/exe_profile.h"
 #include "game/pc_features.h"
 
@@ -226,6 +228,7 @@ ArcadeMenuAssets ArcadeMenuAssets::Load(const DiscImage& disc, const GtfsVolume&
     TitleAssets fonts;
     TitleAssets::LoadTitleFonts(fonts, vol);
     a.fonts = fonts.fonts;
+    a.disc = &disc;
     a.exe = UiLayout(LoadExeImage(disc), true);
     {
         const std::vector<uint8_t> global = InflateEmbeddedGzipNamed(LoadOverlayImage(disc, 1), "data-global.txd");
@@ -237,6 +240,22 @@ ArcadeMenuAssets ArcadeMenuAssets::Load(const DiscImage& disc, const GtfsVolume&
     const auto fontExe = LoadExeImage(disc);
     a.exeFont = LoadHudFont(fontExe, UiAddress(fontExe, kExeSmallFont, true));
     a.carLogos = vol.Read("arcade/arc_carlogo");
+    const auto carNames=CarInfoDirectory::Load(vol);
+    for(size_t i=0;i<carNames.Count();++i) {
+        const auto& car=carNames.BaseAt(i);
+        if(!car.name.empty())a.carNames.emplace(car.carId,car.name);
+    }
+    // Some hidden garage cars have an empty US label but retain a Latin name
+    // in the Japanese directory. Never substitute another car's identity.
+    if(vol.Find(".carinfoj") || vol.Find(".carinfoj.gz")) {
+        const auto alternate=CarInfoDirectory::Load(vol,".carinfoj");
+        for(size_t i=0;i<alternate.Count();++i) {
+            const auto& car=alternate.BaseAt(i);
+            if(car.name.empty() || car.name=="Delete" || !std::all_of(car.name.begin(),car.name.end(),
+                [](unsigned char c){return c>=32 && c<127;}))continue;
+            a.carNames.try_emplace(car.carId,car.name);
+        }
+    }
     a.vol = &vol;
     a.courses = ParseCourseInfo(vol.Read(".crsinfo"));
     for (const std::vector<ArcadeCourse>& list : a.data.courses)
@@ -254,6 +273,11 @@ std::string ArcadeMenuAssets::AnyText(uint32_t address) const {
     }
     for (uint32_t at = address; data.ovl2.Contains(at, 1) && data.ovl2.Get<uint8_t>(at) != 0; at++) s.push_back(char(data.ovl2.Get<uint8_t>(at)));
     return s;
+}
+
+std::string ArcadeMenuAssets::CarName(uint32_t id) const {
+    if(const auto it=carNames.find(id);it!=carNames.end())return it->second;
+    return "Unnamed car ("+UnpackCarId(id)+")";
 }
 
 const HudFont& ArcadeMenuAssets::FontAt(uint32_t descriptor) const {
@@ -1015,7 +1039,10 @@ const ArcadeBattlePage* ArcadeMenus::BattleShown() const {
 }
 
 std::span<const uint8_t> ArcadeMenus::GarageBlock(int g) const {
-    if (g == 0) return std::span<const uint8_t>(career_).subspan(kGarageBlock, kGarageStride);
+    if (g == 0) {
+        if (!expandedGarage_.empty()) return expandedGarage_;
+        return std::span<const uint8_t>(career_).subspan(kGarageBlock, kGarageStride);
+    }
     return guestGarage_;
 }
 
@@ -1032,11 +1059,44 @@ ArcadeRaceSetup ArcadeMenus::BuildRace(const ArcadeSetupData& d, uint32_t p1, ui
                                                                           GtModeRaceData::Load(*a_.vol), {}, GuestImage{}, GuestImage{}});
     }
     RebuildGarageEntries(setup, {std::span<uint8_t>(blocks[0]), std::span<uint8_t>(blocks[1])}, *gtData_); // ovl3 0x8001290C
-    std::copy(blocks[0].begin(), blocks[0].end(), career_.begin() + std::ptrdiff_t(kGarageBlock));
+    if (!expandedGarage_.empty()) {expandedGarage_=blocks[0]; SaveExpandedGarage();}
+    else std::copy(blocks[0].begin(), blocks[0].end(), career_.begin() + std::ptrdiff_t(kGarageBlock));
     guestGarage_ = blocks[1];
     return setup;
 }
 
+std::span<uint8_t> ArcadeMenus::MutableGarageBlock(int g) {
+    if (g==0) {
+        if (!expandedGarage_.empty()) return expandedGarage_;
+        return std::span<uint8_t>(career_).subspan(kGarageBlock,kGarageStride);
+    }
+    if (g!=1) throw std::out_of_range("Arcade garage number.");
+    return guestGarage_;
+}
+void ArcadeMenus::SetExpandedGaragePath(const std::string& path) {
+    expandedGaragePath_=path;
+    if (!path.empty() && std::filesystem::exists(path)) expandedGarage_=ReadArcadeGarage(path);
+}
+void ArcadeMenus::SaveExpandedGarage() {
+    if (!expandedGarage_.empty()) SaveArcadeGarage(expandedGaragePath_,expandedGarage_);
+}
+std::string ArcadeMenus::AddAllCarsToGarage() {
+    if (Current()==ArcadeView::kGarage || Current()==ArcadeView::kBattle)
+        return "Return to the Arcade class list before adding cars.";
+    if (!gtData_ || gtData_->exe.bytes.empty()) {
+        if (!a_.vol || !a_.disc) throw std::runtime_error("No Arcade volume.");
+        gtData_=std::make_unique<career::CareerData>(career::CareerData::Load(*a_.disc,*a_.vol));
+    }
+    gtData_->strict=false;
+    const int before=ExpandedGarageCount(GarageBlock(0));
+    auto candidate=AddAllArcadeCars(GarageBlock(0),*gtData_);
+    const int after=ExpandedGarageCount(candidate);
+    SaveArcadeGarage(expandedGaragePath_,candidate);
+    expandedGarage_=std::move(candidate);
+    if(after>0) for(auto* list:{&class_,&rally_}) for(auto& item:list->items)
+        if(item.result==4) item.kind=uint8_t(item.kind & 0x7Fu);
+    return "Added "+std::to_string(after-before)+" cars. Arcade garage: "+std::to_string(after)+" / 4096.";
+}
 void ArcadeMenus::SetCards(const std::array<shell::CardSlot, 2>& slots) { guestLoad_ = std::make_unique<ArcadeGuestLoad>(a_, slots); }
 
 void ArcadeMenus::SetGuestGarage(std::span<const uint8_t> block) {
