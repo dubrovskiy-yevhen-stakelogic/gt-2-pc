@@ -10,8 +10,8 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "0b6b37e4473488ffa93c97c0d3e3c5b1a5bbe9caf7ea23250b4929c6c86f5677",
-      "textSha256": "0b6b37e4473488ffa93c97c0d3e3c5b1a5bbe9caf7ea23250b4929c6c86f5677"
+      "sha256": "ff9b1bfc7295b177ca58179922553e125f9387130a77befdc4d3c6dbdbe37f4b",
+      "textSha256": "ff9b1bfc7295b177ca58179922553e125f9387130a77befdc4d3c6dbdbe37f4b"
     },
     {
       "path": "android/app/build.gradle",
@@ -348,8 +348,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "e2b3173b1ccf9ec27b113de58d88973efda2d6d1f7ca3279e731f15c5cb9101d",
-      "textSha256": "7026f2b6a3a60741a5aa4e215e71150b8d3bdb9632d5752d6a0c3f54f28f81a1"
+      "sha256": "0d6b4514957cc9d1e0206ce3141611908e4e1293722144f7fccbabecf494134f",
+      "textSha256": "826aeb811276a151c8bdb698c7a7ece9bd7c65e0710d42bb575576afd11e5400"
     },
     {
       "path": "scripts/audit-gt4-road-contact.ps1",
@@ -358,8 +358,8 @@
     },
     {
       "path": "scripts/audit-source.ps1",
-      "sha256": "72fb1a608bc8b6cb48a6fa137209c3afeee8c3e765afd81f2c0fb3b0c928f928",
-      "textSha256": "72fb1a608bc8b6cb48a6fa137209c3afeee8c3e765afd81f2c0fb3b0c928f928"
+      "sha256": "8004c9ec8a43c575405a14b2589565f5c29dcfb4285365cbf3155613a97d1c7b",
+      "textSha256": "8004c9ec8a43c575405a14b2589565f5c29dcfb4285365cbf3155613a97d1c7b"
     },
     {
       "path": "scripts/audit-wheel-inputmaps.py",

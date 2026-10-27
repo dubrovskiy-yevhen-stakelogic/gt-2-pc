@@ -12,6 +12,10 @@ try {
     $allowedImage = 'third_party/vrhands/BigHandsAlbedo.png'
     $readmeImage = 'docs/images/cockpit-0.5.0.png'
     $gt4Image = 'docs/images/gt4-cars-0.9.0.png'
+    $ignoreRules = @(Get-Content -LiteralPath '.gitignore')
+    foreach ($image in @($readmeImage, $gt4Image)) {
+        if ($ignoreRules -notcontains "!$image") { throw "README image needs an explicit .gitignore exception: $image" }
+    }
     if ($files -notcontains $gt4Image) { throw 'Missing GT4 README screenshot.' }
     if ((Get-FileHash -LiteralPath $gt4Image -Algorithm SHA256).Hash -ne '3538EC1140CCA2142D2EB8317E6B0E4678DF877CB8B87C95132699A53B37AB1C') { throw 'Unexpected GT4 README screenshot; review the replacement before packaging.' }
     if ($files -notcontains $readmeImage) { throw 'Missing README screenshot.' }
