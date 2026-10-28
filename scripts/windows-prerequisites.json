@@ -1,0 +1,26 @@
+{
+  "python": {
+    "version": "3.12.10",
+    "url": "https://api.nuget.org/v3-flatcontainer/python/3.12.10/python.3.12.10.nupkg",
+    "algorithm": "SHA256",
+    "hash": "0eb85c2dfccccf1b17352de4c397f69194035b7d37149eacc16f1147d93de3b8"
+  },
+  "numpy": {
+    "version": "2.2.6",
+    "url": "https://files.pythonhosted.org/packages/36/fa/8c9210162ca1b88529ab76b41ba02d433fd54fecaf6feb70ef9f124683f1/numpy-2.2.6-cp312-cp312-win_amd64.whl",
+    "algorithm": "SHA256",
+    "hash": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2"
+  },
+  "pillow": {
+    "version": "11.3.0",
+    "url": "https://files.pythonhosted.org/packages/8c/ce/e7dfc873bdd9828f3b6e5c2bbb74e47a98ec23cc5c74fc4e54462f0d9204/pillow-11.3.0-cp312-cp312-win_amd64.whl",
+    "algorithm": "SHA256",
+    "hash": "a6444696fce635783440b7f7a9fc24b3ad10a9ea3f0ab66c5905be1c19ccf17d"
+  },
+  "dotnet": {
+    "version": "8.0.408",
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.408/dotnet-sdk-8.0.408-win-x64.zip",
+    "algorithm": "SHA512",
+    "hash": "49ff4363663d28b8f55b7af4cad4cb469cf9ff1bc6e826117b2381180a7c5e7c8d5aaefd02c7b5ae06c87609816858bbf554c68a8308ac6260d3d5b432123272"
+  }
+}

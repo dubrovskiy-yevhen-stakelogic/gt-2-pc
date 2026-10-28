@@ -43,6 +43,10 @@ GT4 handling exactly.
 
 ## Performance and installation
 
+The Windows GT4 importer prepares missing Python, image libraries and .NET tools
+automatically. Its file pickers distinguish the GT4 ISO from GT2 Simulation and
+Arcade, and it creates the verified model bundle ready for installation.
+
 Heavy tyre smoke uses less GPU work on supported VR hardware. Texture-cache
 fixes keep smoke on the filtered path, while preloaded HD position badges avoid
 image-decoding stalls during overtakes. Frame rate still depends on the device,

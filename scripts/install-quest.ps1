@@ -10,6 +10,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $package = 'io.github.gt2pc.quest'
+if ($Gt4Bundle) {
+    . (Join-Path $PSScriptRoot 'windows-prerequisites.ps1')
+    $Python = Get-Gt2Python -Python $Python
+}
 if (!(Test-Path -LiteralPath $Apk)) { throw 'Build the Quest APK first.' }
 $devices = @(& $Adb devices)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot query ADB devices.' }

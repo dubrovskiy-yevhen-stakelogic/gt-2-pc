@@ -70,7 +70,7 @@ foreach ($dir in @('','tools','scripts','docs','LICENSES')) { New-Item -ItemType
 Copy-Item -LiteralPath $OpenXRLoader -Destination (Join-Path $Output 'tools/openxr_loader.dll')
 Copy-Item -LiteralPath $Apk -Destination (Join-Path $Output $apkName)
 foreach ($name in $executables) { Copy-Item -LiteralPath (Join-Path $BuildDir $name) -Destination (Join-Path $Output "tools/$name") }
-foreach ($name in @('transfer-saves.ps1','platform-tools.ps1','install-player.ps1','install.ps1','install-quest.ps1','package-quest-gt4.py','collect-profiler-quest.ps1','prepare-hd.ps1','hd-upscale.ps1','prepare-hd-wizard.ps1','install-linux.py','gt2_disc.py','gt2_boot.py','linux-downloads.json')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $Output "scripts/$name") }
+foreach ($name in @('transfer-saves.ps1','platform-tools.ps1','windows-prerequisites.ps1','windows-prerequisites.json','install-player.ps1','install.ps1','install-quest.ps1','install-gt4-pack.ps1','install-gt4-pack.py','package-quest-gt4.py','collect-profiler-quest.ps1','prepare-hd.ps1','hd-upscale.ps1','prepare-hd-wizard.ps1','install-linux.py','gt2_disc.py','gt2_boot.py','linux-downloads.json')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $Output "scripts/$name") }
 foreach ($name in @('README.md','THIRD_PARTY.md','LICENSE','CHANGELOG.md','PREPARE-HD.bat','INSTALL-LINUX.sh','TRANSFER_QUEST_SAVES_TO_PC.bat','TRANSFER_PC_SAVES_TO_QUEST.bat')) { Copy-Item -LiteralPath (Join-Path $repo $name) -Destination (Join-Path $Output $name) }
 $publicDocs = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem |
     Where-Object { $_.StartsWith('docs/') } | ForEach-Object { $_.Substring(5) })

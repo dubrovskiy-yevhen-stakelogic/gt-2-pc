@@ -30,6 +30,12 @@ foreach ($required in @($apkName,'tools/gt2game.exe','tools/openxr_loader.dll','
     if (!$seen.ContainsKey($required)) { throw "Required release file is missing from the manifest: $required" }
 }
 if ($VerifyOnly) { Write-Host 'Release files verified.'; return }
+if ($Gt4Bundle) {
+    . (Join-Path $PSScriptRoot 'windows-prerequisites.ps1')
+    $Python = Get-Gt2Python -Python $Python
+    & $Python -E -s (Join-Path $PSScriptRoot 'package-quest-gt4.py') --verify $Gt4Bundle
+    if ($LASTEXITCODE -ne 0) { throw 'GT4 bundle validation failed; nothing was installed.' }
+}
 if (!$PSBoundParameters.ContainsKey('HdMedia') -and !$DiscImage) {
     . (Join-Path $PSScriptRoot 'hd-upscale.ps1')
     $HdMedia = Select-HdMediaForInstall
@@ -69,4 +75,10 @@ if ($Target -eq 'Quest') {
     $modes = @('arcade','simulation' | Where-Object { Test-Path -LiteralPath (Join-Path $InstallDir "$_/disc.raw2352") })
     if ($modes.Count -eq 0) { throw 'No prepared discs.' }
     & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root $apkName) -Runtime $InstallDir -Mode $modes[0] -BothDiscs:($modes.Count -eq 2) -Gt4Bundle $Gt4Bundle -Python $Python
-} else { Write-Host "PC game ready: $InstallDir. Use PLAY.bat for desktop, PLAY-PCVR-META.bat for Meta Link, PLAY-PCVR-STEAMVR.bat for SteamVR, or PLAY-PCVR-VD.bat for Virtual Desktop (VDXR). PLAY-PCVR.bat selects automatically." }
+} else {
+    if ($Gt4Bundle) {
+        & $Python -E -s (Join-Path $PSScriptRoot 'install-gt4-pack.py') --bundle $Gt4Bundle --runtime $InstallDir
+        if ($LASTEXITCODE -ne 0) { throw 'GT4 installation failed; see the error above.' }
+    }
+    Write-Host "PC game ready: $InstallDir. Use PLAY.bat for desktop, PLAY-PCVR-META.bat for Meta Link, PLAY-PCVR-STEAMVR.bat for SteamVR, or PLAY-PCVR-VD.bat for Virtual Desktop (VDXR). PLAY-PCVR.bat selects automatically."
+}

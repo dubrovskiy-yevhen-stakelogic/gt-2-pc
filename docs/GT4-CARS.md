@@ -11,7 +11,12 @@ screenshot and the full list of 66 models with restored original interiors.
   table-of-contents fingerprint before conversion. Other revisions are rejected.
 - Your prepared **GT2 USA Simulation v1.2** disc directory, and optionally
   **USA Arcade v1.1** for a second catalogue overlay. A complete BIN is also accepted.
-- Python 3.11 or later with Pillow and NumPy, and the .NET 8 SDK.
+- On Windows, the launcher automatically prepares Python, Pillow, NumPy and
+  the .NET 8 SDK when needed. No manual Python installation or administrator
+  access is required. Tools are cached under `%LOCALAPPDATA%/GT2-VR/Tools`;
+  Windows app aliases and system PATH settings do not need to be changed.
+- Direct Python commands on other platforms require Python 3.11 or later with
+  Pillow and NumPy, and the .NET 8 SDK.
 - The complete release's `native/tools` directory contains the Windows native
   exporters. Building from source instead requires CMake 3.22+, a C++20 compiler
   and the `gt4-import-tools` and `gt2tool` targets.
@@ -24,15 +29,26 @@ with `--model-tool`, `--catalog-tool` and `--offline`.
 
 ## Prepare the complete pack
 
-From the extracted complete release, run:
+On Windows, double-click **IMPORT-GT4-MODELS.bat** in the extracted complete
+release. Select the **GT4 ISO** in the first file picker. **Simulation means
+GT2 Simulation**, not another GT4 image: an installed Simulation disc is detected
+automatically, or the next picker asks for its BIN. The optional final picker
+accepts GT2 Arcade; cancel it for Simulation only.
+
+The launcher finds the bundled native exporters, prepares missing tools and
+creates the verified `gt4-models.tar` bundle when conversion finishes. The first
+run requires internet access for tools and their dependencies; later runs reuse
+the cache. All downloaded tool archives are checked against pinned hashes.
+
+For explicit paths, run:
 
 ```powershell
-python scripts/prepare-gt4-release.py --iso "D:/Games/GT4-USA-1.01.iso" --simulation "runtime/simulation" --arcade "runtime/arcade" --output "work/gt4-090" --tools "native/tools"
+./IMPORT-GT4-MODELS.bat -Iso "D:/Games/GT4-USA-1.01.iso" -Simulation "runtime/simulation" -Arcade "runtime/arcade" -Output "work/gt4-090"
 ```
 
 Use your actual image and runtime paths. `IMPORT-GT4-MODELS.bat` wraps the same
 pipeline with PowerShell parameters `-Iso`, `-Simulation`, `-Arcade`, `-Output`
-and `-Build`. For example, `-Build native/tools` selects the bundled exporters.
+and `-Build`. The bundled `native/tools` directory is selected automatically.
 
 The output must be a new directory under this checkout's `work/`. Preparation
 keeps intermediate assets in a `.preparing` directory and only renames it after
@@ -54,16 +70,16 @@ activation-ready catalogue and must not be installed as the complete expansion.
 
 ## Install on desktop
 
-First create a verified bundle from the complete result:
+The Windows importer already creates the verified bundle. To add it to an
+existing desktop installation, close the game and run:
 
 ```powershell
-python scripts/package-quest-gt4.py --pack work/gt4-090/modelsets/gt4 --native work/gt4-090/modelsets/gt4/native-v16 --simulation-expansion work/gt4-090/expansions/simulation --arcade-expansion work/gt4-090/expansions/arcade --output work/gt4-090/gt4-models.tar
-python scripts/install-gt4-pack.py --bundle work/gt4-090/gt4-models.tar --runtime "C:/Games/GT2/runtime"
+./scripts/install-gt4-pack.ps1 -Bundle "work/gt4-090/gt4-models.tar" -Runtime "C:/Games/GT2/runtime"
 ```
 
 Use the runtime directory containing `arcade/` and `simulation/`. If preparing
-only Simulation, omit `--arcade` during conversion and `--arcade-expansion` when
-packaging. The installer checks every bundle file before replacing model and
+only Simulation, cancel the optional Arcade picker. Python is prepared
+automatically. The installer checks every bundle file before replacing model and
 catalogue directories. Existing GT4 assets are retained under `gt4-backups/`;
 disc data, saves and settings are preserved. Close the game before installing.
 
@@ -80,7 +96,7 @@ Create the same bundle, then pass it to the normal release installer:
 ```
 
 The installer updates the APK and transfers the prepared discs and GT4 bundle.
-If Python is not available as `python`, pass `-Python` with its executable path.
+It also prepares Python automatically when a GT4 bundle is selected.
 Use the same APK signing identity as the installed release. Do not uninstall to
 work around a signature mismatch. Back up saves before changing installations;
 see [save transfer](SAVE-TRANSFER.md).

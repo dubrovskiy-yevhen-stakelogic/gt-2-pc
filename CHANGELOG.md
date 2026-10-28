@@ -47,6 +47,7 @@
 
 ### HD media and installation
 
+- Automatically prepare missing Python, Pillow, NumPy and .NET tools for GT4 import and installation on Windows. Clearly identify the GT4 ISO and GT2 Simulation/Arcade discs, find bundled exporters and create the installable model bundle automatically.
 - Show named progress and completed-picture counts during HD preparation. Resume completed batches after an interruption.
 - Offer Original, HD menus, or HD menus and movies before processing. Preserve prepared movies when updating menus.
 - Improve small lettering and logos in enlarged pictures. Fix dots and pinholes in GT Mode text, including My Home.

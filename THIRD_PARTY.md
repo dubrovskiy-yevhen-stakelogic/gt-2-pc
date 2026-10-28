@@ -22,6 +22,14 @@ Windows HID report padding was checked against [HIDAPI's Windows backend](https:
 
 Player releases include dependency notices under LICENSES/, including the Android NDK/runtime and OpenXR loader licences. The installer can download Google's pinned Platform Tools 36.0.2 archive; it retains Google's NOTICE.txt and source.properties in its tool cache. These tools are not bundled in the source folder.
 
+Windows GT4 preparation can download official Python NuGet packages (PSF License),
+NumPy wheels (BSD-3-Clause and bundled dependency notices), Pillow wheels
+(HPND/PIL and bundled dependency notices), and the Microsoft .NET 8 SDK (MIT and
+included third-party notices). Versions, official download URLs and SHA-256 or
+SHA-512 hashes are pinned in `scripts/windows-prerequisites.json`. Full package
+contents and licence files remain in the local tool cache; their binaries are
+not bundled in the source kit or release ZIP.
+
 - `third_party/stb`: unmodified stb_image 2.30 (JPEG decoding) and stb_image_write 1.16 (offline JPEG encoding), Sean Barrett and contributors, MIT or public domain. This project uses the MIT option. Exact retrieval URLs and SHA-256 hashes are in `third_party/stb/SOURCE.md`; licence in `LICENSE.txt`.
 - `third_party/libretro/libretro.h`: the libretro API header, RetroArch team, MIT. `SOURCE.md` records the source URL and hash. The offline Windows boot-capture helper and portable Python capture host use this API; the game does not load emulator cores.
 - Optional installer download: [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN), Xintao Wang, BSD-3-Clause, via the NCNN Vulkan 20220424 Windows release. The package and models are fetched separately, verified against a pinned SHA-256 and retained in the local installer cache. Upstream [licence](https://github.com/xinntao/Real-ESRGAN/blob/master/LICENSE).
