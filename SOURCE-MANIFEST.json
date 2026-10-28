@@ -75,8 +75,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "2efd0e983293cadea25174cfe172a526cce6955d025ac2d3cfc58bda98f722f4",
-      "textSha256": "6888d3688b509acee6415d4d58bf65155b47e884566562a23d5b23186a5a1cad"
+      "sha256": "2f3a42e5114899a681d41ca038410763d68ded20bc8ec7c6187267423da98c7c",
+      "textSha256": "117a8486c58bde39a8fe3366868f0510c751d15f54d609c9c5099d44a40be55a"
     },
     {
       "path": "cmake/android.cmake",
@@ -115,8 +115,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "4d5ba33f503947bfe8d7facc74989ff673a5dfdf8a587dec4a24697b6c907794",
-      "textSha256": "b6c689845123e8888b3dfd43501deee1db36127ada89e250ba078a878224c08f"
+      "sha256": "819917cc3139ab39faa63fc7551c1b79af002164c1261ec4ca38e39c5d5dc2e0",
+      "textSha256": "3087a4b6bedac35790154198a02977315ae65e8bd569e994014f1fa58ce01b2e"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -185,8 +185,8 @@
     },
     {
       "path": "docs/GT4-CARS.md",
-      "sha256": "80403041e3ea6d5d218c348e823eafc6b150d655a978db985602a01d25798ae0",
-      "textSha256": "80403041e3ea6d5d218c348e823eafc6b150d655a978db985602a01d25798ae0"
+      "sha256": "e1efbf14de4812ece0f36c28acff680d2ce4492e06a6a03bc2b9797389070589",
+      "textSha256": "e1efbf14de4812ece0f36c28acff680d2ce4492e06a6a03bc2b9797389070589"
     },
     {
       "path": "docs/HD-MEDIA.md",
@@ -278,8 +278,8 @@
     },
     {
       "path": "IMPORT-GT4-MODELS.bat",
-      "sha256": "4ffd8e086dc3f27ee54f1a5805dc3c6f02ea8d4884b830b6d3c1c0c1d1a4014c",
-      "textSha256": "4ffd8e086dc3f27ee54f1a5805dc3c6f02ea8d4884b830b6d3c1c0c1d1a4014c"
+      "sha256": "47f4c4d5945658df6bc9c71c2987da48775628fafd3a7d58d668d40ee261c7dc",
+      "textSha256": "47f4c4d5945658df6bc9c71c2987da48775628fafd3a7d58d668d40ee261c7dc"
     },
     {
       "path": "INSTALL-LINUX.sh",
@@ -598,8 +598,8 @@
     },
     {
       "path": "scripts/import-gt4-models.ps1",
-      "sha256": "40b2065bddbfdd19098ba48ff3bd77ef7638b4dd7e8bd17664a4835f86ab9d23",
-      "textSha256": "40b2065bddbfdd19098ba48ff3bd77ef7638b4dd7e8bd17664a4835f86ab9d23"
+      "sha256": "54a4725924b529415ed2c31e1bc5f19a307cd5d54ed950f3f208ba2e71534421",
+      "textSha256": "54a4725924b529415ed2c31e1bc5f19a307cd5d54ed950f3f208ba2e71534421"
     },
     {
       "path": "scripts/install-gt4-pack.ps1",
@@ -3285,6 +3285,11 @@
       "path": "tests/windows_dependency_zip_checks.py",
       "sha256": "0aaca58ddc0845a3a852bab39bd390fff794dff93715e6d057efa2fdf05ac6ce",
       "textSha256": "0aaca58ddc0845a3a852bab39bd390fff794dff93715e6d057efa2fdf05ac6ce"
+    },
+    {
+      "path": "tests/windows_import_completion_checks.py",
+      "sha256": "5d323eda5530bf0488f722a58371a04fec9c11aafd05da763f981bae0b8e742c",
+      "textSha256": "df21e53848541257875476e6a7c1fbd34da312230f47058206aca9cb4cc1a0f3"
     },
     {
       "path": "THIRD_PARTY.md",

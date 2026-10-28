@@ -40,6 +40,12 @@ creates the verified `gt4-models.tar` bundle when conversion finishes. The first
 run requires internet access for tools and their dependencies; later runs reuse
 the cache. All downloaded tool archives are checked against pinned hashes.
 
+**Import prepares the bundle; it does not install it on your PC or Quest.**
+The window stays open when import finishes. `INSTALL-GT4.txt` beside the bundle
+contains the next installation commands with your paths filled in. Keep the
+bundle: installation does not require another conversion. Each run also saves
+a console log under `work/import-logs`, including failures.
+
 For explicit paths, run:
 
 ```powershell
