@@ -42,16 +42,118 @@ function Get-Gt2DependencyArchive($Dependency, [string]$Name, [string]$Cache, [s
 }
 
 function Expand-Gt2Dependency([string]$Archive, [string]$Destination) {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $root = [IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
-    $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
-    try {
-        foreach ($entry in $zip.Entries) {
-            $path = [IO.Path]::GetFullPath((Join-Path $root $entry.FullName))
-            if (!$path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe dependency archive path.' }
+    if (!('Gt2DependencyZip' -as [type])) {
+        $source = @'
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+public static class Gt2DependencyZip
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CreateDirectoryW(string path, IntPtr security);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFileAttributesW(string path);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(string path, uint access, uint share,
+        IntPtr security, uint creation, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool MoveFileExW(string existing, string destination, uint flags);
+
+    private static string Extended(string path)
+    {
+        string full = Path.GetFullPath(path).Replace('/', '\\');
+        if (full.StartsWith(@"\\?\", StringComparison.Ordinal)) return full;
+        return full.StartsWith(@"\\", StringComparison.Ordinal)
+            ? @"\\?\UNC\" + full.Substring(2) : @"\\?\" + full;
+    }
+
+    private static void DirectoryTree(string path, HashSet<string> directories)
+    {
+        if (directories.Contains(path)) return;
+        uint attributes = GetFileAttributesW(path);
+        if (attributes != 0xffffffff && (attributes & 16) != 0) {
+            directories.Add(path);
+            return;
         }
-    } finally { $zip.Dispose() }
-    [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $Destination)
+        int separator = path.LastIndexOf('\\');
+        if (separator < 7) throw new IOException("Cannot create dependency directory: " + path);
+        DirectoryTree(path.Substring(0, separator), directories);
+        if (!CreateDirectoryW(path, IntPtr.Zero)) {
+            int error = Marshal.GetLastWin32Error();
+            attributes = GetFileAttributesW(path);
+            if (error != 183 || attributes == 0xffffffff || (attributes & 16) == 0)
+                throw new Win32Exception(error, "Cannot create dependency directory: " + path);
+        }
+        directories.Add(path);
+    }
+
+    private static string RelativeName(string name)
+    {
+        string value = name.Replace('/', '\\');
+        if (value.StartsWith(@"\", StringComparison.Ordinal) || value.IndexOf(':') >= 0)
+            throw new InvalidDataException("Unsafe dependency archive path: " + name);
+        var parts = new List<string>();
+        foreach (string part in value.Split('\\')) {
+            if (part == "" || part == ".") continue;
+            if (part == ".." || part.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                throw new InvalidDataException("Unsafe dependency archive path: " + name);
+            parts.Add(part);
+        }
+        return String.Join(@"\", parts.ToArray());
+    }
+
+    public static void Extract(string archive, string destination)
+    {
+        string root = Extended(destination).TrimEnd('\\');
+        using (SafeFileHandle handle = CreateFileW(Extended(archive), 0x80000000, 1,
+            IntPtr.Zero, 3, 0x80, IntPtr.Zero)) {
+            if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot read dependency archive");
+            using (var input = new FileStream(handle, FileAccess.Read))
+            using (var zip = new ZipArchive(input, ZipArchiveMode.Read)) {
+                // Validate every name before writing any entry. Never pass ZIP paths
+                // through legacy .NET normalization, which rejects paths over MAX_PATH.
+                foreach (var entry in zip.Entries) RelativeName(entry.FullName);
+                var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                DirectoryTree(root, directories);
+                foreach (var entry in zip.Entries) {
+                    string relative = RelativeName(entry.FullName);
+                    if (relative.Length == 0) continue;
+                    string target = root + @"\" + relative;
+                    if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith(@"\")) {
+                        DirectoryTree(target, directories);
+                        continue;
+                    }
+                    DirectoryTree(target.Substring(0, target.LastIndexOf('\\')), directories);
+                    using (SafeFileHandle output = CreateFileW(target, 0x40000000, 0,
+                        IntPtr.Zero, 1, 0x80, IntPtr.Zero)) {
+                        if (output.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot create dependency file: " + target);
+                        using (var stream = new FileStream(output, FileAccess.Write))
+                        using (var contents = entry.Open()) contents.CopyTo(stream);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void MoveDirectory(string source, string destination)
+    {
+        // Both paths are on the same cache volume. Rename the directory itself;
+        // PowerShell 5.1 Move-Item walks its contents and can reject long names.
+        if (!MoveFileExW(Extended(source), Extended(destination), 0))
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot move dependency directory: " + source);
+    }
+}
+'@
+        if ($PSVersionTable.PSEdition -eq 'Desktop') {
+            Add-Type -TypeDefinition $source -ReferencedAssemblies 'System.dll','System.Core.dll','System.IO.Compression.dll'
+        } else { Add-Type -TypeDefinition $source }
+    }
+    [Gt2DependencyZip]::Extract($Archive, $Destination)
 }
 
 function Get-Gt2Python([string]$Python, [string]$ToolsRoot, [switch]$Offline) {
@@ -83,9 +185,9 @@ function Get-Gt2Python([string]$Python, [string]$ToolsRoot, [switch]$Offline) {
     Expand-Gt2Dependency $pillowZip $packages
     if (!(Test-Gt2Python (Join-Path $stage 'tools/python.exe'))) { throw "Python dependency check failed. Retained files: $stage" }
     if (Test-Path -LiteralPath $destination) {
-        Move-Item -LiteralPath $destination -Destination ($destination + '.old-' + [guid]::NewGuid().ToString('N'))
+        [Gt2DependencyZip]::MoveDirectory($destination, ($destination + '.old-' + [guid]::NewGuid().ToString('N')))
     }
-    Move-Item -LiteralPath $stage -Destination $destination
+    [Gt2DependencyZip]::MoveDirectory($stage, $destination)
     return $executable
 }
 
@@ -111,8 +213,8 @@ function Get-Gt2DotNet([string]$ToolsRoot, [switch]$Offline) {
     Expand-Gt2Dependency $archive $stage
     if (!(Test-Gt2DotNet (Join-Path $stage 'dotnet.exe'))) { throw "NET SDK check failed. Retained files: $stage" }
     if (Test-Path -LiteralPath $destination) {
-        Move-Item -LiteralPath $destination -Destination ($destination + '.old-' + [guid]::NewGuid().ToString('N'))
+        [Gt2DependencyZip]::MoveDirectory($destination, ($destination + '.old-' + [guid]::NewGuid().ToString('N')))
     }
-    Move-Item -LiteralPath $stage -Destination $destination
+    [Gt2DependencyZip]::MoveDirectory($stage, $destination)
     return $executable
 }

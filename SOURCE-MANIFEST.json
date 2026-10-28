@@ -75,8 +75,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "d93f84dd27117c18e4e5b691ef3e978d86478db62b68788013355e5e832b6330",
-      "textSha256": "b73daf2bd55cad047d3779c7801ed1b73acca754c333cd4c3945bda960e5279a"
+      "sha256": "2efd0e983293cadea25174cfe172a526cce6955d025ac2d3cfc58bda98f722f4",
+      "textSha256": "6888d3688b509acee6415d4d58bf65155b47e884566562a23d5b23186a5a1cad"
     },
     {
       "path": "cmake/android.cmake",
@@ -115,8 +115,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "7f6c266001e420b71894ba8cd5041c8623a9862d186c6a63302945026dacab8c",
-      "textSha256": "b4c15f3cbd52f5e76ea3d8136ec5d9367900ae74f9764193fce7268662a53dce"
+      "sha256": "4d5ba33f503947bfe8d7facc74989ff673a5dfdf8a587dec4a24697b6c907794",
+      "textSha256": "b6c689845123e8888b3dfd43501deee1db36127ada89e250ba078a878224c08f"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -185,8 +185,8 @@
     },
     {
       "path": "docs/GT4-CARS.md",
-      "sha256": "8adf9d1867d17acc099fc30d91a1ef54cbdf8449852c1eafba45e182bb672dff",
-      "textSha256": "8adf9d1867d17acc099fc30d91a1ef54cbdf8449852c1eafba45e182bb672dff"
+      "sha256": "80403041e3ea6d5d218c348e823eafc6b150d655a978db985602a01d25798ae0",
+      "textSha256": "80403041e3ea6d5d218c348e823eafc6b150d655a978db985602a01d25798ae0"
     },
     {
       "path": "docs/HD-MEDIA.md",
@@ -758,8 +758,8 @@
     },
     {
       "path": "scripts/windows-prerequisites.ps1",
-      "sha256": "1d9b67e9d3df93e081b1a9ffaeef8c385a0767a4bfa9802ce8656d8ae22451fd",
-      "textSha256": "1d9b67e9d3df93e081b1a9ffaeef8c385a0767a4bfa9802ce8656d8ae22451fd"
+      "sha256": "83930a9208da2539e6d3e362eaf09285f83d449ca3360603a0b4561c17aa4dd0",
+      "textSha256": "83930a9208da2539e6d3e362eaf09285f83d449ca3360603a0b4561c17aa4dd0"
     },
     {
       "path": "src/game/arcade/arcade_battle.cpp",
@@ -3280,6 +3280,11 @@
       "path": "tests/window_mask_audit.h",
       "sha256": "99fecaa70414f601f91c3c056cefbbaa374a227c7713380932dbb356204208fb",
       "textSha256": "c1a565db6118e9292a84b63ee2c9a006827fccaec1ac2e7cf39d4b138829d6b3"
+    },
+    {
+      "path": "tests/windows_dependency_zip_checks.py",
+      "sha256": "0aaca58ddc0845a3a852bab39bd390fff794dff93715e6d057efa2fdf05ac6ce",
+      "textSha256": "0aaca58ddc0845a3a852bab39bd390fff794dff93715e6d057efa2fdf05ac6ce"
     },
     {
       "path": "THIRD_PARTY.md",

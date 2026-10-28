@@ -14,7 +14,7 @@ screenshot and the full list of 66 models with restored original interiors.
 - On Windows, the launcher automatically prepares Python, Pillow, NumPy and
   the .NET 8 SDK when needed. No manual Python installation or administrator
   access is required. Tools are cached under `%LOCALAPPDATA%/GT2-VR/Tools`;
-  Windows app aliases and system PATH settings do not need to be changed.
+  Windows app aliases, system PATH and long-path settings do not need to be changed.
 - Direct Python commands on other platforms require Python 3.11 or later with
   Pillow and NumPy, and the .NET 8 SDK.
 - The complete release's `native/tools` directory contains the Windows native
