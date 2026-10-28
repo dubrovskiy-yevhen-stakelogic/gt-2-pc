@@ -5,6 +5,7 @@ param(
     [string]$Runtime = (Join-Path (Split-Path $PSScriptRoot) 'runtime'),
     [ValidateSet('arcade','simulation')][string]$Mode = 'arcade',
     [switch]$BothDiscs,
+    [switch]$Gt4Only,
     [string]$Gt4Bundle,
     [string]$Python = 'python'
 )
@@ -14,7 +15,8 @@ if ($Gt4Bundle) {
     . (Join-Path $PSScriptRoot 'windows-prerequisites.ps1')
     $Python = Get-Gt2Python -Python $Python
 }
-if (!(Test-Path -LiteralPath $Apk)) { throw 'Build the Quest APK first.' }
+if ($Gt4Only -and !$Gt4Bundle) { throw 'GT4-only installation requires a prepared bundle.' }
+if (!$Gt4Only -and !(Test-Path -LiteralPath $Apk)) { throw 'Build the Quest APK first.' }
 $devices = @(& $Adb devices)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot query ADB devices.' }
 if (!$Serial) {
@@ -24,10 +26,12 @@ if (!$Serial) {
 }
 if ($Serial -notmatch '^[A-Za-z0-9._:-]+$') { throw 'Invalid ADB serial.' }
 function Invoke-Adb([string[]]$Arguments) {
-    & $Adb -s $Serial @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "ADB failed: $($Arguments -join ' ')" }
+    $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = 1
+    & $Adb -s $Serial @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+    if ($global:LASTEXITCODE -ne 0) { throw "ADB failed: $($Arguments -join ' ')" }
 }
-$modes = if ($BothDiscs) { @('arcade','simulation') } else { @($Mode) }
+$modes = if ($Gt4Only) { @() } elseif ($BothDiscs) { @('arcade','simulation') } else { @($Mode) }
 foreach ($disc in $modes) {
     $source = Join-Path $Runtime $disc
     if (!(Test-Path (Join-Path $source 'disc.raw2352')) -or !(Test-Path (Join-Path $source 'assets'))) {
@@ -39,8 +43,15 @@ if ($Gt4Bundle) {
     & $Python (Join-Path $PSScriptRoot 'package-quest-gt4.py') --verify $Gt4Bundle
     if ($LASTEXITCODE -ne 0) { throw 'GT4 bundle validation failed; nothing was installed.' }
 }
-Write-Host 'Quest stage: installing APK. File-transfer percentages below apply to each named group, not the whole installation.'
-Invoke-Adb @('install','-r',$Apk)
+if ($Gt4Only) {
+    $installed = @(Invoke-Adb @('shell','pm','path',$package))
+    if (($installed -join ' ') -notmatch 'package:') { throw 'GT2 is not installed on this Quest. Install the game first, then rerun the importer to use the saved bundle.' }
+    Write-Host "Quest GT4: updating cars on $Serial. Discs, APK, saves and settings are retained."
+    Invoke-Adb @('shell','am','force-stop',$package)
+} else {
+    Write-Host 'Quest stage: installing APK. File-transfer percentages below apply to each named group, not the whole installation.'
+    Invoke-Adb @('install','-r',$Apk)
+}
 $external = "/sdcard/Android/data/$package/files"
 $reply = @(Invoke-Adb @('shell','am','broadcast','-n',"$package/.ImportAccessReceiver",'-a',"$package.PREPARE_DATA"))
 if (($reply -join ' ') -notmatch 'result=0' -or ($reply -join ' ') -notmatch 'files') {
@@ -73,7 +84,7 @@ foreach ($disc in $modes) {
     if (($access -join ' ') -notmatch 'result=0') { throw "The app cannot read $disc data." }
     Write-Host "$disc verified: disc SHA256 and application read access."
 }
-foreach ($startupName in @('startup.gtm','startup-hd.gtm')) {
+foreach ($startupName in @('startup.gtm','startup-hd.gtm' | Where-Object { !$Gt4Only })) {
 $startup = Join-Path $Runtime $startupName
 if (Test-Path -LiteralPath $startup) {
     Invoke-Adb @('push','--sync',$startup,"$external/$startupName")
@@ -102,6 +113,10 @@ if ($Gt4Bundle) {
     if (($access -join ' ') -notmatch 'result=0') { throw 'The app cannot read the GT4 models.' }
     Invoke-Adb @('shell','rm',$remoteBundle)
     Write-Host 'GT4 verified: complete file checksums and application read access.'
+}
+if ($Gt4Only) {
+    Write-Host 'GT4 INSTALLATION COMPLETE ON QUEST. Start GT2 normally on the headset.'
+    return
 }
 $modeFile = [IO.Path]::GetTempFileName()
 try {

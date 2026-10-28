@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Iso,
     [string]$Simulation,
     [string]$Arcade,
@@ -10,7 +10,12 @@ param(
     [string]$PdtoolsRoot,
     [switch]$Offline,
     [string]$ToolsRoot,
-    [switch]$PrepareToolsOnly
+    [switch]$PrepareToolsOnly,
+    [ValidateSet('Quest','PC','BundleOnly')][string]$Target,
+    [string]$Bundle,
+    [string]$Runtime,
+    [string]$Adb,
+    [string]$Serial
 )
 $ErrorActionPreference = 'Stop'
 $gt4Repo = Split-Path $PSScriptRoot -Parent
@@ -44,6 +49,41 @@ if (!$PrepareToolsOnly) {
     Start-Transcript -LiteralPath $log | Out-Null
     $transcribing = $true
     Write-Host "Import log: $log"
+    if (!$Target) {
+        Write-Host ''
+        Write-Host 'Install GT4 cars: 1 = Quest (default), 2 = PC / PCVR, 3 = keep bundle for later.'
+        $choice = Read-Host 'Choose destination [1]'
+        switch ($choice) {
+            '' { $Target = 'Quest' }
+            '1' { $Target = 'Quest' }
+            '2' { $Target = 'PC' }
+            '3' { $Target = 'BundleOnly' }
+            default { throw 'Unknown destination. Rerun the importer and choose 1, 2 or 3; the bundle is retained.' }
+        }
+    }
+    if (!$Bundle -and !$Iso -and !$Output) {
+        $lastBundle = Join-Path $gt4Repo 'work/last-gt4-bundle.txt'
+        $prepared = $null
+        if (Test-Path -LiteralPath $lastBundle) {
+            $candidate = (Get-Content -LiteralPath $lastBundle -Raw).Trim()
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { $prepared = $candidate }
+        }
+        if (!$prepared) {
+            $folders = @(Get-ChildItem -LiteralPath (Join-Path $gt4Repo 'work') -Directory -Filter 'gt4-import-*' |
+                Where-Object { !($_.Attributes -band [IO.FileAttributes]::ReparsePoint) } | Sort-Object LastWriteTime -Descending)
+            foreach ($folder in $folders) {
+                $candidate = Join-Path $folder.FullName 'gt4-models.tar'
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) { $prepared = $candidate; break }
+            }
+        }
+        if ($prepared) {
+            Write-Host "Prepared GT4 bundle found: $prepared"
+            $reuse = Read-Host 'Install these cars without converting again? [Y/n]'
+            if ($reuse -notmatch '^(n|no)$') { $Bundle = $prepared }
+        }
+    }
+}
+if (!$PrepareToolsOnly -and !$Bundle) {
     Write-Host 'GT4 import: first select the GT4 USA v1.01 ISO, then the GT2 USA Simulation v1.2 disc.'
     if (!$Iso) { $Iso = Select-Gt4Disc 'Select Gran Turismo 4 USA v1.01 (SCUS-97328) ISO' 'GT4 ISO (*.iso)|*.iso' }
     $runtimeCandidates = @((Join-Path $gt4Repo 'runtime'), (Join-Path $gt4Repo 'data'), (Join-Path $env:LOCALAPPDATA 'GT2-VR/runtime'))
@@ -77,16 +117,19 @@ if (!$PrepareToolsOnly) {
     }
 }
 $Python = Get-Gt2Python -Python $Python -ToolsRoot $ToolsRoot -Offline:$Offline
-$dotnet = Get-Gt2DotNet -ToolsRoot $ToolsRoot -Offline:$Offline
-$env:DOTNET_ROOT = Split-Path $dotnet
-$env:DOTNET_ROOT_X64 = $env:DOTNET_ROOT
-$env:PATH = $env:DOTNET_ROOT + ';' + $env:PATH
+if (!$Bundle) {
+    $dotnet = Get-Gt2DotNet -ToolsRoot $ToolsRoot -Offline:$Offline
+    $env:DOTNET_ROOT = Split-Path $dotnet
+    $env:DOTNET_ROOT_X64 = $env:DOTNET_ROOT
+    $env:PATH = $env:DOTNET_ROOT + ';' + $env:PATH
+    Write-Host "NET SDK ready: $dotnet"
+}
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
 $env:PYTHONNOUSERSITE = '1'
 Write-Host "Python ready: $Python"
-Write-Host "NET SDK ready: $dotnet"
 if ($PrepareToolsOnly) { return }
+if (!$Bundle) {
 if (!$Output) { $Output = Join-Path $gt4Repo ('work\gt4-import-' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }
 if (![IO.Path]::IsPathRooted($Output)) { $Output = Join-Path $gt4Repo $Output }
 $Output = [IO.Path]::GetFullPath($Output)
@@ -106,42 +149,45 @@ try {
             '--native', (Join-Path $Output 'modelsets/gt4/native-v16'), '--simulation-expansion', (Join-Path $Output 'expansions/simulation'), '--output', $bundle)
         if ($Arcade) { $bundleArgs += @('--arcade-expansion', (Join-Path $Output 'expansions/arcade')) }
         $result = Invoke-Gt4Python $bundleArgs
-        if ($result -eq 0) {
-            if (!(Test-Path -LiteralPath $bundle -PathType Leaf)) { throw 'Packaging reported success but the GT4 bundle is missing.' }
-            $runtime = Join-Path $env:LOCALAPPDATA 'GT2-VR/runtime'
-            if (Test-Path -LiteralPath (Join-Path $Simulation 'disc.raw2352')) { $runtime = Split-Path ([IO.Path]::GetFullPath($Simulation)) }
-            function Quote-Gt4Path([string]$Path) { return "'" + $Path.Replace("'", "''") + "'" }
-            $bundleArg = Quote-Gt4Path $bundle
-            $runtimeArg = Quote-Gt4Path $runtime
-            $pcInstaller = Quote-Gt4Path (Join-Path $PSScriptRoot 'install-gt4-pack.ps1')
-            $questInstaller = Quote-Gt4Path (Join-Path $gt4Repo 'native/scripts/install-player.ps1')
-            $instructions = @"
-GT4 IMPORT COMPLETE - INSTALLATION IS STILL REQUIRED
-
-Verified bundle: $bundle
-Import log: $log
-
-Keep the bundle. You do not need to convert the discs again.
-Close the game before installing. Run the matching command in PowerShell.
-The runtime folder must contain your prepared arcade and/or simulation discs.
-Detected/default runtime: $runtime
-
-Quest (connect one headset and allow USB debugging):
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $questInstaller -Target Quest -Gt4Bundle $bundleArg -InstallDir $runtimeArg
-
-PC / PCVR:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pcInstaller -Bundle $bundleArg -Runtime $runtimeArg
-
-After installation, use your usual game launcher. See docs/GT4-CARS.md.
-"@
-            $resultFile = Join-Path $Output 'INSTALL-GT4.txt'
-            [IO.File]::WriteAllText($resultFile, $instructions, [Text.UTF8Encoding]::new($true))
-            Write-Host ''
-            Write-Host $instructions
-            Write-Host "These instructions are saved in: $resultFile"
-        }
     }
 } finally { Pop-Location }
+} else {
+    $Bundle = (Resolve-Path -LiteralPath $Bundle).Path
+    $result = Invoke-Gt4Python @((Join-Path $PSScriptRoot 'package-quest-gt4.py'), '--verify', $Bundle)
+}
+if ($result -eq 0) {
+    if (!(Test-Path -LiteralPath $Bundle -PathType Leaf)) { throw 'Packaging reported success but the GT4 bundle is missing.' }
+    [IO.File]::WriteAllText((Join-Path $gt4Repo 'work/last-gt4-bundle.txt'), $Bundle, [Text.UTF8Encoding]::new($true))
+    $resultFile = Join-Path (Split-Path $Bundle) 'INSTALL-GT4.txt'
+    [IO.File]::WriteAllText($resultFile, "GT4 bundle ready. Installation has not completed yet.`r`nBundle: $Bundle`r`nLog: $log`r`nRerun IMPORT-GT4-MODELS.bat to install this bundle without converting again.", [Text.UTF8Encoding]::new($true))
+    if ($Target -eq 'Quest') {
+        . (Join-Path $PSScriptRoot 'platform-tools.ps1')
+        $resolvedAdb = Get-Adb
+        & (Join-Path $PSScriptRoot 'install-quest.ps1') -Gt4Only -Gt4Bundle $Bundle -Python $Python -Adb $resolvedAdb -Serial $Serial | Out-Host
+        $message = 'GT4 INSTALLATION COMPLETE ON QUEST. Start GT2 normally on the headset.'
+    } elseif ($Target -eq 'PC') {
+        if (!$Runtime) {
+            if ($Simulation -and (Test-Path -LiteralPath (Join-Path $Simulation 'disc.raw2352'))) {
+                $Runtime = Split-Path ([IO.Path]::GetFullPath($Simulation))
+            } else {
+                foreach ($candidate in @('install-location.txt','native/install-location.txt')) {
+                    $location = Join-Path $gt4Repo $candidate
+                    if (Test-Path -LiteralPath $location) { $Runtime = (Get-Content -LiteralPath $location -Raw).Trim(); break }
+                }
+                if (!$Runtime) { $Runtime = Join-Path $env:LOCALAPPDATA 'GT2-VR/runtime' }
+            }
+        }
+        $result = Invoke-Gt4Python @((Join-Path $PSScriptRoot 'install-gt4-pack.py'), '--bundle', $Bundle, '--runtime', $Runtime)
+        if ($result -ne 0) { throw "PC installation failed (exit code $result). The bundle is retained for retry." }
+        $message = "GT4 INSTALLATION COMPLETE ON PC / PCVR: $Runtime"
+    } else {
+        $message = 'GT4 bundle saved for later. Cars have NOT been installed. Rerun the importer to install without converting again.'
+    }
+    [IO.File]::WriteAllText($resultFile, "$message`r`nBundle: $Bundle`r`nLog: $log", [Text.UTF8Encoding]::new($true))
+    Write-Host $message
+    Write-Host "Bundle retained: $Bundle"
+    Write-Host "Result saved: $resultFile"
+}
 if ($result -ne 0) { Write-Host "GT4 import failed (exit code $result). Keep the output and log; do not delete them." -ForegroundColor Red }
 } catch {
     $result = 1

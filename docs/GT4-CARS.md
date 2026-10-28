@@ -30,7 +30,9 @@ with `--model-tool`, `--catalog-tool` and `--offline`.
 ## Prepare the complete pack
 
 On Windows, double-click **IMPORT-GT4-MODELS.bat** in the extracted complete
-release. Select the **GT4 ISO** in the first file picker. **Simulation means
+release and choose **Quest** (the default) or **PC / PCVR**. For Quest, connect
+one headset with GT2 already installed and allow USB debugging. Select the
+**GT4 ISO** in the first file picker. **Simulation means
 GT2 Simulation**, not another GT4 image: an installed Simulation disc is detected
 automatically, or the next picker asks for its BIN. The optional final picker
 accepts GT2 Arcade; cancel it for Simulation only.
@@ -40,11 +42,17 @@ creates the verified `gt4-models.tar` bundle when conversion finishes. The first
 run requires internet access for tools and their dependencies; later runs reuse
 the cache. All downloaded tool archives are checked against pinned hashes.
 
-**Import prepares the bundle; it does not install it on your PC or Quest.**
-The window stays open when import finishes. `INSTALL-GT4.txt` beside the bundle
-contains the next installation commands with your paths filled in. Keep the
-bundle: installation does not require another conversion. Each run also saves
-a console log under `work/import-logs`, including failures.
+After conversion, the importer installs the cars on the selected destination.
+For Quest it automatically transfers and extracts the bundle, then verifies
+every installed file and application read access. No manual copying or terminal
+commands are needed. This car update retains the installed APK, discs, saves
+and settings. The game is stopped for the update and is not launched afterwards.
+
+If a prepared bundle is found, the importer offers to install it without another
+conversion. An interrupted transfer can be retried the same way. The window
+stays open with the result, also saved as `INSTALL-GT4.txt` beside the bundle.
+Each run saves a console log under `work/import-logs`, including failures.
+Choose **keep bundle for later** only when installation is not wanted yet.
 
 For explicit paths, run:
 
@@ -54,11 +62,14 @@ For explicit paths, run:
 
 Use your actual image and runtime paths. `IMPORT-GT4-MODELS.bat` wraps the same
 pipeline with PowerShell parameters `-Iso`, `-Simulation`, `-Arcade`, `-Output`
-and `-Build`. The bundled `native/tools` directory is selected automatically.
+and `-Build`. Use `-Target Quest` or `-Target PC` to select installation explicitly;
+`-Target BundleOnly` only prepares the bundle. `-Bundle` installs an existing
+bundle without conversion. The bundled `native/tools` directory is selected automatically.
 
 The output must be a new directory under this checkout's `work/`. Preparation
 keeps intermediate assets in a `.preparing` directory and only renames it after
-all stages succeed. It does not modify an installed game or its saves. Conversion
+all stages succeed. Conversion itself does not modify an installed game; the
+following installation step updates only GT4 assets and retains saves. Conversion
 processes the full catalogue and can take a while; progress and stage logs are
 kept beside the generated files.
 
@@ -76,8 +87,8 @@ activation-ready catalogue and must not be installed as the complete expansion.
 
 ## Install on desktop
 
-The Windows importer already creates the verified bundle. To add it to an
-existing desktop installation, close the game and run:
+Choose **PC / PCVR** in the importer for automatic installation. For an explicit
+runtime directory, close the game and run:
 
 ```powershell
 ./scripts/install-gt4-pack.ps1 -Bundle "work/gt4-090/gt4-models.tar" -Runtime "C:/Games/GT2/runtime"
@@ -95,7 +106,10 @@ GT2 entries; added GT4 catalogue cars still use their required models.
 
 ## Install on Quest
 
-Create the same bundle, then pass it to the normal release installer:
+Choose **Quest** in the importer to transfer, unpack and verify the cars
+automatically. If the bundle already exists, accept its reuse when prompted.
+For a full game installation that also includes a prepared bundle, the normal
+release installer additionally accepts:
 
 ```powershell
 ./native/scripts/install-player.ps1 -Target Quest -Gt4Bundle work/gt4-090/gt4-models.tar -InstallDir "C:/Games/GT2/runtime" -Serial YOUR_QUEST_SERIAL
