@@ -691,6 +691,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             return true;
         }
         if (after == AfterReplay::kLicenceResult && pendingLicence) { // 0x8001736C -> view 0x8005B404: 0x8004E104 (record, NEW RECORD)
+            // The machine test's views run here and start their own CD track (0x800481C8(8)): fade the replay's out first.
+            if (flow->machineTest && musicPlayer) musicPlayer->Stop();
             resultLines = flow->finished ? flow->finished(*pendingLicence) : std::vector<std::string>{};
             pendingLicence.reset();
         }

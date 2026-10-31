@@ -913,13 +913,13 @@
     },
     {
       "path": "src/game/audio/menu_audio.cpp",
-      "sha256": "de12568217cac037b8369f071fe7e8956668a787bc3b89f7016b6c13841c60b2",
-      "textSha256": "de12568217cac037b8369f071fe7e8956668a787bc3b89f7016b6c13841c60b2"
+      "sha256": "bc348acc1fcdf3fa5f12c06827f487e72f8f6fe1652e658f2ed9c2fd8549dcd0",
+      "textSha256": "bc348acc1fcdf3fa5f12c06827f487e72f8f6fe1652e658f2ed9c2fd8549dcd0"
     },
     {
       "path": "src/game/audio/menu_audio.h",
-      "sha256": "9f6a98af9c010bdabad452c4ac9cc5bbd574db1353a0501ee9067888bee17830",
-      "textSha256": "9f6a98af9c010bdabad452c4ac9cc5bbd574db1353a0501ee9067888bee17830"
+      "sha256": "56c410d671781ea58922972ec572dbc76a9ca2e2b90d2f05cd09a3a3354f7b0a",
+      "textSha256": "56c410d671781ea58922972ec572dbc76a9ca2e2b90d2f05cd09a3a3354f7b0a"
     },
     {
       "path": "src/game/audio/menu_music.cpp",
@@ -3570,8 +3570,8 @@
     },
     {
       "path": "tools/gt2game/career_race.cpp",
-      "sha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114",
-      "textSha256": "9962d4d10ac1905fd631b44cb5a92cf8aaa0370402baa26613be11c72d2e7114"
+      "sha256": "6b91c3fae8dacc357cea22b2078bd6e01b17c7ce573f8130a2a9bbefeef7321a",
+      "textSha256": "6b91c3fae8dacc357cea22b2078bd6e01b17c7ce573f8130a2a9bbefeef7321a"
     },
     {
       "path": "tools/gt2game/career_race.h",
@@ -3700,8 +3700,8 @@
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
-      "sha256": "293b442ba40b8adc4db98e0b508fd8dc63c6bbd679db1f6cfeb90f229df60d22",
-      "textSha256": "293b442ba40b8adc4db98e0b508fd8dc63c6bbd679db1f6cfeb90f229df60d22"
+      "sha256": "3f1836122a05ce0e048b9929c0ecd4be52598f9daa26489335221a82a86d2cc2",
+      "textSha256": "3f1836122a05ce0e048b9929c0ecd4be52598f9daa26489335221a82a86d2cc2"
     },
     {
       "path": "tools/gt2game/menu_mode.h",
@@ -3795,8 +3795,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "cfc0cbdc1d06db85c14d7d93ca7470d96ac40a60749a326c3f96d7bb3631d286",
-      "textSha256": "cfc0cbdc1d06db85c14d7d93ca7470d96ac40a60749a326c3f96d7bb3631d286"
+      "sha256": "fc062f6b378f147af47e68885701980a83e8021295c918bb528ffaf5a9873325",
+      "textSha256": "fc062f6b378f147af47e68885701980a83e8021295c918bb528ffaf5a9873325"
     },
     {
       "path": "tools/gt2game/race_view.h",

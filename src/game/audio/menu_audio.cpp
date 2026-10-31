@@ -172,7 +172,7 @@ void MenuAudio::StopMusic() { // 0x80018FF0 (the menus are left; the track is re
 
 void MenuAudio::StartTrack(int track) { // 0x800228D4: the file of the track, sequence 0, from the beginning
     if (track < 0 || size_t(track) >= tracks_.size()) return;
-    const int32_t master = (int32_t(kMusicVolume) * 0x4000) / 255;
+    const int32_t master = (int32_t(musicVolume_) * 0x4000) / 255; // 0x800228D4 reads 0x801C9993
     if (log_) std::fprintf(log_, "%d track %d\n", frame_, track);
     sequencer_.Start(tracks_[size_t(track)], 0, music_, programs_, master);
     playing_ = track;

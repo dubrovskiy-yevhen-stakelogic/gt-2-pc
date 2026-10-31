@@ -21,6 +21,7 @@
 #include "game/audio/menu_audio.h"
 #include "game/career/results.h"
 #include "game/menu/menu_runtime.h"
+#include "game/shell/title_options.h"
 #include "game_window.h"
 #include "gt2export/png_writer.h"
 #include "gt2formats/car_info.h"
@@ -143,6 +144,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
         try {
             menuAudio = std::make_unique<audio::MenuAudio>();
             menuAudio->Load(vol, LoadExeImage(disc), LoadOverlayImage(disc, 4));
+            menuAudio->SetMusicVolume(uint8_t(shell::OptionValue(save.state, shell::kMusicVolume)));
             menuAudio->SetReverbEnabled(options.reverb);
             std::string error;
             if (record && !options.recordAudio.empty()) {
@@ -254,6 +256,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             if (window.Closed()) break;
             // Back in the menus: the GT-mode entry returns to the page the race was started from (0x801EF5F8). The
             // race used the renderer's VRAM rows and vertex ranges: the page, the logo and the 3D car are loaded again.
+            openMenuAudio(false); // before Start: it re-requests the page's track for the new output (0x8001D118)
             runtime.Start(page);
             uploadedPage = 0xFFFFFFFFu;
             logoModel = 0;
@@ -261,7 +264,6 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             carView = std::make_unique<gt2view::MenuCarView>(renderer, vol);
             renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0.0f;
             window.SetTitle("gt2game - GT mode");
-            openMenuAudio(false);
             window.ResetPacing();
             continue;
         }
