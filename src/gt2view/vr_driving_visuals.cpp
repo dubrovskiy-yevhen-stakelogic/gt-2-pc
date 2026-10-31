@@ -20,7 +20,8 @@ V Normal(V a){float n=std::sqrt(Dot(a,a));return n>1e-6f?a*(1/n):V{};}
 V Rotate(const float q[4],V p){V a{q[0],q[1],q[2]};V t=Cross(a,p)*2;return p+t*q[3]+Cross(a,t);}
 V Blend(const float poses[4][3],float grip,float trigger){
     float w[4]={(1-grip)*(1-trigger),grip*(1-trigger),(1-grip)*trigger,grip*trigger}; V p;
-    for(int i=0;i<4;++i)p=p+V{poses[i][0],poses[i][1],poses[i][2]}*w[i]; return p;
+    for(int i=0;i<4;++i)p=p+V{poses[i][0],poses[i][1],poses[i][2]}*w[i];
+    return p;
 }
 SceneVertex Colored(V p,V color){SceneVertex v{};v.pos[0]=p.x;v.pos[1]=p.y;v.pos[2]=p.z;v.color[0]=color.x;v.color[1]=color.y;v.color[2]=color.z;return v;}
 }

@@ -156,7 +156,8 @@ int main(int argc,char** argv) {
         }
         if(command=="ui") { if(argc!=4) throw std::runtime_error("ui arguments"); ExportUi(disc,vol,argv[3]); return 0; }
         if(command=="images") {
-            if(argc!=4) throw std::runtime_error("images arguments");const fs::path out=argv[3];fs::create_directories(out);
+            if(argc!=4) throw std::runtime_error("images arguments");
+            const fs::path out=argv[3];fs::create_directories(out);
             const auto exe=gt2::LoadExeImage(disc);
             for(const auto* name:{"logo-scea.tim","notice.tim"}) {const auto p=gt2::LoadBootImage(exe,name);Png(out/(std::string(name)+".png"),p.width,p.height,p.rgb);}
             auto title=profile.arcade?gt2::TitleAssets::LoadArcade(disc,vol):gt2::TitleAssets::Load(disc,vol);
@@ -179,12 +180,16 @@ int main(int argc,char** argv) {
             std::ofstream(out/"profile.txt")<<profile.exeSha1<<'\n';return 0;
         }
         if(command=="movie") {
-            if(argc!=5) throw std::runtime_error("movie arguments");const int id=std::stoi(argv[3]);const fs::path out=argv[4];fs::create_directories(out);
+            if(argc!=5) throw std::runtime_error("movie arguments");
+            const int id=std::stoi(argv[3]);const fs::path out=argv[4];fs::create_directories(out);
             const auto exe=gt2::LoadExeImage(disc);const auto movies=gt2::ReadStreamMovieTable(exe);if(id<0||size_t(id)>=movies.size()) throw std::runtime_error("movie id out of range");
             const auto vlc=gt2::ReadGtVlcTable(gt2::LoadOverlayImage(disc,5),gt2::kMovieVlcTableAddress);const auto mdec=gt2::MdecCoreFromExe(exe);
             gt2::GtMovieReader reader(disc,gt2::StreamFileLba(disc),movies[size_t(id)]);gt2::GtMovieReader::Frame frame;uint32_t count=0,firstSector=0,lastSector=0;int width=0,height=0;
             while(reader.NextFrame(frame)) {if(!count) firstSector=frame.lastSector;lastSector=frame.lastSector;const auto p=gt2::DecodeMovieFrame(mdec,gt2::GtFrameToMdecCodes(frame.data.data(),frame.data.size(),vlc));char name[40];std::snprintf(name,sizeof(name),"frame_%06u.png",count++);Png(out/name,p.width,p.height,p.rgb);width=p.width;height=p.height;}
-            if(count<2) throw std::runtime_error("movie has fewer than two frames"); const uint32_t sectorsPerFrame=(lastSector-firstSector+(count-1)/2)/(count-1); if(!sectorsPerFrame) throw std::runtime_error("invalid movie cadence"); const uint32_t fpsNum=150/std::gcd(150u,sectorsPerFrame),fpsDen=sectorsPerFrame/std::gcd(150u,sectorsPerFrame);
+            if(count<2) throw std::runtime_error("movie has fewer than two frames");
+            const uint32_t sectorsPerFrame=(lastSector-firstSector+(count-1)/2)/(count-1);
+            if(!sectorsPerFrame) throw std::runtime_error("invalid movie cadence");
+            const uint32_t fpsNum=150/std::gcd(150u,sectorsPerFrame),fpsDen=sectorsPerFrame/std::gcd(150u,sectorsPerFrame);
             std::ofstream(out/"movie.txt")<<width<<' '<<height<<' '<<fpsNum<<' '<<fpsDen<<' '<<count<<'\n';
             const auto& xa=reader.Audio();const size_t channels=reader.AudioStereo()?2:1;std::vector<int16_t> pcm;
             if(!xa.empty()) {
