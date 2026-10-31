@@ -198,6 +198,9 @@ int main(int argc, char** argv) {
                 catch (const std::exception& e) { Message(e.what()); image.clear(); continue; }
                 image.clear();
             }
+            // Run blocks without a GTK loop: send destroyed dialogs' unmaps now, or they stay on screen.
+            while (gtk_events_pending()) gtk_main_iteration();
+            gdk_display_flush(gdk_display_get_default());
             const int result = Run(args);
             if (result == gt2linux::kImportDiscExitCode) { importing = true; continue; }
             if (result != 0) Message("GT2 exited with error " + std::to_string(result) + ". Log: " + (root / "gt2game.log").string());
