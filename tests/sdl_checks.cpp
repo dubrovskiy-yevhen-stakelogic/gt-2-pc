@@ -22,6 +22,8 @@ int main() {
         SDL_SetMainReady();
         SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+        // Only the virtual pad (no vendor/product ID): a connected physical controller would otherwise take port 1.
+        SDL_SetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT, "0x0000/0x0000");
         Require(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) == 0, SDL_GetError());
         const int index = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX, SDL_CONTROLLER_BUTTON_MAX, 0);
         Require(index >= 0, SDL_GetError());
