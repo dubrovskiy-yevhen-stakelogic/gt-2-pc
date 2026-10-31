@@ -1538,8 +1538,8 @@
     },
     {
       "path": "src/gt2formats/car_model.cpp",
-      "sha256": "97183a7cd834f49dd1d80cf1d9c3f54d5f9e3dabcf8dd62eab54fb082d72c759",
-      "textSha256": "97183a7cd834f49dd1d80cf1d9c3f54d5f9e3dabcf8dd62eab54fb082d72c759"
+      "sha256": "8140b33e345a6644498e4300d4681ef7c366dc5a7c87e3c89d1c77638ce173cb",
+      "textSha256": "8140b33e345a6644498e4300d4681ef7c366dc5a7c87e3c89d1c77638ce173cb"
     },
     {
       "path": "src/gt2formats/car_model.h",
