@@ -198,6 +198,7 @@ private:
     VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
     VkFormat colorFormat_ = VK_FORMAT_B8G8R8A8_UNORM;
     VkExtent2D extent_{};
+    bool extentFromWindow_ = false; // surface leaves the size to us (Wayland): track window resizes ourselves
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;
     VkImage depthImage_ = VK_NULL_HANDLE;
