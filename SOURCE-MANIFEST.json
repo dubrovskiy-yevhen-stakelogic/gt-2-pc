@@ -718,8 +718,8 @@
     },
     {
       "path": "scripts/prepare-hd.ps1",
-      "sha256": "7cd9e2f5a0ca96bfa157aebb09a73fa720d0b17b4356d23782c4cb383d980ef2",
-      "textSha256": "c85b0409e7429356e730da7e83525af6b78f80d1687ea05d1abdc349fa4181eb"
+      "sha256": "d82d747fdacf808df0fa6cbf3288f2d3487cedf585d987165d6fe48e5f9f04ea",
+      "textSha256": "54c51c2391e18d5de39a81751ffd4efbddbee3365ba92c760c5f8124c0463d63"
     },
     {
       "path": "scripts/rebuild_gt4_models.py",
