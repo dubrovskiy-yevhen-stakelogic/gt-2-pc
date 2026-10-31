@@ -314,6 +314,7 @@ int OverlayRumbleStrength() { return rumble; }
 namespace {
 struct NativeCanvas {
     std::vector<gt2view::SceneVertex> vertices;
+    size_t stretched = 0; // the first vertices fill the whole window (panel backgrounds); the rest keep 4:3
     void Quad(float x, float y, float w, float h, uint32_t color, int glyph = -1) {
         const int cx[] = {0,1,1,0,1,0}, cy[] = {0,0,1,0,1,1};
         for (int k = 0; k < 6; ++k) {
@@ -338,12 +339,22 @@ struct NativeCanvas {
             x += 12 * scale;
         }
     }
-    void Append(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, uint32_t base = vertexBase) {
+    // The 800x600 canvas keeps its 4:3 shape inside the window; anchorX/anchorY (-1, 0, 1) pin it to an edge.
+    void Append(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items, uint32_t base = vertexBase,
+                float anchorX = 0, float anchorY = 0) {
         const size_t limit = base == vertexBase ? gt2view::SceneRenderer::kNativeUiVertexLimit : 8192;
         if (vertices.size() > limit) throw std::runtime_error("Native overlay vertex range exceeded");
         renderer.SetVertices(base, vertices);
-        gt2view::DrawItem layer; layer.firstVertex = base; layer.vertexCount = uint32_t(vertices.size());
-        layer.mvp[0] = layer.mvp[5] = layer.mvp[10] = layer.mvp[15] = 1;
+        if (stretched) {
+            gt2view::DrawItem background; background.firstVertex = base; background.vertexCount = uint32_t(stretched);
+            background.mvp[0] = background.mvp[5] = background.mvp[10] = background.mvp[15] = 1;
+            items.push_back(background);
+        }
+        gt2view::DrawItem layer; layer.firstVertex = base + uint32_t(stretched); layer.vertexCount = uint32_t(vertices.size() - stretched);
+        const float aspect = VrMode() ? 4.f / 3.f : renderer.AspectRatio();
+        const float sx = std::min(1.f, 4.f / 3.f / aspect), sy = std::min(1.f, aspect * 3.f / 4.f);
+        layer.mvp[0] = sx; layer.mvp[5] = sy; layer.mvp[10] = layer.mvp[15] = 1;
+        layer.mvp[12] = anchorX * (1 - sx); layer.mvp[13] = anchorY * (1 - sy);
         items.push_back(layer);
     }
 };
@@ -351,6 +362,7 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
            const std::string& status, const std::string& footer) {
     NativeCanvas canvas;
     canvas.Quad(28, 24, 744, 552, 0x101c2a); canvas.Quad(28, 24, 744, 5, 0x42b6f5);
+    canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
         const float y = 112 + float(i) * (rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
@@ -1347,12 +1359,12 @@ void AppendFrameProfiler(gt2view::SceneRenderer& renderer, std::vector<gt2view::
     char low[64];
     std::snprintf(low, sizeof(low), "1%% LOW %.0f / PEAK %.0f MS", stats.lowFps, stats.recentMaxMs);
     canvas.Text(504, 83, low, stats.recentMaxMs > 22.3 ? 0xff9866 : 0xe2e8f0, 0.65f);
-    canvas.Append(renderer, items, gt2view::SceneRenderer::kProfilerVertexBase);
+    canvas.Append(renderer, items, gt2view::SceneRenderer::kProfilerVertexBase, 1, -1);
 }
 void AppendSkipHint(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items) {
     if (!hudVisibility.movieHint) return;
     NativeCanvas canvas; canvas.Quad(244, 550, 312, 34, 0x101c2a);
-    canvas.Text(256, 555, VrMode() ? "A / B : SKIP MOVIE" : "START / ENTER : SKIP"); canvas.Append(renderer, items);
+    canvas.Text(256, 555, VrMode() ? "A / B : SKIP MOVIE" : "START / ENTER : SKIP"); canvas.Append(renderer, items, vertexBase, 0, 1);
 }
 bool ConsoleStartupHandled() { return consoleStartupHandled; }
 bool PlayStationIntroEnabled() { return playStationIntro; }
