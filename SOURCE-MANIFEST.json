@@ -1123,8 +1123,8 @@
     },
     {
       "path": "src/game/pc_features.h",
-      "sha256": "2abd3ea571109ba3426b198b1ba02776ceedf73821f80886dbdae5471130a6bf",
-      "textSha256": "2abd3ea571109ba3426b198b1ba02776ceedf73821f80886dbdae5471130a6bf"
+      "sha256": "3800a096e5cb843b5edc0d91f92fff51b2e0c1e9b5c66d5466e0e98865a8321b",
+      "textSha256": "3800a096e5cb843b5edc0d91f92fff51b2e0c1e9b5c66d5466e0e98865a8321b"
     },
     {
       "path": "src/game/shell/analog_config.cpp",
@@ -3755,8 +3755,8 @@
     },
     {
       "path": "tools/gt2game/pc_overlay.cpp",
-      "sha256": "50cbb408d7292d8994f9a738162e9c446f53c769bc4dbaebbae6a39ec33c5b02",
-      "textSha256": "50cbb408d7292d8994f9a738162e9c446f53c769bc4dbaebbae6a39ec33c5b02"
+      "sha256": "044c26239f9efdeb19e9e7439d244a18ce748e4ad9377a72f1a1698434f95817",
+      "textSha256": "044c26239f9efdeb19e9e7439d244a18ce748e4ad9377a72f1a1698434f95817"
     },
     {
       "path": "tools/gt2game/pc_overlay.h",
@@ -3795,8 +3795,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "fc062f6b378f147af47e68885701980a83e8021295c918bb528ffaf5a9873325",
-      "textSha256": "fc062f6b378f147af47e68885701980a83e8021295c918bb528ffaf5a9873325"
+      "sha256": "bc19e6148af68037bb07c13c9a9ccf70b93180d5f80db31649ba756204e361d1",
+      "textSha256": "bc19e6148af68037bb07c13c9a9ccf70b93180d5f80db31649ba756204e361d1"
     },
     {
       "path": "tools/gt2game/race_view.h",
