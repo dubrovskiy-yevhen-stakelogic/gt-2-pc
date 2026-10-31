@@ -91,7 +91,7 @@ struct LicenceMenuState {
     int16_t carDrive = 1;         // +0x42: 0 FR, 2 4WD, 3 MR, 4 RR, others FF (0x801C70D2..)
     uint8_t launchSpeed = 0;      // test settings +0: "Launch Speed at %d mph" (0x801C70EE) of speed * 10000 / 0x3EDD
     std::array<uint32_t, 3> medalTimes{}; // gold / silver / bronze in 1/1000 s (0x8003D7B8 1..3; FormatRaceTime)
-    std::array<uint8_t, 10> medals{};     // licence record +1 of every test (0x801CACF8 + licence * 0x668 + i * 0xA4): 0 none, 1..3 the sprite of 0x8005B150
+    std::array<uint8_t, 10> medals{};     // licence record +1 of every test (0x801CACF8 + licence * 0x668 + i * 0xA4): 0 none, 1 fourth prize .. 4 gold (sprite 0x8005B150 + (value - 1) * 12)
     std::array<bool, kLicenceRows> rowEnabled{true, true, true, true, true, true, true}; // 0x8005B368 + row * 8
     int selectedRow = kLicenceStart;      // widget +6
     int flashPhase = 0;           // the selected row's text object: anim - settle (0..44; 0 = the brightest)

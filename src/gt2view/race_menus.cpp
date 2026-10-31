@@ -662,7 +662,7 @@ void LicenceMenuView::Draw(MenuOt& ot) const { // 0x8004F474
         const uint32_t colour = Lerp(o, kColourBase, i == info.test ? kColourBoxSelected : kColourBox, alpha, 0x80);
         MenuListFrame(ot[0], colour, x, 0x72, 0x15, 0x1D);
         const int medal = int(info.medals[size_t(i)]) - 1;
-        if (medal >= 0 && medal < 3) {
+        if (medal >= 0 && medal < 4) { // the record stores 1 (fourth prize) .. 4 (gold); gold is sprite 3
             const uint32_t e = kMedalSprites + uint32_t(medal) * 12;
             MenuPrim p; // 0x80081478: SPRT 0x64 of the alpha grey
             p.kind = MenuPrim::kSprite;

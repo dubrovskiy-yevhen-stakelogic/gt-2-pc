@@ -2173,13 +2173,13 @@
     },
     {
       "path": "src/gt2view/race_menus.cpp",
-      "sha256": "4ce64563eff3e4722edc73b513124d6f9bcaf26d55a8dbf431b4991fe610e398",
-      "textSha256": "4ce64563eff3e4722edc73b513124d6f9bcaf26d55a8dbf431b4991fe610e398"
+      "sha256": "2bbde4d9ffce3c01ae30c127276e85e6836cd4b1f31ed24a60d7ffcdce2a344c",
+      "textSha256": "2bbde4d9ffce3c01ae30c127276e85e6836cd4b1f31ed24a60d7ffcdce2a344c"
     },
     {
       "path": "src/gt2view/race_menus.h",
-      "sha256": "5676d11d2b61a85dab8366b011a43566545d17b7103696ae728163d52b39d291",
-      "textSha256": "5676d11d2b61a85dab8366b011a43566545d17b7103696ae728163d52b39d291"
+      "sha256": "52648393618bde444c04a42abb8f5722b8acc971ae47eab0d18137759a174fc7",
+      "textSha256": "52648393618bde444c04a42abb8f5722b8acc971ae47eab0d18137759a174fc7"
     },
     {
       "path": "src/gt2view/race_overlay_screens.cpp",
