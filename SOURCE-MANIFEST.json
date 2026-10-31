@@ -403,8 +403,8 @@
     },
     {
       "path": "scripts/build-macos.sh",
-      "sha256": "25ed3cfbf1edceb1766657205901b15863870dd5a1b696d9984dd9b68be77ca4",
-      "textSha256": "25ed3cfbf1edceb1766657205901b15863870dd5a1b696d9984dd9b68be77ca4"
+      "sha256": "c082c33e5f3eb641d4909f5f8da29d25593b30fea26bd89edb0dfb1cf08b5fb2",
+      "textSha256": "c082c33e5f3eb641d4909f5f8da29d25593b30fea26bd89edb0dfb1cf08b5fb2"
     },
     {
       "path": "scripts/build-quest-gt4-candidate.ps1",
