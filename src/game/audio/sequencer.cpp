@@ -198,6 +198,7 @@ void Sequencer::Tick() {
         s.countdown -= ticks;
         if (s.countdown < 1 && !s.released) {
             driver_.Release(&s.handle);
+            driver_.Detach(&s.handle); // free the sequencer slot at key-off; the mixer voice keeps decaying on its own
             s.released = true;
         }
         const Track& t = tracks_[size_t(s.track)];
