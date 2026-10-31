@@ -75,6 +75,7 @@ private:
     bool interpolated_ = false;
     int hdBackground_ = -2;
     uint64_t hdGeneration_ = ~uint64_t(0);
+    uint64_t hdPictureRevision_ = ~uint64_t(0);
     uint32_t hdSize_ = 0;
 };
 

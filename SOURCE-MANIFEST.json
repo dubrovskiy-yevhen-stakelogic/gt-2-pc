@@ -75,8 +75,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "502636c7ea3b638659dbfb311eb882113ebd9ad8d06dc61da3902ec5e2348fd8",
-      "textSha256": "502636c7ea3b638659dbfb311eb882113ebd9ad8d06dc61da3902ec5e2348fd8"
+      "sha256": "c4bd01d467a67c60a372f0e5bd42388cdfd862c77f7010fc72a3645651a48e74",
+      "textSha256": "c4bd01d467a67c60a372f0e5bd42388cdfd862c77f7010fc72a3645651a48e74"
     },
     {
       "path": "cmake/android.cmake",
@@ -115,8 +115,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "bb6ec7bb8fa74f1a2ed06b15600ffdb9ee48dde0ff9d4f9eba80822c6e1f7aeb",
-      "textSha256": "fe6098d4c8be20cd9873bfc6a66beff46bfc6bbaeaa98d4783a712a259873139"
+      "sha256": "4de7eb9cc66e7b58a05e36b76bb835eba20801f72c384263b3773fd6f8107fe8",
+      "textSha256": "29d81a3d567ac22440476cdb3c22de1ec4ec15fdf93823aedff9dd7c03b52b30"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -633,8 +633,8 @@
     },
     {
       "path": "scripts/install.ps1",
-      "sha256": "df69c391a24b888990db5ba4aace36e688da0562631adaeb98fb9cab11b1042e",
-      "textSha256": "ae465aa3243c3614d31afc837aab72a455438b16ebb514ba24830af25b57ea01"
+      "sha256": "e25d9e1431306e94eb0315888be773c6ee54913b88a6fb9c416fe5470a69a82e",
+      "textSha256": "613db0634f338a984a6dd29130d2e9231d2d28a64c35ce2d91e6b7ec2e9bd9da"
     },
     {
       "path": "scripts/linux-downloads.json",
@@ -663,8 +663,8 @@
     },
     {
       "path": "scripts/package-player.ps1",
-      "sha256": "516e5ef6af4b83869cf1795408f02036a089f26d9117a4b75a0e0a0c09ae6f30",
-      "textSha256": "5b0eab13c884fff2d993635454399b398847980a127c011b90818d86734e5915"
+      "sha256": "4b4ed33857fd22b14f1b8b26b50f3fc2f2db084321cb737640a9cc44e0e347bc",
+      "textSha256": "012bc2f5018cf9254844ec5d18b53d57295a97a211cd2cd735d252ad7908121d"
     },
     {
       "path": "scripts/package-quest-gt4.py",
@@ -2023,8 +2023,8 @@
     },
     {
       "path": "src/gt2view/hd_picture.h",
-      "sha256": "7b2cc5ede72384298f73732759245ee32804b5815b7d5caa7d541c9e18f9776a",
-      "textSha256": "7b2cc5ede72384298f73732759245ee32804b5815b7d5caa7d541c9e18f9776a"
+      "sha256": "c467f3f29f98847dcce3cf7fa52590eb56f6e0df07211c512ddf8ca2fb0565ab",
+      "textSha256": "c467f3f29f98847dcce3cf7fa52590eb56f6e0df07211c512ddf8ca2fb0565ab"
     },
     {
       "path": "src/gt2view/hd_ui.cpp",
@@ -2063,13 +2063,13 @@
     },
     {
       "path": "src/gt2view/menu_view.cpp",
-      "sha256": "906814ed2947f7f78d69c560717ab0ce1ed77ed54d27a35d62f3762e7a81ab2d",
-      "textSha256": "906814ed2947f7f78d69c560717ab0ce1ed77ed54d27a35d62f3762e7a81ab2d"
+      "sha256": "768a9877ee768d3f9f46226de8a310a30b8e01e0fce66930be382f3a824e8d51",
+      "textSha256": "768a9877ee768d3f9f46226de8a310a30b8e01e0fce66930be382f3a824e8d51"
     },
     {
       "path": "src/gt2view/menu_view.h",
-      "sha256": "ccf4237bb2a0f9dde0e272ae3622714c2990f47065c80c8b645e262346f023fa",
-      "textSha256": "ccf4237bb2a0f9dde0e272ae3622714c2990f47065c80c8b645e262346f023fa"
+      "sha256": "63eb04e328e17fa28a6c580e5d69be520624f35065aa4b7888d58b04ed38897a",
+      "textSha256": "63eb04e328e17fa28a6c580e5d69be520624f35065aa4b7888d58b04ed38897a"
     },
     {
       "path": "src/gt2view/model_glazing.h",
@@ -2243,8 +2243,8 @@
     },
     {
       "path": "src/gt2view/scene_types.h",
-      "sha256": "9ca5757826b30db80cd95c501d507105ecb4918c0d3298591ff25ce6aa628828",
-      "textSha256": "9ca5757826b30db80cd95c501d507105ecb4918c0d3298591ff25ce6aa628828"
+      "sha256": "ff38de459a8d5c9760f65ac87a488e405ba9b3647bdb1d9d0938923d2453857f",
+      "textSha256": "ff38de459a8d5c9760f65ac87a488e405ba9b3647bdb1d9d0938923d2453857f"
     },
     {
       "path": "src/gt2view/scenery_replacements.h",
@@ -2363,13 +2363,13 @@
     },
     {
       "path": "src/gt2view/title_view.cpp",
-      "sha256": "fbcf78192b11bb9de88cff72631a494d80af0f59c587ea1bcd6e1c867c32d105",
-      "textSha256": "fbcf78192b11bb9de88cff72631a494d80af0f59c587ea1bcd6e1c867c32d105"
+      "sha256": "090fa945616d0274554a478022b66f27dda247de57e954aa28fb43b8070dfe20",
+      "textSha256": "090fa945616d0274554a478022b66f27dda247de57e954aa28fb43b8070dfe20"
     },
     {
       "path": "src/gt2view/title_view.h",
-      "sha256": "563397a6ba7ff3f5f4f1e754b5d1b7ba075a68999c65c715d6334cf16164bc09",
-      "textSha256": "563397a6ba7ff3f5f4f1e754b5d1b7ba075a68999c65c715d6334cf16164bc09"
+      "sha256": "5e95a8e8be07316f14cd46aef1b8eab4fc079357b5d7b1a4568f9893e5afc3f4",
+      "textSha256": "5e95a8e8be07316f14cd46aef1b8eab4fc079357b5d7b1a4568f9893e5afc3f4"
     },
     {
       "path": "src/gt2view/vk_context_android.cpp",
@@ -3060,6 +3060,11 @@
       "path": "tests/hd_checks.cpp",
       "sha256": "bb62af96285c3f6f6f5e7d3f2c64d5a0091fe20c6fe6bb896fa7d8df98174efd",
       "textSha256": "bb62af96285c3f6f6f5e7d3f2c64d5a0091fe20c6fe6bb896fa7d8df98174efd"
+    },
+    {
+      "path": "tests/hd_picture_regression.cpp",
+      "sha256": "5ed031e5ba7c9f14e91943fff3d353b7d3118c88265792754dfe4fc34d42b81c",
+      "textSha256": "5ed031e5ba7c9f14e91943fff3d353b7d3118c88265792754dfe4fc34d42b81c"
     },
     {
       "path": "tests/hud_mirror_clip_check.h",

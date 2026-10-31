@@ -37,6 +37,23 @@ function Find-Vs {
     $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     if (Test-Path $vswhere) { & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
 }
+function Invoke-InstallValidation([string]$Exe, [string[]]$Arguments, [string]$Log, [string]$Description) {
+    # Windows PowerShell wraps native stderr as ErrorRecord objects. Preserve
+    # those messages in the same log without losing the native exit status.
+    $previousPreference = $ErrorActionPreference
+    $exitCode = 1
+    try {
+        $ErrorActionPreference = 'Continue'
+        $global:LASTEXITCODE = 1
+        & $Exe @Arguments 2>&1 | ForEach-Object { $_.ToString() } |
+            Set-Content -LiteralPath $Log -Encoding UTF8 -ErrorAction Stop
+        $exitCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($exitCode -ne 0) {
+        Get-Content -LiteralPath $Log -Tail 20 | ForEach-Object { Write-Host $_ }
+        throw "$Description (exit code $exitCode). Full log: $Log. Staged files were retained; existing installed data was not replaced."
+    }
+}
 Refresh-ToolPath
 if (!$NoBuild) {
     if (!(Get-Command cmake.exe -ErrorAction SilentlyContinue)) { Install-Dependency 'Kitware.CMake' }
@@ -105,14 +122,11 @@ foreach ($source in ($sources | Select-Object -Unique)) {
     & $tool extract $source $data
     if ($LASTEXITCODE -ne 0) { throw "Extraction failed. Diagnostics and partial files remain in $job" }
     if ((Get-FileHash -LiteralPath (Join-Path $data 'disc.raw2352') -Algorithm SHA256).Hash -ne $hash) { throw 'Disc copy hash mismatch.' }
-    & $game $data --scan-courses > (Join-Path $data 'course-check.log')
-    if ($LASTEXITCODE -ne 0) { throw 'Installed course validation failed.' }
-    & $game $data --selftest --cars 6 > (Join-Path $data 'selftest.log')
-    if ($LASTEXITCODE -ne 0) { throw 'Installed physics self-test failed.' }
+    Invoke-InstallValidation -Exe $game -Arguments @($data,'--scan-courses') -Log (Join-Path $data 'course-check.log') -Description 'Installed course validation failed'
+    Invoke-InstallValidation -Exe $game -Arguments @($data,'--selftest','--cars','6') -Log (Join-Path $data 'selftest.log') -Description 'Installed physics self-test failed'
     $checks = Join-Path $build 'gt2checks.exe'
     if (!(Test-Path -LiteralPath $checks)) { throw 'gt2checks.exe is required to validate disc menus and media.' }
-    & $checks $data > (Join-Path $data 'media-check.log')
-    if ($LASTEXITCODE -ne 0) { throw 'Installed menu/media regression checks failed.' }
+    Invoke-InstallValidation -Exe $checks -Arguments @($data) -Log (Join-Path $data 'media-check.log') -Description 'Installed menu/media regression checks failed'
     $assetHashes = @(Get-ChildItem -LiteralPath (Join-Path $data 'assets') -Recurse -File | ForEach-Object {
         [ordered]@{ path = $_.FullName.Substring($data.Length + 1).Replace('\','/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
     })

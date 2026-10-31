@@ -7,9 +7,10 @@ namespace gt2view {
 
 void TitleView::UploadVram(const gt2::MenuVram& vram) {
     renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data());
-    if (hdGeneration_ != gt2::hd::Generation()) {
+    if (hdGeneration_ != gt2::hd::Generation() || hdPictureRevision_ != renderer_.HdPictureRevision()) {
         hdGeneration_ = gt2::hd::Generation();
         hdSize_ = UploadHdPicture(renderer_, "title.png", 352, 480);
+        hdPictureRevision_ = renderer_.HdPictureRevision();
     }
 }
 
@@ -143,8 +144,9 @@ void TitleView::EmitRasterised(const gt2::MenuPrim& p, int frameWidth) {
 
 void TitleView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, float windowAspect, std::vector<DrawItem>& items, bool squarePixels,
                       size_t layerAt, std::span<const DrawItem> layer) {
-    if(hdGeneration_ != gt2::hd::Generation()) {
+    if(hdGeneration_ != gt2::hd::Generation() || hdPictureRevision_ != renderer_.HdPictureRevision()) {
         hdGeneration_=gt2::hd::Generation(); hdSize_=UploadHdPicture(renderer_,"title.png",352,480);
+        hdPictureRevision_ = renderer_.HdPictureRevision();
     }
     quads_.clear();
     size_t splitQuad=0;

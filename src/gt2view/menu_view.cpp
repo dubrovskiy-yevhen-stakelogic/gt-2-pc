@@ -184,10 +184,12 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
                      const std::function<void(std::vector<DrawItem>&)>& layer3d) {
     quads_.clear();
     const int background = frame.clearBehind ? -1 : frame.backgroundId;
-    if (background != hdBackground_ || hdGeneration_ != gt2::hd::Generation()) {
+    if (background != hdBackground_ || hdGeneration_ != gt2::hd::Generation() ||
+        hdPictureRevision_ != renderer_.HdPictureRevision()) {
         hdGeneration_=gt2::hd::Generation();
         hdBackground_ = background;
         hdSize_ = background < 0 ? 0 : UploadHdPicture(renderer_, "gt-background-" + std::to_string(background) + ".png", 512, 480);
+        hdPictureRevision_ = renderer_.HdPictureRevision();
     }
     if (hdSize_ && frame.backgroundPrims) {
         Quad q{};

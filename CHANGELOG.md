@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Restore HD event-page backgrounds after opening the post-race save screen. Menu and title views now detect when another screen replaces their shared picture texture.
+- Preserve native installer validation output, including stderr, and report the exit code and full log path when a check fails.
+- Include the documented `INSTALL-QUEST.bat` launcher in standalone native packages while retaining `INSTALL.bat` compatibility.
+
 ## 0.9.0 - GT4 cars, restored interiors and rendering fixes
 
 ### GT4 cars

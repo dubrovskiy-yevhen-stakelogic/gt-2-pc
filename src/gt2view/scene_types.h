@@ -214,6 +214,10 @@ public:
 
     void ApplyHdUi(std::vector<SceneVertex>& vertices);
     virtual void UploadExternalTexture(uint32_t first, uint32_t count, const uint32_t* rgba) = 0;
+    // MenuView and TitleView share one HD picture slot. A view's cached size
+    // is valid only until another view uploads a different picture there.
+    uint64_t HdPictureRevision() const { return hdPictureRevision_; }
+    void MarkHdPictureUploaded() { ++hdPictureRevision_; }
     // A SceneAssets instance owns the reusable model slots and their textures.
     virtual void BeginModelTextures() {}
     // Optional modern paint probe; unsupported backends keep their studio fallback.
@@ -228,6 +232,7 @@ public:
     virtual void SetNativeModelMaterials(uint32_t,const std::vector<NativeModelMaterial>&) {}
     virtual void SetNativeSceneLighting(const NativeSceneLighting&) {}
 protected:
+    uint64_t hdPictureRevision_ = 0;
     RenderOptions options_;
     std::vector<uint16_t> vramShadow_;
     struct HdUiSlot { std::string key; uint64_t used=0; bool reconstructed=false; };

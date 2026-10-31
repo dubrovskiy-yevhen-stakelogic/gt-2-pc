@@ -92,7 +92,9 @@ $licences = @{
 }
 foreach ($name in $licences.Keys) { Copy-Item -LiteralPath $licences[$name] -Destination (Join-Path $Output "LICENSES/$name") }
 foreach ($target in @('Quest','PC','PCVR')) {
-    $name = if ($target -eq 'Quest') { 'INSTALL.bat' } elseif ($target -eq 'PCVR') { 'INSTALL-PCVR.bat' } else { 'INSTALL-PC.bat' }
+    # Keep INSTALL.bat for existing complete-package wrappers, and expose the
+    # documented Quest entry point in the standalone native package too.
+    $names = if ($target -eq 'Quest') { @('INSTALL.bat','INSTALL-QUEST.bat') } elseif ($target -eq 'PCVR') { @('INSTALL-PCVR.bat') } else { @('INSTALL-PC.bat') }
     $body = @'
 @echo off
 setlocal
@@ -106,7 +108,9 @@ if errorlevel 1 (
 echo Installation completed.
 pause
 '@.Replace('TARGET',$target)
-    [IO.File]::WriteAllText((Join-Path $Output $name),$body.Replace("`r`n","`n").Replace("`n","`r`n"),[Text.Encoding]::ASCII)
+    foreach ($name in $names) {
+        [IO.File]::WriteAllText((Join-Path $Output $name),$body.Replace("`r`n","`n").Replace("`n","`r`n"),[Text.Encoding]::ASCII)
+    }
 }
 $files = @(Get-ChildItem -LiteralPath $Output -Recurse -File | Sort-Object FullName | ForEach-Object {
     [ordered]@{ path=$_.FullName.Substring($Output.Length+1).Replace('\','/'); bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
