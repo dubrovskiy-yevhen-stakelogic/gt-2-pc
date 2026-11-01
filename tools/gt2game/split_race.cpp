@@ -252,6 +252,11 @@ SplitHud SplitHudOf(const sim::RaceSim& race, const std::array<const camera::Rac
         f.clutchEngaged = body.clutchState == 1;
         f.turbo = body.boostCap;
         f.boost = previous ? LerpInt(previous->boost[car], body.intakeLoad, at) : body.intakeLoad;
+        // The input display (0x8002DA3C / 0x8002DBB0) of the full-screen replay's followed car.
+        f.throttle = body.throttle;
+        f.brake = body.brake;
+        f.handbrake = body.handbrake;
+        f.steerInput = body.steerInput;
         f.metric = c.metric;
         f.courseMap = c.courseMap;
         f.mapHighlight = 0; // 0x80029064's fifth argument
