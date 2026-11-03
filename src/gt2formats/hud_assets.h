@@ -172,6 +172,10 @@ struct HudTables {
     std::array<HudSpriteDesc, 12> strip;      // 0x8002F708: "0123456789R/" (gear and lap counter)
     std::array<HudSpriteDesc, 6> badges;      // 0x8002F798: position 1st..6th
     std::array<HudSpriteDesc, 2> turbo;       // 0x8002F7E0 face, 0x8002F7EC back plate
+    HudSpriteDesc inputFrame;                 // 0x8002F810: the replay input display's B / A / handbrake frame (24 x 32)
+    HudSpriteDesc inputSteerLeft, inputSteerRight; // 0x8002F84C / 0x8002F858: its steering arrows
+    std::array<int8_t, 3> inputX{};           // 0x8002F8F4: the three input bars' x offsets from the routine's x
+    std::array<uint32_t, 3> inputColor{};     // 0x8002F8F8: their fill colours (throttle, brake, handbrake)
     std::array<int8_t, 10> dialLimits{};      // 0x8002F868: thousands of rpm of the ten dial faces (6 .. 18)
     std::array<int8_t, 10> gearGlyph{};       // 0x8002F874: strip glyph per gear (0 = reverse -> 'R')
     struct Needle { uint32_t color0 = 0, color1 = 0; int32_t radius0 = 0, radius1 = 0, half0 = 0, half1 = 0; };

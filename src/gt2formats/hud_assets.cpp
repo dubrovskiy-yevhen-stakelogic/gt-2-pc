@@ -398,6 +398,13 @@ HudTables LoadHudTables(const GuestImage& o) {
     for (uint32_t i = 0; i < t.strip.size(); i++) t.strip[i] = desc(at(0x8002F708u) + i * 12);
     for (uint32_t i = 0; i < t.badges.size(); i++) t.badges[i] = desc(at(0x8002F798u) + i * 12);
     for (uint32_t i = 0; i < t.turbo.size(); i++) t.turbo[i] = desc(at(0x8002F7E0u) + i * 12);
+    t.inputFrame = desc(at(0x8002F810u));
+    t.inputSteerLeft = desc(at(0x8002F84Cu));
+    t.inputSteerRight = desc(at(0x8002F858u));
+    for (uint32_t i = 0; i < t.inputX.size(); i++) {
+        t.inputX[i] = o.Get<int8_t>(at(0x8002F8F4u) + i);
+        t.inputColor[i] = o.Get<uint32_t>(at(0x8002F8F8u) + i * 4);
+    }
     for (uint32_t i = 0; i < 10; i++) {
         t.dialLimits[i] = o.Get<int8_t>(at(0x8002F868u) + i);
         t.gearGlyph[i] = o.Get<int8_t>(at(0x8002F874u) + i);
@@ -409,7 +416,7 @@ HudTables LoadHudTables(const GuestImage& o) {
     t.barHeight = o.Get<int16_t>(at(0x8002F8E6u));
     t.barColor0 = o.Get<uint32_t>(at(0x8002F8E8u));
     t.barColor1 = o.Get<uint32_t>(at(0x8002F8ECu));
-    if (t.faces[0].w != 80 || t.dialLimits[0] != 6 || t.gearGlyph[0] != 10 || t.barHeight != 5)
+    if (t.faces[0].w != 80 || t.dialLimits[0] != 6 || t.gearGlyph[0] != 10 || t.barHeight != 5 || t.inputFrame.w != 24)
         throw std::runtime_error("hud tables: the race overlay's HUD tables are not where US v1.2 has them");
     return t;
 }
