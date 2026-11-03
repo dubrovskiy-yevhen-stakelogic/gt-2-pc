@@ -53,6 +53,7 @@ layout(push_constant) uniform Push {
     uvec2 reserved;
     vec4 hudClip;
 #ifdef GT2_WEBGL
+    vec4 nativeModelRotation; // Match the vertex-stage uniform struct for WebGL linking.
 };
 uniform Push pc;
 #else
@@ -210,7 +211,8 @@ void shadeScene() {
         vec2 uv=fract(inTexel/size)*size;
         if ((inFlags & 8388608u)!=0u) uv.x=clamp(inTexel.x,0.5,size.x-0.5);
         if ((inFlags & 16777216u)!=0u) uv.y=clamp(inTexel.y,0.5,size.y-0.5);
-        if ((pc.options & 1u)==0u) uv=floor(uv)+0.5;
+        // Keep binary native cabin aperture coverage independent of smoothing.
+        if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;

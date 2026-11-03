@@ -1,10 +1,50 @@
 # Changelog
 
-## Unreleased
+## 0.9.1 - Cockpits, race results and platform fixes
 
-- Restore HD event-page backgrounds after opening the post-race save screen. Menu and title views now detect when another screen replaces their shared picture texture.
-- Preserve native installer validation output, including stderr, and report the exit code and full log path when a check fails.
-- Include the documented `INSTALL-QUEST.bat` launcher in standalone native packages while retaining `INSTALL.bat` compatibility.
+### Cockpits and VR
+
+- Improve GT4 cockpit fitting against original body and window geometry: roof lining, lower walls, door trim and windscreen/dashboard joins.
+- Remove more leftover interior surfaces while preserving body panels, window frames, decals and other original details.
+- Preserve physical body backfaces in authored interiors and keep generated trim clear of window openings and mirror sightlines.
+- Add cockpit inspection from the garage and car selection. Returning preserves the selected car, paint, menu position and career progress.
+- Increase imported-model vertex capacity to match the full-catalogue validation configuration.
+- Remaining fit issues are tracked in [the cockpit follow-up checklist](docs/COCKPIT-NEXT-RELEASE.md): window overlap is flagged on 20 models and source-body openings on 92; the two sets overlap.
+
+### Race results, music and HUD
+
+- Show the original licence BONUS screen when a licence or all-gold prize car is earned, including Save/Next choices. Awards appear with automatic replay enabled or disabled; the licence plate renders without generated car wheels. ([#20](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/20), @lucianodato)
+- Add optional throttle, brake, handbrake and steering indicators, including the followed car in two-player full-screen replays. ([#23](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/23), @lucianodato)
+- Add a setting to skip automatic race replays and return directly to the result/menu flow. ([#19](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/19), @lucianodato)
+- Restore GT Mode music transitions and volume handling for post-race views, machine tests and career menus. ([#9](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/9), @lucianodato)
+- Fix menu music gradually losing notes during continuous playback. ([#36](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/36), @lucianodato)
+- Show the gold cup correctly in licence test menus. ([#17](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/17), @lucianodato)
+
+### Menus and models
+
+- Accept GM pages without an unused picture strip, fixing affected tuning-shop/menu pages. ([#11](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/11), @lucianodato)
+- Load packed mod-car models whose LOD offsets are stale. ([#24](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/24), @lucianodato)
+- Preserve the 4:3 settings/menu canvas on wide and tall displays. ([#32](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/32), @g2h0)
+- Restore HD event-page backgrounds after the post-race save screen replaces a shared picture texture.
+
+### Import and installation
+
+- Automatically prepare missing GT4-import dependencies, handle long extraction paths, and install the converted catalogue directly on the selected PC or Quest destination.
+- Find 7-Zip through PATH when preparing HD media. ([#34](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/34), @g2h0)
+- Preserve installer validation output and stderr, and show the exit code and complete log path on failure.
+- Include INSTALL-QUEST.bat in standalone native packages while retaining INSTALL.bat compatibility.
+- Create the APK alignment output directory when building from a fresh source checkout.
+
+### Browser, Linux, macOS and build checks
+
+- Match shared shader uniform layouts to restore WebGL startup.
+- Recreate the Wayland swapchain when the drawable size changes. ([#28](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/28), @g2h0)
+- Close the Linux disc-import dialog before starting the game. ([#29](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/29), @g2h0)
+- Resolve GCC 16 warnings in warnings-as-errors builds. ([#30](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/30), @g2h0)
+- Isolate SDL input tests from attached physical controllers. ([#31](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/31), @g2h0)
+- Build the menu-shortcut checks required by the macOS test suite. ([#26](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/26), @g2h0)
+
+Thanks to @lucianodato and @g2h0 for these contributions.
 
 ## 0.9.0 - GT4 cars, restored interiors and rendering fixes
 

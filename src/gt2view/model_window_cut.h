@@ -5,6 +5,15 @@
 #include <unordered_map>
 
 namespace gt2view {
+// With source-alpha blending, zero texture alpha contributes no colour even
+// when GS AFAIL is FB_ONLY/RGB_ONLY. Such carrier corners must not attach a
+// visible seat card to the shell during furniture classification. This only
+// supplies classification support; unchanged source triangles are restored.
+inline bool ModelZeroAlphaBlendSupport(const gt2::GltfMaterial& m) {
+    return m.nativeGt4Type==1 && m.alphaBlend && !m.reflection &&
+        m.nativeTextureAlpha && m.nativeTextureFunction<=1 &&
+        m.nativeBlendEquation==0x44;
+}
 // The PS2 glass ramp is baked into several diffuse/reflection passes. Alpha
 // alone is not coverage (it also stores reflectivity). Keep each connected
 // pane separate so a black pillar between two panes survives the cut.
@@ -29,6 +38,104 @@ inline bool ModelBrightGlassPixel(const uint8_t* p) {
 }
 inline bool ModelBlendGlassPixel(const uint8_t* p) {
     return ModelBlendColourGlassPixel(p) || ModelNeutralGlassPixel(p) || ModelBrightGlassPixel(p);
+}
+// Mixed neutral glazing can carry small opaque fasteners. This classifier
+// only enables exact aperture masks; it must never drop the whole material.
+inline bool HasBrightNeutralWindowField(const gt2::PngImage& image) {
+    if(image.width<4 || image.height<4 || image.rgba.size()!=size_t(image.width)*image.height*4)return false;
+    size_t field=0;std::array<size_t,4> edge{},length{size_t(image.width),size_t(image.width),size_t(image.height),size_t(image.height)};
+    for(int y=0;y<image.height;++y)for(int x=0;x<image.width;++x){
+        const auto* p=&image.rgba[(size_t(y)*image.width+x)*4];
+        const int hi=std::max({p[0],p[1],p[2]}),lo=std::min({p[0],p[1],p[2]});
+        if(p[3] && hi-lo>8)return false;
+        if(!ModelBrightGlassPixel(p))continue;
+        ++field;if(y==0)++edge[0];if(y==image.height-1)++edge[1];
+        if(x==0)++edge[2];if(x==image.width-1)++edge[3];
+    }
+    if(field*10<size_t(image.width)*image.height*9)return false;
+    for(size_t i=0;i<edge.size();++i)if(edge[i]*10<length[i]*9)return false;
+    return true;
+}
+// Sparse one-texel neutral lines are mesh/defroster coverage, not a glass
+// field. Cutting every half-alpha line leaves isolated opaque dots and turns
+// a few authored triangles into thousands. Require a two-dimensional field;
+// a wholly translucent tiny texture still represents a complete tint layer.
+inline bool ModelHasTranslucentField(const gt2::PngImage& image,std::span<const uint8_t> mask) {
+    const int w=image.width,h=image.height;
+    if(w<=0 || h<=0 || mask.size()!=size_t(w)*h)return false;
+    if(std::all_of(mask.begin(),mask.end(),[](uint8_t p){return p!=0;}))return true;
+    for(int y=0;y+1<h;++y)for(int x=0;x+1<w;++x)
+        if(mask[size_t(y)*w+x] && mask[size_t(y)*w+x+1] &&
+           mask[size_t(y+1)*w+x] && mask[size_t(y+1)*w+x+1])return true;
+    return false;
+}
+// Diffuse window atlases carry opaque pillars alongside translucent
+// glass (or holes). Blending applies to the pane, not to the opaque frame.
+// Exact UV aperture cuts below still remove the pane itself.
+inline bool ModelHasOpaqueWindowFrame(const gt2::PngImage& image) {
+    if(image.width<=0 || image.height<=0 ||
+       image.rgba.size()!=size_t(image.width)*image.height*4)return false;
+    bool opaque=false,aperture=false;
+    for(size_t i=0;i<image.rgba.size();i+=4){
+        const auto* px=&image.rgba[i];
+        opaque=opaque || px[3]>=254;
+        aperture=aperture || !px[3] || ModelBlendGlassPixel(px);
+    }
+    return opaque && aperture;
+}
+// Both GT4 diffuse material branches carry structural window masks.
+// Dynamic lamp overlays and wheel attachments cannot provide a window frame;
+// their near-full alpha highlights otherwise acquire false structural protection.
+// Type 0 is used by the Focus body/window atlas; restricting this to the
+// type 1 lighting branch lets the cabin volume erase its opaque B-pillar.
+inline bool ModelHasStructuralWindowFrame(const gt2::PngImage& image,
+                                          const gt2::GltfMaterial& material) {
+    return (material.nativeGt4Type==0 || material.nativeGt4Type==1) &&
+        !material.reflection && !material.lampStates && material.wheelAttachment<0 &&
+        ModelHasOpaqueWindowFrame(image);
+}
+// A pure coverage atlas supplies its own aperture. A nearby pane can have
+// different UVs/curvature and must not cut its opaque pillar silhouette.
+// 254 is the near-full alpha produced by the original GT4 conversion.
+inline bool ModelStructuralCoverageMask(const gt2::PngImage& image) {
+    const int w=image.width,h=image.height;
+    if(w<=0 || h<=0 || image.rgba.size()!=size_t(w)*h*4)return false;
+    bool clear=false,solid=false;
+    for(int y=0;y<h;++y)for(int x=0;x<w;++x) {
+        const auto alpha=image.rgba[(size_t(y)*w+x)*4+3];
+        if(!alpha){clear=true;continue;}
+        if(alpha>=254){solid=true;continue;}
+        bool edge=false;
+        for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx) {
+            const int nx=x+dx,ny=y+dy;
+            if(nx>=0 && nx<w && ny>=0 && ny<h &&
+               image.rgba[(size_t(ny)*w+nx)*4+3]>=254)edge=true;
+        }
+        if(!edge)return false;
+    }
+    return clear && solid;
+}
+// Coverage masks may contain antialiased edge texels. A fractional
+// field is not a structural stencil: every fractional texel must touch
+// opaque coverage. Both an aperture and opaque frame must be present.
+inline bool ModelStructuralBlackMask(const gt2::PngImage& image) {
+    const int w=image.width,h=image.height;
+    if(w<=0 || h<=0 || image.rgba.size()!=size_t(w)*h*4)return false;
+    bool clear=false,solid=false;
+    for(int y=0;y<h;++y)for(int x=0;x<w;++x){
+        const auto* px=&image.rgba[(size_t(y)*w+x)*4];
+        if(!px[3]){clear=true;continue;}
+        if(std::max({px[0],px[1],px[2]})>32)return false;
+        if(px[3]==255){solid=true;continue;}
+        bool edge=false;
+        for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){
+            const int nx=x+dx,ny=y+dy;
+            if(nx>=0 && nx<w && ny>=0 && ny<h &&
+               image.rgba[(size_t(ny)*w+nx)*4+3]==255)edge=true;
+        }
+        if(!edge)return false;
+    }
+    return clear && solid;
 }
 struct NeutralOverlay {bool translucent=false,flat=false;};
 inline NeutralOverlay ClassifyNeutralOverlay(const gt2::PngImage& image) {

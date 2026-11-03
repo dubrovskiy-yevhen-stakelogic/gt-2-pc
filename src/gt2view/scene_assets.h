@@ -1,5 +1,7 @@
+#include "gt2view/source_surface167.h"
 #pragma once
 #include "native_cockpit_fit.h"
+#include "gt2view/cockpit_headliner.h"
 #include "gt2view/course_surface.h"
 #include "gt2view/paint_environment.h"
 #include "gt2view/paint_probe_coverage.h"
@@ -10,6 +12,9 @@
 #include "gt2view/gt4_showroom_pose.h"
 #include "gt2view/model_window_cut.h"
 #include "gt2view/model_glazing.h"
+#include "gt2view/gt4_cockpit_aperture.h"
+#include "gt2view/gt4_cockpit_furniture.h"
+#include "gt2view/gt4_cockpit_caps.h"
 #include "gt2view/side_mirror_fit.h"
 #include <algorithm>
 #include <array>
@@ -569,8 +574,6 @@ public:
     struct RaceWheelGeometry {
         std::array<float,2> radius{},rideHeight{};
     };
-    // `carWheels` false: the .cdo mesh only. 0x80048528 (the championship end's trophy and the licence BONUS's plate)
-    // draws a model without the car draw's runtime wheels (0x80067444).
     int UseCar(const std::string& id, const std::string& alias = std::string(), const WheelArea* wheels = nullptr,
                const RaceWheelGeometry* raceWheels = nullptr, bool carWheels = true) {
         const std::string& key = alias.empty() ? id : alias;
@@ -1421,6 +1424,26 @@ public:
             else{DrawItem item;item.firstVertex=base+first;item.vertexCount=3;item.space=kSpaceWorld;item.blend=alpha?kBlendAlpha:kBlendOpaque;item.stpPass=alpha?3:0;std::copy_n(mvp,16,item.mvp);items.push_back(item);}
         }
     }
+    const auto& OriginalWindowTrianglesForAudit(int slot) const {
+        return gt4Cars_.at(size_t(slot)).auditOriginalWindows;
+    }
+    const auto& OpaqueWitnessTrianglesForAudit(int slot) const { return gt4Cars_.at(size_t(slot)).auditOpaqueWitness; }
+    const auto& ExposedWindowTrianglesForAudit(int slot) const { return gt4Cars_.at(size_t(slot)).auditExposedWindows; }
+    bool IsOriginalOuterTriangleForAudit(int slot,uint32_t first) const {
+        const auto& ids=gt4Cars_.at(size_t(slot)).auditOuterTriangles;
+        const uint32_t local=first-SceneRenderer::kModelSetVertexBase-uint32_t(slot)*SceneRenderer::kModelSetVertexStride;
+        return std::binary_search(ids.begin(),ids.end(),local);
+    }
+    bool IsPhysicalNativeMaterialForAudit(int slot,uint32_t material) const {
+        const auto& source=gt4Cars_.at(size_t(slot)).nativeMaterials;
+        const size_t local=material-uint32_t(slot)*SceneRenderer::kNativeMaterialsPerSlot;
+        const auto& m=source.at(local);
+        // Original non-depth highlight overlays are not a solid enclosure.
+        // Baked mirrors are replaced by the separately submitted live mirrors.
+        // The authored cockpit deliberately replaces exterior-only LOD cards.
+        // They are not part of the source native cabin being preserved.
+        return m.nativeDepthWrite && !m.reflection && !m.rearView && !m.exteriorOnly;
+    }
     void AppendGt4PanelItemsForAudit(std::vector<DrawItem>& items,int slot,int side,const float* mvp) const {
         const auto& car=gt4Cars_.at(size_t(slot));
         if(car.auditPanelCentres.empty())throw std::runtime_error("panel audit requires GT2_AUDIT_WHEEL_COLOR");
@@ -1545,8 +1568,8 @@ private:
         std::array<float,4> wheelBumpStop{1e9f,1e9f,1e9f,1e9f};
         bool nativeWheelPose=false;
         std::array<std::array<float,9>,4> wheelBasis{};
-        std::vector<std::array<float,3>> auditPanelCentres;
-        std::vector<uint32_t> auditBonnetTriangles,auditSurfaceTriangles;
+        std::vector<std::array<float,3>> auditPanelCentres,auditOriginalWindows,auditExposedWindows,auditOpaqueWitness;
+        std::vector<uint32_t> auditBonnetTriangles,auditSurfaceTriangles,auditOuterTriangles;
     };
     static std::array<float,4> RotationQuaternion(const float* world) {
         std::array<float,16> rotation{};
@@ -1619,6 +1642,8 @@ private:
         state.selectedPaint=selected;
     }
     void LoadGt4(int slot) {
+        const bool feedbackLegacy=std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_LEGACY_FEEDBACK");
+        const bool remnantsLegacy=std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_LEGACY_REMNANTS");
         auto& state = gt4Cars_[size_t(slot)];
         if (state.attempted || state.sourceId.empty() || (!state.required && slots_[size_t(slot)].id.starts_with("ghost:"))) return;
         state.attempted = true;
@@ -1730,6 +1755,10 @@ private:
                                 std::abs(v[1]-y)>.055f || std::abs(v[2]-z)>.22f) continue;
                             extent=v[0]*sign;point={v[0],v[1],v[2]};
                         }
+                        // Sparse accessory vertices near the centre are not
+                        // a body corner. Keep the full-width profile fallback
+                        // when no outer shell vertex supports this station.
+                        if(!car.nativeInterior && !feedbackLegacy && extent<width*.75f)point={sign*width,y,z};
                         pair[side]=point;
                     }
                 };
@@ -1757,6 +1786,26 @@ private:
                     const float bonnet=cockpit_detail::SurfaceHeight(shell,join[2],join[0],point[1]+.012f);
                     if(std::isfinite(bonnet))join[1]=bonnet;
                     importedFit.bonnetJoin[i]=join;
+                }
+                bool windscreenFitted=false;
+                if(!feedbackLegacy && !car.nativeInterior) {
+                    windscreenFitted=FitGt4Windscreen(importedFit,car.cockpit,scale,offset);
+                    // A bonnet knee can resemble a complete front screen even
+                    // above axle height. If the profile-guided fit failed, use
+                    // the independently qualified authored front pane. Recovery
+                    // still rejects side/rear glass and incomplete/opaque cards.
+                    if(!windscreenFitted && !car.openTop)
+                        windscreenFitted=FitGt4Windscreen(importedFit,car.cockpit,scale,offset,true);
+                }
+                if(!feedbackLegacy && !car.nativeInterior && !car.openTop)
+                    RecoverGt4RearScreen(importedFit,car.cockpit,scale,offset);
+                if(windscreenFitted) {
+                    for(size_t i=0;i<importedFit.cowl.size();++i) {
+                        auto join=importedFit.cowl[i];join[2]-=.18f;
+                        const float y=cockpit_detail::SurfaceHeight(shell,join[2],join[0],join[1]+.012f);
+                        if(std::isfinite(y))join[1]=y;
+                        importedFit.bonnetJoin[i]=join;
+                    }
                 }
                 importedFit.bonnetJoinValid=true;
                 cockpit_detail::RemoveTrimSpikes(importedFit.cowl);
@@ -1812,7 +1861,7 @@ private:
                     importedFit.eye[0],importedFit.eye[1],importedFit.eye[2],importedFit.windshieldY,importedFit.windshieldZ,
                     importedFit.roofFrontY,importedFit.roofFrontZ);
             }
-            if(!car.nativeInterior && car.cabinHeightOffset!=0) {
+            if(!car.nativeInterior && car.cabinHeightOffset!=0 && std::getenv("GT2_AUDIT_LEGACY_HEIGHT_OFFSET")) {
                 const float dy=car.cabinHeightOffset*scale;
                 importedFit.roofY+=dy;importedFit.dashboardY+=dy;importedFit.windshieldY+=dy;
                 importedFit.roofFrontY+=dy;importedFit.roofRearY+=dy;importedFit.rearWindowY+=dy;
@@ -1872,13 +1921,14 @@ private:
                 SurfaceTriangle key;for(size_t k=0;k<3;++k)key[k]=p.vertices.at(p.indices.at(i+k)).position;
                 std::sort(key.begin(),key.end());return key;
             };
-            std::map<SurfaceTriangle,SurfaceTriangle> opaqueSurfaces;
+            std::map<SurfaceTriangle,SurfaceTriangle> opaqueSurfaces,seatedOpaqueSurfaces;
             for(const auto& p:car.exterior.primitives) {
                 const auto& m=car.exterior.materials.at(size_t(p.material));
                 if(m.nativeGt4Type<0 || !m.nativeDepthWrite || m.alphaBlend)continue;
                 for(size_t i=0;i+2<p.indices.size();i+=3) {
                     SurfaceTriangle ordered;for(size_t k=0;k<3;++k)ordered[k]=p.vertices.at(p.indices[i+k]).position;
                     opaqueSurfaces.emplace(surfaceKey(p,i),ordered);
+                    seatedOpaqueSurfaces.insert_or_assign(surfaceKey(p,i),ordered);
                 }
             }
             double sourceArea=0,loadedArea=0;
@@ -1909,7 +1959,7 @@ private:
                 // lamp-state tag selects a callback, not exclusively a lamp.
                 for(const auto* source:{&car.cockpit,&car.lamps}){
                 const auto& mesh=*source;
-                std::vector<ModelWindowHoles> panes(mesh.images.size()),cutouts(mesh.images.size()),clearWindows(mesh.images.size()),darkTint(mesh.images.size()),colourTint(mesh.images.size());
+                std::vector<ModelWindowHoles> panes(mesh.images.size()),nativePanes(mesh.images.size()),cutouts(mesh.images.size()),clearWindows(mesh.images.size()),darkTint(mesh.images.size()),colourTint(mesh.images.size());
                 for(size_t i=0;i<mesh.images.size();++i){
                     const auto& img=mesh.images[i];std::vector<uint8_t> tint(size_t(img.width)*img.height),empty(tint.size()),zero(tint.size()),dark(tint.size());
                     for(size_t p=0;p<tint.size();++p){const auto* c=&img.rgba[p*4];tint[p]=ModelGlassPixel(c);empty[p]=!MirrorPixelCovered(c);zero[p]=c[3]==0;
@@ -1932,14 +1982,19 @@ private:
                             dark[p]=uint8_t(dark[p]!=0 && ModelBlendGlassPixel(&variant.rgba[p*4]));
                             for(size_t c=0;c<3;++c)tint[p]&=variant.rgba[p*4+c]==img.rgba[p*4+c];}
                     }
-                    panes[i]=ModelGlassHoles(img,tint);cutouts[i]=ExactModelMask(img,empty);clearWindows[i]=ReflectionMaskParts(img,zero);darkTint[i]=ReflectionMaskParts(img,dark);
+                    const bool mixedNeutralField=HasBrightNeutralWindowField(img);
+                    auto nativeTint=tint;
+                    for(size_t pixel=0;pixel<nativeTint.size();++pixel)
+                        nativeTint[pixel]=uint8_t(nativeTint[pixel] && img.rgba[pixel*4+3]>0 && img.rgba[pixel*4+3]<250);
+                    nativePanes[i]=ModelGlassHoles(img,nativeTint);
+                    panes[i]=ModelGlassHoles(img,tint);cutouts[i]=ExactModelMask(img,empty);clearWindows[i]=ReflectionMaskParts(img,zero);darkTint[i]=mixedNeutralField?ExactModelMask(img,dark):ReflectionMaskParts(img,dark);
                     // Bright alpha texels in a coloured non-depth overlay
                     // are often sponsor lettering. A wholly neutral tint ramp
                     // can still contain bright glass highlights.
-                    const bool neutralRamp=ClassifyNeutralOverlay(img).translucent;
+                    const bool neutralRamp=ClassifyNeutralOverlay(img).translucent || mixedNeutralField;
                     for(size_t p=0;p<dark.size();++p)dark[p]=uint8_t(dark[p]!=0 &&
                         (ModelBlendColourGlassPixel(&img.rgba[p*4]) || (neutralRamp && ModelBrightGlassPixel(&img.rgba[p*4]))));
-                    colourTint[i]=ReflectionMaskParts(img,dark);
+                    colourTint[i]=mixedNeutralField?ExactModelMask(img,dark):ReflectionMaskParts(img,dark);
                 }
                 std::map<std::array<int,4>,ModelWindowHoles> alphaApertures;
                 for(const auto& p:mesh.primitives){
@@ -1963,7 +2018,11 @@ private:
                     // environment pass. Never carve their convex boundary out
                     // of the opaque source frame (lettering/pillars survive).
                     for(bool reflectionOnly:{false,true}){
-                    auto holes=reflectionOnly?ModelWindowHoles{}:panes.at(size_t(m.baseColorImage));
+                    // Native fully opaque body paint can match the teal glass
+                    // palette. Native glass must also carry non-opaque alpha,
+                    // as required by the existing blended-pane classifier.
+                    const auto& paneMasks=m.nativeGt4Type>=0?nativePanes:panes;
+                    auto holes=reflectionOnly?ModelWindowHoles{}:paneMasks.at(size_t(m.baseColorImage));
                     if(reflectionOnly){
                         if((!m.alphaBlend && !NativeAlphaAcceptsZero(m)) ||
                            (car.nativeInterior && m.alphaBlend && m.nativeDepthWrite &&
@@ -2054,13 +2113,20 @@ private:
                             const bool boundedUpperGlass=car.nativeInterior && m.alphaBlend &&
                                 m.nativeGt4Type>=0 && m.nativeDepthWrite &&
                                 center[1]>=std::min(f.frontCowl[0][1],f.frontCowl[1][1])-.05f;
+                            // A near-vertical hatch window can lie within the last
+                            // ten centimetres of the body. Its measured rear window
+                            // band is a stronger boundary than a bumper inset; retain
+                            // the inset for low lamp/decal surfaces outside that band.
+                            const bool boundedRearGlass=m.alphaBlend && m.nativeDepthWrite &&
+                                center[1]>=f.rearCowl[side][1]-.025f &&
+                                center[2]<=f.rearWindowZ+.025f;
                             if(center[1]<belt-.25f || center[1]>car.exterior.boundsMax[1]*scale+offset[1]+.01f || (center[2]<front && !boundedUpperGlass) ||
-                               center[2]>car.exterior.boundsMax[2]*scale+offset[2]-.10f ||
+                               (center[2]>car.exterior.boundsMax[2]*scale+offset[2]-.10f && !boundedRearGlass) ||
                                std::abs(center[0]-offset[0])>std::max(std::abs(car.exterior.boundsMin[0]),std::abs(car.exterior.boundsMax[0]))*scale+.01f){
 
                                 continue;
                             }
-                            auto opening=GlazingOpening({inside[j],inside[j+1],inside[j+2]});opening.reflectionOnly=reflectionOnly;
+                            auto opening=GlazingOpening({inside[j],inside[j+1],inside[j+2]});opening.reflectionOnly=reflectionOnly;opening.sourceMaterial=p.material;
                             // Neutral translucent shadows can lie on the bonnet.
                             // Authored teal glazing is unambiguous even on very
                             // shallow racing windscreens; do not reject it by slope.
@@ -2076,7 +2142,16 @@ private:
                                 // curved roof fragment, leaving a triangular rim.
                                 const bool overheadGlass=car.nativeInterior && !car.openTop && m.nativeDepthWrite &&
                                     center[1]>=car.eye[1]*scale+offset[1];
-                                if(!ModelBlendColourGlassPixel(pixel) && !overheadGlass)continue;
+                                // A shallow racing windscreen can have the same normal
+                                // as a bonnet decal. Require its measured window band,
+                                // above the cowl and between cowl and header instead.
+                                const float frontHeaderZ=(f.frontHeader[0][2]+f.frontHeader[1][2])*.5f;
+                                const float rearHeaderZ=(f.rearHeader[0][2]+f.rearHeader[1][2])*.5f;
+                                const bool rakedWindowGlass=m.nativeDepthWrite && f.authoredUpperShell &&
+                                    center[1]>=belt-.025f &&
+                                    ((center[2]>=cockpit_detail::CowlZAt(f,center[0])-.025f && center[2]<=frontHeaderZ+.025f) ||
+                                     (center[2]>=rearHeaderZ-.025f && center[2]<=f.rearWindowZ+.025f));
+                                if(!ModelBlendColourGlassPixel(pixel) && !overheadGlass && !rakedWindowGlass)continue;
                             }
                             float n=0;for(float a:opening.normal)n+=a*a;if(n>.5f)glazing.push_back(opening);
                         }
@@ -2087,7 +2162,169 @@ private:
             }
             }
             if(std::getenv("GT2_DEBUG_CABIN"))std::fprintf(stderr,"glazing total %zu mirror %zu\n",glazing.size(),mirrorGaps.size());
-            auto append = [&](const GltfMesh& mesh, bool seated) {
+            if(!car.nativeInterior || std::getenv("GT2_AUDIT_WHEEL_COLOR")) {
+                importedFit.liningApertures.clear();
+                state.auditOriginalWindows.clear();state.auditExposedWindows.clear();
+                // Independent original-body enclosure witness. Do not use the
+                // generated cabin or its fit to classify an aperture carrier.
+                SourceSurface167 envelope(car.exterior,scale);envelope.SetWindowWitnesses(glazing);
+                state.auditOpaqueWitness.clear();
+                for(const auto& v:envelope.OpaqueTrianglesForAudit(car.exterior)){std::array<float,3> world{};for(size_t k=0;k<3;++k)world[k]=v.position[k]*scale+offset[k];state.auditOpaqueWitness.push_back(world);}
+
+                for(const auto& opening:glazing)if(!opening.reflectionOnly) {
+                    std::array<GltfVertex,3> triangle{};for(size_t k=0;k<3;++k)triangle[k].position=opening.points[k];
+                    const bool exposed=envelope.Preserve(triangle) && envelope.WindowUnoccluded(opening);
+                    if(exposed && !car.nativeInterior) {
+                        std::array<std::array<float,3>,3> world;
+                        for(size_t j=0;j<3;++j)for(size_t k=0;k<3;++k)world[j][k]=opening.points[j][k]*scale+offset[k];
+                        importedFit.liningApertures.push_back(world);
+                    }
+                    for(const auto& point:opening.points) {
+                        std::array<float,3> world{};
+                        for(size_t axis=0;axis<3;++axis)world[axis]=point[axis]*scale+offset[axis];
+                        state.auditOriginalWindows.push_back(world);
+                        if(exposed)state.auditExposedWindows.push_back(world);
+                    }
+                }
+            }
+            // Lower source replacement needs the source aperture profile now,
+            // before append clips the old cabin. The render-slot profile is
+            // fitted later and cannot supply this import-stage dependency.
+            if(!car.nativeInterior && !car.openTop) {
+                std::vector<gt2::CarMeshVertex> sideOpenings;
+                std::vector<uint8_t> exposedSeeds;
+                const std::set<std::array<std::array<float,3>,3>> exposed(
+                    importedFit.liningApertures.begin(),importedFit.liningApertures.end());
+                for(const auto& opening:glazing)if(!opening.reflectionOnly) {
+                    std::array<gt2::CarMeshVertex,3> triangle{};
+                    std::array<std::array<float,3>,3> world{};
+                    for(size_t j=0;j<3;++j)for(size_t k=0;k<3;++k)
+                        triangle[j].pos[k]=world[j][k]=opening.points[j][k]*scale+offset[k];
+                    if(!CockpitSideOpening(triangle,importedFit))continue;
+                    sideOpenings.insert(sideOpenings.end(),triangle.begin(),triangle.end());
+                    exposedSeeds.push_back(uint8_t(exposed.contains(world)));
+                }
+                if(!sideOpenings.empty())FitCockpitSideSills(importedFit,sideOpenings,true,false,exposedSeeds);
+            }
+            std::vector<HeadlinerTriangle> roofSupport;
+            std::map<SurfaceTriangle,std::vector<std::array<GltfVertex,3>>> seatedSurfaceCuts;
+            const auto barycentric=[](const std::array<GltfVertex,3>& t,const std::array<float,3>& point) {
+                // Project onto the dominant plane. Unlike the Gram determinant,
+                // this does not square the condition number of a thin triangle.
+                std::array<double,3> u{},v{},q{},n{};
+                for(size_t k=0;k<3;++k){u[k]=double(t[1].position[k])-t[0].position[k];v[k]=double(t[2].position[k])-t[0].position[k];q[k]=double(point[k])-t[0].position[k];}
+                n={u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
+                size_t axis=0;for(size_t k=1;k<3;++k)if(std::abs(n[k])>std::abs(n[axis]))axis=k;
+                if(std::abs(n[axis])<1e-30)return std::array<double,3>{-1,-1,-1};
+                const size_t a=(axis+1)%3,b=(axis+2)%3;
+                const double x=(q[a]*v[b]-q[b]*v[a])/n[axis],y=(u[a]*q[b]-u[b]*q[a])/n[axis];
+                return std::array<double,3>{1-x-y,x,y};
+            };
+            // Classify the unmodified physical source once. A UV/window cut
+            // changes triangle samples, not whether the retained piece belongs
+            // to an exterior body panel. Preserve that provenance for backfaces.
+            const SourceSurface167 originalBodySurface(car.exterior,scale,glazing);
+            std::map<int,std::vector<std::array<GltfVertex,3>>> physicalSourceFaces;
+            for(const auto& primitive:car.exterior.primitives) {
+                if(primitive.material<0)continue;
+                const auto& material=car.exterior.materials.at(size_t(primitive.material));
+                if(material.nativeGt4Type<0 || !material.nativeDepthWrite || material.reflection || material.rearView ||
+                   material.interiorOnly || material.wheelAttachment>=0 || material.lampStates)continue;
+                for(size_t at=0;at+2<primitive.indices.size();at+=3) {
+                    const std::array<GltfVertex,3> triangle{primitive.vertices.at(primitive.indices[at]),primitive.vertices.at(primitive.indices[at+1]),primitive.vertices.at(primitive.indices[at+2])};
+                    if(originalBodySurface.Preserve(triangle))physicalSourceFaces[primitive.material].push_back(triangle);
+                }
+            }
+            const auto inheritsPhysicalSource=[&](const std::array<GltfVertex,3>& triangle,int material) {
+                const auto found=physicalSourceFaces.find(material);if(found==physicalSourceFaces.end())return false;
+                for(const auto& source:found->second) {
+                    bool contained=true;
+                    for(const auto& vertex:triangle) {
+                        const auto weights=barycentric(source,vertex.position);
+                        if(*std::min_element(weights.begin(),weights.end())<-.00001){contained=false;break;}
+                        double error=0;
+                        for(size_t axis=0;axis<3;++axis){double reconstructed=0;for(size_t i=0;i<3;++i)reconstructed+=weights[i]*source[i].position[axis];
+                            const double delta=reconstructed-vertex.position[axis];error+=delta*delta;}
+                        if(error>1e-10){contained=false;break;}
+                    }
+                    if(contained)return true;
+                }
+                return false;
+            };
+            auto append = [&](const GltfMesh& originalMesh, bool seated) {
+                GltfMesh maskedMesh;const GltfMesh* selected=&originalMesh;
+                std::vector<std::vector<size_t>> carrierFaces(originalMesh.primitives.size());
+                if(seated && !car.nativeInterior && !car.openTop && !remnantsLegacy) {
+                    std::map<std::array<int,3>,ModelWindowHoles> masks;
+                    for(size_t pi=0;pi<originalMesh.primitives.size();++pi) {
+                        const auto& primitive=originalMesh.primitives[pi];if(!primitive.hasUvs || primitive.material<0)continue;
+                        const auto& material=originalMesh.materials.at(size_t(primitive.material));
+                        if(material.baseColorImage<0 || material.reflection || material.cockpitControl ||
+                           material.wheelAttachment>=0 || material.lampStates)continue;
+                        if(!((material.nativeAlphaFail==0 && NativeTextureAlphaDiscard(material,0)) ||
+                             ModelZeroAlphaBlendSupport(material)))continue;
+                        const size_t image=size_t(material.baseColorImage);const auto& png=originalMesh.images.at(image);
+                        bool emptyAlpha=false,visibleAlpha=false;
+                        for(size_t i=3;i<png.rgba.size();i+=4){emptyAlpha=emptyAlpha || png.rgba[i]==0;visibleAlpha=visibleAlpha || png.rgba[i]!=0;}
+                        if(!emptyAlpha || !visibleAlpha)continue;
+                        const std::array<int,3> key{material.baseColorImage,int(material.clampU),int(material.clampV)};
+                        auto found=masks.find(key);
+                        if(found==masks.end()) {
+                            std::vector<uint8_t> support(png.rgba.size()/4);
+                            for(size_t i=0;i<support.size();++i)support[i]=png.rgba[i*4+3]!=0;
+                            bool compatible=true;
+                            if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
+                                const auto entry=palette.find(car.imageNames[1][image]);if(entry==palette.end())continue;
+                                const auto variant=ReadPngFile(entry->second.string());
+                                if(variant.width!=png.width || variant.height!=png.height){compatible=false;break;}
+                                for(size_t i=0;i<support.size();++i)support[i]=uint8_t(support[i] || variant.rgba[i*4+3]!=0);
+                            }
+                            found=masks.emplace(key,compatible?Gt4VisibleMaskCoverage(png,support,material.clampU,material.clampV):ModelWindowHoles{}).first;
+                        }
+                        if(found->second.empty())continue;
+                        std::vector<GltfVertex> visible;
+                        for(size_t i=0;i+2<primitive.indices.size();i+=3) {
+                            const std::array<GltfVertex,3> triangle{primitive.vertices.at(primitive.indices[i]),primitive.vertices.at(primitive.indices[i+1]),primitive.vertices.at(primitive.indices[i+2])};
+                            const auto pieces=GlazingInside(triangle,found->second,material.clampU,material.clampV);
+                            visible.insert(visible.end(),pieces.begin(),pieces.end());
+                            carrierFaces[pi].insert(carrierFaces[pi].end(),pieces.size()/3,i/3);
+                        }
+                        if(selected==&originalMesh){maskedMesh=originalMesh;selected=&maskedMesh;}
+                        auto& trimmed=maskedMesh.primitives[pi];trimmed.vertices=std::move(visible);trimmed.indices.resize(trimmed.vertices.size());
+                        for(size_t i=0;i<trimmed.indices.size();++i)trimmed.indices[i]=uint32_t(i);
+                    }
+                }
+                if(selected!=&originalMesh) {
+                    // Use UV-supported geometry as classification evidence, not
+                    // as wholesale replacement tessellation. Restore each
+                    // unchanged source face byte-for-byte; split only a face
+                    // whose visible furniture really was removed.
+                    const auto maskedFurniture=Gt4CockpitFurniture(maskedMesh,importedFit,scale,offset);
+                    for(size_t pi=0;pi<carrierFaces.size();++pi) {
+                        const auto& mapping=carrierFaces[pi];if(mapping.empty())continue;
+                        const auto& original=originalMesh.primitives[pi];auto& trimmed=maskedMesh.primitives[pi];
+                        std::vector<size_t> removed(original.indices.size()/3);
+                        std::vector<std::vector<size_t>> retained(removed.size());
+                        for(size_t face=0;face<mapping.size();++face) {
+                            if(!maskedFurniture.empty() && maskedFurniture[pi][face])++removed[mapping[face]];
+                            else retained[mapping[face]].push_back(face);
+                        }
+                        std::vector<GltfVertex> result;
+                        for(size_t face=0;face<removed.size();++face) {
+                            if(!removed[face]) {
+                                for(size_t v=0;v<3;++v)result.push_back(original.vertices.at(original.indices[face*3+v]));
+                            } else for(size_t kept:retained[face])for(size_t v=0;v<3;++v)
+                                result.push_back(trimmed.vertices.at(trimmed.indices[kept*3+v]));
+                        }
+                        trimmed.vertices=std::move(result);trimmed.indices.resize(trimmed.vertices.size());
+                        for(size_t i=0;i<trimmed.indices.size();++i)trimmed.indices[i]=uint32_t(i);
+                    }
+                }
+                const auto& mesh=*selected;
+                const auto exteriorSurface=seated && !car.nativeInterior?std::make_unique<SourceSurface167>(mesh,scale,glazing):nullptr;
+                const auto nativePhysicalSurface=seated && car.nativeInterior?std::make_unique<SourceSurface167>(car.exterior,scale,glazing):nullptr;
+                const auto sourceFurniture=seated && !car.nativeInterior && !remnantsLegacy?
+                    Gt4CockpitFurniture(mesh,importedFit,scale,offset):std::vector<std::vector<uint8_t>>{};
                 std::vector<uint32_t> images(mesh.images.size());
                 std::vector<ModelWindowHoles> windowHoles(mesh.images.size());
                 if(seated && !car.nativeInterior)for(size_t i=0;i<mesh.images.size();++i){
@@ -2106,8 +2343,19 @@ private:
                 std::vector<ModelWindowHoles> neutralEdges(mesh.images.size());
                 if(seated && !std::getenv("GT2_AUDIT_RETAIN_TINT"))for(size_t i=0;i<mesh.images.size();++i){
                     const auto& img=mesh.images[i];std::vector<uint8_t> mask(size_t(img.width)*img.height);
-                    for(size_t p=0;p<mask.size();++p)mask[p]=ModelNeutralGlassPixel(&img.rgba[p*4]);
-                    neutralEdges[i]=ReflectionMaskParts(img,mask);
+                    const bool mixedNeutralField=HasBrightNeutralWindowField(img);
+                    for(size_t p=0;p<mask.size();++p)mask[p]=ModelBlendColourGlassPixel(&img.rgba[p*4]) || ModelNeutralGlassPixel(&img.rgba[p*4]) || (mixedNeutralField && ModelBrightGlassPixel(&img.rgba[p*4]));
+                    // Paint-dependent body colour is not invariant cabin glazing.
+                    // Keep any texel that becomes non-glass in another authored paint.
+                    if(i<car.imageNames[1].size())for(const auto& palette:car.paints){
+                        const auto found=palette.find(car.imageNames[1][i]);if(found==palette.end())continue;
+                        const auto variant=ReadPngFile(found->second.string());
+                        if(variant.width!=img.width || variant.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
+                        const bool bright=HasBrightNeutralWindowField(variant);
+                        for(size_t pixel=0;pixel<mask.size();++pixel){const auto* q=&variant.rgba[pixel*4];
+                            mask[pixel]=uint8_t(mask[pixel] && (ModelBlendColourGlassPixel(q) || ModelNeutralGlassPixel(q) || (bright && ModelBrightGlassPixel(q))));}
+                    }
+                    if(ModelHasTranslucentField(img,mask))neutralEdges[i]=ExactModelMask(img,mask);
                 }
                 std::vector<bool> fractionalAlpha(mesh.images.size(),false),zeroAlpha(mesh.images.size(),false);
                 for (size_t i=0;i<mesh.images.size();++i) {
@@ -2132,6 +2380,77 @@ private:
                     images[i]=upload.base; imageCache.emplace(key,upload.base); cursor+=count; uploads.push_back(std::move(upload));
                     if(varying)paintTextures.push_back({images[i],img,name});
                 }
+                std::map<int,ModelWindowHoles> roofCoverage;
+                std::map<std::array<int,5>,std::vector<uint8_t>> capPixels;
+                const auto capCoverage=[&](size_t image,const GltfMaterial& material)->const std::vector<uint8_t>& {
+                    const auto& img=mesh.images[image];
+                    const bool nativeCoverage=Gt4CapNativeOpaqueAlpha(&material);
+                    const std::array<int,5> key{int(image),nativeCoverage?material.nativeAlphaFunc:-1000,
+                        nativeCoverage?material.nativeAlphaRef:0,nativeCoverage?material.nativeTextureFunction:0,
+                        nativeCoverage?material.nativeAlphaFail:0};
+                    auto found=capPixels.find(key);
+                    if(found==capPixels.end()) {
+                        auto mask=Gt4CapOpaquePixels(img,&material);
+                        if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
+                            const auto variant=palette.find(car.imageNames[1][image]);if(variant==palette.end())continue;
+                            const auto png=ReadPngFile(variant->second.string());
+                            IntersectGt4CapOpaquePixels(mask,img,png,&material);
+                        }
+                        found=capPixels.emplace(key,std::move(mask)).first;
+                    }
+                    return found->second;
+                };
+                std::vector<ModelGlazingOpening> paintedRoofCoats;
+                if(seated && !car.nativeInterior && !car.openTop) {
+                    std::map<int,std::vector<uint8_t>> coatMasks;
+                    std::map<int,ModelWindowHoles> coatHoles;
+                    for(const auto& primitive:originalMesh.primitives) {
+                        if(!primitive.hasUvs || primitive.material<0)continue;
+                        const auto& m=originalMesh.materials.at(size_t(primitive.material));
+                        if(m.nativeGt4Type!=1 || m.nativeDepthWrite || !m.alphaBlend || m.reflection ||
+                           m.wheelAttachment>=0 || m.baseColorImage<0)continue;
+                        const auto& image=originalMesh.images.at(size_t(m.baseColorImage));
+                        auto [entry,added]=coatMasks.try_emplace(m.baseColorImage);
+                        if(added) {
+                            entry->second.resize(image.rgba.size()/4);
+                            if(!Gt4UnionRoofCoatPixels(entry->second,image,image))throw std::runtime_error("invalid roof coat image");
+                            const size_t index=size_t(m.baseColorImage);
+                            if(index<car.imageNames[1].size())for(const auto& palette:car.paints) {
+                                const auto variant=palette.find(car.imageNames[1][index]);
+                                if(variant==palette.end())continue;
+                                const auto paint=ReadPngFile(variant->second.string());
+                                if(!Gt4UnionRoofCoatPixels(entry->second,image,paint))throw std::runtime_error("incompatible roof coat palette");
+                            }
+                        }
+                        if(!coatHoles.contains(m.baseColorImage))coatHoles.emplace(m.baseColorImage,ExactModelMask(image,entry->second));
+                        for(size_t i=0;i+2<primitive.indices.size();i+=3) {
+                            const std::array<GltfVertex,3> t{primitive.vertices.at(primitive.indices[i]),primitive.vertices.at(primitive.indices[i+1]),primitive.vertices.at(primitive.indices[i+2])};
+                            if(!Gt4RoofCoatAboveEye(t,scale,offset[1],importedFit.eye[1]))continue;
+                            const auto coloured=GlazingInside(t,coatHoles.at(m.baseColorImage),m.clampU,m.clampV);
+                            for(size_t part=0;part+2<coloured.size();part+=3) {
+                                const auto coat=GlazingOpening({coloured[part],coloured[part+1],coloured[part+2]});
+                                if(std::abs(coat.normal[1])>=.65f)paintedRoofCoats.push_back(coat);
+                            }
+                        }
+                    }
+                }
+                if(std::getenv("GT2_DEBUG_ROOF"))std::printf("Roof coat pieces %zu\n",paintedRoofCoats.size());
+                const auto roofCoats=[&](const GltfMaterial* material)->const std::vector<ModelGlazingOpening>& {
+                    static const std::vector<ModelGlazingOpening> empty;
+                    return material && material->nativeDepthWrite && !material->alphaBlend && !material->reflection?paintedRoofCoats:empty;
+                };
+                std::map<std::array<int,8>,ModelWindowHoles> capHoles;
+                const auto clipBlackCapUnprotected=[&](std::span<const GltfVertex> triangle,size_t image,const GltfMaterial& material,std::span<const ModelClipVolume> volumes) {
+                    const auto& img=mesh.images[image];const auto& mask=capCoverage(image,material);
+                    if(Gt4CapOpaqueFootprint(triangle,img,mask,material.clampU,material.clampV))return SubtractModelVolumes(triangle,volumes);
+                    const std::array<int,8> key{int(image),material.nativeAlphaFunc,material.nativeAlphaRef,material.nativeTextureFunction,material.nativeAlphaFail,int(material.clampU),int(material.clampV),int(Gt4CapNativeOpaqueAlpha(&material))};
+                    auto found=capHoles.find(key);
+                    if(found==capHoles.end())found=capHoles.emplace(key,Gt4CapCoverageHoles(img,mask,material.clampU,material.clampV)).first;
+                    return Gt4CutPartlyBlackCap(triangle,found->second,material.clampU,material.clampV,volumes);
+                };
+                const auto clipBlackCap=[&](std::span<const GltfVertex> triangle,size_t image,const GltfMaterial& material,std::span<const ModelClipVolume> volumes) {
+                    return Gt4CutWithRoofBacking(triangle,roofCoats(&material),scale,[&](auto part){return clipBlackCapUnprotected(part,image,material,volumes);});
+                };
                 // A closed authored cabin extends behind the foremost cowl
                 // station, including the door jamb beside the dashboard. The
                 // generated inset cowl's side corners are not its outer wall.
@@ -2167,13 +2486,28 @@ private:
                         // The same positions with a different strip order can
                         // rasterize to different float depth values. Match the
                         // opaque triangle's order for the exact-depth overlay.
-                        const auto& ordered=opaqueSurfaces.at(surfaceKey(p,i));
+                        const auto& ordered=(seated?seatedOpaqueSurfaces:opaqueSurfaces).at(surfaceKey(p,i));
                         for(size_t k=0;k<3;++k)for(size_t j=k;j<3;++j)
                             if(points.at(indices[i+j]).position==ordered[k]) {std::swap(indices[i+k],indices[i+j]);break;}
                     }
                     if(seated && mat && mat->exteriorOnly)continue;
+                    if(!sourceFurniture.empty()) {
+                        const auto& removed=sourceFurniture[size_t(&p-mesh.primitives.data())];
+                        size_t write=0;
+                        for(size_t i=0;i+2<indices.size();i+=3) {
+                            const std::array<GltfVertex,3> triangle{points.at(indices[i]),points.at(indices[i+1]),points.at(indices[i+2])};
+                            // Detached old seats may be discarded; an original
+                            // exposed physical panel cannot become furniture
+                            // merely because the fitted cabin encloses it.
+                            if(!removed[i/3] || inheritsPhysicalSource(triangle,p.material))
+                                for(size_t j=0;j<3;++j)indices[write++]=indices[i+j];
+                        }
+                        indices.resize(write);
+                    }
                     const int image=mat?mat->baseColorImage:-1;
                     const bool textured=p.hasUvs && image>=0 && size_t(image)<mesh.images.size();
+                    if(!feedbackLegacy && seated && !car.nativeInterior && IsCabinMirror(p,mat,
+                       textured?&mesh.images[size_t(image)]:nullptr,scale,offset,importedFit))continue;
                     // rearView is a texture-level import hint, not a surface ID:
                     // GT4 can reuse that texture on the floor and seats. Validate
                     // every draw geometrically, including explicitly tagged ones.
@@ -2236,6 +2570,11 @@ private:
                             if (rgba[i+3] && (rgba[i]>32 || rgba[i+1]>32 || rgba[i+2]>32))blackMaskFrame=false;
                         }
                     }
+                    const bool structuralMask=!car.nativeInterior && textured && mat &&
+                        ModelHasStructuralWindowFrame(mesh.images[size_t(image)],*mat);
+                    const bool ownCoverage=structuralMask && ModelStructuralCoverageMask(mesh.images[size_t(image)]);
+                    const bool discreteBlackMask=!car.nativeInterior && textured &&
+                        ModelStructuralBlackMask(mesh.images[size_t(image)]);
                     // A dark texture does not prove that a surface is wheel
                     // backing: sills, bumpers and closed cabin caps use it too.
                     // Preserve authored wheel arches in both exterior and
@@ -2246,6 +2585,21 @@ private:
                     // from outside. Our seated hull replaces those caps.
                     // Keep black closure outside the seating volume: removing the
                     // whole material exposes lamp housings through the bonnet.
+                    ModelWindowHoles protectedFrameMask,fractionalFrameMask;
+                    if(seated && structuralMask && !ownCoverage && mat->alphaBlend) {
+                        const auto& img=mesh.images[size_t(image)];
+                        std::vector<uint8_t> fractional(img.rgba.size()/4);
+                        for(size_t i=0;i<fractional.size();++i)fractional[i]=img.rgba[i*4+3]>0 && img.rgba[i*4+3]<254;
+                        if(size_t(image)<car.imageNames[1].size())for(const auto& palette:car.paints) {
+                            const auto found=palette.find(car.imageNames[1][size_t(image)]);if(found==palette.end())continue;
+                            const auto variant=ReadPngFile(found->second.string());
+                            if(variant.width!=img.width || variant.height!=img.height){std::fill(fractional.begin(),fractional.end(),0);break;}
+                            for(size_t i=0;i<fractional.size();++i)fractional[i]=uint8_t(fractional[i] && variant.rgba[i*4+3]>0 && variant.rgba[i*4+3]<254);
+                        }
+                        fractionalFrameMask=ExactModelMask(img,fractional);
+                        for(auto& bit:fractional)bit=uint8_t(!bit);
+                        protectedFrameMask=ExactModelMask(img,fractional);
+                    }
                     const size_t auditSourceCount=indices.size();
                     if (seated && !car.nativeInterior && !rearView) {
                         const auto& f=importedFit;
@@ -2264,33 +2618,186 @@ private:
                             // Preserve structural diffuse geometry, not an
                             // untextured environment carrier whose inner cap
                             // or pane has been removed from this seating cell.
-                            if(f.authoredUpperShell && !blackInterior && !alphaBlend && !(mat && mat->reflection)) {
+                            if(f.authoredUpperShell && (!feedbackLegacy || !blackInterior) && (!alphaBlend || structuralMask) && !(mat && mat->reflection)) {
                                 const float frontY=std::min(a[1],b[1]);
                                 const float rearY=std::min(f.rearCowl[0][1],f.rearCowl[1][1]);
                                 const float rise=(rearY-frontY)/std::max(.1f,back-std::min(a[2],b[2]));
                                 planes.insert(planes.begin(),{0,1,-rise,frontY-rise*std::min(a[2],b[2])});
+                                // The front/rear cowl chord can rise above the actual
+                                // side-window belt and amputate a real pillar base.
+                                // This broad seating cut stays below every measured
+                                // belt station. The subsequent side-profile volumes
+                                // handle the higher door region locally.
+                                if(f.sideSillValid) {
+                                    float lowestBelt=std::numeric_limits<float>::infinity();
+                                    for(const auto& side:f.sideSill)for(const auto& q:side)lowestBelt=std::min(lowestBelt,q[1]);
+                                    planes.push_back({0,1,0,lowestBelt});
+                                }
                             }
                             for(auto& plane:planes)plane[3]=(plane[3]-plane[0]*offset[0]-plane[1]*offset[1]-plane[2]*offset[2])/scale;
                             volumes.push_back(std::move(planes));
                         }
+                        // The exterior LOD also contains a dashboard and wheel
+                        // impostor above the belt line. Remove only the inset
+                        // passenger volume there; black A-pillars on the shell
+                        // must survive just like painted structural surfaces.
+                        if(!feedbackLegacy && f.authoredUpperShell && !alphaBlend && !(mat && mat->reflection)) {
+                            const float low=f.floorY;
+                            const float frontHigh=std::min(f.frontHeader[0][1],f.frontHeader[1][1]);
+                            const float rearHigh=std::min(f.rearHeader[0][1],f.rearHeader[1][1]);
+                            const float high=(rearHigh>f.floorY+.2f?std::min(frontHigh,rearHigh):frontHigh)-.06f;
+                            // Use the narrowest authored header span. A fixed half-body
+                            // lane leaves seat-card shoulders floating beside the driver.
+                            const float left=std::max(f.frontHeader[0][0],f.rearHeader[0][0])+.045f;
+                            const float right=std::min(f.frontHeader[1][0],f.rearHeader[1][0])-.045f;
+                            if(high>low && right>left)for(size_t strip=1;strip<f.cowl.size();++strip) {
+                                const auto& a=f.cowl[strip-1];const auto& b=f.cowl[strip];
+                                const float slope=(b[2]-a[2])/std::max(.001f,b[0]-a[0]);
+                                ModelClipVolume planes{{1,0,0,std::min(b[0],right)},{-1,0,0,-std::max(a[0],left)},
+                                    {0,-1,0,-low},{0,1,0,high},{slope,0,-1,slope*a[0]-a[2]-.005f},{0,0,1,back}};
+                                // The upper replacement volume starts behind
+                                // the sloping windscreen, not a vertical wall
+                                // through its lower cowl. Otherwise an original
+                                // black sunstrip backing is cut below the header.
+                                Gt4AppendWindscreenGuard(planes,f,{(a[0]+b[0])*.5f,(a[1]+b[1])*.5f,(a[2]+b[2])*.5f});
+                                for(auto& plane:planes)plane[3]=(plane[3]-plane[0]*offset[0]-plane[1]*offset[1]-plane[2]*offset[2])/scale;
+                                volumes.push_back(std::move(planes));
+                            }
+                        }
+                        // Broad horizontal cabin caps can be joined to the
+                        // exterior shell, so detached-furniture classification
+                        // cannot remove them. Their side wings extend beyond
+                        // the inset cowl. Replace only caps that span into the
+                        // passenger lane; narrow door shoulders and vertical
+                        // pillars remain source structure. The header, curved
+                        // cowl and rear boundary protect the roof and body.
+                        std::vector<ModelClipVolume> capVolumes,lowerCabinVolumes,sideShelfVolumes;
+                        if(!feedbackLegacy && !car.openTop && f.authoredUpperShell && !alphaBlend &&
+                           mat && (textured || mat->baseColorImage<0) && mat->nativeGt4Type>=0 && !mat->reflection && !mat->cockpitControl) {
+                            capVolumes=Gt4CabinCapVolumes(f,scale,offset);
+                        }
+                        // A blended atlas can contain opaque old door cards.
+                        // Eligibility is decided by each retained UV footprint,
+                        // including all paints, not by the whole draw's blend bit.
+                        if(!feedbackLegacy && mat && (textured || mat->baseColorImage<0) && mat->nativeGt4Type>=0 &&
+                           !mat->reflection && !mat->cockpitControl && mat->wheelAttachment<0) {
+                            lowerCabinVolumes=Gt4LowerCabinVolumes(f,scale,offset);
+                            const auto upperCabinVolumes=Gt4UpperCabinVolumes(f,scale,offset);
+                            lowerCabinVolumes.insert(lowerCabinVolumes.end(),upperCabinVolumes.begin(),upperCabinVolumes.end());
+                            sideShelfVolumes=Gt4LowerCabinVolumes(f,scale,offset,true);
+                            sideShelfVolumes.insert(sideShelfVolumes.begin(),lowerCabinVolumes.begin(),lowerCabinVolumes.end());
+                        }
                         std::vector<GltfVertex> clipped;
                         for(size_t i=0;i+2<indices.size();i+=3){
                             const std::array<GltfVertex,3> t{points.at(indices[i]),points.at(indices[i+1]),points.at(indices[i+2])};
-                            const auto pieces=SubtractModelVolumes(t,volumes);
+                            // Axis visibility through source openings is not proof that furniture
+                            // inside the passenger cell is exterior. Restrict the override to
+                            // panels wholly outside that cell; existing detailed cabin cuts
+                            // still preserve the window frames inside these coarse bounds.
+                            unsigned outside=63;
+                            const float rearBoundary=std::min(f.rearHeader[0][2],f.rearHeader[1][2]);
+                            const float roofBoundary=std::min(f.frontHeader[0][1],f.frontHeader[1][1]);
+                            const float leftBoundary=std::min(f.frontCowl[0][0],f.rearCowl[0][0]);
+                            const float rightBoundary=std::max(f.frontCowl[1][0],f.rearCowl[1][0]);
+                            for(const auto& vertex:t){
+                                const float x=vertex.position[0]*scale+offset[0],y=vertex.position[1]*scale+offset[1],z=vertex.position[2]*scale+offset[2];
+                                unsigned side=0;
+                                if(z<=cockpit_detail::CowlZAt(f,x))side|=1;
+                                if(z>=rearBoundary)side|=2;
+                                if(x<=leftBoundary)side|=4;
+                                if(x>=rightBoundary)side|=8;
+                                if(y>=roofBoundary)side|=16;
+                                if(y<=f.floorY)side|=32;
+                                outside&=side;
+                            }
+                            const bool exteriorWitness=exteriorSurface && exteriorSurface->Preserve(t);
+                            // A sloping authored ceiling can lie below the estimated header.
+                            // It is enclosure above the seated eye, not a horizontal
+                            // dashboard/shelf. Preserve its real shape; subsequent
+                            // authored glazing cuts still open any actual roof glass.
+                            const auto roofPlane=GlazingOpening(t);
+                            const bool roofClosure=!f.openTop && f.authoredUpperShell &&
+                                std::abs(roofPlane.normal[1])>=.65f &&
+                                std::all_of(t.begin(),t.end(),[&](const auto& vertex){return vertex.position[1]*scale+offset[1]>=f.eye[1]+.05f;});
+                            const bool protectedExterior=(outside && exteriorWitness) || roofClosure;
+                            // A source triangle can cross the passenger boundary. Preserve
+                            // its outside portion, not merely triangles wholly outside.
+                            auto passengerCuts=[&](const std::vector<ModelClipVolume>& original){
+                                auto result=original;if(!exteriorWitness || protectedExterior)return result;
+                                float frontBoundary=f.cowl[0][2];for(const auto& point:f.cowl)frontBoundary=std::min(frontBoundary,point[2]);
+                                float beltBoundary=f.cowl[0][1];for(const auto& point:f.cowl)beltBoundary=std::min(beltBoundary,point[1]);
+                                ModelClipVolume bounds{{1,0,0,rightBoundary},{-1,0,0,-leftBoundary},
+                                    {0,1,0,blackInterior?roofBoundary:std::min(roofBoundary,beltBoundary)},{0,-1,0,-f.floorY},{0,0,1,rearBoundary},{0,0,-1,-frontBoundary}};
+                                for(auto& plane:bounds)plane[3]=(plane[3]-plane[0]*offset[0]-plane[1]*offset[1]-plane[2]*offset[2])/scale;
+                                for(auto& volume:result)volume.insert(volume.end(),bounds.begin(),bounds.end());
+                                return result;
+                            };
+                            const auto initialCuts=passengerCuts(volumes);
+                            const auto limitedCaps=passengerCuts(capVolumes);
+                            const bool spansCabin=!protectedExterior && !capVolumes.empty() && Gt4CapSpansPassenger(t,f,scale,offset);
+                            auto pieces=Gt4CutWithRoofBacking(t,roofCoats(mat),scale,[&](auto part){return protectedExterior?std::vector<GltfVertex>(part.begin(),part.end()):SubtractModelVolumes(part,initialCuts);});
+                            // An atlas can contain the dashboard in the central portion
+                            // already removed above, and black closure in its side wings.
+                            // Classify each surviving UV footprint, retaining the original
+                            // triangle's span evidence so clipping cannot turn a cap into
+                            // an apparently narrow structural shoulder.
+                            const auto beforeCaps=std::getenv("GT2_AUDIT_COCKPIT")?pieces:std::vector<GltfVertex>{};
+                            if(spansCabin) {
+                                std::vector<GltfVertex> remaining;
+                                for(size_t part=0;part+2<pieces.size();part+=3) {
+                                    const auto fragment=std::span<const GltfVertex>(pieces).subspan(part,3);
+                                    const auto retained=textured?clipBlackCap(fragment,size_t(image),*mat,limitedCaps):
+                                        Gt4UntexturedBlackCap(fragment,*mat)?SubtractModelVolumes(fragment,limitedCaps):std::vector<GltfVertex>(fragment.begin(),fragment.end());
+                                    remaining.insert(remaining.end(),retained.begin(),retained.end());
+                                }
+                                pieces=std::move(remaining);
+                            }
+                            const auto localLowerCuts=passengerCuts(Gt4HorizontalSideShelf(t)?sideShelfVolumes:lowerCabinVolumes);
+                            if(!protectedExterior && !localLowerCuts.empty()) {
+                                std::vector<GltfVertex> remaining;
+                                for(size_t part=0;part+2<pieces.size();part+=3) {
+                                    const auto fragment=std::span<const GltfVertex>(pieces).subspan(part,3);
+                                    const auto retained=textured?clipBlackCap(fragment,size_t(image),*mat,localLowerCuts):
+                                        Gt4UntexturedBlackCap(fragment,*mat)?SubtractModelVolumes(fragment,localLowerCuts):std::vector<GltfVertex>(fragment.begin(),fragment.end());
+                                    remaining.insert(remaining.end(),retained.begin(),retained.end());
+                                }
+                                pieces=std::move(remaining);
+                            }
                             if(std::getenv("GT2_AUDIT_COCKPIT") && !blackInterior && !alphaBlend && !(mat && mat->reflection)) {
-                                // Independent preservation witness: all geometry above
-                                // the highest belt-line corner must survive furniture
-                                // removal. Glazing is tested separately, after this stage.
+                                // Preserve the upper shell, not seat backs and
+                                // dashboard impostors inside the passenger cell.
+                                // The protected band extends 1 cm inward of the
+                                // furniture cut; the roof remains protected too.
                                 float highest=std::max(f.rearCowl[0][1],f.rearCowl[1][1]);
                                 for(const auto& station:f.cowl)highest=std::max(highest,station[1]);
                                 const float y=(highest+.02f-offset[1])/scale;
-                                const std::array<ModelClipVolume,1> lower{{{{0,1,0,y}}}};
+                                std::vector<ModelClipVolume> lower{{{0,1,0,y}}};
+                                if(f.authoredUpperShell) {
+                                    const float left=std::max(f.frontHeader[0][0],f.rearHeader[0][0])+.035f;
+                                    const float right=std::min(f.frontHeader[1][0],f.rearHeader[1][0])-.035f;
+                                    const float top=std::min(f.frontHeader[0][1],f.frontHeader[1][1])-.05f;
+                                    lower.push_back({{1,0,0,(right-offset[0])/scale},{-1,0,0,(-left+offset[0])/scale},
+                                                     {0,1,0,(top-offset[1])/scale}});
+                                }
                                 auto upperArea=[&](std::span<const GltfVertex> triangles){double sum=0;
                                     for(size_t j=0;j+2<triangles.size();j+=3){const auto upper=SubtractModelVolumes(triangles.subspan(j,3),lower);
                                         for(size_t k=0;k+2<upper.size();k+=3)sum+=triangleArea(upper[k],upper[k+1],upper[k+2]);}
                                     return sum;
                                 };
-                                state.upperFrameCutArea+=std::max(0.,upperArea(t)-upperArea(pieces))*double(scale)*scale;
+                                // This counter protects the original upper-frame cut.
+                                // Replacement of proved black horizontal LOD caps is
+                                // evaluated separately by source colour/depth captures.
+                                // Keep roof closure protected even during that replacement.
+                                const double frameLoss=std::max(0.,upperArea(t)-upperArea(beforeCaps));
+                                const float roofGuard=(std::min(f.frontHeader[0][1],f.frontHeader[1][1])-.025f-offset[1])/scale;
+                                const std::vector<ModelClipVolume> belowRoof{{{0,1,0,roofGuard}}};
+                                auto roofArea=[&](std::span<const GltfVertex> triangles){double sum=0;
+                                    for(size_t j=0;j+2<triangles.size();j+=3){const auto roof=SubtractModelVolumes(triangles.subspan(j,3),belowRoof);
+                                        for(size_t k=0;k+2<roof.size();k+=3)sum+=triangleArea(roof[k],roof[k+1],roof[k+2]);}
+                                    return sum;
+                                };
+                                const double roofLoss=spansCabin?std::max(0.,roofArea(beforeCaps)-roofArea(pieces)):0.;
+                                state.upperFrameCutArea+=(frameLoss+roofLoss)*double(scale)*scale;
                             }
                             clipped.insert(clipped.end(),pieces.begin(),pieces.end());
                         }
@@ -2307,14 +2814,16 @@ private:
                         points=std::move(clear);indices.resize(points.size());
                         for(size_t i=0;i<indices.size();++i)indices[i]=uint32_t(i);
                     }
-                    if(seated && !rearView && textured && mat && mat->alphaBlend && !mat->nativeDepthWrite &&
+                    if(seated && !rearView && textured && mat && mat->alphaBlend &&
                        !neutralEdges[size_t(image)].empty()) {
                         std::vector<GltfVertex> clipped;
                         for(size_t i=0;i+2<indices.size();i+=3){
                             const std::array<GltfVertex,3> triangle{points.at(indices[i]),points.at(indices[i+1]),points.at(indices[i+2])};
                             const auto plane=GlazingOpening(triangle);
                             std::vector<ModelGlazingOpening> own;
-                            if(IsWindowLayerNormal(plane.normal)){
+                            const float roofEdge=std::min({importedFit.frontHeader[0][1],importedFit.frontHeader[1][1],importedFit.rearHeader[0][1],importedFit.rearHeader[1][1]})-.025f;
+                            const bool roofPane=std::all_of(triangle.begin(),triangle.end(),[&](const auto& v){return v.position[1]*scale+offset[1]>=roofEdge;});
+                            if(IsWindowLayerNormal(plane.normal) || roofPane){
                                 const auto inside=GlazingInside(triangle,neutralEdges[size_t(image)],mat->clampU,mat->clampV);
                                 for(size_t j=0;j+2<inside.size();j+=3){
                                     std::array<float,3> center{};
@@ -2344,9 +2853,28 @@ private:
                             // A transparent diffuse aperture also clears its
                             // coplanar tint layer, including horizontal glass
                             // roofs. Keep the opaque frame itself untouched.
-                            const bool overlay=mat && (mat->reflection || mat->alphaBlend);
+                            // A binary black side mask is structural frame,
+                            // even when the original GS draw enables blending.
+                            // A neighbouring curved glass layer must not shave
+                            // its B-pillar down to an isolated rectangular stub.
+                            const bool overlay=mat && (mat->reflection || (mat->alphaBlend && !structuralMask));
                             const bool masksApertures=mat && (mat->reflection || (car.nativeInterior && mat->alphaBlend));
-                            const auto pieces=CutGlazingLayers(t,glazing,overlay?.025f:.003f,masksApertures);open.insert(open.end(),pieces.begin(),pieces.end());
+                            // Native interiors already supply their solid trim. A nearby
+                            // window prism must not shave opaque door/pillar material
+                            // that has no glass texels of its own. Mixed window
+                            // textures still receive their original UV aperture cuts.
+                            const bool nativeSolid=car.nativeInterior && mat &&
+                                !mat->alphaBlend && !mat->reflection &&
+                                (!textured || windowHoles[size_t(image)].empty());
+                            const auto pieces=(ownCoverage || nativeSolid)?std::vector<GltfVertex>(t.begin(),t.end()):
+                                Gt4CutWithRoofBacking(t,roofCoats(mat),scale,[&](auto part){return CutGlazingLayers(part,glazing,overlay?.025f:.003f,masksApertures,structuralMask?p.material:-1);});
+                            if(!fractionalFrameMask.empty()) {
+                                for(size_t part=0;part+2<pieces.size();part+=3) {
+                                    const auto kept=CutFrameGlassLayers(std::span<const GltfVertex>(pieces).subspan(part,3),glazing,
+                                        protectedFrameMask,fractionalFrameMask,mat->clampU,mat->clampV);
+                                    open.insert(open.end(),kept.begin(),kept.end());
+                                }
+                            } else open.insert(open.end(),pieces.begin(),pieces.end());
                         }
                         points=std::move(open);indices.resize(points.size());for(size_t i=0;i<indices.size();++i)indices[i]=uint32_t(i);
                         const size_t auditGlazingCount=indices.size();
@@ -2360,7 +2888,12 @@ private:
                         std::vector<GltfVertex> split;
                         for(size_t i=0;i+2<indices.size();i+=3) {
                             const std::array<GltfVertex,3> triangle{points.at(indices[i]),points.at(indices[i+1]),points.at(indices[i+2])};
-                            const auto pieces=SplitModelCowl(triangle,lightingCowl,scale,offset);
+                            // An authored open cockpit receives no generated inner lining.
+                            // Keep its original shared edges: unnecessary cowl splits
+                            // introduce T-junctions into otherwise watertight trim.
+                            const auto pieces=car.nativeInterior && car.openTop?
+                                std::vector<GltfVertex>(triangle.begin(),triangle.end()):
+                                SplitModelCowl(triangle,lightingCowl,scale,offset);
                             split.insert(split.end(),pieces.begin(),pieces.end());
                         }
                         points=std::move(split);indices.resize(points.size());
@@ -2373,9 +2906,118 @@ private:
                     // cowl closure from discarded interior furniture.
                     if(!seated && &mesh!=&car.reflections)for(size_t i=0;i+2<indices.size();i+=3)
                         loadedArea+=triangleArea(points.at(indices[i]),points.at(indices[i+1]),points.at(indices[i+2]));
+                    // Headliner support is physical UV coverage, not the entire
+                    // carrier triangle. Never turn a texture's transparent window
+                    // islands into opaque generated roof patches.
+                    if(seated && !car.nativeInterior && !car.openTop && mat &&
+                       mat->nativeGt4Type>=0 && mat->nativeDepthWrite && !mat->reflection && mat->wheelAttachment<0) {
+                        for(size_t at=0;at+2<indices.size();at+=3){
+                            const std::array<GltfVertex,3> triangle{points.at(indices[at]),points.at(indices[at+1]),points.at(indices[at+2])};
+                            HeadlinerTriangle world{};for(size_t j=0;j<3;++j)for(size_t k=0;k<3;++k)world[j][k]=triangle[j].position[k]*scale+offset[k];
+                            if(std::any_of(world.begin(),world.end(),[&](const auto& q){return q[1]<=importedFit.eye[1]+.05f;}))continue;
+                            std::array<float,3> a{},b{};for(size_t k=0;k<3;++k){a[k]=world[1][k]-world[0][k];b[k]=world[2][k]-world[0][k];}
+                            const std::array<float,3> n{a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]};
+                            const float length=std::sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);if(length<1e-9f || std::abs(n[1])<length*.65f)continue;
+                            if(!textured){if(!exteriorSurface || exteriorSurface->Preserve(triangle))roofSupport.push_back(world);continue;}
+                            auto found=roofCoverage.find(p.material);
+                            if(found==roofCoverage.end()){
+                                const auto& img=mesh.images.at(size_t(image));std::vector<uint8_t> mask(img.rgba.size()/4);
+                                for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=img.rgba[pixel*4+3]!=0;
+                                if(size_t(image)<car.imageNames[1].size())for(const auto& paint:car.paints){
+                                    const auto entry=paint.find(car.imageNames[1][size_t(image)]);if(entry==paint.end())continue;
+                                    const auto other=ReadPngFile(entry->second.string());
+                                    if(other.width!=img.width || other.height!=img.height){std::fill(mask.begin(),mask.end(),uint8_t(0));break;}
+                                    for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=uint8_t(mask[pixel] && other.rgba[pixel*4+3]!=0);
+                                }
+                                found=roofCoverage.emplace(p.material,Gt4CapCoverageHoles(img,mask,mat->clampU,mat->clampV)).first;
+                            }
+                            const auto covered=GlazingInside(triangle,found->second,mat->clampU,mat->clampV);
+                            for(size_t j=0;j+2<covered.size();j+=3){HeadlinerTriangle t{};
+                                // Old enclosed interior sheets must not pull the
+                                // generated roof below the retained outer shell.
+                                if(exteriorSurface && !exteriorSurface->Preserve(std::span<const GltfVertex>(covered.data()+j,3)))continue;
+                                for(size_t corner=0;corner<3;++corner)for(size_t k=0;k<3;++k)t[corner][k]=covered[j+corner].position[k]*scale+offset[k];
+                                roofSupport.push_back(t);
+                            }
+                        }
+                    }
+                    if(seated && mat && mat->nativeGt4Type>=0) {
+                        if(mat->nativeDepthWrite && !mat->alphaBlend && !mat->reflection) {
+                            // Remember the final tessellation of the last opaque
+                            // writer, in original source-triangle coordinates.
+                            std::vector<std::array<GltfVertex,3>> original;
+                            for(size_t j=0;j+2<p.indices.size();j+=3){
+                                original.push_back({p.vertices.at(p.indices[j]),p.vertices.at(p.indices[j+1]),p.vertices.at(p.indices[j+2])});
+                                seatedSurfaceCuts[surfaceKey(p,j)].clear();
+                            }
+                            bool ancestryComplete=true;
+                            for(size_t j=0;j+2<indices.size();j+=3){
+                                bool matched=false;
+                                std::array<GltfVertex,3> kept{points.at(indices[j]),points.at(indices[j+1]),points.at(indices[j+2])};
+                                if(std::getenv("GT2_AUDIT_INJECT_SURFACE_ANCESTRY"))kept[0].position[0]+=10.f;
+                                // Degenerate strip connectors emit no fragments.
+                                if(triangleArea(kept[0],kept[1],kept[2])==0.)continue;
+                                for(size_t n=0;n<original.size();++n){bool belongs=true;
+                                    const double twiceArea=2.*triangleArea(original[n][0],original[n][1],original[n][2]);
+                                    if(twiceArea==0.)continue;
+                                    const double tolerance=1e-6/std::max(.0001f,scale);
+                                    for(const auto& vertex:kept){const auto weights=barycentric(original[n],vertex.position);
+                                        for(size_t k=0;k<3;++k){double edge2=0;for(size_t a=0;a<3;++a){const double d=double(original[n][(k+1)%3].position[a])-original[n][(k+2)%3].position[a];edge2+=d*d;}
+                                            if(weights[k]*twiceArea < -tolerance*std::sqrt(edge2)){belongs=false;break;}}
+                                        if(!belongs)break;
+                                        double error2=0;for(size_t k=0;k<3;++k){double reconstructed=0;for(size_t q=0;q<3;++q)reconstructed+=weights[q]*original[n][q].position[k];const double error=reconstructed-vertex.position[k];error2+=error*error;}
+                                        if(error2>tolerance*tolerance){belongs=false;break;}
+                                    }
+                                    if(belongs){seatedSurfaceCuts[surfaceKey(p,n*3)].push_back(kept);matched=true;break;}
+                                }
+                                ancestryComplete=ancestryComplete && matched;
+                            }
+                            if(!ancestryComplete) {
+                                // Never silently erase a reflection when a retained
+                                // opaque face cannot be mapped to its source. Keep
+                                // the independent clipped overlay as a safe fallback.
+                                for(size_t j=0;j+2<p.indices.size();j+=3)seatedSurfaceCuts.erase(surfaceKey(p,j));
+                                if(std::getenv("GT2_AUDIT_REQUIRE_SURFACE_ANCESTRY"))throw std::runtime_error("retained surface ancestry missing, material "+std::to_string(p.material));
+                            }
+                        } else if(surfaceReflection) {
+                            // The native environment pass uses EQUAL depth.
+                            // Re-clipping it independently changes float depth
+                            // interpolation and produces stripes. Reuse exact
+                            // retained positions/order; interpolate its own
+                            // native attributes, never the paint attributes.
+                            bool complete=true;std::vector<GltfVertex> paired;
+                            for(size_t j=0;j+2<p.indices.size();j+=3){
+                                const auto found=seatedSurfaceCuts.find(surfaceKey(p,j));
+                                if(found==seatedSurfaceCuts.end()){complete=false;break;}
+                                const std::array<GltfVertex,3> original{p.vertices.at(p.indices[j]),p.vertices.at(p.indices[j+1]),p.vertices.at(p.indices[j+2])};
+                                for(const auto& triangle:found->second)for(const auto& vertex:triangle){
+                                    const auto weights=barycentric(original,vertex.position);GltfVertex q{};q.color.fill(0.f);q.position=vertex.position;
+                                    for(size_t a=0;a<3;++a){
+                                        for(size_t k=0;k<3;++k)q.normal[k]+=float(weights[a]*original[a].normal[k]);
+                                        for(size_t k=0;k<2;++k)q.uv[k]+=float(weights[a]*original[a].uv[k]);
+                                        for(size_t k=0;k<4;++k)q.color[k]+=float(weights[a]*original[a].color[k]);
+                                    }
+                                    paired.push_back(q);
+                                }
+                            }
+                            if(complete){points=std::move(paired);indices.resize(points.size());for(size_t j=0;j<indices.size();++j)indices[j]=uint32_t(j);}
+                        }
+                    }
                     const uint32_t primitiveFirst=uint32_t(vertices.size());
-                    bool interiorSurface=false,cabinSurface=false;
+                    bool interiorSurface=false,cabinSurface=false,physicalBackface=false;
                     for (size_t corner=0;corner<indices.size();++corner) {
+                        if(corner%3==0) {
+                            physicalBackface=false;
+                            // Authored open cabins also need the reverse side
+                            // of their retained physical body. This adds no
+                            // roof, furniture, mirror or replacement geometry.
+                            if(seated && car.nativeInterior && mat && mat->nativeGt4Type>=0 && mat->nativeDepthWrite &&
+                               !mat->reflection && !mat->rearView && !mat->interiorOnly && mat->wheelAttachment<0 && !mat->lampStates && nativePhysicalSurface) {
+                                const std::array<GltfVertex,3> physical{points.at(indices[corner]),points.at(indices[corner+1]),points.at(indices[corner+2])};
+                                physicalBackface=nativePhysicalSurface->Preserve(physical) || inheritsPhysicalSource(physical,p.material);
+                            }
+                        }
+
                         if (seated && (!car.nativeInterior || (!car.openTop && !(mat && mat->interiorOnly))) && corner%3==0) {
                             const auto& fit=importedFit;
                             cabinSurface=true;
@@ -2388,6 +3030,16 @@ private:
                                 // translucent environment pass in a side view.
                                 const float front=closedNativeLining?closedNativeFront:cockpit_detail::CowlZAt(fit,x);
                                 cabinSurface=cabinSurface && z>=front-.025f;
+                            }
+                            // The original physical shell can cross ahead of
+                            // the fitted cowl. Its retained back face still
+                            // occludes the road when viewed from the cabin.
+                            // Keep front-face paint and original alpha holes;
+                            // exclude decorative, wheel and reflection passes.
+                            if(!car.nativeInterior && mat && mat->nativeGt4Type>=0 && mat->nativeDepthWrite &&
+                               !mat->reflection && mat->wheelAttachment<0 && !mat->lampStates && exteriorSurface) {
+                                const std::array<GltfVertex,3> physical{points.at(indices[corner]),points.at(indices[corner+1]),points.at(indices[corner+2])};
+                                cabinSurface=cabinSurface || exteriorSurface->Preserve(physical) || inheritsPhysicalSource(physical,p.material);
                             }
                             std::array<float,3> center{};
                             for (size_t j=0;j<3;++j) for (size_t k=0;k<3;++k)
@@ -2425,6 +3077,15 @@ private:
                         if (seated && (!car.nativeInterior || (!car.openTop && !(mat && mat->interiorOnly))) && cabinSurface) {
                             out.flags |= kCabinLining;
                             if(blackMaskFrame)out.flags|=kCabinSolid;
+                            // These opaque-black binary stencils carry the
+                            // exterior LOD's window/roll-cage silhouettes. A
+                            // boundary UV can have alpha zero at the nearest
+                            // texel but positive bilinear alpha over an entire
+                            // triangle, creating a second opaque pillar. Keep
+                            // their coverage discrete; native painted/glass
+                            // materials retain the original GS alpha semantics.
+                            if(discreteBlackMask && !remnantsLegacy && mat && mat->nativeGt4Type>=0)
+                                out.flags|=kNativeCabinMask;
                         }
                         if(seated && car.nativeInterior) {
                             const auto primitive=size_t(&p-mesh.primitives.data());
@@ -2445,6 +3106,7 @@ private:
                             }
                             if(furniture)out.flags|=kNativeCabin;
                         }
+                        if(physicalBackface)out.flags|=kCabinLining;
                         if (interiorSurface) out.flags |= kCabinSolid;
                         if (seated && std::getenv("GT2_DEBUG_CABIN")) out.flags |= kDebugBackfaces;
                         // Exterior audit: keep authored alpha masks; colour the
@@ -2527,9 +3189,22 @@ private:
                 if(cockpit_detail::TriangleAheadOfCowl(triangle,importedFit.cowl))state.auditBonnetTriangles.push_back(i);
                 if(cockpit_detail::TriangleAheadOfCowl(triangle,importedFit.cowl,-.06f))state.auditSurfaceTriangles.push_back(i);
             }
+            if(std::getenv("GT2_AUDIT_WHEEL_COLOR")) {
+                SourceSurface167 outerEnvelope(car.exterior,scale,glazing);
+                for(uint32_t i=0;i+2<exteriorCount;i+=3) {
+                    std::array<GltfVertex,3> triangle{};
+                    for(size_t j=0;j<3;++j)for(size_t k=0;k<3;++k)
+                        triangle[j].position[k]=(vertices[i+j].pos[k]-offset[k])/scale;
+                    if(outerEnvelope.Preserve(triangle))state.auditOuterTriangles.push_back(i);
+                }
+            }
             if(loadCockpit_)append(car.cockpit, true);
             const auto cockpitCount=uint32_t(vertices.size())-exteriorCount;
             state.cockpitOpaqueCount=partition(exteriorCount);
+            if(!car.nativeInterior && !car.openTop) {
+                FitHeadlinerBelowSource(importedFit,roofSupport);
+            }
+
             for(uint32_t i=exteriorCount;i<exteriorCount+cockpitCount;++i) {
                 const bool alpha=(vertices[i].flags & kModelBlend)!=0,steering=(vertices[i].flags & kNativeSteering)!=0;
                 auto& ranges=state.cabinRanges;
@@ -2606,8 +3281,10 @@ private:
                     // A tiller/grip is still replaced by a usable virtual wheel.
                     state.cockpit.nativeWheel[3]=std::clamp((nativeWheel.hi[0]-nativeWheel.lo[0])*.5f,.14f,.26f)*scale;
                     state.cockpit.eye[0]=state.cockpit.nativeWheel[0];
-                    const float reach=state.cockpit.eye[2]-state.cockpit.nativeWheel[2];
-                    if(reach<.30f*scale || reach>.65f*scale)state.cockpit.eye[2]=state.cockpit.nativeWheel[2]+.45f*scale;
+                    const float eyeOffset=kCockpitDefaultSeatBack-kNativeCockpitEyeForward;
+                    const float reach=state.cockpit.eye[2]+eyeOffset-state.cockpit.nativeWheel[2];
+                    if(reach<.30f*scale || reach>.65f*scale)
+                        state.cockpit.eye[2]=state.cockpit.nativeWheel[2]+.45f*scale-eyeOffset;
                     state.cockpit.speedometer[0]=state.cockpit.nativeWheel[0];
                 }
                 state.cockpit.openTop=car.openTop;

@@ -32,13 +32,13 @@ bash INSTALL-LINUX.sh --verify-only
 
 Use `--runtime "/path/to/writable/folder"` for another staging location, `--adb /path/to/adb` for an existing ADB executable, or `--serial DEVICE` to select one of several authorized devices. `--prepare-only` extracts locally without accessing a Quest.
 
-Automatic ADB and optional capture downloads target **x86_64 Linux**, including Steam Deck. Other architectures need their own ADB; optional BIOS capture also needs a compatible software core and Pillow. Missing Python is reported before installation; use a user-owned Python 3.10+ installation and call `python3 scripts/install-linux.py`, rather than changing the SteamOS system partition.
+Automatic ADB and optional capture downloads target **x86_64 Linux**, including Steam Deck. Other architectures need their own ADB; optional BIOS capture also needs a compatible software core and Pillow. Missing Python is reported before installation; use a locally installed Python 3.10+ and call `python3 scripts/install-linux.py`, rather than changing the SteamOS system partition.
 
 ## Optional startup and HD media
 
 Without a BIOS, both the Arcade and Simulation games work normally and start without the console startup sequence. Existing prepared intros are retained on updates; disable **PlayStation intro** in the VR menu to hide one. No BIOS or pre-recorded console startup is distributed in the release.
 
-When a BIOS is supplied, preparation downloads a separately licensed software Beetle PSX core and, if needed, a pinned Pillow wheel into the user cache. There is no system-wide pip installation. Temporary BIOS copies are deleted after capture, and the BIOS itself is never copied to Quest. The game only receives the captured movie. A firmware/disc pairing that cannot show both complete screens is rejected. A changed upstream core download is rejected by checksum; `--capture-core /path/to/mednafen_psx_libretro.so` accepts a trusted local software core.
+When a BIOS is supplied, preparation downloads a separately licensed software Beetle PSX core and, if needed, a pinned Pillow wheel into the local cache. There is no system-wide pip installation. Temporary BIOS copies are deleted after capture, and the BIOS itself is never copied to Quest. The game only receives the captured movie. A firmware/disc pairing that cannot show both complete screens is rejected. A changed upstream core download is rejected by checksum; `--capture-core /path/to/mednafen_psx_libretro.so` accepts a trusted local software core.
 
 This Linux installer prepares **original game assets** and optional original console startup. The neural HD preparation wizard is Windows-only. If you already have a matching prepared `hd` folder in the runtime, Linux installation transfers it too. This limitation does not affect original textures, texture filtering, mipmaps or standalone VR.
 

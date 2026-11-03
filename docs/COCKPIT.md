@@ -182,3 +182,7 @@ Generated fascia shape has a separate [regression gate](COCKPIT-SHAPE-REGRESSION
 Closed geometry alone does not detect side protrusions caused by fitting the
 windshield to mirrors or side quarter-windows. Run `check_cockpit_shapes.py`
 alongside the window and surface catalogues when changing cockpit fitting.
+
+## 0.9.1 follow-up
+
+This candidate improves the previous release but does not pass every cockpit visual gate. See [the next-release checklist](COCKPIT-NEXT-RELEASE.md) and [remaining model IDs and counters](COCKPIT-REMAINING-0.9.1.json).

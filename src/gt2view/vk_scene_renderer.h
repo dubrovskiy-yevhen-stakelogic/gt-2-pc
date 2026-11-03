@@ -112,6 +112,7 @@ public:
     void SetStereoViews(const StereoViews& views) { stereoViews_ = views; }
     // Records `items` into the stereo target, once for both eyes. `screenshotPath` saves the left eye as PNG.
     std::vector<uint8_t> CaptureStereoForAudit(const std::vector<DrawItem>& items,size_t sceneItems);
+    std::vector<float> CaptureStereoDepthForAudit(const std::vector<DrawItem>& items,size_t sceneItems);
     std::vector<SceneVertex> VerticesForAudit(const DrawItem& item) const;
     // Restore/tag already-promoted vertices without remapping atlas coordinates.
     void SetVerticesForAudit(uint32_t first,const std::vector<SceneVertex>& vertices) { WaitFrame();SetVerticesRaw(first,vertices); }
@@ -245,6 +246,7 @@ private:
     std::array<std::vector<uint8_t>,3> nativeEnvironmentCached_;
     bool recordNativeEnvironment_=false;
     bool auditStereoReadback_=false;
+    bool auditStereoDepthReadback_=false;
     std::array<std::array<float,16>,3> nativeCameraShadow_{};
     bool nativeCameraKnown_=false,nativeCameraActive_=false;
     bool nativeEnvironmentPending_=false,nativeEnvironmentInitialized_=false;

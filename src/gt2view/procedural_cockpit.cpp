@@ -1,5 +1,7 @@
+#include "gt2view/cockpit_backing_fit.h"
 #include "gt2view/procedural_cockpit.h"
 #include "gt2view/cockpit_materials.h"
+#include "gt2view/cockpit_lining_clip.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -12,7 +14,9 @@
 namespace gt2view {
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
-constexpr uint32_t kCabinLimit = 32768;
+// The renderer already reserves 49152 vertices for the complete cockpit.
+// Give the cabin the unused 8192 slots without growing the GPU allocation.
+constexpr uint32_t kCabinLimit = SceneRenderer::kCockpitVertexLimit - 4096 - 4000 - 96;
 constexpr uint32_t kWheelOffset = kCabinLimit, kWheelLimit = 4096;
 constexpr uint32_t kInstrumentOffset = kWheelOffset + kWheelLimit, kInstrumentLimit = 4000;
 constexpr uint32_t kMirrorOffset = kInstrumentOffset + kInstrumentLimit, kMirrorLimit = 96;
@@ -57,6 +61,13 @@ public:
     }
     void Quad(V a, V b, V c, V d, V color, bool shade = true) {
         Triangle(a,b,c,color,shade); Triangle(a,c,d,color,shade);
+    }
+    void ClipToWindows(size_t start,const CockpitFit& fit) {
+        if(fit.nativeInterior || fit.liningApertures.empty())return;
+        auto seatedEye=fit.eye;seatedEye[2]+=kCockpitDefaultSeatBack-(fit.nativeInterior?kNativeCockpitEyeForward:kGeneratedCockpitEyeForward);
+        const std::array<std::array<float,3>,1> eyes{seatedEye};
+        auto clipped=ClipCockpitLining(std::span<const SceneVertex>(vertices).subspan(start),fit.liningApertures,eyes);
+        vertices.resize(start);vertices.insert(vertices.end(),clipped.begin(),clipped.end());
     }
     void ClipToCowl(size_t start,const CockpitFit& fit,bool boundWidth=true) {
         const std::vector<SceneVertex> original(vertices.begin()+start,vertices.end());
@@ -298,9 +309,9 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     Mesh cabin;
     cabin.vertices.reserve(18000);
     const float eyeX=fit.eye[0], eyeY=fit.eye[1], eyeZ=fit.eye[2];
-    // Body minima and axle heights are not a seating reference. Keep room for
-    // an adult cushion and let a lowered seat lower its interior footwell too.
-    const float floor=std::min(fit.floorY+.035f,eyeY+std::min(0.f,seatOffset_[0])-.90f);
+    // Seating adjustments cannot move the cabin floor through the body.
+    // Low sports bodies require shorter furniture, not a deeper exterior hull.
+    const float floor=fit.floorY+.005f;
     const float dashFront=fit.windshieldZ+.020f;
     const float cowlY=fit.windshieldY-.025f;
     const float fasciaTop=std::min(cowlY-.035f,eyeY-.255f);
@@ -308,17 +319,33 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     // Closed backing below the window perimeter. Dashboard/door details sit
     // inside it; every wall shares its bottom edge with the floor, so curved
     // cowl corners cannot expose the road through a gap between trim pieces.
+    const std::array backingSides{FinalCockpitBackingSide(fit,0),FinalCockpitBackingSide(fit,1)};
     std::vector<V> perimeter;
     for (const auto& p:fit.cowl) perimeter.push_back({p[0],p[1],p[2]});
-    for (size_t i=1;i<17;++i) {
+    if(!backingSides[1].empty()) {
+        for(size_t i=0;i<backingSides[1].size();++i) {
+            const auto& q=backingSides[1][i];perimeter.push_back({q[0],q[1],q[2]});
+        }
+    } else for (size_t i=1;i<17;++i) {
         const float z=fit.frontCowl[1][2]+(fit.rearCowl[1][2]-fit.frontCowl[1][2])*float(i)/16.f;
         const auto p=CockpitSideSillAt(fit,1,z); perimeter.push_back({p[0],p[1],p[2]});
     }
-    perimeter.push_back({fit.rearCowl[0][0],fit.rearCowl[0][1],fit.rearCowl[0][2]});
-    for (int i=15;i>=0;--i) {
+    // The closed backing must use the same authored lower rear-glass curve
+    // as the visible trim; a straight chord between high corners blocks it.
+    if(fit.rearCowlProfileValid)for(size_t i=fit.rearCowlProfile.size()-1;i>0;--i){
+        const auto& p=fit.rearCowlProfile[i-1];perimeter.push_back({p[0],p[1],p[2]});
+    } else perimeter.push_back({fit.rearCowl[0][0],fit.rearCowl[0][1],fit.rearCowl[0][2]});
+    if(!backingSides[0].empty()) {
+        for(size_t i=backingSides[0].size();i>0;--i) {
+            const auto& q=backingSides[0][i-1];perimeter.push_back({q[0],q[1],q[2]});
+        }
+    } else for (int i=15;i>=0;--i) {
         const float z=fit.frontCowl[0][2]+(fit.rearCowl[0][2]-fit.frontCowl[0][2])*float(i)/16.f;
         const auto p=CockpitSideSillAt(fit,0,z); perimeter.push_back({p[0],p[1],p[2]});
     }
+    std::vector<std::array<float,3>> backingOutline;for(const auto& q:perimeter)backingOutline.push_back({q.x,q.y,q.z});
+    backingOutline=FitBackingGlazingFootprint(fit,backingOutline);
+    perimeter.clear();for(const auto& q:backingOutline)perimeter.push_back({q[0],q[1],q[2]});
     const V floorCenter{0,floor-.005f,(fit.windshieldZ+fit.rearWindowZ)*.5f};
     for (size_t i=0;i<perimeter.size();++i) {
         const V a=perimeter[i],b=perimeter[(i+1)%perimeter.size()];
@@ -326,6 +353,7 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         cabin.Quad(lowA,lowB,b,a,kDash);
         cabin.Triangle(floorCenter,lowB,lowA,kBlack);
     }
+    // The enclosure remains watertight; trim clipping must not perforate the backing.
     backingCount_=uint32_t(cabin.vertices.size());
     // Closed, rounded wheel housings. Tyres remain visible outside the car,
     // while their inboard halves are enclosed instead of intersecting the cabin.
@@ -367,6 +395,7 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     // The generated firewall closes the front of the seating volume. Do not
     // extend its lining over the visible bonnet of low sports prototypes.
     cabin.ClipToCowl(wheelWellFirst_,fit);
+    // Wheel housings are closed safety geometry, not window trim.
     wheelWellCount_=uint32_t(cabin.vertices.size())-wheelWellFirst_;
     if(std::getenv("GT2_AUDIT_COCKPIT"))auditWheelLiners_.assign(cabin.vertices.begin()+wheelWellFirst_,cabin.vertices.end());
     auto outerSide=[&](size_t side,float z) {
@@ -394,9 +423,43 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         }
         return frontMiddle;
     };
-    const float podLeft=eyeX-.181f,podRight=eyeX+.181f;
+    // Fit the instrument cluster into the actual swept cowl footprint at
+    // the existing working distance; do not push the whole cluster past the driver.
+    // Recover width using available depth as well as scale. Keep the steering
+    // hub (panel + 0.29 m) at least 0.10 m in front of the eye plane.
+    const float panelZ=eyeZ-.39f, boundaryZ=panelZ-.08f;
+    float spanLeft=eyeX,spanRight=eyeX;
+    for(size_t i=1;i<fit.cowl.size();++i){
+        const auto& a=fit.cowl[i-1];const auto& b=fit.cowl[i];
+        float lo=a[0],hi=b[0];
+        if(a[2]>boundaryZ && b[2]>boundaryZ)continue;
+        if((a[2]>boundaryZ)!=(b[2]>boundaryZ)){
+            const float x=a[0]+(b[0]-a[0])*(boundaryZ-a[2])/(b[2]-a[2]);
+            if(a[2]>boundaryZ)lo=x;else hi=x;
+        }
+        spanLeft=std::min(spanLeft,lo);spanRight=std::max(spanRight,hi);
+    }
+    const float originalDashBack=std::max({dashFront+.12f,eyeZ-.52f,
+        cowlAt(eyeX-.196f).z+.06f,cowlAt(eyeX+.196f).z+.06f});
+    // Preserve a working full-size layout. Only recover a swept cowl that
+    // would place the steering hub at or behind the driver's eye plane.
+    const bool recoverControls=originalDashBack+.29f>=eyeZ;
+    float controlX=eyeX;
+    if(recoverControls) {
+        // Keep at least half-size round gauges where the cowl permits it,
+        // using at most 10 cm lateral offset instead of shrinking to pinheads.
+        const float left=std::max(spanLeft+.098f,eyeX-.10f);
+        const float right=std::min(spanRight-.098f,eyeX+.10f);
+        if(left<=right)controlX=std::clamp(eyeX,left,right);
+    }
+    instrumentScale_=recoverControls?std::clamp(std::min(controlX-spanLeft,spanRight-controlX)/.196f,.25f,1.f):1.f;
+    const float podLeft=controlX-.181f*instrumentScale_,podRight=controlX+.181f*instrumentScale_;
+    const auto scaleInstruments=[&](auto& vertices,size_t first,float centreY){
+        for(size_t i=first;i<vertices.size();++i){auto& p=vertices[i].pos;
+            p[0]=controlX+(p[0]-controlX)*instrumentScale_;p[1]=centreY+(p[1]-centreY)*instrumentScale_;}
+    };
     const float dashBack=std::max({dashFront+.12f,eyeZ-.52f,
-                                  cowlAt(podLeft-.015f).z+.06f,cowlAt(podRight+.015f).z+.06f});
+                                  cowlAt(controlX-.196f*instrumentScale_).z+.06f,cowlAt(controlX+.196f*instrumentScale_).z+.06f});
     const float cabinBack=std::min(rear[0].z,rear[1].z);
     const float width=std::max(.32f,std::min(-sidePoint(0,dashBack).x,sidePoint(1,dashBack).x));
     const size_t cowlFirst=cabin.vertices.size();
@@ -428,7 +491,9 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
                        {r[0],r[1],r[2]},{s[0],s[1],s[2]},.025f);
         }
     }
+    cabin.ClipToWindows(cowlFirst,fit);
     if(std::getenv("GT2_AUDIT_COCKPIT"))auditCowl_.assign(cabin.vertices.begin()+cowlFirst,cabin.vertices.end());
+    const size_t deckFirst=cabin.vertices.size();
     const V floorFront{0,floor,dashFront},floorRear{0,floor,cabinBack};
     const V floorLeft{front[0].x,floor,front[0].z},floorRight{front[1].x,floor,front[1].z};
     const V rearLeft{rear[0].x,floor,rear[0].z},rearRight{rear[1].x,floor,rear[1].z};
@@ -443,10 +508,57 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     if(!(std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_LEGACY_COWL"))){
         float backmost=std::max(cowlAt(-width).z,cowlAt(width).z)+.06f;
         for(const auto& p:fit.cowl)if(p[0]>-width && p[0]<width)backmost=std::max(backmost,cowlAt(p[0]).z+.06f);
-        fasciaBase=std::max(fasciaBase,backmost-.18f);
+        fasciaBase=std::max(fasciaBase,(recoverControls?std::min(backmost-.18f,eyeZ-.52f):backmost-.18f));
+    }
+    // The full 154 mm instrument face must clear the physical floor.
+    const float originalDialY=std::max(floor+.090f,std::min(cowlY-.085f,fasciaTop-.045f));
+    float fittedDialY=originalDialY;
+    if(!fit.nativeInterior) {
+        const V view{eyeX,eyeY,eyeZ+.05f};
+        auto linerBlocks=[&](float base,float y) {
+            for(float eyeSide:{-.032f,.032f})for(float dialSide:{-.086f,.086f})
+            for(int iy=-4;iy<=4;++iy)for(int ix=-4;ix<=4;++ix) {
+                if(ix*ix+iy*iy>16)continue;
+                const float x=controlX+(dialSide+float(ix)*.018f)*instrumentScale_;
+                const V origin=view+V{eyeSide,0,0};
+                const V direction=V{x,y+float(iy)*.018f*instrumentScale_,std::max(base,cowlAt(x).z+.06f)+.018f}-origin;
+                for(size_t first=wheelWellFirst_;first+2<wheelWellFirst_+wheelWellCount_;first+=3){
+                    const auto point=[&](size_t i){const auto& p=cabin.vertices[first+i].pos;return V{p[0],p[1],p[2]};};
+                    const V a=point(0),e1=point(1)-a,e2=point(2)-a;
+                    const V p=Cross(direction,e2);const float det=Dot(e1,p);if(std::abs(det)<1e-9f)continue;
+                    const V t=origin-a;const float u=Dot(t,p)/det;if(u<0 || u>1)continue;
+                    const V q=Cross(t,e1);const float v=Dot(direction,q)/det;if(v<0 || u+v>1)continue;
+                    const float distance=Dot(e2,q)/det;if(distance>.001f && distance<1.01f)return true;
+                }
+            }
+            return false;
+        };
+        if(linerBlocks(fasciaBase,originalDialY)) {
+            // Preserve the panel's viewing elevation when bringing it out of
+            // a tyre enclosure. Otherwise a nearer panel drops behind the rim.
+            // Neither the wheel anchor nor the camera is moved by this fit.
+            const float originalBase=fasciaBase;
+            const float distance=std::max(.10f,view.z-(originalBase+.018f));
+            for(int step=1;step<=30;++step){
+                const float base=originalBase+float(step)*.01f;
+                if(base>view.z-.20f)break;
+                const float y=std::min(cowlY-.085f,originalDialY+(base-originalBase)*(view.y-originalDialY)/distance);
+                if(!linerBlocks(base,y)){fasciaBase=base;fittedDialY=y;break;}
+            }
+        }
     }
     auto fasciaAt=[&](float x) {
-        return V{x,fasciaTop,std::max(fasciaBase,cowlAt(x).z+.06f)};
+        const float z=std::max(fasciaBase,cowlAt(x).z+.06f);
+        // Keep the instrument pod and centre controls at their established
+        // height. Outside that span, meet the measured door belt instead of
+        // extending a flat, windscreen-height ledge into low side windows.
+        const float flatLeft=std::min(0.f,podLeft-.015f),flatRight=std::max(0.f,podRight+.015f);
+        const size_t side=x<flatLeft?0:1;
+        const float amount=x<flatLeft?(flatLeft-x)/std::max(.001f,width+flatLeft):
+                           (x>flatRight?(x-flatRight)/std::max(.001f,width-flatRight):0.f);
+        const float belt=sidePoint(side,z).y-.022f;
+        const float y=fasciaTop+std::min(0.f,belt-fasciaTop)*std::clamp(amount,0.f,1.f);
+        return V{x,y,z};
     };
     // Sort because the binnacle may straddle the vehicle centre line.
     std::vector<float> stations(deckX.begin(),deckX.end());
@@ -457,7 +569,19 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     for (size_t i=1;i<stations.size();++i) {
         const float a=stations[i-1],b=stations[i];
         const V backA=fasciaAt(a),backB=fasciaAt(b);
-        const V topA=cowlAt(a),topB=cowlAt(b);
+        auto deckAt=[&](float x) {
+            V point=cowlAt(x);
+            // The front edge of the decorative deck shares the measured
+            // side-window belt constraint. Tapering only its rear edge leaves
+            // a diagonal wedge at the swept outer windscreen corner.
+            const float flatLeft=std::min(0.f,podLeft-.015f),flatRight=std::max(0.f,podRight+.015f);
+            const size_t side=x<flatLeft?0:1;
+            const float amount=x<flatLeft?(flatLeft-x)/std::max(.001f,width+flatLeft):
+                               (x>flatRight?(x-flatRight)/std::max(.001f,width-flatRight):0.f);
+            point.y+=std::min(0.f,sidePoint(side,point.z).y-.022f-point.y)*std::clamp(amount,0.f,1.f);
+            return point;
+        };
+        const V topA=deckAt(a),topB=deckAt(b);
         cabin.Quad(topA,topB,backB,backA,kDashTop);
         cabin.Quad({a,floor,topA.z},{b,floor,topB.z},topB,topA,kBlack);
         cabin.Triangle({a,floor,topA.z},{b,floor,topB.z},floorRear,kBlack);
@@ -479,19 +603,29 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         V door=sidePoint(i,edge.z); door.y-=.022f; door.z=edge.z;
         cabin.Quad({edge.x,floor,edge.z},{door.x,floor,door.z},door,edge,kDash);
     }
+    cabin.ClipToWindows(deckFirst,fit);
     const size_t dashboardDetails=cabin.vertices.size();
-    for (const auto& span : {std::array<float,2>{-width+.04f,eyeX-.20f},
-                             std::array<float,2>{eyeX+.20f,width-.04f}})
+    // Every vent shares the same instrument exclusion, including the centre
+    // pair on narrow dashboards and the opposite side in right-hand cabins.
+    const auto safeVent=[&](float x,float y,float z,float w,float h){
+        const float left=std::max(-width+.02f,x-w*.5f),right=std::min(width-.02f,x+w*.5f);
+        for(const auto span:{std::array<float,2>{left,std::min(right,podLeft-.012f)},
+                             std::array<float,2>{std::max(left,podRight+.012f),right}})
+            if(span[1]-span[0]>=.04f)Vent(cabin,(span[0]+span[1])*.5f,y,z,span[1]-span[0],h);
+    };
+
+    for (const auto& span : {std::array<float,2>{-width+.04f,controlX-.20f},
+                             std::array<float,2>{controlX+.20f,width-.04f}})
         if (span[1]>span[0]) cabin.Box({span[0],dashboard-.078f,dashBack+.001f},
                                      {span[1],dashboard-.065f,dashBack+.008f},kTrim*.72f);
 
     Mesh binnacle;
     // The instrument face sits behind a shallow, open-bottom binnacle.
-    dialX_[0]=eyeX-.086f; dialX_[1]=eyeX+.086f;
+    dialX_[0]=controlX-.086f; dialX_[1]=controlX+.086f;
     dialZ_=dashBack+.014f;
     // Recess the instruments into the fascia. The hood/cowl sets the upper
     // edge; moving the driver's eye must never raise a pod into the windscreen.
-    dialY_=std::min(cowlY-.085f,fasciaTop-.045f);
+    dialY_=fittedDialY;
     const float podTop=dialY_+.080f;
     const float podFront=std::max(dashFront+.025f,dashBack-.18f);
     const float podBase=std::min(podTop-.04f,fasciaTop+(cowlY-fasciaTop)*
@@ -510,17 +644,35 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
                {podRight-.026f,podTop-.025f,podFront},{podLeft+.026f,podTop-.025f,podFront},kDashTop);
     binnacle.Quad({podLeft+.026f,podBase,podFront},{podLeft+.026f,podTop-.025f,podFront},
                {podRight-.026f,podTop-.025f,podFront},{podRight-.026f,podBase,podFront},kDashTop);
+    const size_t instrumentFacesFirst=cabin.vertices.size();
     Gauge(cabin,{dialX_[0],dialY_,dialZ_},false);
     Gauge(cabin,{dialX_[1],dialY_,dialZ_},true);
-    cabin.Box({eyeX-.016f,dialY_+.028f,dialZ_+.003f},
-              {eyeX+.016f,dialY_+.052f,dialZ_+.006f},kTrim);
-    cabin.Box({eyeX-.013f,dialY_+.030f,dialZ_+.0065f},
-              {eyeX+.013f,dialY_+.050f,dialZ_+.007f},kBlack);
+    scaleInstruments(cabin.vertices,instrumentFacesFirst,dialY_);
+    if(std::getenv("GT2_AUDIT_COCKPIT")) {
+        Mesh faces;faces.vertices.assign(cabin.vertices.begin()+instrumentFacesFirst,cabin.vertices.end());
+        faces.BendAlongX(0,stations,[&](float x){return fasciaAt(x).z-dashBack;});
+        auditInstrumentFaces_=std::move(faces.vertices);
+    }
+    const size_t displayFirst=cabin.vertices.size();
+    cabin.Box({controlX-.016f,dialY_+.028f,dialZ_+.003f},
+              {controlX+.016f,dialY_+.052f,dialZ_+.006f},kTrim);
+    cabin.Box({controlX-.013f,dialY_+.030f,dialZ_+.0065f},
+              {controlX+.013f,dialY_+.050f,dialZ_+.007f},kBlack);
 
-    Vent(cabin,-width+.125f,dashboard-.126f,dashBack+.011f,.13f,.052f);
-    Vent(cabin,width-.14f,dashboard-.126f,dashBack+.011f,.16f,.052f);
-    Vent(cabin,.02f,dashboard-.116f,dashBack+.016f,.102f,.058f);
-    Vent(cabin,.135f,dashboard-.116f,dashBack+.016f,.102f,.058f);
+    scaleInstruments(cabin.vertices,displayFirst,dialY_);
+    if(fit.smoothShell) {
+        // Narrow imported dashboards have no room for a full-width outboard
+        // vent beside the driver's instrument pod. Fit the available span
+        // instead of drawing the slats through the speedometer.
+        const float room=controlX-.181f-(-width+.04f);
+        if(room>.06f) {
+            const float ventWidth=std::min(.13f,room-.02f);
+            safeVent(-width+.04f+ventWidth*.5f,dashboard-.126f,dashBack+.011f,ventWidth,.052f);
+        }
+    } else safeVent(-width+.125f,dashboard-.126f,dashBack+.011f,.13f,.052f);
+    safeVent(width-.14f,dashboard-.126f,dashBack+.011f,.16f,.052f);
+    safeVent(.02f,dashboard-.116f,dashBack+.016f,.102f,.058f);
+    safeVent(.135f,dashboard-.116f,dashBack+.016f,.102f,.058f);
     cabin.Box({.01f,dashboard-.23f,dashBack+.008f},{.19f,dashboard-.163f,dashBack+.018f},kBlack);
     for (int i=0;i<3;++i) {
         const float x=.047f+float(i)*.052f;
@@ -536,11 +688,20 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     cabin.Box({gloveCenter-.035f,dashboard-.132f,dashBack+.008f},
               {gloveCenter+.035f,dashboard-.12f,dashBack+.014f},kTrim);
     cabin.BendAlongX(dashboardDetails,stations,[&](float x) { return fasciaAt(x).z-dashBack; });
+    // The attachment mesh is already split at the same fascia stations.
+    // Carry vents and glovebox with the tapered face; the pod is unchanged.
+    for(size_t i=dashboardDetails;i<cabin.vertices.size();++i) {
+        auto& point=cabin.vertices[i].pos;point[1]+=fasciaAt(point[0]).y-fasciaTop;
+    }
     // Fit only the projecting hood. Gauges, controls and their positions stay
     // unchanged; clipping thousands of tiny glyph triangles is unnecessary.
     binnacle.BendAlongX(0,stations,[&](float x) { return fasciaAt(x).z-dashBack; });
     binnacle.ClipToCowl(0,fit,false);
     cabin.vertices.insert(cabin.vertices.end(),binnacle.vertices.begin(),binnacle.vertices.end());
+
+    // Dashboard attachments share the authored opening boundary with the deck.
+    cabin.ClipToCowl(dashboardDetails,fit,false);
+    cabin.ClipToWindows(dashboardDetails,fit);
 
     const float tunnelTop=std::min(floor+.25f,eyeY-.44f);
     const float cabinSeatZ=eyeZ+seatOffset_[1];
@@ -570,7 +731,9 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
             if (p[2]>front[i].z && p[2]<rear[i].z) doorStations.push_back(p[2]);
         if (panelFront>front[i].z && panelFront<rear[i].z) doorStations.push_back(panelFront);
         if (panelBack>front[i].z && panelBack<rear[i].z) doorStations.push_back(panelBack);
+        // Dense measured corners belong to the backing; clip bounded decoration below.
         std::sort(doorStations.begin(),doorStations.end());
+        doorStations.erase(std::unique(doorStations.begin(),doorStations.end()),doorStations.end());
         for (size_t s=1;s<doorStations.size();++s) {
             const float za=doorStations[s-1],zb=doorStations[s];
             const V a=sidePoint(i,za)-V{0,.022f,0},b=sidePoint(i,zb)-V{0,.022f,0};
@@ -591,10 +754,32 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         }
     }
     cabin.ClipToCowl(doorTrimFirst,fit,false);
+    cabin.ClipToWindows(doorTrimFirst,fit);
+    const size_t rearTrimFirst=cabin.vertices.size();
     const V backLeft=rear[0]-V{0,.022f,0},backRight=rear[1]-V{0,.022f,0};
-    cabin.Quad({backLeft.x,floor,backLeft.z},{backRight.x,floor,backRight.z},backRight,backLeft,kBlack);
-    cabin.Quad(backLeft,backRight,backRight-V{0,0,.09f},backLeft-V{0,0,.09f},kDash);
+    if(fit.rearCowlProfileValid) {
+        auto boundary=[&](float x){
+            for(size_t i=1;i<fit.rearCowlProfile.size();++i){
+                const auto& a=fit.rearCowlProfile[i-1];const auto& b=fit.rearCowlProfile[i];
+                if(x>b[0] && i+1<fit.rearCowlProfile.size())continue;
+                const float t=std::clamp((x-a[0])/std::max(.0001f,b[0]-a[0]),0.f,1.f);
+                return V{x,a[1]+t*(b[1]-a[1])-.057f,a[2]+t*(b[2]-a[2])-.035f};
+            }
+            return backRight;
+        };
+        std::vector<float> rearStations{backLeft.x,backRight.x};
+        for(const auto& point:fit.rearCowlProfile)if(point[0]>backLeft.x && point[0]<backRight.x)rearStations.push_back(point[0]);
+        std::sort(rearStations.begin(),rearStations.end());
+        for(size_t i=1;i<rearStations.size();++i){const V a=boundary(rearStations[i-1]),b=boundary(rearStations[i]);
+            cabin.Quad({a.x,floor,a.z},{b.x,floor,b.z},b,a,kBlack);
+            cabin.Quad(a,b,b-V{0,0,.09f},a-V{0,0,.09f},kDash);
+        }
+    } else {
+        cabin.Quad({backLeft.x,floor,backLeft.z},{backRight.x,floor,backRight.z},backRight,backLeft,kBlack);
+        cabin.Quad(backLeft,backRight,backRight-V{0,0,.09f},backLeft-V{0,0,.09f},kDash);
+    }
 
+    cabin.ClipToWindows(rearTrimFirst,fit);
     const size_t windowTrimFirst=cabin.vertices.size();
     // Rounded inner window reveals hide the paper-thin, faceted edge of the
     // exterior shell. Their centres follow the measured aperture, not a box.
@@ -623,14 +808,17 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     if (fit.smoothShell && !fit.openTop) {
         auto point=[](const std::array<float,3>& p) { return V{p[0],p[1],p[2]}; };
         auto roofPoint=[&](float across,float along) {
+            if(fit.headlinerValid)return point(fit.headliner[size_t(std::lround(along*8))][size_t(std::lround(across*12))]);
             const V front=point(fit.frontHeader[0])*(1-across)+point(fit.frontHeader[1])*across;
             const V rear=point(fit.rearHeader[0])*(1-across)+point(fit.rearHeader[1])*across;
             return front*(1-along)+rear*along+V{0,.035f*std::sin(kPi*across)*std::sin(kPi*along),0};
         };
-        for (int z=0;z<8;++z) for (int x=0;x<12;++x)
+        if(!fit.headlinerSurface.empty()) {
+            for(const auto& t:fit.headlinerSurface)cabin.Triangle(point(t[0]),point(t[1]),point(t[2]),kDash);
+        } else for (int z=0;z<8;++z) for (int x=0;x<12;++x)
             cabin.Quad(roofPoint(float(x)/12,float(z)/8),roofPoint(float(x+1)/12,float(z)/8),
                        roofPoint(float(x+1)/12,float(z+1)/8),roofPoint(float(x)/12,float(z+1)/8),kDash);
-        for (const auto* pair:{&fit.frontHeader,&fit.rearHeader,&fit.rearCowl}) {
+        if(!fit.authoredUpperShell)for (const auto* pair:{&fit.frontHeader,&fit.rearHeader,&fit.rearCowl}) {
             const V a=point((*pair)[0]),b=point((*pair)[1]);
             cabin.Beam(a,b,.032f,kDash,12);
         }
@@ -639,8 +827,13 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     // cowl between its endpoints. Keep inner trim on the cabin side; the
     // original exterior frame remains responsible for the exposed part.
     cabin.ClipToCowl(windowTrimFirst,fit,false);
+    cabin.ClipToWindows(windowTrimFirst,fit);
     auto roofAt=[&](float z) {
         if (fit.openTop) return eyeY+.25f;
+        if(z>fit.roofRearZ && fit.rearWindowZ>fit.roofRearZ+.001f) {
+            const float rear=std::clamp((z-fit.roofRearZ)/(fit.rearWindowZ-fit.roofRearZ),0.f,1.f);
+            return fit.roofRearY+(fit.rearWindowY-fit.roofRearY)*rear;
+        }
         const float t=std::clamp((z-fit.roofFrontZ)/std::max(.10f,fit.roofRearZ-fit.roofFrontZ),0.f,1.f);
         return fit.roofFrontY+(fit.roofRearY-fit.roofFrontY)*t;
     };
@@ -650,7 +843,10 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     const float seatY=floor+.075f;
     const float seatZ=eyeZ+.10f+(fit.nativeInterior ? 0.f : .10f);
     const float seatWidth=std::clamp(width-.12f,.52f,.60f);
-    const float seatTop=seatY+.72f;
+    // Seat() adds 18 cm of headrest above backTop and reaches z+.395.
+    // Fit both ends of that top against the descending rear enclosure.
+    const float seatCeiling=std::min(roofAt(seatZ+seatOffset_[1]+.275f),roofAt(seatZ+seatOffset_[1]+.395f));
+    const float seatTop=fit.openTop?seatY+.72f:std::min(seatY+.72f,seatCeiling-.20f);
     // A high driving position needs a raised seat base. Keep the cushion
     // within seated reach as the user raises the eye, without moving the
     // eye, wheel, passenger seat or the surrounding floor to fit the chair.
@@ -659,7 +855,8 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
         cabin.Box({eyeX-seatWidth*.32f,floor,seatZ+seatOffset_[1]-.19f},
                   {eyeX+seatWidth*.32f,driverSeatY-.075f,seatZ+seatOffset_[1]+.14f},kBlack);
     const size_t driverSeatFirst=cabin.vertices.size();
-    Seat(cabin,eyeX,driverSeatY,seatZ+seatOffset_[1],seatWidth,seatTop+driverSeatY-seatY);
+    auditSeatRange_[0]=uint32_t(driverSeatFirst);
+    Seat(cabin,eyeX,driverSeatY,seatZ+seatOffset_[1],seatWidth,fit.openTop?seatTop+driverSeatY-seatY:std::min(seatTop+driverSeatY-seatY,seatCeiling-.20f));
     if(std::getenv("GT2_AUDIT_COCKPIT"))auditSeat_.assign(cabin.vertices.begin()+driverSeatFirst,cabin.vertices.end());
     Seat(cabin,-eyeX,seatY,seatZ+seatOffset_[1],seatWidth,seatTop);
     if (cabinBack-eyeZ>1.04f && fit.roofRearZ-eyeZ>.78f) {
@@ -673,8 +870,9 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
                       {sign*backWidth*.50f+.10f,backTop+.16f,backZ+.13f},kDash);
     }
 
+    auditSeatRange_[1]=uint32_t(cabin.vertices.size());
     // Generated cabins extend the fixed wheel mount 15 cm toward the driver (+Z).
-    wheelCenter_={eyeX,std::min(eyeY-.28f,dialY_-.105f),std::max(eyeZ-.38f,dashBack+.14f)+(fit.nativeInterior ? 0.f : .15f)};
+    wheelCenter_={eyeX,std::min(eyeY-.28f,originalDialY-.105f),std::max(eyeZ-.38f,dashBack+.14f)+(fit.nativeInterior ? 0.f : .15f)};
     const auto& hub=interactiveWheel_ ? steeringHub_ : wheelCenter_;
     cabin.Beam({eyeX,dashboard-.14f,dashBack-.025f},
                {hub[0],hub[1],hub[2]},.035f,kBlack,8);
@@ -767,6 +965,11 @@ void ProceduralCockpit::UpdateInstruments(float speedKph, float rpm, int gear) {
     const V display{(dialX_[0]+dialX_[1])*.5f,dialY_+.040f,dialZ_+.009f};
     mesh.Text(gear<0?"N":gear==0?"R":std::to_string(gear),display,.017f,kAmber);
     mesh.Text(std::to_string((speedStep+5)/10),{dialX_[0],dialY_-.042f,dialZ_+.004f},.010f,kIvory);
+    }
+    if(!digital) {
+        const float centreX=(dialX_[0]+dialX_[1])*.5f;
+        for(auto& v:mesh.vertices){v.pos[0]=centreX+(v.pos[0]-centreX)*instrumentScale_;
+            v.pos[1]=dialY_+(v.pos[1]-dialY_)*instrumentScale_;}
     }
     if (mesh.vertices.size()>kInstrumentLimit) throw std::runtime_error("cockpit instruments exceed their vertex range");
     renderer_.SetVertices(SceneRenderer::kCockpitVertexBase+kInstrumentOffset,mesh.vertices);

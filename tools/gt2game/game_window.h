@@ -196,6 +196,9 @@ public:
     ~GameWindow();
     void RetainBackendForNextWindow();
     void EnableNativeMenu(bool on) { nativeMenuEnabled_ = on; }
+    bool NativeMenuEnabled() const { return nativeMenuEnabled_; }
+    // Modal views consume their entry/exit controls until physical release.
+    void BlockMenuInputUntilRelease();
     void RequestGamePause() { gamePauseRequested_ = true; }
     GameWindow(const GameWindow&) = delete;
     GameWindow& operator=(const GameWindow&) = delete;

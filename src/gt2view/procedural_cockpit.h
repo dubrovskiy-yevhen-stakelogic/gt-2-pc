@@ -14,10 +14,12 @@ public:
                 bool showCabin = true);
     void AppendMirror(std::vector<DrawItem>& items, const float* carMvp, float scale = 1.f);
     // Populated only by the owned-data geometry audit.
+    std::array<uint32_t,2> SeatRangeForAudit() const { return auditSeatRange_; }
     const auto& DriverSeatForAudit() const { return auditSeat_; }
     const auto& CowlSealForAudit() const { return auditCowl_; }
     const auto& WheelLinersForAudit() const { return auditWheelLiners_; }
     const auto& FasciaForAudit() const { return auditFascia_; }
+    const auto& InstrumentFacesForAudit() const { return auditInstrumentFaces_; }
     // The dashboard owns this anchor. Seat/tracking adjustments must not move it.
     const auto& WheelCenter() const { return wheelCenter_; }
 
@@ -34,6 +36,7 @@ private:
     uint32_t backingCount_ = 0;
     uint32_t mirrorCount_ = 0;
     uint32_t wheelWellFirst_ = 0, wheelWellCount_ = 0;
+    float instrumentScale_=1.f;
     float dialX_[2]{}, dialY_ = 0, dialZ_ = 0;
     std::array<float, 3> wheelCenter_{};
     std::array<float, 2> seatOffset_{};
@@ -42,9 +45,11 @@ private:
     float mirrorScale_ = 0;
     bool interactiveWheel_ = false;
     std::vector<SceneVertex> auditSeat_;
+    std::array<uint32_t,2> auditSeatRange_{};
     std::vector<SceneVertex> auditCowl_;
     std::vector<SceneVertex> auditWheelLiners_;
     std::vector<SceneVertex> auditFascia_;
+    std::vector<SceneVertex> auditInstrumentFaces_;
     int speedStep_ = -1, rpmStep_ = -1, gear_ = -100;
 };
 

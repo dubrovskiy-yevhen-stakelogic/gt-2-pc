@@ -1,5 +1,6 @@
 // gt2game --menu: the GT-mode menus (src/game/menu, gt2view/menu_view). See menu_mode.h.
 #include "menu_mode.h"
+#include "cockpit_preview.h"
 #include "gt2view/cockpit_badge.h"
 #include "pc_overlay.h"
 
@@ -205,6 +206,30 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
         // Leave all menu/garage caches behind. The title owns this same live save.
         if (gt2game::TakeCampaignChangeRequest()) break;
         if (!keepRunning) break;
+        if (gt2game::CockpitPreviewRequested(window, runtime.Car().shown && runtime.PopupMode()==0)) {
+            const auto selected=runtime.Car();
+            const auto savedCareer=save.state;
+            const auto cursor=runtime.CursorState();
+            const auto camera=runtime.Camera();
+            const uint32_t page=runtime.PageId();
+            const int popup=runtime.PopupMode();
+            gt2game::RunCockpitPreview(window,vol,selected.modelId,selected.paintIndex);
+            const bool preserved=std::memcmp(&savedCareer,&save.state,sizeof(savedCareer))==0 &&
+                runtime.PageId()==page && runtime.PopupMode()==popup &&
+                runtime.CursorState().x==cursor.x && runtime.CursorState().y==cursor.y && runtime.CursorState().item==cursor.item &&
+                runtime.Car().modelId==selected.modelId && runtime.Car().paintIndex==selected.paintIndex &&
+                runtime.Car().garageIndex==selected.garageIndex && std::memcmp(&camera,&runtime.Camera(),sizeof(camera))==0;
+            std::printf("cockpit preview state: GT page=%u cursor=%d,%d,%d popup=%d car=%s paint=%d garage=%d preserved=%d\n",
+                page,cursor.x,cursor.y,cursor.item,popup,UnpackCarId(selected.modelId).c_str(),selected.paintIndex,selected.garageIndex,int(preserved));
+            if(!preserved)throw std::logic_error("cockpit preview changed GT menu/career state");
+            // The modal owns GPU storage only. Keep the live page, popup, cursor and career intact.
+            uploadedPage=0xFFFFFFFFu;logoModel=0;shownWheels=ShownWheels{};
+            carView=std::make_unique<gt2view::MenuCarView>(renderer,vol);
+            previousHeld=0;repeatTimer=0;
+            window.SetTitle("gt2game - GT mode");
+            if(window.Closed())break;
+            continue;
+        }
         const int field = window.Field();
         // Pad: keyboard / script (held + presses since the last field; directions auto-repeat - our choice: after 20
         // fields, every 5).
@@ -331,6 +356,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             };
         }
         if(viewport && car.shown)gt2view::AppendCockpitBadge(frame.prims,carView->HasNativeInterior(),viewport->x0+8,viewport->y0+44);
+        if(viewport && car.shown && runtime.PopupMode()==0)gt2game::AppendCockpitPreviewButton(frame.prims,gt2game::VrMode(),viewport->x0+8,viewport->y0+73);
         std::vector<gt2view::DrawItem> items;
         view.Build(frame, renderer.AspectRatio(), items, options.squarePixels, layer3d);
         std::string shotPath, comparePath;

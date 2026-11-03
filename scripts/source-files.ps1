@@ -10,10 +10,10 @@ if ($true) {
         'IMPORT-GT4-MODELS.bat')
     # Public documentation is explicit: local validation reports can contain device
     # identifiers and private diagnostic paths. New research needs a release review.
-    $publicDocs = @('COCKPIT.md', 'COCKPIT-SHAPE-REGRESSION.md', 'BACKDROP-REGRESSION.md', 'EUROPEAN-DISCS.md', 'HD-MEDIA.md',
+    $publicDocs = @('COCKPIT-NEXT-RELEASE.md', 'COCKPIT-REMAINING-0.9.1.json', 'COCKPIT.md', 'COCKPIT-SHAPE-REGRESSION.md', 'BACKDROP-REGRESSION.md', 'EUROPEAN-DISCS.md', 'HD-MEDIA.md',
         'LINUX-INSTALL.md', 'STEAMDECK.md', 'MACOS.md', 'MIPMAPS.md', 'PCVR.md', 'PLAYER-INSTALL.md', 'QUEST.md',
         'SAVE-TRANSFER.md', 'VALIDATION.md', 'wheel-profile-provenance.json',
-        'WEB.md', 'WHEEL-PROFILES.md', 'WHEELS.md', 'GT4-CARS.md', 'RELEASE-0.9.0.md')
+        'WEB.md', 'WHEEL-PROFILES.md', 'WHEELS.md', 'GT4-CARS.md', 'RELEASE-0.9.0.md', 'RELEASE-0.9.1.md')
     # The root allowlist excludes runtime game data. tools/xrsim/runtime is
     # source code and must remain part of the exported simulator.
     $skipDirectory = '^(bin|obj|build[^/]*|cmake-build-.*|out|\.cxx|\.gradle|work|dist|saves|\.git|\.codex|\.agents|\.claude|\.vs|\.vscode|\.idea|__pycache__|game-decomp|recomp_out)$'
