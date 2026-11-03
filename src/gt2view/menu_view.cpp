@@ -279,17 +279,18 @@ void MenuCarView::LoadMenuReflection() {
     envRowBase_ = SceneRenderer::kMenuReflectionRow;
 }
 
-bool MenuCarView::Use(uint32_t modelId) {
-    if (slot_ >= 0 && modelId == model_) return true;
+bool MenuCarView::Use(uint32_t modelId, bool wheels) {
+    if (slot_ >= 0 && modelId == model_ && wheels == wheels_) return true;
     dish_ = -1; // a new car: 0x8001AC20's default wheel area (0x80061504 + 0x80061308)
-    return Load(modelId);
+    return Load(modelId, wheels);
 }
 
-bool MenuCarView::Load(uint32_t modelId) {
+bool MenuCarView::Load(uint32_t modelId, bool wheels) {
     // A fresh set of car slots per car (the view shows one car; the slot's vertex range and texture rows are reused).
     if (!sharedAssets_) assets_ = std::make_unique<SceneAssets>(renderer_, vol_,false);
     slot_ = -1;
     model_ = modelId;
+    wheels_ = wheels;
     try {
         const gt2::CarModel model = gt2::ParseCarModel(vol_.Read("carobj/" + gt2::UnpackCarId(modelId) + ".cdo"));
         if (dish_ >= 0) { // 0x8001AEF8: 0x80061504 defaults with the dish of the wheel, then 0x80061308
@@ -297,9 +298,9 @@ bool MenuCarView::Load(uint32_t modelId) {
             dims[0].dish = dims[1].dish = int16_t(dish_);
             static const gt2::WheelTemplates templates = gt2::GeneratedWheelTemplates();
             const gt2::WheelArea area = gt2::GenerateWheelArea(dims, templates);
-            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId), std::string(), &area);
+            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId), std::string(), &area, nullptr, wheels);
         } else {
-            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId));
+            slot_ = Assets()->UseCar(gt2::UnpackCarId(modelId), std::string(), nullptr, nullptr, wheels);
         }
         lift_ = gt2::menu::MenuCarLift(model.wheelRadiusFront, model.wheels[0].y); // 0x80061544
     } catch (const std::exception& e) {
@@ -313,7 +314,7 @@ void MenuCarView::SetWheels(const gt2::menu::MenuWheelTexture* wheel, int dish) 
     if (slot_ < 0 || !Assets()) return;
     if (dish != dish_) {
         dish_ = dish;
-        Load(model_);
+        Load(model_, wheels_);
         if (slot_ < 0) return;
     }
     if (wheel) Assets()->SetCarWheelTexture(slot_, wheel->image, wheel->words, wheel->rows, wheel->clut);

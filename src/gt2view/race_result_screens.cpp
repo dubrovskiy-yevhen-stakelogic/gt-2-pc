@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "game/shell/title_draw.h"
+#include "gt2formats/car_info.h"
 
 namespace gt2::screens {
 
@@ -27,6 +28,10 @@ constexpr uint32_t kResLabel = 0x8005B60Cu, kResPlace = 0x8005B62Cu, kResPlaceBa
 constexpr uint32_t kBonResLabel = 0x8005D3D8u, kBonPlace = 0x8005D3F8u, kBonLabel = 0x8005D414u, kBonMoneyLabel = 0x8005D434u, kBonNewCarBand = 0x8005D454u,
                    kBonBar = 0x8005D470u, kBonDialog = 0x8005D4A0u;
 constexpr uint32_t kStrNewCar = 0x801C7943u;
+// the licence / all-gold BONUS (view 0x8005B4B8)
+constexpr uint32_t kLicBonusText = 0x8005B2F4u, kLicBonusNewCar = 0x8005B310u, kLicBonusBar = 0x8005B2C4u;
+constexpr uint32_t kLicenceAcquiredStrings = 0x8005B3ECu; // pointer[licence]: "SUPER LICENSE ACQUIRED!!" .. "B LICENSE ACQUIRED"
+constexpr uint32_t kLicenceCars = 0x8005B3D4u;            // pointer[licence]: the 5-character GT car id (gt-sn .. gt-bn)
 // post-race menu
 constexpr uint32_t kPostResLabel = 0x8005AC50u, kPostTotalLabel = 0x8005AC70u, kPostFastestLabel = 0x8005AC90u, kPostBar = 0x8005ACF0u,
                    kPostRowText = 0x8005AD20u, kPostRowBand = 0x8005AD3Cu, kPostRows2p = 0x8005AD58u, kPostRowsChampNext = 0x8005AD78u,
@@ -936,6 +941,85 @@ void BonusView::Draw(MenuOt& ot) const { // 0x8005A218 (the trophy 0x80048754: M
     AddMoneyNumber(a, ot[0], 0x100, 0x102, remaining, prizeFade, 0x02503C28u);
     moneyLabel.Draw(a, ot, 2, 0x28, 0x140);
     AddMoneyNumber(a, ot[0], 0x100, 0x170, shown, moneyFade, 0x02505050u);
+}
+
+// ---- B2. the licence / all-gold prize BONUS
+
+LicenceBonusView::LicenceBonusView(const RaceMenuAssets& a) : a_(a) {}
+
+std::string LicenceBonusView::Title() const { return a_.Text(a_.ovl0.Get<uint32_t>(kView + 0x10)); }
+uint32_t LicenceBonusView::Colour() const { return a_.ovl0.Get<uint32_t>(kView + 0x0C); }
+
+void LicenceBonusView::Setup(const LicenceBonusInput& in) { // 0x8004E88C
+    const GuestImage& o = a_.ovl0;
+    const uint32_t licence = uint32_t(std::clamp(in.licence, 0, 5));
+    licenceWon = in.licenceWon;
+    carWon = in.carWon;
+    t = int16_t(licenceWon ? 0 : 0x3C); // 0x8004E8C8: only the prize car won: the licence line opens at once
+    buttons = 0;
+    modelAnim = 0;
+    licenceText = TextObject::FromTemplate(o, kLicBonusText, a_.Text(o.Get<uint32_t>(kLicenceAcquiredStrings + licence * 4)));
+    newCarText = TextObject::FromTemplate(o, kLicBonusNewCar, a_.Text(kStrNewCar));
+    bar = ResultBar::Init(a_, kLicBonusBar, 0);
+    // The model: the licence's GT car (0x8004DF40 packs the 5-character id into the model slot).
+    const uint32_t record = o.Get<uint32_t>(kLicenceCars + licence * 4);
+    modelCar = PackCarId(std::string(reinterpret_cast<const char*>(o.At(record, 5)), 5));
+    camera = menu::ModelViewCamera(0x160, 0x1E0); // 0x8004E070
+    camera.floor = false;                          // 0x8004E080: W+0x8A8 = camera + 0xD4 = 0
+    save_ = false;
+}
+
+int LicenceBonusView::Update(const MenuListPad* pad, bool input) { // 0x8004E978
+    sounds.clear();
+    licenceText.Tick();     // 0x8004E9B4
+    newCarText.Tick();      // 0x8004E9C0
+    if (modelAnim >= 0 && ++modelAnim >= 0x19) { // 0x8004E9D0: the car's pose from 0x19, capped at 0x90
+        if (modelAnim > 0x90) modelAnim = 0x90;
+        menu::LicenceBonusModelMotion(camera, modelAnim - 0x18);
+    }
+    int s = t;
+    if (buttons == 0) s++; // 0x8004EA2C
+    if (s == 0x3C) {
+        if (licenceWon) { sounds.push_back(3); licenceText.Open(-1); } // 0x8004EA74
+    } else if (s == 0x78) {
+        if (carWon) { sounds.push_back(3); newCarText.Open(-1); } // 0x8004EAAC
+    } else if (s == 0xB4) { // 0x8004EAE8
+        bar.Open();
+        buttons = 1;
+        s = 0xB5; // the field keeps its value (V+14 = 0xB5): the bar's cases do not run again
+    }
+    t = int16_t(s);
+    const MenuListPad* p = (t < 0xB4 || !input) ? nullptr : (pad ? pad : &kNoButtons); // 0x8004EB0C
+    const int r = bar.Update(p, &sounds);
+    if (r == -1) { // 0x8004EB74: back: a sound only, the view stays
+        sounds.push_back(0);
+        return 0;
+    }
+    if (r != 0 && r != 1) return 0;
+    save_ = r == 0; // 0: Save Game? -> Save (view 0x8005B588), 1: Next (the licence menu 0x8005B470)
+    sounds.push_back(3);
+    if (licenceWon) licenceText.Close(); // 0x8004EB9C
+    if (carWon) newCarText.Close();      // 0x8004EBBC
+    bar.Close();
+    modelAnim = -1;
+    return 1;
+}
+
+void LicenceBonusView::Draw(MenuOt& ot) const { // 0x8004EC28
+    bar.Draw(a_, ot); // 0x8006E5B8
+    licenceText.Draw(ot, 0, 0xB0, 0xC8, a_.FontAt(licenceText.font));  // 0x8006C5DC at (0xB0, 0xC8)
+    newCarText.Draw(ot, 0, 0xB0, 0x12C, a_.FontAt(newCarText.font));  // at (0xB0, 0x12C)
+}
+
+std::optional<PostRaceModel> LicenceBonusView::Model() const { // 0x8004ECAC: W+0x688 != 0 and W+0x68C >= 0x18
+    if (modelAnim < 0x18) return std::nullopt;
+    PostRaceModel m;
+    m.camera = camera;
+    m.envClut = 0x7FD7, m.envPage = 9, m.reflection = 0x40; // 0x8004E040..: the model slot of 0x80067444
+    m.carId = modelCar;
+    m.paint = 0;
+    m.carWheels = false; // 0x80048754(..., 1) -> 0x80048528: the plate's mesh only, no car wheels / shadow / reflection
+    return m;
 }
 
 // ---- C. post-race menu
