@@ -146,6 +146,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             menuAudio = std::make_unique<audio::MenuAudio>();
             menuAudio->Load(vol, LoadExeImage(disc), LoadOverlayImage(disc, 4));
             menuAudio->SetMusicVolume(uint8_t(shell::OptionValue(save.state, shell::kMusicVolume)));
+            menuAudio->SetEffectsVolume(uint8_t(shell::OptionValue(save.state, shell::kSfxVolume)));
             menuAudio->SetReverbEnabled(options.reverb);
             std::string error;
             if (record && !options.recordAudio.empty()) {
@@ -162,11 +163,19 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
     };
     openMenuAudio(true);
     actions.onSound = [&](int id) {
-        if (menuAudio) menuAudio->Sound(id);
+        if (menuAudio) {
+            // 0x80060840 plays the effects at the options' volume (0x801C9994, career + 0xB4).
+            menuAudio->SetEffectsVolume(uint8_t(shell::OptionValue(save.state, shell::kSfxVolume)));
+            menuAudio->Sound(id);
+        }
     };
     actions.onMusic = [&](int track) {
         std::printf("menu: music track %d\n", track);
-        if (menuAudio) menuAudio->RequestMusic(track);
+        if (menuAudio) {
+            // 0x800228D4 reads the options' music volume (0x801C9993, career + 0xB3) at every track start.
+            menuAudio->SetMusicVolume(uint8_t(shell::OptionValue(save.state, shell::kMusicVolume)));
+            menuAudio->RequestMusic(track);
+        }
     };
     actions.onShowCar = [](const menu::ShowCarRequest& r) {
         std::printf("menu: show car %s paint %d (garage %d)\n", UnpackCarId(r.modelId).c_str(), r.paintIndex, r.garageIndex);

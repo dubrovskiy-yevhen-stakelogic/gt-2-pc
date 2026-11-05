@@ -933,8 +933,8 @@
     },
     {
       "path": "src/game/audio/menu_audio.h",
-      "sha256": "56c410d671781ea58922972ec572dbc76a9ca2e2b90d2f05cd09a3a3354f7b0a",
-      "textSha256": "56c410d671781ea58922972ec572dbc76a9ca2e2b90d2f05cd09a3a3354f7b0a"
+      "sha256": "20bd959e9739c7712689a57a8130d99a268cbd8279b7232480f7b571ac6d3fed",
+      "textSha256": "20bd959e9739c7712689a57a8130d99a268cbd8279b7232480f7b571ac6d3fed"
     },
     {
       "path": "src/game/audio/menu_music.cpp",
@@ -3585,8 +3585,8 @@
     },
     {
       "path": "tools/gt2game/arcade_mode.cpp",
-      "sha256": "96215f36f143317a64ed017ec464233e399241cd3c9c04a22fb7dcf2366a5e32",
-      "textSha256": "96215f36f143317a64ed017ec464233e399241cd3c9c04a22fb7dcf2366a5e32"
+      "sha256": "5732d4958a0d76d44c8b4046e672842cd18fecbfe88f088e07e598b891de6d1e",
+      "textSha256": "5732d4958a0d76d44c8b4046e672842cd18fecbfe88f088e07e598b891de6d1e"
     },
     {
       "path": "tools/gt2game/arcade_mode.h",
@@ -3780,8 +3780,8 @@
     },
     {
       "path": "tools/gt2game/menu_mode.cpp",
-      "sha256": "3534f89fbb380a397f18c4d953919f5b4ee559371f27d11188f0a6d174a94d04",
-      "textSha256": "3534f89fbb380a397f18c4d953919f5b4ee559371f27d11188f0a6d174a94d04"
+      "sha256": "5a8153a5902d907a73cb17e712816a1c1775ee254c1028022975de1e46f56120",
+      "textSha256": "5a8153a5902d907a73cb17e712816a1c1775ee254c1028022975de1e46f56120"
     },
     {
       "path": "tools/gt2game/menu_mode.h",
@@ -3920,8 +3920,8 @@
     },
     {
       "path": "tools/gt2game/title_mode.cpp",
-      "sha256": "fde4b4e20728f6dac43dc7a9daf06fee387a241abd9c5fc94375177e2c08924e",
-      "textSha256": "fde4b4e20728f6dac43dc7a9daf06fee387a241abd9c5fc94375177e2c08924e"
+      "sha256": "dcd4d6306f2a8f40c474f83f066b8907c6f0834e55ffc846c980a087f669df36",
+      "textSha256": "dcd4d6306f2a8f40c474f83f066b8907c6f0834e55ffc846c980a087f669df36"
     },
     {
       "path": "tools/gt2game/title_mode.h",

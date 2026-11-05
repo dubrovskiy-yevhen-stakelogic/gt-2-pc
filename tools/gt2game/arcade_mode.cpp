@@ -333,6 +333,7 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -591,6 +592,7 @@ bool RunArcadeRaceSession(GameWindow& window, const DiscImage& disc, const GtfsV
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -716,6 +718,7 @@ bool RunArcadeBattleSession(GameWindow& window, const DiscImage& disc, const Gtf
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -1027,8 +1030,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         case Screen::kTitle: {
             use(titleAssets.vram);
             const int state = title.Update(&pad, held);
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(titleScreens.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : title.sounds) sfx->Sound(id);
+            }
             if (state == 4) {
                 std::printf("arcade title f%d: result %d\n", field, title.result);
                 if (title.result == shell::kStartGame) { // ovl1 -> member 2 (0x8005D9AC(2) at 0x80011434)
@@ -1096,8 +1101,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             } else {
                 prims = titleScreens.Frame();
             }
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(titleScreens.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : titleScreens.sounds) sfx->Sound(id);
+            }
             {
                 // Replay Theater: a loaded / chosen replay plays as the race overlay with argument 1 (0x8005D9EC(0, 0x80011F64, 1)
                 // after 0x80010EDC), then member 1 starts in the theater again (0x801EF022 == 2).
@@ -1155,8 +1162,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             }
             use(menus.Vram());
             vram = &menus.Vram();
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : menus.sounds) sfx->Sound(id);
+            }
             prims = menus.Frame();
             if (outcome == arcade::ArcadeMenus::kEnding) { // result 5 / 6 -> member 5 0x800114E0(1 / 0) -> the title (member 1)
                 if (sfx) sfx->StopMusic();
