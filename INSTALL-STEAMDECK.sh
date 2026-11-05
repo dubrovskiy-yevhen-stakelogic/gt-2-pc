@@ -1,6 +1,11 @@
 #!/bin/bash
 set -Eeuo pipefail
 gt2_root="$(cd "$(dirname "$0")" && pwd)"
+gt2_version="$(sed -n 's/^project(gt2pc VERSION \([0-9.]*\).*/\1/p' "$gt2_root/CMakeLists.txt")"
+if [ -z "$gt2_version" ]; then
+    echo 'Cannot determine the release version from CMakeLists.txt.' >&2
+    exit 1
+fi
 if [ "${1:-}" = --gt2-terminal ]; then
     shift
 elif [ ! -t 0 ] || [ ! -t 1 ]; then
@@ -27,7 +32,7 @@ gt2_fail() {
 trap 'gt2_fail "$?"' ERR
 touch "$gt2_log"
 exec > >(tee -a "$gt2_log") 2>&1
-printf '\nGT2 0.8.0 - Steam Deck installer\n%s\n\n' "$(date)"
+printf '\nGT2 %s - Steam Deck installer\n%s\n\n' "$gt2_version" "$(date)"
 echo 'Keep this window open. Downloads and compilation may take a while.'
 echo 'The installer does not need a sudo password or changes to the SteamOS system partition.'
 
@@ -50,7 +55,7 @@ if command -v flock >/dev/null; then
         gt2_fail 1
     fi
 fi
-gt2_bundle="${1:-$gt2_root/GT2-0.8.0-steamdeck.flatpak}"
+gt2_bundle="${1:-$gt2_root/GT2-${gt2_version}-steamdeck.flatpak}"
 if [ "$#" -gt 0 ] && [ ! -s "$gt2_bundle" ]; then
     echo "Package not found: $gt2_bundle"
     gt2_fail 1
