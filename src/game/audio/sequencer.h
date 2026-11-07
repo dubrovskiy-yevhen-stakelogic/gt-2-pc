@@ -67,6 +67,7 @@ private:
         int32_t effective = 0;
         uint8_t pan = 0;
         bool released = false;
+        bool fresh = false;       // created by this tick: its countdown starts at the next one
     };
     uint32_t Vlv(uint32_t& at) const;
     void Event(Track& t, int ticks);
