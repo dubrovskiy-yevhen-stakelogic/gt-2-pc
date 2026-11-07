@@ -356,6 +356,7 @@ void UpdatePitFlags(const PhysicsContext& context, CarBody& body) {
 
 // ---- 0x8003E0C4 helpers ----
 void SteerWheels(const PhysicsContext& context, CarBody& body, CarScratch& block) {
+    (void)context;
     const int32_t steer = body.steerAngle;
     const int32_t outer = body.ackermann[0], inner = body.ackermann[1];
     int32_t left, right;
@@ -375,7 +376,7 @@ void SteerWheels(const PhysicsContext& context, CarBody& body, CarScratch& block
         body.wheels[axle * 2].steerAngle = int16_t(uint16_t(body.wheels[axle * 2].steerAngle) - toe);
         body.wheels[axle * 2 + 1].steerAngle = int16_t(uint16_t(body.wheels[axle * 2 + 1].steerAngle) + toe);
     }
-    if (ControlClass(context, body) == 2) { // corner damage bends the wheels
+    if (int8_t(body.controlClass) == 2) { // corner damage bends the wheels of AI cars only
         body.wheels[0].steerAngle = int16_t(uint16_t(body.wheels[0].steerAngle) - body.wheels[0].damage);
         body.wheels[1].steerAngle = int16_t(uint16_t(body.wheels[1].steerAngle) + body.wheels[1].damage);
         body.wheels[2].steerAngle = int16_t(uint16_t(body.wheels[2].steerAngle) + body.wheels[2].damage);
