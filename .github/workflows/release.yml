@@ -49,6 +49,9 @@ jobs:
       MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Import Developer ID certificate
         if: env.MACOS_CERTIFICATE_P12 != ''
@@ -123,6 +126,9 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
         with:
@@ -187,6 +193,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Install build dependencies
         run: |
@@ -231,6 +240,9 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Require the release signing key
         if: (github.event_name == 'release' || inputs.tag != '') && env.ANDROID_KEYSTORE_BASE64 == ''
@@ -326,6 +338,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Install Emscripten 6.0.10
         run: |
@@ -369,6 +384,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Manual publication builds the requested tag; other runs use the triggering commit.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Install Flatpak runtime and SDK
         run: |
@@ -418,6 +436,7 @@ jobs:
       - name: Upload assets to the release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           set -euo pipefail
