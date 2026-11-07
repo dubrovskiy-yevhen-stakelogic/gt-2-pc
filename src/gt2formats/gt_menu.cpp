@@ -398,7 +398,8 @@ void MenuPages::LoadExpansion(const GtfsVolume& vol) {
         auto p=page(0x10000+uint32_t(pi),0,"GT4 Showroom  "+std::to_string(pi+1)+"/"+std::to_string(pages));
         for(size_t j=0;j<12 && pi*12+j<brands.size();++j) {
             const auto& [name,target]=brands[pi*12+j];auto it=item(72+int(j)*26,name,0,target);
-            if(j==0)it.flags|=menu_item_flag::kDefault;p.items.push_back(std::move(it));
+            if(j==0) it.flags|=menu_item_flag::kDefault;
+            p.items.push_back(std::move(it));
         }
         if(pi){auto it=item(397,"Previous",0,p.id-1);it.x1=170;p.items.push_back(std::move(it));}
         if(pi+1<pages){auto it=item(397,"Next",0,p.id+1);it.x0=350;p.items.push_back(std::move(it));}

@@ -18,7 +18,7 @@ try {
         $revision = (& git rev-parse HEAD).Trim()
     }
     $files = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem:$FileSystem)
-    if ((!$FileSystem -and $LASTEXITCODE -ne 0) -or !$files.Count) { throw 'Cannot list source files.' }
+    if (!$files.Count) { throw 'Cannot list source files.' }
     New-Item -ItemType Directory -Force -Path $Output | Out-Null
     $manifest = @()
     foreach ($file in $files) {

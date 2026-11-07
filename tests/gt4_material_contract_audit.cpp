@@ -72,7 +72,7 @@ int main(int argc,char** argv) {try {
                 for(size_t i=0;i<reference.size();++i){int delta=std::abs(int(reference[i])-int(cached[i]));maximum=std::max(maximum,delta);different+=delta>1;}
                 failed|=different!=0 || reference.empty();
                 std::cout<<"Smoke cached stereo MSAA "<<samples<<", multiview "<<multiview<<", opaque palette "<<opaqueColour<<": differences="<<different<<", max="<<maximum<<'\n';
-                auto soft=draws;soft.back().softParticle=1;
+                auto soft=draws;soft.at(soft.size()-1).softParticle=1;
                 const auto coarse=renderer.CaptureStereoForAudit(soft,soft.size());
                 failed|=coarse!=cached;
                 // The following ordinary draw must restore its original rate.

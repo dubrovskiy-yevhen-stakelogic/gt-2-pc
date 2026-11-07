@@ -1,0 +1,426 @@
+name: Release binaries
+
+# Builds the native desktop binaries that are attached to a GitHub release.
+# Manual runs without a tag only keep the workflow artifacts, so this can be
+# tested on a fork before a release exists.
+#
+# Optional macOS signing secrets: MACOS_CERTIFICATE_P12 (base64 .p12),
+# MACOS_CERTIFICATE_PASSWORD, MACOS_SIGN_IDENTITY (optional; discovered from the
+# certificate otherwise), and MACOS_NOTARY_APPLE_ID / MACOS_NOTARY_TEAM_ID /
+# MACOS_NOTARY_PASSWORD. Without them the app is ad-hoc signed.
+#
+# Android signing secrets: ANDROID_KEYSTORE_BASE64 (base64 of the release .jks),
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_PASSWORD (defaults to the store
+# password) and ANDROID_KEY_ALIAS (defaults to gt2-release). They are required
+# when uploading to a release; manual runs without them build a debug-signed APK.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to upload assets to (leave empty to only keep artifacts)
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    env:
+      # Optional Developer ID signing/notarization. Without these secrets the
+      # package is ad-hoc signed, as the macOS installer does for local builds.
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+      MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+      MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERTIFICATE_P12 != ''
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/gt2-signing.keychain-db"
+          security create-keychain -p actions "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p actions "$keychain"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$keychain" >/dev/null
+          security default-keychain -s "$keychain"
+          security list-keychains -d user -s "$keychain" \
+            $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
+      - name: Create notarization profile
+        if: env.MACOS_NOTARY_APPLE_ID != ''
+        run: |
+          set -euo pipefail
+          xcrun notarytool store-credentials gt2-notary \
+            --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" \
+            --password "$MACOS_NOTARY_PASSWORD"
+
+      - name: Build, test and package
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          args=(--output "$GITHUB_WORKSPACE/package-${ARCH}")
+          if [ -n "${MACOS_CERTIFICATE_P12:-}" ]; then
+            identity="${MACOS_SIGN_IDENTITY:-$(security find-identity -v -p codesigning \
+              | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -n 1)}"
+            [ -n "$identity" ] || { echo "No Developer ID signing identity found"; exit 1; }
+            args+=(--identity "$identity")
+          fi
+          if [ -n "${MACOS_NOTARY_APPLE_ID:-}" ]; then
+            args+=(--notary-profile gt2-notary)
+          fi
+          # The checkout's SOURCE-MANIFEST.json describes the previous source
+          # release. Export a fresh kit so the packager verifies current files
+          # and records this commit's provenance.
+          pwsh -NoProfile -File scripts/package-source.ps1 -Output "$RUNNER_TEMP/gt2-source"
+          cd "$RUNNER_TEMP/gt2-source"
+          bash INSTALL-MACOS.command "${args[@]}"
+
+      - name: Collect assets
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^project(gt2pc VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          out="$GITHUB_WORKSPACE/package-${ARCH}"
+          [ -f "$out/GT2-${version}-macos-${ARCH}.zip" ] || { echo "macOS package not found"; exit 1; }
+          mkdir -p release-assets
+          cp "$out/GT2-${version}-macos-${ARCH}.zip" "$out/GT2-${version}-macos-${ARCH}.dmg" release-assets/
+          cp "$out/release-manifest.json" "release-assets/GT2-${version}-macos-${ARCH}-release-manifest.json"
+          (cd release-assets && shasum -a 256 * > "SHA256SUMS-macos-${ARCH}.txt")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+  windows:
+    name: Windows x64
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
+        with:
+          vulkan_version: latest
+          cache: true
+
+      - name: Build and test
+        shell: cmd
+        run: |
+          call build.cmd build_ci
+          if errorlevel 1 exit /b 1
+          ctest --test-dir build_ci --output-on-failure
+          if errorlevel 1 exit /b 1
+
+      - name: Collect assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [regex]::Match(
+            (Get-Content CMakeLists.txt -Raw), 'project\(gt2pc VERSION ([0-9.]+)').Groups[1].Value
+          $stage = Join-Path $env:RUNNER_TEMP "GT2-$version-windows-x64"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          $executables = @(
+            'gt2game.exe', 'gt2install.exe', 'gt2checks.exe', 'gt2media.exe',
+            'gt2bootcapture.exe', 'gt2tool.exe', 'gt4assettool.exe',
+            'gt4nativemetadata.exe', 'gt4materialmetadata.exe',
+            'gt4specdbexport.exe', 'gt4showroomexport.exe')
+          foreach ($name in $executables) { Copy-Item "build_ci/$name" $stage }
+          Copy-Item LICENSE, THIRD_PARTY.md, README.md $stage
+          New-Item -ItemType Directory -Force (Join-Path $stage 'LICENSES') | Out-Null
+          Copy-Item third_party/openxr/LICENSE (Join-Path $stage 'LICENSES/OpenXR-Apache-2.0.txt')
+
+          # The game loads this DLL at runtime when PCVR is used.
+          $nupkg = Join-Path $env:RUNNER_TEMP 'openxr.nupkg'
+          Invoke-WebRequest -UseBasicParsing -OutFile $nupkg `
+            -Uri 'https://github.com/KhronosGroup/OpenXR-SDK/releases/download/release-1.1.58/OpenXR.Loader.1.1.58.nupkg'
+          if ((Get-FileHash $nupkg -Algorithm SHA256).Hash.ToLowerInvariant() -ne
+              '08b3f7c8d0f51c7c01b4a1237da2c5c8da2c2df6b9f21eab7da4d04d7028fbff') {
+            throw 'OpenXR loader download failed its checksum'
+          }
+          $loader = Join-Path $env:RUNNER_TEMP 'openxr-loader'
+          Copy-Item $nupkg (Join-Path $env:RUNNER_TEMP 'openxr.zip')
+          Expand-Archive -LiteralPath (Join-Path $env:RUNNER_TEMP 'openxr.zip') -DestinationPath $loader -Force
+          Copy-Item (Join-Path $loader 'native/x64/release/bin/openxr_loader.dll') $stage
+
+          New-Item -ItemType Directory -Force 'release-assets' | Out-Null
+          $archive = "release-assets/GT2-$version-windows-x64.zip"
+          Compress-Archive -Path $stage -DestinationPath $archive
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  GT2-$version-windows-x64.zip" |
+            Set-Content "release-assets/GT2-$version-windows-x64.zip.sha256" -Encoding ASCII
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-windows-x64
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+  linux:
+    name: Linux x86_64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake ninja-build g++ pkg-config python3 \
+            libsdl2-dev libgtk-3-dev libvulkan-dev glslc
+
+      - name: Build and test
+        run: bash scripts/build-linux.sh
+
+      - name: Collect assets
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^project(gt2pc VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          stage="dist/GT2-${version}-linux-x86_64"
+          cmake --install build_linux --prefix "$stage"
+          if ldd "$stage/bin/gt2game" | grep -q 'not found'; then
+            echo "Unresolved runtime library in gt2game"; ldd "$stage/bin/gt2game"; exit 1
+          fi
+          tar -C dist -czf "dist/GT2-${version}-linux-x86_64.tar.gz" "GT2-${version}-linux-x86_64"
+          mkdir -p release-assets
+          cp "dist/GT2-${version}-linux-x86_64.tar.gz" release-assets/
+          (cd release-assets && sha256sum *.tar.gz > "SHA256SUMS-linux-x86_64.txt")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux-x86_64
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+  android:
+    name: Android arm64 (Quest)
+    runs-on: ubuntu-24.04
+    env:
+      # Base64 of the existing release .jks plus its passwords. Without them
+      # the release APK is built but stays unsigned and is not published.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Require the release signing key
+        if: (github.event_name == 'release' || inputs.tag != '') && env.ANDROID_KEYSTORE_BASE64 == ''
+        run: |
+          echo "::error::ANDROID_KEYSTORE_BASE64 is required to publish the Quest APK"
+          exit 1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install Android NDK, CMake and glslc
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends glslc
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+          sdkmanager --sdk_root="$ANDROID_HOME" --install \
+            "platforms;android-35" "build-tools;35.0.0" \
+            "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Build APK
+        run: |
+          set -euo pipefail
+          printf 'sdk.dir=%s\n' "$ANDROID_HOME" > android/local.properties
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            gradle -p android --no-daemon --no-problems-report assembleRelease
+          else
+            # No release key on this run: produce an installable debug-signed APK
+            # for testing instead of an unsigned release APK.
+            gradle -p android --no-daemon --no-problems-report assembleDebug
+          fi
+
+      - name: Sign APK
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          set -euo pipefail
+          version="$(sed -n "s/.*versionName '\([0-9.]*\)'.*/\1/p" android/app/build.gradle | head -n 1)"
+          [ -n "$version" ] || { echo "Android versionName not found"; exit 1; }
+          tools="$ANDROID_HOME/build-tools/35.0.0"
+          keystore="$RUNNER_TEMP/gt2-release.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          key_alias="${ANDROID_KEY_ALIAS:-gt2-release}"
+          export GT2_KEYSTORE_PASS="$ANDROID_KEYSTORE_PASSWORD"
+          export GT2_KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+          mkdir -p release-assets
+          "$tools/zipalign" -f -p 4 \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            "$RUNNER_TEMP/gt2-release-aligned.apk"
+          "$tools/apksigner" sign --ks "$keystore" --ks-key-alias "$key_alias" \
+            --ks-pass env:GT2_KEYSTORE_PASS --key-pass env:GT2_KEY_PASS \
+            --out "release-assets/GT2-VR-$version.apk" "$RUNNER_TEMP/gt2-release-aligned.apk"
+          "$tools/apksigner" verify --verbose --print-certs "release-assets/GT2-VR-$version.apk"
+          "$tools/zipalign" -c -p 4 "release-assets/GT2-VR-$version.apk"
+          rm -f "$keystore"
+          (cd release-assets && sha256sum *.apk > SHA256SUMS-android.txt)
+
+      - name: Keep the debug APK for testing
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        run: |
+          set -euo pipefail
+          version="$(sed -n "s/.*versionName '\([0-9.]*\)'.*/\1/p" android/app/build.gradle | head -n 1)"
+          mkdir -p android-debug
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            "android-debug/GT2-VR-${version}-debug.apk"
+          (cd android-debug && sha256sum *.apk > SHA256SUMS-android-debug.txt)
+          echo "::warning::ANDROID_KEYSTORE_BASE64 is unset; this debug-signed APK is for testing and is not published."
+
+      - uses: actions/upload-artifact@v7
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        with:
+          name: release-android
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+      - uses: actions/upload-artifact@v7
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        with:
+          name: android-debug
+          path: android-debug/
+          if-no-files-found: error
+          compression-level: 0
+
+  web:
+    name: WebAssembly
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Emscripten 6.0.10
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends cmake ninja-build python3
+          mkdir -p work/toolchains
+          git clone --depth 1 --branch 6.0.10 \
+            https://github.com/emscripten-core/emsdk.git work/toolchains/emsdk-6.0.10
+          ./work/toolchains/emsdk-6.0.10/emsdk install 6.0.10
+          ./work/toolchains/emsdk-6.0.10/emsdk activate 6.0.10
+          source ./work/toolchains/emsdk-6.0.10/emsdk_env.sh
+          emcc --version
+
+      - name: Build browser site
+        run: |
+          set -euo pipefail
+          source ./work/toolchains/emsdk-6.0.10/emsdk_env.sh
+          emcmake cmake -S . -B build_web -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build_web --target gt2web --parallel "$(nproc)"
+
+      - name: Package browser site
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^project(gt2pc VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          pwsh -NoProfile -File scripts/package-web.ps1 -Build build_web \
+            -Emsdk work/toolchains/emsdk-6.0.10
+          mkdir -p release-assets
+          cp "dist/GT2-Web-${version}.zip" release-assets/
+          (cd release-assets && sha256sum *.zip > SHA256SUMS-web.txt)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-web
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+  steamdeck:
+    name: Steam Deck Flatpak
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Flatpak runtime and SDK
+        run: |
+          sudo apt-get update
+          # eu-strip comes from elfutils; flatpak-builder strips the debug info.
+          # librsvg2-common lets the export step validate the SVG app icon.
+          sudo apt-get install --yes --no-install-recommends flatpak flatpak-builder elfutils librsvg2-common
+          flatpak remote-add --user --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub \
+            org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
+
+      - name: Build Flatpak
+        env:
+          GT2_BUILD_RESULT_FILE: ${{ github.workspace }}/steamdeck-bundle.txt
+        run: |
+          set -euo pipefail
+          rm -f "$GT2_BUILD_RESULT_FILE"
+          bash BUILD-STEAMDECK.sh
+          bundle="$(cat "$GT2_BUILD_RESULT_FILE")"
+          [ -f "$bundle" ] || { echo "Flatpak bundle not found"; exit 1; }
+          mkdir -p release-assets
+          cp "$bundle" release-assets/
+          (cd release-assets && sha256sum *.flatpak > SHA256SUMS-steamdeck.txt)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-steamdeck
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    name: Upload release assets
+    needs: [macos, windows, linux, android, web, steamdeck]
+    if: ${{ github.event_name == 'release' || inputs.tag != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Upload assets to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAG" ]; then echo "No release tag provided"; exit 1; fi
+          gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" release-assets/* --clobber

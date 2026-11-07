@@ -67,7 +67,7 @@ void WriteProfileRangesYaml(const CodeModules& a, const CodeModules& b, const Pr
             r.start = r.end = addrA;
             r.delta = delta;
             r.refs.push_back(addrA);
-            list.push_back(r);
+            list.push_back(std::move(r));
         }
         const GuestImage& image = a.Module(scope);
         const ModuleAlignment& alignment = map.Alignment(scope);

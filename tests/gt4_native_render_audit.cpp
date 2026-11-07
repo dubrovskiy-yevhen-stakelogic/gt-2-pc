@@ -87,7 +87,7 @@ int main(int argc,char** argv) {try {
                         renderer.DrawStereo(glazing,ww.string(),glazing.size());renderer.WaitFrame();
                         const auto b=gt2::ReadPngFile(wb.string()),w=gt2::ReadPngFile(ww.string());
                         auto fractional=[&](size_t pixel){const int d=int(w.rgba[pixel*4])-int(b.rgba[pixel*4]);return d>4 && d<195;};
-                        for(size_t y=1;y+1<w.height;++y)for(size_t x=1;x+1<w.width;++x) {
+                        for(size_t y=1;y+1<size_t(w.height);++y)for(size_t x=1;x+1<size_t(w.width);++x) {
                             const size_t pixel=y*w.width+x;
                             if(fractional(pixel) && fractional(pixel-1) && fractional(pixel+1) && fractional(pixel-w.width) && fractional(pixel+w.width))++windowPixels;
                         }

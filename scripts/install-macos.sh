@@ -51,7 +51,12 @@ gt2_prefix="$("$gt2_brew" --prefix)"
 export PATH="$gt2_prefix/bin:$PATH"
 export HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
 # Homebrew verifies its package checksums; update the named prerequisites when necessary.
-"$gt2_brew" install cmake python@3.13 shaderc vulkan-headers vulkan-loader molten-vk
+# --overwrite lets Homebrew replace the python.org links it finds in /usr/local/bin.
+if ! "$gt2_brew" install --overwrite python@3.13; then
+    "$gt2_brew" link --overwrite python@3.13
+    "$gt2_brew" install python@3.13
+fi
+"$gt2_brew" install cmake shaderc vulkan-headers vulkan-loader molten-vk
 gt2_python="$("$gt2_brew" --prefix python@3.13)/bin/python3.13"
 
 # SDL2 is pinned: Homebrew's former sdl2 formula now redirects to an SDL3 compatibility layer.

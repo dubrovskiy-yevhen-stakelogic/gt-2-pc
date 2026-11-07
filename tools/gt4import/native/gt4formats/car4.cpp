@@ -3,6 +3,8 @@
 // FUN_00452fa0 colour selection, FUN_001553c0 '.pat' sibling file).
 #include "gt4formats/car4.h"
 
+#include <algorithm>
+
 namespace gt4fmt {
 
 const char* car4SlotName(std::uint32_t slot) {
