@@ -20,7 +20,6 @@ int main(int argc,char** argv){try {
     VkSceneRenderer renderer(context,{size,size},VK_FORMAT_R8G8B8A8_UNORM);
     renderer.EnableDecodedTextures(true);
     RenderOptions options;options.msaa=1;options.smoothTextures=true;renderer.SetOptions(options);
-    const float identity[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
     std::ofstream report(out/"geometry.csv");report<<"car,wheel,x,y,z,radius,width\n";
     std::ofstream coverage(out/"coverage.csv");coverage<<"car,pose,reflected_pixels,unsupported_pixels\n";
     size_t failures=0,paths=0;

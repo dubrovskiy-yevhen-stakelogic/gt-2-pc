@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <type_traits>
 
 namespace {
 struct Road {size_t chunk,polygon;std::array<std::array<float,3>,3> points;uint16_t page,clut;};
@@ -66,7 +67,6 @@ int main(int argc,char** argv) {
                 const int selected=gt2view::SceneryEntry(track,inst,UINT32_MAX,0,0,500,true);
                 if(selected<0)continue;
                 const auto& model=track.sceneryModels.at(lods[size_t(selected)].model);
-                const auto m=gt2::SceneryInstanceMatrix(inst,model);
                 const auto replaced=detail.Match(inst,model);
                 for(size_t pi=0;pi<model.polygons.size();++pi) {
                     const auto& p=model.polygons[pi];
@@ -185,8 +185,9 @@ int main(int argc,char** argv) {
                     auto vs=gt2::json::Value::Array();for(const auto& v:vertices){auto point=gt2::json::Value::Array();for(float k:world(v))point.Push(gt2::json::Value::Double(k));vs.Push(std::move(point));}item.Set("vertices",std::move(vs));
                     auto ps=gt2::json::Value::Array(),materials=gt2::json::Value::Array();for(const auto& p:polygons){auto poly=gt2::json::Value::Array();for(size_t k=0;k<(p.IsQuad()?4u:3u);++k)poly.Push(gt2::json::Value::Int(p.vertex[k]));ps.Push(std::move(poly));
                         auto mat=gt2::json::Value::Array();if(p.IsTextured()){
-                            if constexpr(requires{p.tpage;}){mat.Push(gt2::json::Value::Int(p.tpage));mat.Push(gt2::json::Value::Int(p.clut));for(size_t k=0;k<4;++k){mat.Push(gt2::json::Value::Int(p.u[k]));mat.Push(gt2::json::Value::Int(p.v[k]));}}
-                            else for(const auto& uv:{track.uvTable[p.uvIndex].nearSet,track.uvTable[p.uvIndex].farSet}){mat.Push(gt2::json::Value::Int(uv.tpage));mat.Push(gt2::json::Value::Int(uv.clut));for(size_t k=0;k<4;++k){mat.Push(gt2::json::Value::Int(uv.u[k]));mat.Push(gt2::json::Value::Int(uv.v[k]));}}
+                            if constexpr(std::is_same_v<std::remove_cvref_t<decltype(p)>,gt2::TrackPolygon>)
+                                for(const auto& uv:{track.uvTable[p.uvIndex].nearSet,track.uvTable[p.uvIndex].farSet}){mat.Push(gt2::json::Value::Int(uv.tpage));mat.Push(gt2::json::Value::Int(uv.clut));for(size_t k=0;k<4;++k){mat.Push(gt2::json::Value::Int(uv.u[k]));mat.Push(gt2::json::Value::Int(uv.v[k]));}}
+                            else {mat.Push(gt2::json::Value::Int(p.tpage));mat.Push(gt2::json::Value::Int(p.clut));for(size_t k=0;k<4;++k){mat.Push(gt2::json::Value::Int(p.u[k]));mat.Push(gt2::json::Value::Int(p.v[k]));}}
                         }materials.Push(std::move(mat));}item.Set("polygons",std::move(ps));item.Set("materials",std::move(materials));geometry.Push(std::move(item));};
                 for(size_t ci=0;ci<track.chunks.size();++ci){const auto& c=track.chunks[ci];emit(c.road.vertices,c.road.polygons,[&](const auto& v){return gt2::TrackVertexToWorld(c,v);},-1,int64_t(ci),false);}
                 for(size_t ii=0;ii<track.sceneryInstances.size();++ii){const auto& inst=track.sceneryInstances[ii];const int selected=gt2view::SceneryEntry(track,inst,UINT32_MAX,0,0,500,true);if(selected<0)continue;const auto& lods=track.sceneryLods[inst.lodList];const auto& model=track.sceneryModels[lods[size_t(selected)].model];const auto m=gt2::SceneryInstanceMatrix(inst,model);

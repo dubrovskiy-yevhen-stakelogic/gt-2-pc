@@ -9,6 +9,7 @@
 //   gt4tool check <vol root> <python> <scripts/gt4_car4.py> <out dir>   both digests + compare (ctest)
 //
 // Outputs belong under work\ (game data never goes into the repository).
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdio>

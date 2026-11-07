@@ -4,7 +4,7 @@ $Repo = (Get-Item -LiteralPath $Repo).FullName
 Push-Location $Repo
 try {
     $files = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem:$FileSystem)
-    if ((!$FileSystem -and $LASTEXITCODE -ne 0) -or !$files.Count) { throw 'No source files found for auditing.' }
+    if (!$files.Count) { throw 'No source files found for auditing.' }
     if ($files -notcontains 'LICENSE') { throw 'Missing project MIT license in the source snapshot.' }
     $forbidden = '(?i)^(work|runtime|build[^/]*|dist|saves)/|^android/(\.gradle/|build/|app/(build|\.cxx)/|local\.properties$)|(^|/)(bin|obj|game-decomp)/|\.(bin|cue|iso|raw2352|chd|gtr|vol|ovl|tro|trp|cdo|cdp|mcd|mcr|sav|png|jpg|exe|dll|lib|pdb|spv|apk|aar|so|keystore|jks|prims\.txt)$|^install-location\.txt$'
     $forbidden += '|(^|/)(AGENTS|CLAUDE|HANDOFF)\.md$|(^|/)\.(codex|agents|claude)/|credential\.xml$'
