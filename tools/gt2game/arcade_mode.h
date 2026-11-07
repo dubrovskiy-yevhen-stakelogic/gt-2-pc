@@ -41,6 +41,7 @@ struct ArcadeModeOptions {
     std::string card1Path, card2Path;               // --card / --card2: the title's Save / Load and the first-boot auto-load (arcade_title.h)
     bool noMovies = false;                          // --no-movies: no intro / endings / course previews (movie_player.h)
     bool forceMovies = false;                       // --movies: the boot intro also in automated runs (a script, shots)
+    bool combined = false;                          // Silent's combined disc: start at the Arcade menus (its main menu enters them)
     RaceOptions race;
     RaceViewConfig view;
 };

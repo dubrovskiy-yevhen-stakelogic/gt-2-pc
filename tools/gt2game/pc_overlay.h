@@ -41,6 +41,9 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
                            bool deterministic = false, const std::string& script = {}, const std::string& shot = {}, bool sound = true,
                            bool playStartup = true);
 bool TakeGameChangeRequest();
+// The title's combined Arcade Mode row returns to the launcher with that picker row selected.
+void RequestGameChange(const std::string& preferred = {});
+std::string TakeGameChangePreference();
 void SetDiscImportAvailable(bool available);
 bool TakeDiscImportRequest();
 bool ConsoleStartupHandled();

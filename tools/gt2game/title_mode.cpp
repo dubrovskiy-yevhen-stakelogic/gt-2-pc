@@ -28,6 +28,7 @@
 #include "game/shell/title_menu.h"
 #include "game/shell/title_options.h"
 #include "game/shell/title_replay.h"
+#include "pc_overlay.h"
 #include "game/shell/title_screens.h"
 #include "game/shell/title_transfer.h"
 #include "gt2export/png_writer.h"
@@ -594,6 +595,10 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
                 const int result = title.result;
                 std::printf("title f%d: result %d\n", field, result);
                 switch (result) {
+                case shell::kArcadeMode: // the combined disc's added row: reopen the launcher on its Arcade row
+                    gt2game::RequestGameChange("combined-arcade");
+                    window.Close();
+                    break;
                 case shell::kStartGame: {
                     // 0x801EF5F1 = 4, 0x801EF5F2 = 3, 0x8005DA3C(4): the GT-mode menus in this window on this career (in
                     // memory: the title's Save Game writes what the GT mode did).

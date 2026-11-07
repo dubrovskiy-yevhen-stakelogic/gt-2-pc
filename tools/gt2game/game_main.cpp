@@ -93,6 +93,7 @@ namespace gt2game {
 
 int GameMain(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0); // the log of automated runs stays complete whatever happens to the process
+    SetCombinedArcadeFlow(false); // main.cpp runs the next session in this process after a game change
     if (argc < 2) {
         std::puts("usage: gt2game <disc.bin> [--track NAME] [--car ID] [--paint N] [--shot <frames> <out.png>] [--drive] [--dump <ram.bin>] [--cars N] [--manual] [--selftest]\n"
                   "               [--scan-courses] [--attract] [--generated-atan] [--laps N] [--no-countdown] [--ai-player] [--headless <seconds>] [--license B-1] [--license-decel A] [--no-sound] [--no-music] [--music N] [--no-reverb] [--no-hud] [--no-particles] [--replay-hud] [--replay-view N] [--hud-mode N] [--kmh] [--race-detail] [--max-detail] [--sponsors CATEGORY] [--sponsor-seed N] [--window WxH]\n"
@@ -115,6 +116,7 @@ int GameMain(int argc, char** argv) {
         std::vector<std::string> aiCars; // --ai-cars
         int modPhysicsSteps = 0;         // --mod-physics-check
         bool arcadeMode = false, trackGiven = false, carGiven = false, carsGiven = false; // --arcade (arcade_race.h)
+        bool combinedArcade = false; // --combined-arcade: Silent's combined disc, the Arcade flow (the disc picker's Arcade row)
         ArcadeRaceOptions arcadeOptions;
         uint32_t paint = 0;
         int shotFrames = 0;
@@ -171,7 +173,7 @@ int GameMain(int argc, char** argv) {
         titleOptions.card1Path = (savesDir / "card1.mcd").string();
         titleOptions.settingsPath = (savesDir / "settings.txt").string();
         for (int i = 2; i < argc; i++) {
-            static const char* const kTitleFlags[] = {"--title", "--window", "--no-sound", "--no-music", "--card", "--card2", "--career", "--settings",
+            static const char* const kTitleFlags[] = {"--title", "--combined-arcade", "--window", "--no-sound", "--no-music", "--card", "--card2", "--career", "--settings",
                                                       "--title-square", "--title-script", "--title-shot", "--title-compare", "--title-frames",
                                                       "--script", "--shot-at", "--fast", "--ai-player", "--seed", "--headless", "--manual", "--auto-race",
                                                       "--vr", "--xr-deterministic", // every mode's window becomes the OpenXR cinema quad
@@ -261,6 +263,7 @@ int GameMain(int argc, char** argv) {
             if (a == "--fake-pad" && i + 1 < argc) { SetFakePadScript(argv[++i]); continue; } // a scripted controller (platform/input/input_system.h)
             if (a == "--fake-pad2" && i + 1 < argc) { SetFakePad2Script(argv[++i]); continue; } // a scripted controller in port 2 (the 2 player Battle)
             if (a == "--auto-race") { autoRace = true; continue; } // dev aid: the race panels of the menus advance by themselves
+            if (a == "--combined-arcade") { combinedArcade = true; continue; } // the combined disc's Arcade row
             if (a == "--menu") menuMode = true;
             else if (a == "--menu-page" && i + 1 < argc) menuOptions.startPage = uint32_t(std::strtoul(argv[++i], nullptr, 0));
             else if (a == "--menu-square") menuOptions.squarePixels = true;
@@ -400,6 +403,12 @@ int GameMain(int argc, char** argv) {
         const ExeProfile& profile = ProfileOf(disc);
         gt2::hd::SetRoot(argv[1], profile.exeSha1);
         SetActiveProfile(profile);
+        const bool combinedDisc = IsCombinedDisc(disc);
+        if (combinedArcade) {
+            if (combinedDisc) SetCombinedArcadeFlow(true);                 // the combined disc's Arcade row
+            else if (!profile.arcade) throw std::runtime_error("--combined-arcade needs a Silent combined disc");
+        }
+        if (arcadeMode && combinedDisc) SetCombinedArcadeFlow(true);        // --arcade on a combined disc
         if (!profile.reference) std::printf("disc: %s (%s), address profile of that build\n", profile.name, profile.exeName);
         if (!raceScreenCheck.empty()) return RunRaceScreenCheck(disc, vol, raceScreenCheck);
         if (raceMenuCheck) return RunRaceMenuCheck(disc, vol, argc, argv);
@@ -490,8 +499,9 @@ int GameMain(int argc, char** argv) {
             const MovieResult r = PlayMovie(window, disc, *movies, movieOnly, !noSound);
             return r == MovieResult::kClosed ? 1 : 0;
         }
-        if (profile.arcade && (forceTitle || titleMode) && !menuMode && !arcadeMode) { // the arcade disc: its title and menus (arcade_mode.h)
+        if (ArcadeFlow() && (forceTitle || titleMode) && !menuMode && !arcadeMode) { // the arcade disc: its title and menus (arcade_mode.h)
             arcadeModeOptions.discPath = argv[1];
+            arcadeModeOptions.combined = combinedDisc;
             arcadeModeOptions.card1Path = titleOptions.card1Path;
             arcadeModeOptions.card2Path = titleOptions.card2Path;
             arcadeModeOptions.windowWidth = windowWidth;
@@ -506,8 +516,8 @@ int GameMain(int argc, char** argv) {
             if (!hudModeGiven) arcadeModeOptions.view.hudMode = 2; // the arcade HUD layout (shell mode 2 / 4)
             return RunArcadeMode(disc, vol, arcadeModeOptions);
         }
-        if (profile.arcade && (menuMode || !careerOptions.savePath.empty() || !licenseName.empty()))
-            throw std::runtime_error("the arcade disc has no GT mode / licences (US Arcade v1.1): use --arcade or --race");
+        if (ArcadeFlow() && (menuMode || !careerOptions.savePath.empty() || !licenseName.empty()))
+            throw std::runtime_error("the Arcade flow has no GT mode / licences: use --arcade or --race");
         if (arcadeMode) { // the defaults of the arcade race dump (docs/research/arcade_disc.md): Tahiti Road, the Corvette, six cars
             if (!trackGiven) trackName = "tahiti_t";
             if (!carGiven) carId = "ccrcn";

@@ -85,6 +85,7 @@ $('start').onclick = async () => {
     engine.FS.mkdirTree('/saves/' + mode);
     const args = ['/data/disc.bin','--windowed','--card','/saves/'+mode+'/card1.mcd',
       '--settings','/saves/'+mode+'/settings.txt'];
+    if (mode === 'arcade') args.push('--combined-arcade'); // the Arcade disc ignores it; a combined disc switches flow
     // Test harness sets this before launch. Nothing is read from the URL or a server.
     if (Array.isArray(window.gt2TestArguments)) args.push(...window.gt2TestArguments);
     running = true; $('stop').disabled = false; $('canvas').focus(); status('Game running.');

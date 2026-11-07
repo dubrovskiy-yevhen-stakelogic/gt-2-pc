@@ -85,7 +85,7 @@ uint32_t PaintIndexOfId(const CarInfoDirectory& cars, uint32_t carId, char paint
 
 void BuildArcadeRace(const DiscImage& disc, const GtfsVolume& vol, const std::string& trackName, const std::string& carId, size_t carCount,
                      const ArcadeRaceOptions& arcade, RaceOptions& options, RaceData& data) {
-    if (!ProfileOf(disc).arcade) std::printf("arcade: the disc is not the arcade disc; its carparam/usa_arcade_data.dat is used all the same\n");
+    if (!ArcadeFlow()) std::printf("arcade: the disc is not playing the Arcade flow; its carparam/usa_arcade_data.dat is used all the same\n");
     const ArcadeData ad = ArcadeData::Load(vol);
     const std::string eventName = ArcadeData::EventName(arcade.level, arcade.carClass);
     const int32_t row = ad.FindEvent(eventName);
@@ -161,7 +161,7 @@ size_t LoadRaceBlock(const DiscImage& disc, const GtfsVolume& vol, std::span<con
     o.eventSettings = &settings;
     LoadRaceTrack(disc, vol, trackName, o, data);
     data.constants.catchUp = sim::CatchUpFromSettings(settings, catchUp); // 0x80041E4C
-    const bool arcade = arcadeTables ? *arcadeTables : ProfileOf(disc).arcade;
+    const bool arcade = arcadeTables ? *arcadeTables : ArcadeFlow();
     const CarParamTables tables = arcade ? ArcadeData::Load(vol).Tables() : CarParamTables::Load(vol);
     const CarInfoDirectory cars = CarInfoDirectory::Load(vol);
     size_t count = block[0x5A];

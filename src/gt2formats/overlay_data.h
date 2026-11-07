@@ -49,6 +49,10 @@ constexpr uint32_t kRaceOverlayIndex = 0;
 
 // The root file "SCUS_xxx.xx" of the disc (the resident executable) at its load address.
 GuestImage LoadExeImage(const DiscImage& disc);
+// True for the Silent combined disc: a Simulation disc whose GT2.OVL member 1 (the main menu overlay) carries the
+// patch that adds the Arcade Mode entry (stepPatchMainMenuOverlay of CookiePLMonster/GT2-Combined-Disc). The disc is
+// played as a Simulation build; its Arcade flow selects the Arcade menus at run time.
+bool IsCombinedDisc(const DiscImage& disc);
 // Relocate known European UI tables to the layout consumed by the native menu code.
 // Gameplay and disc identification continue to use the original images/profiles.
 GuestImage UiLayout(GuestImage image, bool arcade = false);

@@ -110,8 +110,9 @@ void Import(const fs::path& tools, const fs::path& root, const std::string& imag
     std::string info;
     if (Run({(tools / "gt2install").string(), "inspect", image}, &info) != 0)
         throw std::runtime_error("This disc could not be read. Select a supported raw 2352-byte BIN/ISO. See gt2game.log for details.");
-    const auto mode = gt2::json::Parse(info).Require("mode").AsString();
-    if (mode != "arcade" && mode != "simulation") throw std::runtime_error("Unsupported disc type.");
+    const auto parsed = gt2::json::Parse(info);
+    const auto mode = parsed.Require("combined").AsBool() ? std::string("combined") : parsed.Require("mode").AsString();
+    if (mode != "arcade" && mode != "simulation" && mode != "combined") throw std::runtime_error("Unsupported disc type.");
     if (fs::exists(fs::symlink_status(root / mode)))
         throw std::runtime_error("This disc is already installed. To add the other disc, select its BIN file.");
     std::string pattern = (root / ".import-XXXXXX").string();
@@ -176,7 +177,7 @@ int main(int argc, char** argv) {
         std::printf("GT2 0.7.0 Linux launcher\n");
         setenv("GT2_DATA_ROOT", root.c_str(), 1);
         setenv(gt2linux::kLauncherEnvironment, "1", 1);
-        bool importing = !gt2linux::HasDisc(root, "arcade") && !gt2linux::HasDisc(root, "simulation");
+        bool importing = !gt2linux::HasAnyDisc(root);
         const char* picker = std::getenv("GT2_HOST_DISC_PICKER");
         const bool hostPicker = picker && std::string(picker) == "1";
         std::string image;

@@ -34,6 +34,7 @@ bool profiler = false;
 bool playStationIntro = true;
 bool consoleStartupHandled = false;
 bool gameChangeAvailable = false, gameChangeRequested = false;
+std::string gameChangePreference;
 bool discImportAvailable = false, discImportRequested = false;
 int foveation = 2;
 int metricUnits = -1;
@@ -1382,6 +1383,15 @@ bool TakeGameChangeRequest() {
     gameChangeRequested = false;
     return requested;
 }
+void RequestGameChange(const std::string& preferred) {
+    gameChangeRequested = true;
+    gameChangePreference = preferred;
+}
+std::string TakeGameChangePreference() {
+    std::string preferred = gameChangePreference;
+    gameChangePreference.clear();
+    return preferred;
+}
 void SetDiscImportAvailable(bool available) { discImportAvailable = available; }
 bool TakeDiscImportRequest() {
     const bool requested = discImportRequested;
@@ -1390,11 +1400,14 @@ bool TakeDiscImportRequest() {
 }
 std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vrMode,
                           bool deterministic, const std::string& script, const std::string& shot, bool sound, bool playStartup) {
+    // A row's key is what last-disc.txt keeps; the combined disc offers both flows from its one installed image.
     std::vector<std::string> modes, rows;
-    for (const std::string mode : {"arcade", "simulation"}) {
-        if (std::filesystem::exists(std::filesystem::path(root) / mode / "disc.raw2352")) {
-            modes.push_back(mode); rows.push_back(mode == "arcade" ? "ARCADE DISC - Quick races and time trials" : "SIMULATION DISC - GT Mode career");
-        }
+    auto installed = [&](const char* mode) { return std::filesystem::exists(std::filesystem::path(root) / mode / "disc.raw2352"); };
+    if (installed("arcade")) { modes.push_back("arcade"); rows.push_back("ARCADE DISC - Quick races and time trials"); }
+    if (installed("simulation")) { modes.push_back("simulation"); rows.push_back("SIMULATION DISC - GT Mode career"); }
+    if (installed("combined")) {
+        modes.push_back("combined-arcade"); rows.push_back("COMBINED DISC - Arcade Mode");
+        modes.push_back("combined-simulation"); rows.push_back("COMBINED DISC - Simulation Mode");
     }
     if (modes.empty()) throw std::runtime_error("No installed GT2 disc found");
     gameChangeAvailable = modes.size() > 1;
@@ -1412,14 +1425,16 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
         try { if (PlayPreparedMovie(window, startup.string(), spec, sound) == MovieResult::kClosed) return {}; }
         catch (const std::exception& e) { std::printf("BIOS intro unavailable: %s\n", e.what()); }
     }
-    int selected = modes.size() == 2 && preferred == modes[1] ? 1 : 0;
+    int selected = 0;
+    for (size_t i = 0; i < modes.size(); i++) if (modes[i] == preferred) selected = int(i);
     std::printf("player: disc picker (%s), %zu installed disc(s)\n", vrMode ? "VR" : "desktop", modes.size());
     while (window.BeginFrame()) {
         if (window.Pressed(gt2::keys::kEscape) || window.Pressed(gt2::keys::kBack)) return {};
         if (window.Pressed(gt2::keys::kUp) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
         if (window.Pressed(gt2::keys::kReturn)) {
             std::printf("player: selected %s\n", modes[size_t(selected)].c_str());
-            Panel(window,"GRAN TURISMO 2",{modes[size_t(selected)]=="arcade"?"Loading Arcade...":"Loading Simulation..."},-1,"","");
+            const bool arcade = modes[size_t(selected)].starts_with("arcade") || modes[size_t(selected)] == "combined-arcade";
+            Panel(window,"GRAN TURISMO 2",{arcade?"Loading Arcade...":"Loading Simulation..."},-1,"","");
             window.RetainBackendForNextWindow(); return modes[size_t(selected)];
         }
         Panel(window, "GRAN TURISMO 2 / SELECT DISC", rows, selected, "Choose your disc for this session.",

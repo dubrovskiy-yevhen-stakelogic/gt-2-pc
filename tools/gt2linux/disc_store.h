@@ -11,10 +11,14 @@ inline bool HasDisc(const std::filesystem::path& root, const std::string& mode) 
     return std::filesystem::is_regular_file(root / mode / "disc.raw2352") &&
            std::filesystem::is_directory(root / mode / "assets");
 }
+inline bool HasAnyDisc(const std::filesystem::path& root) {
+    for (const char* mode : {"arcade", "simulation", "combined"}) if (HasDisc(root, mode)) return true;
+    return false;
+}
 
 inline void PublishDisc(const std::filesystem::path& root, const std::string& mode,
                         const std::filesystem::path& prepared) {
-    if (mode != "arcade" && mode != "simulation") throw std::runtime_error("Unsupported disc type");
+    if (mode != "arcade" && mode != "simulation" && mode != "combined") throw std::runtime_error("Unsupported disc type");
     const auto target = root / mode;
     if (std::filesystem::exists(std::filesystem::symlink_status(target)))
         throw std::runtime_error("This disc is already installed. Existing data was kept.");

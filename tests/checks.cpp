@@ -3,6 +3,7 @@
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/gt_menu.h"
 #include "gt2formats/exe_profile.h"
+#include "gt2formats/race_menu_assets.h"
 #include "gt2formats/str_video.h"
 #include "game/menu/menu_car.h"
 #include "gt2vfs/gtfs.h"
@@ -20,6 +21,7 @@
 #include "game/audio/pause.h"
 #include "game/audio/music_player.h"
 #include "game/audio/menu_music.h"
+#include "game/shell/title_menu.h"
 #include "game/shell/title_options.h"
 #include "game/shell/title_screens.h"
 #include <chrono>
@@ -281,20 +283,50 @@ static void CheckPcChanges(const char* discPath) {
         const auto exe = LoadExeImage(disc);
         GtfsVolume vol(disc);
         Check(!shell::AttractDemoFilePath(LoadOverlayImage(disc, 1), vol, 1).empty(), "disc attract replay resolves");
-        if (ProfileOf(exe).arcade) {
+        auto checkArcade = [&] {
+            // The combined disc keeps the Simulation build: the Arcade tables are read through the Arcade layout.
+            const GuestImage arcadeExe = IsCombinedDisc(disc) ? UiLayout(exe, true) : exe;
+            auto overlay = [&](uint32_t index) {
+                GuestImage image = LoadOverlayImage(disc, index);
+                return IsCombinedDisc(disc) ? UiLayout(std::move(image), true) : image;
+            };
             const auto assets = arcade::ArcadeMenuAssets::Load(disc, vol);
             Check(assets.data.Text(0x800F8227) == "CAR SELECTION", "Arcade English text relocation");
             Check(assets.data.Text(0x800F845F).find("%d") != std::string::npos, "Arcade course length format");
-            const auto movies = ReadStreamMovieTable(exe);
-            const auto vlc = ReadGtVlcTable(LoadOverlayImage(disc, 5), kMovieVlcTableAddress);
-            Check(vlc.entries == ReadGtVlcTable(LoadOverlayImage(disc, 2), kCourseMovieVlcTableAddress).entries,
+            Check(!assets.data.courses[0].empty(), "Arcade road course list resolves");
+            const auto movies = ReadStreamMovieTable(arcadeExe);
+            const auto vlc = ReadGtVlcTable(overlay(5), kMovieVlcTableAddress);
+            Check(vlc.entries == ReadGtVlcTable(overlay(2), kCourseMovieVlcTableAddress).entries,
                   "course and movie AC tables match");
             GtMovieReader reader(disc, StreamFileLba(disc), movies.at(5));
             GtMovieReader::Frame frame;
             Check(reader.NextFrame(frame), "course preview has a video frame");
             const auto codes = GtFrameToMdecCodes(frame.data.data(), frame.data.size(), vlc);
-            Check(!DecodeMovieFrame(MdecCoreFromExe(exe), codes).rgb.empty(), "course preview decodes");
+            Check(!DecodeMovieFrame(MdecCoreFromExe(arcadeExe), codes).rgb.empty(), "course preview decodes");
+            if (IsCombinedDisc(disc)) {
+                Check(assets.data.Text(0x800F82B1) == "TRANSMISSION", "combined disc's moved Arcade strings");
+                for (uint32_t address : {0x800F8295u, 0x800F829Au, 0x800F829Du, 0x800F82A3u, 0x800F82FAu, 0x800F8323u, 0x800F8334u,
+                                         0x800F8347u, 0x800F8352u, 0x800F8361u, 0x800F836Du, 0x800F8375u, 0x800F837Au, 0x800F838Au,
+                                         0x800F839Au, 0x800F839Fu, 0x800F83B1u, 0x800F83C4u, 0x800F83D8u, 0x800F83E4u, 0x800F841Fu,
+                                         0x800F842Eu, 0x800F8445u, 0x800F845Fu, 0x800F8469u, 0x800F8475u, 0x800F8490u})
+                    Check(!assets.data.Text(address).empty(), "combined disc Arcade text literal");
+                Check(assets.data.Text(0x800F8490).find("Courses") != std::string::npos,
+                      "combined disc's longer Arcade string is not truncated");
+                shell::TitleMenu title(LoadOverlayImage(disc, 1), 1);
+                Check(title.Widget().count == 9, "combined title menu has the Arcade Mode row");
+                const RaceMenuAssets race = RaceMenuAssets::Load(disc, vol, RaceMenuAssets::Pictures::kSettings);
+                Check(race.Text(0x801C6EE7) == "RESULTS" && race.Text(0x801C6F03) == "TOTAL TIME",
+                      "combined race post-race text resolves");
+            }
+        };
+        if (ProfileOf(exe).arcade) {
+            checkArcade();
         } else {
+            if (IsCombinedDisc(disc)) {
+                SetCombinedArcadeFlow(true);
+                try { checkArcade(); } catch (...) { SetCombinedArcadeFlow(false); throw; }
+                SetCombinedArcadeFlow(false);
+            }
             const auto data = menu::MenuData::Load(disc, vol);
             const auto pages = MenuPages::Load(vol);
             const auto assets = MenuAssets::Load(disc, vol);

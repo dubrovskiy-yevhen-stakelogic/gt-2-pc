@@ -4,6 +4,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <thread>
+#include <utility>
 
 #include "platform/os/keys.h"
 #include "platform/os/paths.h"
@@ -17,6 +18,7 @@
 #include "game/audio/audio_device.h"
 #include "game/audio/mixer.h"
 #include "game_window.h"
+#include "gt2formats/exe_profile.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2view/movie_view.h"
 #include "platform/input/ps1_pad.h"
@@ -94,13 +96,19 @@ private:
 std::unique_ptr<MovieLibrary> MovieLibrary::Load(const DiscImage& disc, const std::string& discPath) {
     if (!disc.FindRootFile("STREAM.DAT")) return nullptr;
     auto lib = std::make_unique<MovieLibrary>();
-    const GuestImage exe = LoadExeImage(disc);
+    // The combined disc keeps the Simulation build; the movie tables and MDEC tables sit at the Arcade build's addresses.
+    auto overlay = [&](uint32_t index) {
+        GuestImage image = LoadOverlayImage(disc, index);
+        return CombinedArcadeFlow() ? UiLayout(std::move(image), true) : image;
+    };
+    GuestImage exe = LoadExeImage(disc);
+    if (CombinedArcadeFlow()) exe = UiLayout(std::move(exe), true);
     lib->discPath = discPath;
     lib->movies = ReadStreamMovieTable(exe);
     lib->streamLba = StreamFileLba(disc);
-    lib->vlc = ReadGtVlcTable(LoadOverlayImage(disc, 5), kMovieVlcTableAddress);
+    lib->vlc = ReadGtVlcTable(overlay(5), kMovieVlcTableAddress);
     lib->mdec = MdecCoreFromExe(exe);
-    lib->courseMovies = ReadCourseMovieTable(LoadOverlayImage(disc, 2));
+    lib->courseMovies = ReadCourseMovieTable(overlay(2));
     return lib;
 }
 

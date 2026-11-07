@@ -16,16 +16,37 @@ TitleSprite TitleSprite::Read(const GuestImage& image, uint32_t address) {
 TitleMenu::TitleMenu(const GuestImage& ovl1, uint8_t language) {
     // The tables by their Simulation v1.2 addresses through the image's build profile (identity on the Simulation disc; on
     // US Arcade v1.1 member 1 they sit 0xB2C lower, exe_profiles.inc); the pointers stored in them are the image's own.
-    for (int r = 0; r < kRows; r++) {
-        results_[size_t(r)] = ovl1.Get<int16_t>(ovl1.Sim(kResults) + uint32_t(r) * 2);
-        spriteIndex_[size_t(r)] = ovl1.Get<int16_t>(ovl1.Sim(kSpriteIndex) + uint32_t(r) * 2);
-    }
-    templateFlags_ = ovl1.Get<uint8_t>(ovl1.Sim(kRowTemplate));
-    templateBrightness_ = ovl1.Get<uint8_t>(ovl1.Sim(kRowTemplate) + 1);
-    templateReveal_ = ovl1.Get<int16_t>(ovl1.Sim(kRowTemplate) + 2);
-    const uint32_t table = ovl1.Get<uint32_t>(ovl1.Sim(kSpriteTables) + uint32_t(language) * 4);
-    for (int r = 0; r < kRows; r++) sprites_[size_t(r)] = TitleSprite::Read(ovl1, table + uint32_t(spriteIndex_[size_t(r)]) * 12);
+    // Silent's combined disc adds a ninth row (Arcade Mode) and moves the row tables one entry along (its patch appends the
+    // row template directly before the appended last language's sprite table).
     widget_ = MenuListWidget::Read(ovl1, ovl1.Sim(kWidget));
+    const bool combined = widget_.count >= 9 && ovl1.Get<int16_t>(ovl1.Sim(kResults) + 2) == int16_t(kArcadeMode);
+    rowCount_ = combined ? 9 : 8;
+    lastAction_ = combined ? 7 : 6;
+    const uint32_t results = ovl1.Sim(kResults), spriteIndex = ovl1.Sim(kSpriteIndex) + (combined ? 2 : 0);
+    for (int r = 0; r < rowCount_; r++) {
+        results_[size_t(r)] = ovl1.Get<int16_t>(results + uint32_t(r) * 2);
+        spriteIndex_[size_t(r)] = ovl1.Get<int16_t>(spriteIndex + uint32_t(r) * 2);
+    }
+    const uint32_t spriteTables = ovl1.Sim(kSpriteTables);
+    const uint32_t table = ovl1.Get<uint32_t>(spriteTables + uint32_t(language) * 4);
+    if (combined) {
+        // The appended template has the stock flags / brightness / reveal; its address is the appended language table's
+        // preceding record. Fall back to the stock values when the overlay moves it elsewhere.
+        uint32_t templateAt = ovl1.Get<uint32_t>(spriteTables + 6 * 4);
+        if (templateAt < ovl1.base + 4 || templateAt > ovl1.End()) templateAt = ovl1.Sim(kRowTemplate) + 4;
+        templateFlags_ = 0x0F, templateBrightness_ = 0x80, templateReveal_ = 0x20;
+        if (ovl1.Contains(templateAt - 4, 4)) {
+            templateFlags_ = ovl1.Get<uint8_t>(templateAt - 4);
+            templateBrightness_ = ovl1.Get<uint8_t>(templateAt - 3);
+            templateReveal_ = ovl1.Get<int16_t>(templateAt - 2);
+        }
+    } else {
+        templateFlags_ = ovl1.Get<uint8_t>(ovl1.Sim(kRowTemplate));
+        templateBrightness_ = ovl1.Get<uint8_t>(ovl1.Sim(kRowTemplate) + 1);
+        templateReveal_ = ovl1.Get<int16_t>(ovl1.Sim(kRowTemplate) + 2);
+    }
+    for (int r = 0; r < rowCount_; r++)
+        sprites_[size_t(r)] = spriteIndex_[size_t(r)] >= 0 ? TitleSprite::Read(ovl1, table + uint32_t(spriteIndex_[size_t(r)]) * 12) : TitleSprite{};
     Reset();
 }
 
@@ -43,7 +64,7 @@ void TitleMenu::Reset() {
 
 // 0x8001779C (rows with a negative result do nothing and are disabled).
 int32_t TitleMenu::RowCallback(int command, const MenuListWidget& w, int row, const MenuListRowDraw* draw) {
-    if (row < 0 || row >= kRows || results_[size_t(row)] < 0) return 0;
+    if (row < 0 || row >= rowCount_ || results_[size_t(row)] < 0) return 0;
     TitleRowState& r = rows_[size_t(row)];
     switch (command) {
     case kMenuListReset: // 0x80016394 from the template 0x8004BC24, then the sprite of the row
@@ -109,7 +130,7 @@ int TitleMenu::Update(const MenuListPad* pad, uint32_t held) {
     }
     const int16_t before = widget_.selection;
     const int32_t r = MenuListUpdate(widget_, pad);
-    MenuListClamp(widget_, 1, 6);
+    MenuListClamp(widget_, 1, lastAction_);
     if (r == -3) {
         if (before != widget_.selection) sounds.push_back(6);
         return ret;
@@ -119,7 +140,7 @@ int TitleMenu::Update(const MenuListPad* pad, uint32_t held) {
     MenuListClose(widget_);
     state_ = 2;
     startHeld = pad && (pad->held & menu_list_pad::kStart) != 0;
-    result = r >= 0 && r < kRows ? int(results_[size_t(r)]) : int(kTitleNone);
+    result = r >= 0 && r < rowCount_ ? int(results_[size_t(r)]) : int(kTitleNone);
     return ret;
 }
 

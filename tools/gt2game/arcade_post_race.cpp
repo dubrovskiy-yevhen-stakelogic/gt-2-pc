@@ -235,7 +235,8 @@ std::string ShotPathOf(const char* variable, int field) {
 
 RaceMenuAssets LoadArcadeRaceMenuAssets(const DiscImage& disc, const GtfsVolume& vol) {
     const ExeProfile& p = ProfileOf(disc);
-    if (!p.arcade) throw std::runtime_error("arcade race menus: not the arcade disc");
+    // The combined disc keeps the Simulation race overlay, EXE and race text layout; the post-race views read them directly.
+    if (!p.arcade) return RaceMenuAssets::Load(disc, vol, RaceMenuAssets::Pictures::kSettings);
     if (p.build == ExeBuild::kArcadeEu) return RaceMenuAssets::Load(disc, vol, RaceMenuAssets::Pictures::kSettings);
     const GuestImage ovl0 = UiLayout(LoadOverlayImage(disc, kRaceOverlayIndex),true);
     const GuestImage exe = UiLayout(LoadExeImage(disc),true);

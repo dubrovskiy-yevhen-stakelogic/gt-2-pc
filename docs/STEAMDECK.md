@@ -43,7 +43,9 @@ On the first launch, choose your own supported **raw 2352-byte BIN or ISO** in t
 file picker. For a BIN/CUE pair, select the BIN. Extract ZIP/7z archives first.
 A 2048-byte ISO omits required audio/video sectors and cannot be used. Supported
 disc revisions are listed in the main README; the importer verifies the executable
-hash. Game images and BIOS are not downloaded or included.
+build. Silent's combined disc is accepted as one installation and the disc picker
+offers its Arcade and Simulation modes. Game images and BIOS are not downloaded
+or included.
 
 The installed desktop launcher uses KDE's file picker and passes only the selected
 image into Flatpak with read-only access for that launch. The importer copies

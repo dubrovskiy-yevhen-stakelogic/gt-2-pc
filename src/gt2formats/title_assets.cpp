@@ -99,16 +99,37 @@ std::vector<uint8_t> InflateEmbeddedGzip(const GuestImage& image, uint32_t addre
     return Inflate(std::span<const uint8_t>(image.At(at, image.End() - at), image.End() - at));
 }
 
-std::vector<uint8_t> EuropeanArcadeText(const std::vector<uint8_t>& data, bool global) {
 #include "gt2formats/arcade_eu_text.inc"
+
+std::optional<uint32_t> EuropeanArcadeTextOffset(uint32_t europeanOffset) {
+    for (const auto& r : kArcadeEuText)
+        if (europeanOffset >= r.european && europeanOffset < uint32_t(r.european) + r.size)
+            return uint32_t(r.reference) + (europeanOffset - r.european);
+    return std::nullopt;
+}
+
+std::optional<uint32_t> EuropeanGlobalTextOffset(uint32_t europeanOffset) {
+    for (const auto& r : kGlobalEuText)
+        if (europeanOffset >= r.european && europeanOffset < uint32_t(r.european) + r.size)
+            return uint32_t(r.reference) + (europeanOffset - r.european);
+    return std::nullopt;
+}
+
+std::vector<uint8_t> EuropeanArcadeText(const std::vector<uint8_t>& data, bool global) {
     const size_t stride = global ? 0x7A9 : 0x314;
     const size_t referenceStride = global ? 0x76F : 0x2E0;
     if (data.size() < stride * 2) throw std::runtime_error("European text block is truncated");
-    std::vector<uint8_t> out(referenceStride + 1);
+    // The combined disc replaces some strings with longer ones; keep each whole NUL-terminated string and let the reference
+    // block grow to the European block's size (the menus address the tail strings too).
+    const size_t outSize = std::max(referenceStride, stride);
+    std::vector<uint8_t> out(outSize + 1);
     const auto ranges = global ? std::span<const RegionalTextRange>(kGlobalEuText) : std::span<const RegionalTextRange>(kArcadeEuText);
     for (const auto& r : ranges) {
-        if (r.european + r.size > stride || r.reference + r.size > referenceStride) throw std::runtime_error("invalid regional text range");
-        std::copy_n(data.begin() + ptrdiff_t(stride + r.european), r.size, out.begin() + r.reference);
+        if (r.european + r.size > stride || r.reference >= outSize) throw std::runtime_error("invalid regional text range");
+        size_t size = r.size;
+        while (r.european + size < stride && data[stride + r.european + size] != 0) size++;
+        size = std::min(size, outSize - r.reference);
+        std::copy_n(data.begin() + ptrdiff_t(stride + r.european), size, out.begin() + r.reference);
     }
     return out;
 }
