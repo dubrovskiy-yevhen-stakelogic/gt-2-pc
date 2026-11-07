@@ -329,9 +329,9 @@ RaceMenuAssets LoadArcadeRaceMenuAssets(const DiscImage& disc, const GtfsVolume&
         std::memcpy(d, &glyphs, 4);
         std::memcpy(d + 4, &kerning, 4);
         d[8] = RaceMenuAssets::kFontCells[f];
-        extra.insert(extra.end(), d, d + 16);
+        for (uint8_t byte : d) extra.push_back(byte);
     }
-    info.bytes.insert(info.bytes.end(), extra.begin(), extra.end());
+    for (uint8_t byte : extra) info.bytes.push_back(byte);
     for (int f = 0; f < 4; f++) {
         HudFont& font = a.fonts[size_t(f)];
         font = LoadHudFont(info, descriptors + uint32_t(f) * 16);

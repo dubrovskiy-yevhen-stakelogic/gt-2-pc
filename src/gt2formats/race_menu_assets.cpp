@@ -74,7 +74,7 @@ RaceMenuAssets RaceMenuAssets::Load(const DiscImage& disc, const GtfsVolume& vol
         std::memcpy(d, &glyphs, 4);
         std::memcpy(d + 4, &kerning, 4);
         d[8] = kFontCells[f];
-        info.bytes.insert(info.bytes.end(), d, d + 16);
+        for (uint8_t byte : d) info.bytes.push_back(byte);
     }
     for (int f = 0; f < 4; f++) {
         HudFont& font = a.fonts[size_t(f)];

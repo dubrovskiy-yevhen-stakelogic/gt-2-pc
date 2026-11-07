@@ -374,7 +374,8 @@ jobs:
         run: |
           sudo apt-get update
           # eu-strip comes from elfutils; flatpak-builder strips the debug info.
-          sudo apt-get install --yes --no-install-recommends flatpak flatpak-builder elfutils
+          # librsvg2-common lets the export step validate the SVG app icon.
+          sudo apt-get install --yes --no-install-recommends flatpak flatpak-builder elfutils librsvg2-common
           flatpak remote-add --user --if-not-exists flathub \
             https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user -y flathub \
