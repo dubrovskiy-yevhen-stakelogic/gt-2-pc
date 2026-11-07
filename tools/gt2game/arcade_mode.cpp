@@ -1176,8 +1176,8 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             prims = menus.Frame();
             if (outcome == arcade::ArcadeMenus::kEnding) { // result 5 / 6 -> member 5 0x800114E0(1 / 0) -> the title (member 1)
                 if (sfx) sfx->StopMusic();
-                if (options.combined) break; // the combined disc has no Arcade title to return to
                 if (!playMovie(menus.EndingRow() == 0 ? kMovieEndingA : kMovieEndingB)) break;
+                if (options.combined) break; // the combined disc has no Arcade title to return to
                 titleScreens.SetCareer(menus.Career());
                 title.Reset();
                 screen = Screen::kTitle;
