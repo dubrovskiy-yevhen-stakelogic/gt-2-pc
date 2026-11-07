@@ -915,10 +915,8 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         catch (const std::exception& e) {std::printf("Arcade expanded garage: %s\n",e.what());}
     }
     menus.SetCards({shell::CardSlot{options.card1Path}, shell::CardSlot{options.card2Path}}); // LOAD GUEST GARAGE
-    if (options.combined) { // the original's patched main menu: 0x8005DA3C(2) straight into the menus
+    if (options.combined) // the original's patched main menu: 0x8005DA3C(2) straight into the menus
         menus.Reset(false);
-        if (sfx) sfx->StartArcadeMusic(careerBlock[0xB3]);
-    }
     // Dev aid: GT2_ARCADE_RACE_SETUP=<file> (a RaceCaptureSetup: gt2verify --race-capture's <capture>.setup or --arcade-setup-out)
     // runs that race block's race and what follows it (the mode 6 session or the road race session) on the new game's career,
     // without the menus - automated runs of the arcade loop.
@@ -977,13 +975,16 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         return r != MovieResult::kClosed;
     };
     const bool automated = !options.globalScript.empty() || !options.shots.empty() || !options.anyShots.empty() || options.quitAfter > 0 || options.noRace;
-    if (!options.noMovies && (options.forceMovies || !automated)) {
+    if (!options.combined && !options.noMovies && (options.forceMovies || !automated)) {
         sfx.reset();
         if (!PlayBootScreens(window, disc, !options.noSound)) return 0;
         resetView();
         openSound();
     }
-    if (movies && (options.forceMovies || !automated) && !playMovie(kMovieIntro)) return 0; // EXE main 0x8005D670: member 5 first
+    if (!options.combined && movies && (options.forceMovies || !automated) && !playMovie(kMovieIntro)) return 0; // EXE main 0x8005D670: member 5 first
+    // The combined disc enters the menus directly from its main menu; its music starts here (and after boot screens / intro
+    // when those run).
+    if (options.combined && sfx) sfx->StartArcadeMusic(careerBlock[0xB3]);
     std::unique_ptr<TitleAttractDemos> attract; // the attract cycle (0x801EF030, 0x801EF02E; title_attract.h)
     uint32_t menusVram = menus.VramVersion();
     std::string noticeLine;
