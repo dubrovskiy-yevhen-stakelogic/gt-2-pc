@@ -195,7 +195,7 @@ void TitleAssets::LoadTitleFonts(TitleAssets& a, const GtfsVolume& vol) {
         std::memcpy(d, &glyphs, 4);
         std::memcpy(d + 4, &kerning, 4);
         d[8] = kCells[f];
-        info.bytes.insert(info.bytes.end(), d, d + 16);
+        for (uint8_t byte : d) info.bytes.push_back(byte);
     }
     for (int f = 0; f < 4; f++) {
         a.fonts[size_t(f)] = LoadHudFont(info, descriptors + uint32_t(f) * 16);

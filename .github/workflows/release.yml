@@ -373,7 +373,8 @@ jobs:
       - name: Install Flatpak runtime and SDK
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends flatpak flatpak-builder
+          # eu-strip comes from elfutils; flatpak-builder strips the debug info.
+          sudo apt-get install --yes --no-install-recommends flatpak flatpak-builder elfutils
           flatpak remote-add --user --if-not-exists flathub \
             https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user -y flathub \

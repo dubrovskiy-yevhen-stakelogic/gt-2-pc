@@ -29,7 +29,7 @@ try {
         if (!(Test-Path third_party/vrhands/ULTIMATEXR_LICENSE.txt)) { throw 'Missing VR hand license.' }
     }
     foreach ($path in $files) {
-        if ((Get-Item -LiteralPath $path).Length -gt 8MB) { throw "Unexpectedly large source file: $path" }
+        if ((Get-Item -LiteralPath $path -Force).Length -gt 8MB) { throw "Unexpectedly large source file: $path" }
         & {
             $asset = $path -in @($allowedImage, $readmeImage, $gt4Image, 'third_party/vrhands/BigHandLeft.uxrh', 'third_party/vrhands/BigHandRight.uxrh')
             $extension = [IO.Path]::GetExtension($path)
