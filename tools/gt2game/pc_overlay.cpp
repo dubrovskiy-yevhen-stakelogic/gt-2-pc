@@ -33,7 +33,7 @@ int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
 bool profiler = false;
 bool playStationIntro = true;
 bool consoleStartupHandled = false;
-bool gameChangeAvailable = false, gameChangeRequested = false;
+bool gameChangeAvailable = false, gameChangeRequested = false, gameChangeDirect = false;
 std::string gameChangePreference;
 bool discImportAvailable = false, discImportRequested = false;
 int foveation = 2;
@@ -1177,6 +1177,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 0) {
                         discImportRequested = page == 11;
                         gameChangeRequested = false;
+                        gameChangeDirect = false;
                         std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
                         window.Close(); done = true;
                     } else { selected = page == 11 ? 8 : int(discImportAvailable) + 9; page = 0; }
@@ -1184,7 +1185,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 else if (page == 9 && accept) {
                     if (selected == 0) {
                         std::puts("player: change game requested");
-                        gameChangeRequested = true;
+                        RequestGameChange();
                         window.Close(); done = true;
                     } else { page = 0; selected = 4; }
                 }
@@ -1383,14 +1384,20 @@ bool TakeGameChangeRequest() {
     gameChangeRequested = false;
     return requested;
 }
-void RequestGameChange(const std::string& preferred) {
+void RequestGameChange(const std::string& preferred, bool direct) {
     gameChangeRequested = true;
     gameChangePreference = preferred;
+    gameChangeDirect = direct && !preferred.empty();
 }
 std::string TakeGameChangePreference() {
     std::string preferred = gameChangePreference;
     gameChangePreference.clear();
     return preferred;
+}
+bool TakeGameChangeDirect() {
+    const bool direct = gameChangeDirect;
+    gameChangeDirect = false;
+    return direct;
 }
 void SetDiscImportAvailable(bool available) { discImportAvailable = available; }
 bool TakeDiscImportRequest() {

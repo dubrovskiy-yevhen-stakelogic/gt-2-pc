@@ -595,8 +595,8 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
                 const int result = title.result;
                 std::printf("title f%d: result %d\n", field, result);
                 switch (result) {
-                case shell::kArcadeMode: // the combined disc's added row: reopen the launcher on its Arcade row
-                    gt2game::RequestGameChange("combined-arcade");
+                case shell::kArcadeMode: // the combined disc's added row: start the Arcade flow directly
+                    gt2game::RequestGameChange("combined-arcade", true);
                     window.Close();
                     break;
                 case shell::kStartGame: {

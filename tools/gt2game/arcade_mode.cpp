@@ -981,9 +981,9 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         resetView();
         openSound();
     }
-    if (!options.combined && movies && (options.forceMovies || !automated) && !playMovie(kMovieIntro)) return 0; // EXE main 0x8005D670: member 5 first
-    // The combined disc enters the menus directly from its main menu; its music starts here (and after boot screens / intro
-    // when those run).
+    if (movies && (options.forceMovies || !automated) && !playMovie(kMovieIntro)) return 0; // EXE main 0x8005D670: member 5 first
+    // The combined disc skips the boot screens but keeps the Arcade intro; its menu music starts after the intro has reset
+    // the audio device.
     if (options.combined && sfx) sfx->StartArcadeMusic(careerBlock[0xB3]);
     std::unique_ptr<TitleAttractDemos> attract; // the attract cycle (0x801EF030, 0x801EF02E; title_attract.h)
     uint32_t menusVram = menus.VramVersion();
@@ -1177,14 +1177,22 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             if (outcome == arcade::ArcadeMenus::kEnding) { // result 5 / 6 -> member 5 0x800114E0(1 / 0) -> the title (member 1)
                 if (sfx) sfx->StopMusic();
                 if (!playMovie(menus.EndingRow() == 0 ? kMovieEndingA : kMovieEndingB)) break;
-                if (options.combined) break; // the combined disc has no Arcade title to return to
+                if (options.combined) { // the combined disc returns to its simulation title
+                    gt2game::RequestGameChange("combined-simulation", true);
+                    window.Close();
+                    break;
+                }
                 titleScreens.SetCareer(menus.Career());
                 title.Reset();
                 screen = Screen::kTitle;
                 prims.clear();
             } else if (outcome == arcade::ArcadeMenus::kTitle) { // result 4 -> 0x801EF024 = 0 -> member 1
                 if (sfx) sfx->StopMusic();
-                if (options.combined) break; // Exit ends the arcade session; the launcher's picker is the only title
+                if (options.combined) { // member 1 is the combined disc's simulation title
+                    gt2game::RequestGameChange("combined-simulation", true);
+                    window.Close();
+                    break;
+                }
                 titleScreens.SetCareer(menus.Career()); // the race results' course flags go back to the title's Save
                 title.Reset();
                 screen = Screen::kTitle;

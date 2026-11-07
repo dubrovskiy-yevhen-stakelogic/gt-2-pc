@@ -82,8 +82,17 @@ int main(int argc, char** argv) {
         LoadOverlaySettings((saves / std::get<1>(describe(preferred)) / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;
+        bool directLaunch = false;
+        auto installed = [&](const std::string& key) {
+            const auto [folder, saveMode, modeFlag] = describe(key);
+            (void)saveMode; (void)modeFlag;
+            return std::filesystem::exists(root / folder / "disc.raw2352");
+        };
         for (;;) {
-            const auto mode = SelectGameDisc(root.string(), preferred, vr, deterministic, pickerScript, pickerShot, sound, firstLaunch);
+            std::string mode;
+            if (directLaunch && installed(preferred)) mode = preferred; // combined title <-> Arcade menus
+            else mode = SelectGameDisc(root.string(), preferred, vr, deterministic, pickerScript, pickerShot, sound, firstLaunch);
+            directLaunch = false;
             if (mode.empty()) break;
             firstLaunch = false;
             preferred = mode;
@@ -99,6 +108,7 @@ int main(int argc, char** argv) {
             result = GameMain(int(pointers.size()), pointers.data());
             if (result != 0 || !TakeGameChangeRequest()) break;
             if (const std::string next = TakeGameChangePreference(); !next.empty()) preferred = next;
+            directLaunch = TakeGameChangeDirect();
             SetFakePadScript({}); SetFakePad2Script({});
         }
     } catch (const std::exception& e) {
