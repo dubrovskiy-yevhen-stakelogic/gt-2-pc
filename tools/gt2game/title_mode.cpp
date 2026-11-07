@@ -341,6 +341,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
         try {
             sfx = std::make_unique<audio::MenuAudio>();
             sfx->Load(vol, assets.exe, LoadOverlayImage(disc, 4));
+            sfx->SetEffectsVolume(uint8_t(shell::OptionValue(save.state, shell::kSfxVolume)));
             std::string error;
             if (!sfx->OpenDevice(error)) {
                 std::printf("title: no sound device for the effects (%s)\n", error.c_str());
@@ -353,8 +354,9 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     };
     openSound();
     auto playSounds = [&](const std::vector<int>& ids) {
-        if (sfx)
-            for (int id : ids) sfx->Sound(id);
+        if (!sfx) return;
+        sfx->SetEffectsVolume(uint8_t(shell::OptionValue(save.state, shell::kSfxVolume)));
+        for (int id : ids) sfx->Sound(id);
     };
 
     shell::TitleMenu title(assets.ovl1, assets.language);

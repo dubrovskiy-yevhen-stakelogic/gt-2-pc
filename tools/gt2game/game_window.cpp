@@ -196,18 +196,7 @@ bool GameWindow::BeginFrame() {
         ShowPcOverlay(*this, VrMode() ? std::vector<gt2view::DrawItem>{} : lastItems_, VrMode() ? 0 : lastScene_);
         overlayActive_ = false;
         backend_->SetVrMenuActive(false);
-        menuRelease_.Block(input_.Port1(),0);menuRelease_.Block(pad2_,1);
-        vrMenuRelease_.Block(rawVrPad_,0);
-        for(int key=1;key<256;++key)
-            menuRelease_.keys[size_t(key)]=(focused_ && backend_->KeyDown(key)) ||
-                std::find(scriptHeld_.begin(),scriptHeld_.end(),key)!=scriptHeld_.end();
-        desktopPad_=menuRelease_.Filter(input_.Port1(),0);
-        vrPad_=vrMenuRelease_.Filter(rawVrPad_,0);
-        pad_=gt2::vr::MergeMenuPads(desktopPad_,vrPad_);pad2_=menuRelease_.Filter(pad2_,1);
-        padPrevious_=pad_.buttons;pad2Previous_=pad2_.buttons;
-        pressedNow_.clear(); keyPressedNow_.clear(); scriptHeld_.clear();
-        padPressed_ = pad2Pressed_ = 0;
-        menuShortcuts_.pause = menuShortcuts_.settings = menuShortcuts_.menu = false;
+        BlockMenuInputUntilRelease();
         if (gamePauseRequested_) {
             gamePauseRequested_ = false;
             menuShortcuts_.pause = true;
@@ -216,6 +205,21 @@ bool GameWindow::BeginFrame() {
         }
     }
     return !backend_->Closed();
+}
+
+void GameWindow::BlockMenuInputUntilRelease() {
+    menuRelease_.Block(input_.Port1(),0);menuRelease_.Block(pad2_,1);
+    vrMenuRelease_.Block(rawVrPad_,0);
+    for(int key=1;key<256;++key)
+        menuRelease_.keys[size_t(key)]=(focused_ && backend_->KeyDown(key)) ||
+            std::find(scriptHeld_.begin(),scriptHeld_.end(),key)!=scriptHeld_.end();
+    desktopPad_=menuRelease_.Filter(input_.Port1(),0);
+    vrPad_=vrMenuRelease_.Filter(rawVrPad_,0);
+    pad_=gt2::vr::MergeMenuPads(desktopPad_,vrPad_);pad2_=menuRelease_.Filter(pad2_,1);
+    padPrevious_=pad_.buttons;pad2Previous_=pad2_.buttons;
+    pressedNow_.clear();keyPressedNow_.clear();scriptHeld_.clear();
+    padPressed_=pad2Pressed_=0;
+    menuShortcuts_.pause=menuShortcuts_.settings=menuShortcuts_.menu=false;
 }
 
 bool GameWindow::KeyHeld(int key) const {

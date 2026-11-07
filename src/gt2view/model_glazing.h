@@ -54,6 +54,7 @@ struct ModelGlazingOpening {
     std::array<std::array<float,3>,3> points;
     std::array<float,3> normal,lo,hi;
     std::array<std::array<float,4>,3> edges;
+    int sourceMaterial=-1;
 };
 inline ModelGlazingOpening GlazingOpening(const std::array<gt2::GltfVertex,3>& t) {
     ModelGlazingOpening o{};
@@ -114,10 +115,82 @@ inline std::vector<gt2::GltfVertex> SubtractModelVolumes(std::span<const gt2::Gl
             for(size_t a=0;a<pieces.size() && !merged;++a)for(size_t b=a+1;b<pieces.size();++b){
                 Poly joined=pieces[a];joined.insert(joined.end(),pieces[b].begin(),pieces[b].end());joined=hull(std::move(joined));
                 const double sum=polyArea(pieces[a])+polyArea(pieces[b]),combined=polyArea(joined);
-                // Adjacent planes are stored as floats. Their independent
-                // intersections can differ by a few ULPs; do not preserve
-                // those sub-millimetre numerical seams as separate polygons.
-                if(std::abs(sum-combined)>std::max(1e-9,sum*1e-5))continue;
+                // Merge only equal-area unions. A relative geometric allowance
+                // can refill a genuinely removed narrow strip after clipping.
+                // These area sums use double precision on exact float inputs;
+                // permit arithmetic roundoff, not a spatial gap between pieces.
+                const double tolerance=64*std::numeric_limits<double>::epsilon()*
+                    std::max({1.,sum,combined})*double(pieces[a].size()+pieces[b].size()+joined.size());
+                if(std::abs(sum-combined)>tolerance) {
+                    if(std::abs(sum-combined)>std::max(1e-9,sum*1e-5))continue;
+                    // Float clipping can round shared partition edges differently.
+                    // A near-equal-area hull is safe only if it does not enter
+                    // any removed volume. Test actual cut geometry, not gap width.
+                    using D=std::array<double,3>;
+                    using DP=std::vector<D>;
+                    DP hullPoints;
+                    for(const auto& vertex:joined)hullPoints.push_back({vertex.position[0],vertex.position[1],vertex.position[2]});
+                    std::vector<DP> added{std::move(hullPoints)};
+                    // Check only newly introduced regions. Existing fragments
+                    // can touch a cut through float plane snapping; that must
+                    // not prevent removing their internal partition edges.
+                    for(const auto* original:{&pieces[a],&pieces[b]}) {
+                        std::vector<DP> remainingAdded;
+                        for(const auto& region:added) {
+                            DP remainder=region;
+                            for(size_t edge=0;edge<original->size() && !remainder.empty();++edge) {
+                                const auto& start=(*original)[edge].position;
+                                const auto& end=(*original)[(edge+1)%original->size()].position;
+                                auto distance=[&](const D& q){return (double(end[x])-start[x])*(q[y]-start[y])-(double(end[y])-start[y])*(q[x]-start[x]);};
+                                DP inside,outside;auto prev=remainder.back();double pd=distance(prev);
+                                for(const auto& curr:remainder) {
+                                    const double cd=distance(curr);
+                                    if((pd>=0)!=(cd>=0)) {
+                                        const double t=pd/(pd-cd);D q{};
+                                        for(size_t k=0;k<3;++k)q[k]=prev[k]+(curr[k]-prev[k])*t;
+                                        inside.push_back(q);outside.push_back(q);
+                                    }
+                                    (cd>=0?inside:outside).push_back(curr);prev=curr;pd=cd;
+                                }
+                                if(outside.size()>=3)remainingAdded.push_back(std::move(outside));
+                                remainder=std::move(inside);
+                            }
+                        }
+                        added=std::move(remainingAdded);
+                    }
+                    bool fillsCut=false;
+                    for(const auto& volume:volumes)for(const auto& region:added) {
+                        auto intersection=region;
+                        for(const auto& plane:volume) {
+                            if(intersection.empty())break;
+                            std::vector<D> clipped;
+                            // Use the same one-micrometre boundary band as the
+                            // production clip below. Float-snapped boundary
+                            // fragments are not evidence of filling cut interiors.
+                            const double boundary=1e-6*std::sqrt(double(plane[0])*plane[0]+double(plane[1])*plane[1]+double(plane[2])*plane[2]);
+                            auto distance=[&](const D& q){return double(plane[0])*q[0]+double(plane[1])*q[1]+double(plane[2])*q[2]-plane[3]+boundary;};
+                            auto prev=intersection.back();double pd=distance(prev);
+                            for(const auto& curr:intersection) {
+                                const double cd=distance(curr);
+                                if((pd<=0)!=(cd<=0)) {
+                                    const double t=pd/(pd-cd);D q{};
+                                    for(size_t k=0;k<3;++k)q[k]=prev[k]+(curr[k]-prev[k])*t;
+                                    clipped.push_back(q);
+                                }
+                                if(cd<=0)clipped.push_back(curr);
+                                prev=curr;pd=cd;
+                            }
+                            intersection=std::move(clipped);
+                        }
+                        double overlap=0;
+                        for(size_t k=1;k+1<intersection.size();++k) {
+                            const auto& q0=intersection[0];const auto& q1=intersection[k];const auto& q2=intersection[k+1];
+                            overlap+=(q1[x]-q0[x])*(q2[y]-q0[y])-(q1[y]-q0[y])*(q2[x]-q0[x]);
+                        }
+                        if(std::abs(overlap)>tolerance){fillsCut=true;break;}
+                    }
+                    if(fillsCut)continue;
+                }
                 pieces[a]=std::move(joined);pieces.erase(pieces.begin()+ptrdiff_t(b));merged=true;break;
             }
         }
@@ -139,10 +212,18 @@ inline std::vector<gt2::GltfVertex> SubtractModelVolumes(std::span<const gt2::Gl
             auto prev=input.back();double pd=d(prev);
             const auto keep=[&](double distance){return side<0?distance>=0:distance>0;};
             for(const auto& v:input){const double vd=d(v);
-                if(keep(pd)!=keep(vd)){const float t=float(pd/(pd-vd));auto edge=prev;
-                    for(size_t k=0;k<3;++k){edge.position[k]+=(v.position[k]-prev.position[k])*t;edge.normal[k]+=(v.normal[k]-prev.normal[k])*t;}
-                    for(size_t k=0;k<2;++k)edge.uv[k]+=(v.uv[k]-prev.uv[k])*t;
-                    for(size_t k=0;k<4;++k)edge.color[k]+=(v.color[k]-prev.color[k])*t;
+                if(keep(pd)!=keep(vd)){
+                    // Shared edges are visited in opposite directions. Use the
+                    // same endpoint order and one final float rounding so both
+                    // fragments receive identical boundary vertices.
+                    const bool reverse=v.position<prev.position;
+                    const auto& first=reverse?v:prev;const auto& last=reverse?prev:v;
+                    const double firstD=reverse?vd:pd,lastD=reverse?pd:vd;
+                    const double t=firstD/(firstD-lastD);auto edge=first;
+                    auto interpolate=[&](float a,float b){return float(double(a)+(double(b)-a)*t);};
+                    for(size_t k=0;k<3;++k){edge.position[k]=interpolate(first.position[k],last.position[k]);edge.normal[k]=interpolate(first.normal[k],last.normal[k]);}
+                    for(size_t k=0;k<2;++k)edge.uv[k]=interpolate(first.uv[k],last.uv[k]);
+                    for(size_t k=0;k<4;++k)edge.color[k]=interpolate(first.color[k],last.color[k]);
                     out.push_back(edge);
                 }
                 if(keep(vd))out.push_back(v);prev=v;pd=vd;
@@ -177,11 +258,12 @@ inline std::vector<gt2::GltfVertex> SubtractModelVolumes(std::span<const gt2::Gl
     }
     return result;
 }
-inline std::vector<gt2::GltfVertex> CutGlazingLayers(std::span<const gt2::GltfVertex> triangle,
-                                                   const std::vector<ModelGlazingOpening>& openings,float separation=.003f,bool reflection=false) {
+inline std::vector<ModelClipVolume> ModelGlazingCutVolumes(std::span<const gt2::GltfVertex> triangle,
+                                                   const std::vector<ModelGlazingOpening>& openings,float separation=.003f,bool reflection=false,int sourceMaterial=-1) {
     const auto sourcePlane=GlazingOpening({triangle[0],triangle[1],triangle[2]});
     std::vector<ModelClipVolume> volumes;
     for(const auto& o:openings) {
+        if(sourceMaterial>=0 && o.sourceMaterial!=sourceMaterial)continue;
         if(o.reflectionOnly && !reflection)continue;
         // An aperture belongs to a layered surface. A nearby perpendicular
         // frame/door surface can cross its prism without being another pane.
@@ -212,7 +294,11 @@ inline std::vector<gt2::GltfVertex> CutGlazingLayers(std::span<const gt2::GltfVe
         planes[4]={-o.normal[0],-o.normal[1],-o.normal[2],-offset+separation};
         volumes.push_back(std::move(planes));
     }
-    return SubtractModelVolumes(triangle,volumes);
+    return volumes;
+}
+inline std::vector<gt2::GltfVertex> CutGlazingLayers(std::span<const gt2::GltfVertex> triangle,
+        const std::vector<ModelGlazingOpening>& openings,float separation=.003f,bool reflection=false,int sourceMaterial=-1) {
+    return SubtractModelVolumes(triangle,ModelGlazingCutVolumes(triangle,openings,separation,reflection,sourceMaterial));
 }
 // Split at texture address boundaries before clipping: GT4 often extends a
 // glass UV beyond 1 and relies on clamp-to-edge. Preserve original UVs so all
@@ -272,7 +358,36 @@ inline std::vector<gt2::GltfVertex> GlazingInside(std::span<const gt2::GltfVerte
     }
     return result;
 }
+// A mixed frame/glass material protects opaque texels, not its entire draw.
+// Foreign companion panes may clear fractional glass while the source frame
+// retains its own coverage and UVs. Both masks are exact complements.
+inline std::vector<gt2::GltfVertex> CutFrameGlassLayers(
+        std::span<const gt2::GltfVertex> triangle,
+        const std::vector<ModelGlazingOpening>& openings,
+        const ModelWindowHoles& protectedMask,const ModelWindowHoles& fractionalMask,
+        bool clampU,bool clampV) {
+    const auto broad=CutGlazingLayers(triangle,openings,.025f,false);
+    if(broad.size()==triangle.size() && std::equal(broad.begin(),broad.end(),triangle.begin(),
+        [](const auto& a,const auto& b){return a.position==b.position;}))
+        return {triangle.begin(),triangle.end()};
+    (void)protectedMask;
+    std::vector<ModelClipVolume> cuts;
+    const auto fractional=GlazingInside(triangle,fractionalMask,clampU,clampV);
+    for(size_t i=0;i+2<fractional.size();i+=3) {
+        const auto part=std::span<const gt2::GltfVertex>(fractional).subspan(i,3);
+        const auto support=GlazingOpening({part[0],part[1],part[2]});
+        float length=0;for(float n:support.normal)length+=n*n;if(length<.5f)continue;
+        auto volumes=ModelGlazingCutVolumes(part,openings,.025f,false);
+        for(auto& volume:volumes) {
+            // Intersect companion aperture with this exact fractional UV
+            // support, then subtract once from the unchanged source triangle.
+            // Do not tessellate unrelated opaque/transparent atlas regions.
+            volume.insert(volume.end(),support.edges.begin(),support.edges.end());
+            cuts.push_back(std::move(volume));
+        }
+    }
+    auto result=SubtractModelVolumes(triangle,cuts);
+    return result;
 }
 
-
-
+}

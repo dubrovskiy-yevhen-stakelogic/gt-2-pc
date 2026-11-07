@@ -59,6 +59,8 @@ public:
     void StopMusic();
     // 0x801C9993: the music volume of the options (career + 0xB3) the next track starts with; 0xF0 in every dump.
     void SetMusicVolume(uint8_t volume) { std::lock_guard lock(stateMutex_);musicVolume_ = volume; }
+    // 0x801C9994: the effects volume of the options (career + 0xB4) the menu effects play with; 0xC0 in every dump.
+    void SetEffectsVolume(uint8_t volume) { std::lock_guard lock(stateMutex_);context_.masterVolume = volume; }
     // Once per view update (60 Hz): 0x80019028 (the start countdown), the sequencer tick, the driver's handle poll.
     void Frame();
     int CurrentTrack() const { std::lock_guard lock(stateMutex_);return requested_; }

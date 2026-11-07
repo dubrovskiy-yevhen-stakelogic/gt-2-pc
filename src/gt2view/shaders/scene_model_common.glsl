@@ -24,7 +24,7 @@ vec3 cabinColor(vec3 color) {
     return color;
 }
 #include "native_model_fragment.glsl"
-void main() {
+void shadeModel() {
     // Stereo HUD mirrors clip in their own plane; framebuffer scissors cannot
     // follow its per-eye projection. Match the general and cached car shaders.
     if(pc.hudClip.z>pc.hudClip.x && (any(lessThan(inScreen.xy/inScreen.z,pc.hudClip.xy)) ||
@@ -41,7 +41,8 @@ void main() {
     vec2 uv=fract(inTexel/size)*size;
     if ((inFlags & 8388608u)!=0u) uv.x=clamp(inTexel.x,0.5,size.x-0.5);
     if ((inFlags & 16777216u)!=0u) uv.y=clamp(inTexel.y,0.5,size.y-0.5);
-    if ((pc.options & 1u)==0u) uv=floor(uv)+0.5;
+    // Binary black cabin masks are geometric coverage, not translucent paint.
+    if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
     vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
     if ((inFlags & 2147483648u)!=0u) {
         if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
@@ -62,4 +63,10 @@ void main() {
         outColor=vec4(paintClearcoat(c.rgb,inColor,inPaintView,pc.space==0u),1);
     } else outColor=vec4(cabinColor(c.rgb*inColor),(inFlags & 32u)!=0u?c.a:1.0);
 #endif
+}
+void main() {
+    shadeModel();
+    // Match the source-provenance diagnostic in the general/cached paths,
+    // after native alpha tests and culling have established real coverage.
+    if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }

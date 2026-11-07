@@ -29,6 +29,34 @@ inline bool RearFacingMirrorTriangle(const std::array<float,3>& a,const std::arr
     const float length=std::sqrt(x*x+y*y+z*z);
     return std::abs(z)>length*.55f && std::abs(y)<length*.5f;
 }
+// A small centre-mounted mirror in an exterior LOD duplicates the live
+// procedural mirror. Recognise the complete packet, including its stalk;
+// never classify a convenient triangle from a windscreen or roof as a mirror.
+inline bool IsCabinMirror(const gt2::GltfPrimitive& p,const gt2::GltfMaterial* material,
+                          const gt2::PngImage* image,float scale,
+                          const std::array<float,3>& offset,const CockpitFit& fit) {
+    if(p.indices.empty() || !material || material->wheelAttachment>=0 || material->lampStates)return false;
+    if(image && !NeutralMirrorImage(*image))return false;
+    std::array<float,3> lo{1e9f,1e9f,1e9f},hi{-1e9f,-1e9f,-1e9f};
+    double rear=0,total=0;
+    for(size_t i=0;i+2<p.indices.size();i+=3) {
+        std::array<std::array<float,3>,3> t;
+        for(size_t j=0;j<3;++j)for(size_t k=0;k<3;++k){
+            const float v=p.vertices.at(p.indices[i+j]).position[k]*scale+offset[k];
+            t[j][k]=v;lo[k]=std::min(lo[k],v);hi[k]=std::max(hi[k],v);
+        }
+        const auto& a=t[0];const auto& b=t[1];const auto& c=t[2];
+        const float x=(b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]);
+        const float y=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]);
+        const float z=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+        const float area=std::sqrt(x*x+y*y+z*z);total+=area;
+        if(RearFacingMirrorTriangle(a,b,c))rear+=area;
+    }
+    return total>.001 && rear>total*.25 && lo[0]>-.28f && hi[0]<.28f &&
+        hi[0]-lo[0]>.10f && hi[0]-lo[0]<.48f && hi[1]-lo[1]<.32f && hi[2]-lo[2]<.35f &&
+        lo[1]>fit.windshieldY+.12f && hi[1]<fit.roofY+.04f &&
+        lo[2]>fit.windshieldZ-.10f && hi[2]<fit.eye[2]+.10f;
+}
 // Recognise a small, rear-facing glass patch outside the passenger cell.
 // The caller also excludes wheel/reflection draws.
 // Keeping the test on an entire draw prevents window/body fragments from

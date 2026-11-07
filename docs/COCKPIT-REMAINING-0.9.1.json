@@ -1,0 +1,548 @@
+{
+  "release": "0.9.1",
+  "structure": [
+    {
+      "car": "t2a3n",
+      "structure_window_intrusion": 3
+    },
+    {
+      "car": "t2lgn",
+      "structure_window_intrusion": 3
+    },
+    {
+      "car": "t2s3n",
+      "structure_window_intrusion": 3
+    },
+    {
+      "car": "t2sor",
+      "structure_window_intrusion": 1
+    },
+    {
+      "car": "vst6n",
+      "structure_window_intrusion": 66
+    },
+    {
+      "car": "z0050",
+      "structure_window_intrusion": 11
+    },
+    {
+      "car": "z0163",
+      "structure_window_intrusion": 7
+    },
+    {
+      "car": "z0187",
+      "structure_window_intrusion": 147
+    },
+    {
+      "car": "z0199",
+      "structure_window_intrusion": 4
+    },
+    {
+      "car": "z0212",
+      "structure_window_intrusion": 8
+    },
+    {
+      "car": "z0323",
+      "structure_window_intrusion": 2
+    },
+    {
+      "car": "z0329",
+      "structure_window_intrusion": 8
+    },
+    {
+      "car": "z0650",
+      "structure_window_intrusion": 11
+    },
+    {
+      "car": "z0944",
+      "structure_window_intrusion": 2
+    },
+    {
+      "car": "z0945",
+      "structure_window_intrusion": 21
+    },
+    {
+      "car": "z0946",
+      "structure_window_intrusion": 21
+    },
+    {
+      "car": "z0955",
+      "structure_window_intrusion": 3
+    },
+    {
+      "car": "z1032",
+      "structure_window_intrusion": 2
+    },
+    {
+      "car": "z1033",
+      "structure_window_intrusion": 2
+    },
+    {
+      "car": "z1040",
+      "structure_window_intrusion": 67
+    }
+  ],
+  "source_body": [
+    {
+      "car": "a26sn",
+      "road_leaks": 1204,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "a2azn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "a2gsn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "a2vsn",
+      "road_leaks": 1204,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "aminn",
+      "road_leaks": 2401,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "amisn",
+      "road_leaks": 2401,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "amivn",
+      "road_leaks": 2331,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "an16n",
+      "road_leaks": 2401,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "arodn",
+      "road_leaks": 1204,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "as16n",
+      "road_leaks": 2401,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "av16n",
+      "road_leaks": 2331,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "buc9n",
+      "road_leaks": 756,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "bucrn",
+      "road_leaks": 511,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "c427n",
+      "road_leaks": 371,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "h2psn",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "ia63n",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "iaspn",
+      "road_leaks": 161,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "n24nn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "n2stn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "n2zsn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "naxvn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "nzxvn",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "t211n",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "uftan",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "uscon",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "x2esr",
+      "road_leaks": 1050,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0037",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0041",
+      "road_leaks": 329,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0050",
+      "road_leaks": 21,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0109",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0138",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0145",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0153",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0198",
+      "road_leaks": 28,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0207",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0210",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0212",
+      "road_leaks": 2520,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0285",
+      "road_leaks": 21,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0351",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0357",
+      "road_leaks": 3185,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0364",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0370",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0371",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0425",
+      "road_leaks": 147,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0430",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0431",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0441",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0490",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0492",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0494",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0495",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0577",
+      "road_leaks": 105,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0583",
+      "road_leaks": 35,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0585",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0608",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0630",
+      "road_leaks": 2408,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0631",
+      "road_leaks": 1442,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0635",
+      "road_leaks": 1372,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0639",
+      "road_leaks": 1428,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0641",
+      "road_leaks": 1379,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0678",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0684",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0685",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0686",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0719",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0720",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0723",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0724",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0737",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0752",
+      "road_leaks": 28,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0777",
+      "road_leaks": 798,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0783",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0785",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0788",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0792",
+      "road_leaks": 2415,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0795",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0808",
+      "road_leaks": 1057,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0813",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0842",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0855",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0859",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0861",
+      "road_leaks": 2401,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0868",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0875",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0876",
+      "road_leaks": 21,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0914",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0915",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0928",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0937",
+      "road_leaks": 14,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0939",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z0964",
+      "road_leaks": 7,
+      "wheel_leaks": 0
+    },
+    {
+      "car": "z1040",
+      "road_leaks": 420,
+      "wheel_leaks": 0
+    }
+  ],
+  "follow_up_required": true
+}

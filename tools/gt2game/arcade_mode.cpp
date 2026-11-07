@@ -1,5 +1,6 @@
 // gt2game on the arcade disc: title -> arcade menus -> race -> menus (arcade_mode.h).
 #include "arcade_mode.h"
+#include "cockpit_preview.h"
 #include "gt2view/cockpit_badge.h"
 
 #include "platform/os/keys.h"
@@ -332,6 +333,7 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -590,6 +592,7 @@ bool RunArcadeRaceSession(GameWindow& window, const DiscImage& disc, const GtfsV
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -715,6 +718,7 @@ bool RunArcadeBattleSession(GameWindow& window, const DiscImage& disc, const Gtf
         }
         auto sounds = [&](const std::vector<int>& ids) {
             if (!effects) return;
+            effects->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
             for (int id : ids) effects->Sound(id);
             effects->Frame();
         };
@@ -1026,8 +1030,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         case Screen::kTitle: {
             use(titleAssets.vram);
             const int state = title.Update(&pad, held);
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(titleScreens.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : title.sounds) sfx->Sound(id);
+            }
             if (state == 4) {
                 std::printf("arcade title f%d: result %d\n", field, title.result);
                 if (title.result == shell::kStartGame) { // ovl1 -> member 2 (0x8005D9AC(2) at 0x80011434)
@@ -1095,8 +1101,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             } else {
                 prims = titleScreens.Frame();
             }
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(titleScreens.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : titleScreens.sounds) sfx->Sound(id);
+            }
             {
                 // Replay Theater: a loaded / chosen replay plays as the race overlay with argument 1 (0x8005D9EC(0, 0x80011F64, 1)
                 // after 0x80010EDC), then member 1 starts in the theater again (0x801EF022 == 2).
@@ -1120,6 +1128,33 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             }
             break;
         case Screen::kMenus: {
+            const bool previewPage=menus.Current()==arcade::ArcadeView::kCar || menus.Current()==arcade::ArcadeView::kGarage;
+            if(CockpitPreviewRequested(window,previewPage && menus.CarShown())) {
+                const uint32_t selected=menus.CarId();
+                const int paint=menus.CarPaint(),index=menus.CarPage().Index();
+                const auto page=menus.Current();
+                const auto camera=menus.CarPage().Camera();
+                const std::vector<uint8_t> careerBefore(menus.Career().begin(),menus.Career().end());
+                const std::vector<uint8_t> homeBefore(menus.GarageBlock(0).begin(),menus.GarageBlock(0).end());
+                const std::vector<uint8_t> guestBefore(menus.GarageBlock(1).begin(),menus.GarageBlock(1).end());
+                RunCockpitPreview(window,vol,selected,paint);
+                const bool preserved=menus.Current()==page && menus.CarId()==selected && menus.CarPaint()==paint &&
+                    menus.CarPage().Index()==index && std::memcmp(&camera,&menus.CarPage().Camera(),sizeof(camera))==0 &&
+                    std::equal(careerBefore.begin(),careerBefore.end(),menus.Career().begin(),menus.Career().end()) &&
+                    std::equal(homeBefore.begin(),homeBefore.end(),menus.GarageBlock(0).begin(),menus.GarageBlock(0).end()) &&
+                    std::equal(guestBefore.begin(),guestBefore.end(),menus.GarageBlock(1).begin(),menus.GarageBlock(1).end());
+                std::printf("cockpit preview state: Arcade page=%d index=%d car=%s paint=%d preserved=%d\n",
+                    int(page),index,UnpackCarId(selected).c_str(),paint,int(preserved));
+                if(!preserved)throw std::logic_error("cockpit preview changed Arcade menu/garage state");
+                resetView();
+                carView=std::make_unique<gt2view::MenuCarView>(*renderer,vol);
+                carView->SetFrameSize(TitleAssets::kScreenWidth,TitleAssets::kScreenHeight);
+                carView->LoadMenuReflection();
+                shownCar=0;previousHeld=previousHeld2=0;repeatTimer=repeatTimer2=0;
+                // Do not Reset/Update the menu: its garage/car/paint/transition remain exactly where they were.
+                if(window.Closed())return 0;
+                continue;
+            }
             const arcade::ArcadeMenus::Outcome outcome = menus.Update(pad, &pad2);
             if (menus.VramVersion() != menusVram) { // the car page uploaded a name logo (arc_carlogo) into the menus' VRAM
                 menusVram = menus.VramVersion();
@@ -1127,8 +1162,10 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             }
             use(menus.Vram());
             vram = &menus.Vram();
-            if (sfx)
+            if (sfx) {
+                sfx->SetEffectsVolume(menus.Career()[0xB4]); // 0x801C9994: the options' effects volume
                 for (int id : menus.sounds) sfx->Sound(id);
+            }
             prims = menus.Frame();
             if (outcome == arcade::ArcadeMenus::kEnding) { // result 5 / 6 -> member 5 0x800114E0(1 / 0) -> the title (member 1)
                 if (sfx) sfx->StopMusic();
@@ -1248,6 +1285,8 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             if (std::getenv("GT2_ARCADE_TRACE")) std::printf("arcade f%d: car %s, %zu car item(s)\n", field, UnpackCarId(shownCar).c_str(), carItems.size() - before);
         }
         if(carProjection)gt2view::AppendCockpitBadge(prims,carView->HasNativeInterior(),12,96);
+        if(carProjection && (menus.Current()==arcade::ArcadeView::kCar || menus.Current()==arcade::ArcadeView::kGarage))
+            AppendCockpitPreviewButton(prims,VrMode(),12,450);
         for(int p=0;p<2;++p)if(battleCars[size_t(p)])
             gt2view::AppendCockpitBadge(prims,carView->HasNativeInterior(p),battleCars[size_t(p)]->x0+8,battleCars[size_t(p)]->y0+28);
         view->Build(prims, TitleAssets::kScreenWidth, renderer->AspectRatio(), items, options.squarePixels, carLayerAt, carItems);

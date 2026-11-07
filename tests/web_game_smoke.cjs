@@ -1,4 +1,4 @@
-// Local runtime acceptance. Uses the actual C++ Wasm game and a local user disc.
+// Local runtime acceptance. Uses the actual C++ Wasm game and a local disc image.
 // NODE_PATH must resolve Playwright; nothing downloads or uploads disc content.
 const fs=require('node:fs');
 const path=require('node:path');

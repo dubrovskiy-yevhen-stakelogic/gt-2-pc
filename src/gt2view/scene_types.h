@@ -29,6 +29,9 @@ constexpr uint32_t kModelNative = 1u << 6;
 // Native-model-only bits; PS1 geometry uses these bits for texture depth.
 constexpr uint32_t kNativeSteering = 1u << 8;
 constexpr uint32_t kNativeCabin = 1u << 9;
+// Native-model-only: binary black cabin aperture stencil. Coverage is sampled
+// at texel centres even when colour filtering is enabled (PS1 uses bit 10 for STP).
+constexpr uint32_t kNativeCabinMask = 1u << 10;
 constexpr uint32_t kAuditWheelColor = 1u << 7; // Diagnostic tint after normal alpha/culling tests.
 struct NativeModelVertex { std::array<float,3> normal{};uint32_t materialAlpha=0; };
 struct NativeModelMaterial { std::array<float,24> values{}; };
@@ -197,7 +200,10 @@ public:
     static constexpr uint32_t kCockpitBodyVertexStride = 8192, kCockpitBodyVertexLimit = 8 * kCockpitBodyVertexStride;
     static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = 49152;
     static constexpr uint32_t kModelSetVertexBase = kCockpitVertexBase + kCockpitVertexLimit;
-    static constexpr uint32_t kModelSetVertexStride = 65536;
+#ifndef GT2_MODEL_SET_VERTEX_STRIDE
+#define GT2_MODEL_SET_VERTEX_STRIDE 98304
+#endif
+    static constexpr uint32_t kModelSetVertexStride = GT2_MODEL_SET_VERTEX_STRIDE;
     static constexpr uint32_t kPaintProbeVertexBase = kModelSetVertexBase + 8 * kModelSetVertexStride;
     static constexpr uint32_t kMaxVertices = kPaintProbeVertexBase + 6 * 40000;
     static constexpr uint32_t kNativeFontRow = 2048, kNativeFontRows = 144;

@@ -23,7 +23,7 @@ struct HudFrame {
     int32_t licenseRecordMs = -1; // mode 3: the licence's record time block (0x801CACFC + 0x668 * 0x801D5867 + 0xA4 * 0x801D5868)
     int licenseRecordSpeed = 0;
     bool replay = false;        // 0x800A951C: the attract race / a replay
-    int replayView = 0;         // camera + 0x107 in a replay: 0 = only the lap block, 1 = the full HUD (2: + two panels, not ported)
+    int replayView = 0;         // camera + 0x107 in a replay: 0 = only the lap block, 1 = the full HUD, 2 = + the input display
     int lapCount = 2;           // 0x801D586B
     int lap = 1;                // car + 0x634
     int position = 1;           // car + 0x77C (1..6)
@@ -44,6 +44,11 @@ struct HudFrame {
     int faceSlot = 0;           // car + 0x880: the face slot of the sheet (0x8002BD84(car, entry): 0 player 1, 1 player 2 of a 2P race)
     int redlineRpm = 7000;      // car + 0x3C2: the ring turns red from here
     int speedReadout = 0;       // car + 0x6DA: 1/100 mph (the US readout)
+    int throttle = 0;           // car + 0x610: throttle pedal amount, 0x1000 = full
+    int brake = 0;              // car + 0x612
+    int handbrake = 0;          // car + 0x614
+    int steerInput = 0;         // car + 0x768: the pad's steering, -100 (right) .. 100 (left)
+    std::array<int, 2> frontSteer{}; // car + 0x498 / 0x500: the original's input-display values (always 0x1000 = straight quads)
     int gear = 1;               // car + 0x644, 0 = reverse
     bool neutral = false;       // Native H-pattern gearbox, without changing the physics gear-array index.
     bool wheelDirectionBlocked = false;
@@ -183,6 +188,8 @@ private:
     void StartDisplay(const HudFrame& f);                                   // 0x8002A19C (countdown digits, START / REPLAY)
     void Warning(const HudFrame& f, int x, int y);                          // 0x8002E204
     void TyrePanel(const HudFrame& f, int x, int y);                        // 0x8002DE8C
+    void InputBars(const HudFrame& f, int x, int y);                        // 0x8002DA3C (Replay Info level 2)
+    void InputSteering(const HudFrame& f, int x, int y);                    // 0x8002DBB0 (Replay Info level 2)
     void Messages(const HudFrame& f, int x, int y);         // 0x8002D664
     void ViewHud(const HudFrame& f);                        // 0x8002E63C (view, car, camera)
     void Emit(float windowAspect, std::vector<DrawItem>& items); // the packets (reverse order) -> quads -> draw items

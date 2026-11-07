@@ -19,13 +19,13 @@ struct CockpitSettings {
 
 inline float CockpitSeatBack(const CockpitSettings& settings, bool desktop = false) {
     // Furniture offset retains its existing reference. Eye tuning is separate.
-    return .15f + settings.seatBackCm * .01f + (desktop ? .18f : 0.f);
+    return gt2view::kCockpitDefaultSeatBack + settings.seatBackCm * .01f + (desktop ? .18f : 0.f);
 }
 
 // Eye tuning is independent of furniture: authored cabins sit 30 cm forward
 // of the furniture reference, generated cabins 10 cm forward (+Z is back).
 inline float CockpitEyeBack(const gt2view::CockpitFit& fit, const CockpitSettings& settings, bool desktop = false) {
-    return CockpitSeatBack(settings,desktop)-(fit.nativeInterior ? .30f : .10f);
+    return CockpitSeatBack(settings,desktop)-(fit.nativeInterior ? gt2view::kNativeCockpitEyeForward : gt2view::kGeneratedCockpitEyeForward);
 }
 
 inline float CockpitSeatHeight(const gt2view::CockpitFit& fit,const CockpitSettings& settings) {

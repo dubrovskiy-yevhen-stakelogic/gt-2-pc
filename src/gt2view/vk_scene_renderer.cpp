@@ -1722,6 +1722,19 @@ std::vector<uint8_t> VkSceneRenderer::CaptureStereoForAudit(const std::vector<Dr
     const auto* p=static_cast<const uint8_t*>(readback_.mapped);
     return {p,p+bytes};
 }
+std::vector<float> VkSceneRenderer::CaptureStereoDepthForAudit(const std::vector<DrawItem>& items,size_t sceneItems) {
+    static_assert(kDepthFormat==VK_FORMAT_D32_SFLOAT);
+    if(externalStereoImage_ || stereoSamples_!=VK_SAMPLE_COUNT_1_BIT)
+        throw std::runtime_error("depth audit requires owned single-sample stereo target");
+    auditStereoReadback_=true;auditStereoDepthReadback_=true;
+    try {DrawStereo(items,{},sceneItems);}catch(...) {
+        auditStereoReadback_=false;auditStereoDepthReadback_=false;throw;
+    }
+    auditStereoReadback_=false;auditStereoDepthReadback_=false;
+    const size_t count=size_t(stereoExtent_.width)*stereoExtent_.height*2;
+    const auto* values=static_cast<const float*>(readback_.mapped);
+    return {values,values+count};
+}
 void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::string& screenshotPath, size_t sceneItems) {
     if (!stereoReady_) throw std::runtime_error("DrawStereo: no stereo target");
     const Image& colorTarget = externalStereoImage_ ? externalStereoViews_.at(externalStereoImage_) : stereoColor_;
@@ -1779,9 +1792,9 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
                VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 2);
     if (capture) { // Normal screenshots retain the left eye; the audit reads both.
         VkBufferImageCopy region{};
-        region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, auditStereoReadback_?2u:1u};
+        region.imageSubresource = {VkImageAspectFlags(auditStereoDepthReadback_?VK_IMAGE_ASPECT_DEPTH_BIT:VK_IMAGE_ASPECT_COLOR_BIT), 0, 0, auditStereoReadback_?2u:1u};
         region.imageExtent = {stereoExtent_.width, stereoExtent_.height, 1};
-        vkCmdCopyImageToBuffer(cmd_, colorTarget.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback_.buffer, 1, &region);
+        vkCmdCopyImageToBuffer(cmd_, auditStereoDepthReadback_?stereoDepth_.image:colorTarget.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback_.buffer, 1, &region);
     }
     if (externalStereoImage_ && capture)
         Transition(cmd_, colorTarget.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

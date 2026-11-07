@@ -10,6 +10,12 @@
 #include <vector>
 
 namespace gt2view {
+// Shared by the authored-eye calibration and camera presentation. The fit
+// must validate the eye actually used by rendering, after this fixed offset.
+inline constexpr float kCockpitDefaultSeatBack=.15f;
+inline constexpr float kNativeCockpitEyeForward=.30f;
+inline constexpr float kGeneratedCockpitEyeForward=.10f;
+
 
 // Car-local metres: right +X, up +Y, forward -Z. The cabin is presentation only.
 struct CockpitFit {
@@ -32,12 +38,19 @@ struct CockpitFit {
     std::array<std::array<float,5>,4> wheelWells{}; // centre xyz, tyre radius, width
     std::array<std::array<float, 3>, 17> cowl{};
     std::array<std::array<float, 3>, 17> bonnetJoin{};
+    std::array<std::array<float,3>,17> rearCowlProfile{};
+    bool rearCowlProfileValid=false;
     bool bonnetJoinValid = false;
     std::array<std::array<std::array<float,3>,17>,5> bonnetSeal{};
     bool bonnetSealValid=false;
     // Outer door-card boundary, front to back, with uniform Z stations per side.
     std::array<std::array<std::array<float, 3>, 17>, 2> sideSill{};
+    std::array<std::vector<std::array<float,3>>,2> backingSideContour;
     bool sideSillValid = false;
+    std::array<std::array<std::array<float,3>,13>,9> headliner{};
+    std::vector<std::array<std::array<float,3>,3>> headlinerSurface;
+    bool headlinerValid=false;
+    std::vector<std::array<std::array<float,3>,3>> liningApertures;
     bool nativeInterior = false; // Authored furniture retains its own seating and wheel placement.
     bool smoothShell = false; // Imported closed body: continuous inner roof/window surrounds.
     bool authoredUpperShell = false; // Retain the source roof/pillars instead of generating a second frame.
@@ -385,11 +398,197 @@ inline std::array<float,3> CockpitSideSillAt(const CockpitFit& fit, size_t side,
     return result;
 }
 
-inline void FitCockpitSideSills(CockpitFit& fit, std::span<const gt2::CarMeshVertex> openings) {
+// Reconcile the dense source contour after mirror sightline fitting has
+// lowered the final coarse belt. Include every final belt knot so compaction
+// cannot bridge a newly introduced notch. Neither profile may be raised.
+inline std::vector<std::array<float,3>> FinalCockpitBackingSide(const CockpitFit& fit,size_t side) {
+    const auto& dense=fit.backingSideContour[side];
+    if(dense.empty())return {};
+    std::vector<float> knots;
+    for(const auto& q:dense)knots.push_back(q[2]);
+    for(const auto& q:fit.sideSill[side])if(q[2]>dense.front()[2] && q[2]<dense.back()[2])knots.push_back(q[2]);
+    std::sort(knots.begin(),knots.end());knots.erase(std::unique(knots.begin(),knots.end()),knots.end());
+    std::vector<std::array<float,3>> result;
+    size_t at=0;
+    for(float z:knots) {
+        while(at+2<dense.size() && dense[at+1][2]<z)++at;
+        auto q=dense[at];
+        if(at+1<dense.size()) {
+            const auto& b=dense[at+1];const float t=std::clamp((z-q[2])/std::max(.000000001f,b[2]-q[2]),0.f,1.f);
+            for(size_t axis=0;axis<3;++axis)q[axis]+=t*(b[axis]-q[axis]);
+        }
+        q[1]=std::min(q[1],CockpitSideSillAt(fit,side,z)[1]);result.push_back(q);
+    }
+    return result;
+}
+
+// At a longitudinal station, use the connected vertical glass band above
+// the independently fitted cowl. Separate transparent trim below that band
+// cannot lower the door lining. The returned W is the top of that band.
+// A sloping front side pane need not reach the windscreen header chord.
+// Prove it belongs to the same source aperture as glass behind the header;
+// disconnected lamp/wing transparency cannot supply that evidence.
+inline std::vector<uint8_t> CockpitConnectedSideGlass(const CockpitFit& fit,
+        std::span<const gt2::CarMeshVertex> openings) {
+    const size_t count=openings.size()/3;
+    std::vector<size_t> parent(count);for(size_t i=0;i<count;++i)parent[i]=i;
+    const auto root=[&](size_t i){while(parent[i]!=i){parent[i]=parent[parent[i]];i=parent[i];}return i;};
+    std::map<std::array<int,3>,size_t> owners;
+    std::vector<uint8_t> eligible(count),seed(count),connected(count);
+    for(size_t i=0;i<count;++i){const auto t=openings.subspan(i*3,3);
+        if(!CockpitSideOpening(t,fit))continue;eligible[i]=1;
+        const size_t side=t[0].pos[0]>=0;
+        for(const auto& q:t){
+            const std::array<int,3> key{int(std::lround(q.pos[0]*10000)),int(std::lround(q.pos[1]*10000)),int(std::lround(q.pos[2]*10000))};
+            const auto [at,inserted]=owners.emplace(key,i);if(!inserted)parent[root(i)]=root(at->second);
+            const auto& front=fit.frontCowl[side];const auto& rear=fit.rearCowl[side];
+            const float u=std::clamp((q.pos[2]-front[2])/std::max(.01f,rear[2]-front[2]),0.f,1.f);
+            const float outer=std::min(std::abs(front[0]+u*(rear[0]-front[0]))-.025f,
+                std::min(std::abs(fit.frontHeader[side][0]),std::abs(fit.rearHeader[side][0])));
+            if(q.pos[2]>=fit.frontHeader[side][2] && q.pos[2]<=fit.rearCowl[side][2] &&
+               std::abs(q.pos[0])>=outer &&
+               q.pos[1]>std::min(front[1],rear[1])+.025f)seed[i]=1;
+        }
+    }
+    // A tapered pane can cross the seed region without any original
+    // vertex lying inside it (low outer corners, high inboard corners).
+    // Test its surface, not just its tessellation vertices.
+    for(size_t i=0;i<count;++i)if(eligible[i] && !seed[i]) {
+        const auto tri=openings.subspan(i*3,3);const size_t side=tri[0].pos[0]>=0;
+        const float sign=side?1.f:-1.f;
+        std::vector<std::array<float,3>> poly;
+        for(const auto& q:tri)poly.push_back({q.pos[0],q.pos[1],q.pos[2]});
+        const auto clip=[&](auto distance){
+            std::vector<std::array<float,3>> next;if(poly.empty())return;
+            auto a=poly.back();float da=distance(a);
+            for(const auto& b:poly){const float db=distance(b);
+                if((da>=0)!=(db>=0)){auto q=a;const float u=da/(da-db);for(size_t k=0;k<3;++k)q[k]+=u*(b[k]-a[k]);next.push_back(q);}
+                if(db>=0)next.push_back(b);a=b;da=db;
+            }poly=std::move(next);
+        };
+        clip([&](const auto& q){return q[2]-fit.frontHeader[side][2];});
+        clip([&](const auto& q){return fit.rearCowl[side][2]-q[2];});
+        clip([&](const auto& q){return q[1]-std::min(fit.frontCowl[side][1],fit.rearCowl[side][1])-.0251f;});
+        clip([&](const auto& q){return sign*q[0]-std::min(std::abs(fit.frontHeader[side][0]),std::abs(fit.rearHeader[side][0]));});
+        if(poly.size()>=3)seed[i]=1;
+    }
+    // UV/material splits can make a T-junction: a pane vertex lands on
+    // another triangle's edge without sharing its endpoint. Join only actual
+    // adjacent source surfaces, never an inboard driver silhouette.
+    const auto touches=[&](size_t i,size_t j){
+        const auto a=openings.subspan(i*3,3),b=openings.subspan(j*3,3);
+        const auto inside=[](const auto& point,const auto& triangle){
+            std::array<double,3> u{},v{},n{},q{};double length2=0;
+            for(size_t k=0;k<3;++k){u[k]=triangle[1].pos[k]-triangle[0].pos[k];v[k]=triangle[2].pos[k]-triangle[0].pos[k];q[k]=point.pos[k]-triangle[0].pos[k];}
+            for(size_t k=0;k<3;++k){n[k]=u[(k+1)%3]*v[(k+2)%3]-u[(k+2)%3]*v[(k+1)%3];length2+=n[k]*n[k];}
+            if(length2<1e-20)return false;double d=0;for(size_t k=0;k<3;++k)d+=q[k]*n[k];
+            if(d*d>1e-6*length2)return false;
+            size_t axis=0;for(size_t k=1;k<3;++k)if(std::abs(n[k])>std::abs(n[axis]))axis=k;
+            const size_t x=(axis+1)%3,y=(axis+2)%3;const double determinant=u[x]*v[y]-u[y]*v[x];
+            const double a=(q[x]*v[y]-q[y]*v[x])/determinant,b=(u[x]*q[y]-u[y]*q[x])/determinant;
+            return a>=-1e-5 && b>=-1e-5 && a+b<=1.00001;
+        };
+        for(const auto& point:a)if(inside(point,b))return true;
+        for(const auto& point:b)if(inside(point,a))return true;
+        return false;
+    };
+    std::map<std::array<int,3>,std::vector<size_t>> cells;
+    for(size_t i=0;i<count;++i)if(eligible[i]){
+        std::array<int,3> low{},high{};
+        for(size_t k=0;k<3;++k){float a=1e9f,b=-1e9f;for(size_t corner=0;corner<3;++corner){const float q=openings[i*3+corner].pos[k];a=std::min(a,q);b=std::max(b,q);}low[k]=int(std::floor((a-.001f)*4));high[k]=int(std::floor((b+.001f)*4));}
+        std::vector<size_t> candidates;
+        for(int x=low[0];x<=high[0];++x)for(int y=low[1];y<=high[1];++y)for(int z=low[2];z<=high[2];++z){auto& bucket=cells[{x,y,z}];candidates.insert(candidates.end(),bucket.begin(),bucket.end());bucket.push_back(i);}
+        std::sort(candidates.begin(),candidates.end());candidates.erase(std::unique(candidates.begin(),candidates.end()),candidates.end());
+        for(size_t j:candidates)if(root(i)!=root(j) && touches(i,j))parent[root(i)]=root(j);
+    }
+    for(size_t i=0;i<count;++i)if(seed[i])connected[root(i)]=1;
+    for(size_t i=0;i<count;++i)seed[i]=uint8_t(eligible[i] && connected[root(i)]);
+    return seed;
+}
+inline std::array<float,4> CockpitUpperSideApertureAt(const CockpitFit& fit,
+        std::span<const gt2::CarMeshVertex> openings,size_t side,float z,
+        std::span<const uint8_t> connectedGlass={}) {
+    const auto& front=fit.frontCowl[side];const auto& rear=fit.rearCowl[side];
+    const float t=std::clamp((z-front[2])/std::max(.01f,rear[2]-front[2]),0.f,1.f);
+    const float baseline=front[1]+(rear[1]-front[1])*t;
+    std::vector<std::array<float,6>> intervals;
+    for(size_t at=0;at+2<openings.size();at+=3) {
+        const auto triangle=openings.subspan(at,3);
+        if(!CockpitSideOpening(triangle,fit) || size_t(triangle[0].pos[0]>=0)!=side)continue;
+        float low=std::numeric_limits<float>::infinity(),high=-low,x=0,xHigh=0;
+        for(size_t edge=0;edge<3;++edge) {
+            const auto* a=triangle[edge].pos;const auto* b=triangle[(edge+1)%3].pos;
+            if(z<std::min(a[2],b[2])-1e-6f || z>std::max(a[2],b[2])+1e-6f)continue;
+            if(std::abs(b[2]-a[2])<1e-7f) {
+                for(const auto* q:{a,b}){if(q[1]<low){low=q[1];x=q[0];}if(q[1]>high){high=q[1];xHigh=q[0];}}
+            } else {
+                const float u=std::clamp((z-a[2])/(b[2]-a[2]),0.f,1.f);
+                const float y=a[1]+(b[1]-a[1])*u;
+                if(y<low){low=y;x=a[0]+(b[0]-a[0])*u;}if(y>high){high=y;xHigh=a[0]+(b[0]-a[0])*u;}
+            }
+        }
+        if(std::isfinite(low))intervals.push_back({x,low,z,high,xHigh,at/3<connectedGlass.size()?float(connectedGlass[at/3]):0.f});
+    }
+    std::sort(intervals.begin(),intervals.end(),[](const auto& a,const auto& b){return a[1]<b[1];});
+    // Height overlap alone joins a transparent driver/seat carrier to the
+    // real side glass. Require spatial continuity in the X/Y cross-section;
+    // then select the outermost glass band, not an inboard silhouette hole.
+    std::vector<size_t> parents(intervals.size());for(size_t i=0;i<parents.size();++i)parents[i]=i;
+    const auto root=[&](size_t i){while(parents[i]!=i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
+    const auto xAt=[](const auto& q,float y){const float u=std::abs(q[3]-q[1])<1e-7f?0.f:std::clamp((y-q[1])/(q[3]-q[1]),0.f,1.f);return q[0]+(q[4]-q[0])*u;};
+    for(size_t i=0;i<intervals.size();++i)for(size_t j=i+1;j<intervals.size();++j){
+        const auto& a=intervals[i];const auto& b=intervals[j];// Narrow opaque trim can split one window into upper glass and a
+        // lower clear strip. Its existing 25 mm stitch band must bridge that
+        // trim as well as touching alpha partitions on the same surface.
+        if(b[1]>a[3]+.025f)break;
+        const float low=std::max(a[1],b[1]),high=std::min(a[3],b[3]);
+        if(std::abs(xAt(a,low)-xAt(b,low))<=.025f && std::abs(xAt(a,high)-xAt(b,high))<=.025f)parents[root(j)]=root(i);
+    }
+    std::vector<std::array<float,4>> bands(intervals.size(),{0,std::numeric_limits<float>::infinity(),z,-std::numeric_limits<float>::infinity()});
+    for(size_t i=0;i<intervals.size();++i){auto& band=bands[root(i)];const auto& q=intervals[i];
+        if(q[1]<band[1] || (q[1]==band[1] && std::abs(q[0])>std::abs(band[0]))){band[0]=q[0];band[1]=q[1];}band[3]=std::max(band[3],q[3]);}
+    std::vector<uint8_t> connectedBand(intervals.size());
+    for(size_t i=0;i<intervals.size();++i)if(intervals[i][5]>0)connectedBand[root(i)]=1;
+    std::array<float,4> result{0,baseline,z,-std::numeric_limits<float>::infinity()};
+    const float shellChord=std::abs(front[0]+(rear[0]-front[0])*t);
+    // When a pillar blocks the outer window, an inboard driver transparency
+    // is not replacement evidence. Leave that station unmeasured so the
+    // neighbouring real apertures bridge the opaque pillar normally.
+    // Ahead of the A-pillar, a headlamp/wing aperture can rise above the
+    // door-belt chord without reaching the sloping windscreen. Require the
+    // upper band to reach that measured front-glass envelope as well.
+    float requiredTop=baseline+.0001f;
+    const auto& header=fit.frontHeader[side];
+    if(header[2]>front[2]+.025f && z<header[2] && header[1]>front[1]) {
+        const float u=std::clamp((z-front[2])/(header[2]-front[2]),0.f,1.f);
+        requiredTop=std::max(requiredTop,front[1]+u*(header[1]-front[1])-.025f);
+    }
+    // A sub-stitch-width isolated transparency cannot locate a door belt.
+    // Tiny alpha islands at the A-pillar otherwise lift a full sill station
+    // to the roof. Leave those stations unmeasured and bridge actual glass.
+    for(size_t bandIndex=0;bandIndex<bands.size();++bandIndex){const auto& band=bands[bandIndex];
+    if(band[3]-band[1]>.025f && (connectedBand[bandIndex] || band[3]>requiredTop) && (connectedBand[bandIndex] || std::abs(band[0])>=std::min(shellChord-.025f, std::min(std::abs(fit.frontHeader[side][0]),std::abs(fit.rearHeader[side][0])))) &&
+        (std::abs(band[0])>std::abs(result[0])+.0001f || (std::abs(std::abs(band[0])-std::abs(result[0]))<=.0001f && band[3]>result[3])))result=band;}
+    return result;
+}
+inline void FitCockpitSideSills(CockpitFit& fit, std::span<const gt2::CarMeshVertex> openings,
+                               bool upperApertureOnly=false,bool sourceExposed=false,
+                               std::span<const uint8_t> exposedSeeds={}) {
+
     if (!fit.valid) return;
     fit.sideSillValid=false;
+    for(auto& contour:fit.backingSideContour)contour.clear();
+    // Independently exposed source glazing needs no donor-width seed:
+    // curved windows can be narrower than the provisional header chord.
+    auto connectedGlass=sourceExposed?std::vector<uint8_t>(openings.size()/3,1):
+        (upperApertureOnly?CockpitConnectedSideGlass(fit,openings):std::vector<uint8_t>{});
+    // Original connected panes remain valid even when only part of their
+    // tessellation is directly exposed. Exposure supplements that evidence.
+    if(upperApertureOnly && exposedSeeds.size()==connectedGlass.size())
+        for(size_t i=0;i<connectedGlass.size();++i)connectedGlass[i]|=exposedSeeds[i];
     for (size_t side=0;side<2;++side) {
         auto& sill=fit.sideSill[side];
+        std::array<bool,17> measured{};
         const auto& front=fit.frontCowl[side]; const auto& rear=fit.rearCowl[side];
         for (size_t i=0;i<sill.size();++i) {
             const float t=float(i)/float(sill.size()-1);
@@ -407,10 +606,36 @@ inline void FitCockpitSideSills(CockpitFit& fit, std::span<const gt2::CarMeshVer
                     if (y<lowest) { lowest=y; edgeX=a[0]+(b[0]-a[0])*u; }
                 }
             }
-            if (std::isfinite(lowest)) {
-                sill[i][1]=std::min(sill[i][1],lowest);
-                if (std::abs(edgeX)>std::abs(sill[i][0])) sill[i][0]=edgeX;
+            if(upperApertureOnly) {
+                const auto band=CockpitUpperSideApertureAt(fit,openings,side,sill[i][2],connectedGlass);
+                lowest=std::isfinite(band[3])?band[1]:std::numeric_limits<float>::infinity();
+                edgeX=band[0];
             }
+            if (std::isfinite(lowest)) {
+                measured[i]=true;
+                // A measured upper aperture can rise above the cowl chord.
+                // Capping it to that chord exposes the original outer door
+                // above the generated lining on tall-window bodies.
+                sill[i][1]=upperApertureOnly?lowest:std::min(sill[i][1],lowest);
+                // A measured side window can taper inward from the front/rear cowl chord.
+                // Use its actual X coordinate for upper-shell fitting.
+                if (upperApertureOnly || std::abs(edgeX)>std::abs(sill[i][0])) sill[i][0]=edgeX;
+            }
+        }
+        // A pillar has no transparent texels. It must not pull the door
+        // back to the narrower cowl chord at that station. Bridge gaps between
+        // measured apertures or the fixed cowl endpoints; preserve endpoints.
+        if(upperApertureOnly)for(size_t i=1;i+1<sill.size();++i)if(!measured[i]) {
+            size_t before=i,after=i;
+            while(before>0 && !measured[before])--before;
+            while(after+1<sill.size() && !measured[after])++after;
+            // The independently fitted front/rear cowl are endpoint anchors.
+            // Leading/trailing gaps must join those anchors to real glass,
+            // rather than retaining an unrelated whole-cabin height chord.
+            if((!measured[before] && before!=0) ||
+               (!measured[after] && after+1!=sill.size()))continue;
+            const float t=(sill[i][2]-sill[before][2])/(sill[after][2]-sill[before][2]);
+            for(size_t axis=0;axis<2;++axis)sill[i][axis]=sill[before][axis]+(sill[after][axis]-sill[before][axis])*t;
         }
         // A fixed-size profile must stay below corners between stations as well.
         // Only lower the two adjacent samples; no paint- or model-specific offsets.
@@ -423,12 +648,115 @@ inline void FitCockpitSideSills(CockpitFit& fit, std::span<const gt2::CarMeshVer
                 const size_t index=std::min(size_t(station),sill.size()-2);
                 const float t=station-float(index);
                 const float y=sill[index][1]+(sill[index+1][1]-sill[index][1])*t;
+                if(upperApertureOnly && vertex.pos[1]<y) {
+                    const auto band=CockpitUpperSideApertureAt(fit,openings,side,vertex.pos[2],connectedGlass);
+                    // At a tapered window tip the vertical section has zero
+                    // height. Connectivity already proves this is real glass;
+                    // do not discard its lower corner as a tiny alpha island.
+                    if((at/3>=connectedGlass.size() || !connectedGlass[at/3]) &&
+                       (!std::isfinite(band[3]) || vertex.pos[1]<band[1]-.0001f))continue;
+                }
                 const float lower=std::max(0.f,y-vertex.pos[1]);
-                sill[index][1]-=lower; sill[index+1][1]-=lower;
+                if(!upperApertureOnly){sill[index][1]-=lower;sill[index+1][1]-=lower;}
+                else if(lower>0) {
+                    // Lower the high endpoint responsible for the overshoot.
+                    // Repeated uniform subtraction depresses the already-low
+                    // endpoint below every measured corner and leaves a notch.
+                    auto& a=sill[index][1];auto& b=sill[index+1][1];
+                    if(t<=1e-6f)a=vertex.pos[1];
+                    else if(t>=1.f-1e-6f)b=vertex.pos[1];
+                    else if(a>=b && a-lower/(1.f-t)>=b)a-=lower/(1.f-t);
+                    else if(b>a && b-lower/t>=a)b-=lower/t;
+                    else {a=std::min(a,vertex.pos[1]);b=std::min(b,vertex.pos[1]);}
+                }
+            }
+        }
+        // A small upper aperture above an opaque pillar is not the door belt.
+        // Its isolated upward/inward point must bridge the neighbouring lower
+        // glass boundaries, just as an unmeasured opaque pillar does.
+        if(upperApertureOnly)for(size_t pass=0;pass<sill.size();++pass)for(size_t i=1;i+1<sill.size();++i){
+            const auto& a=sill[i-1];const auto& b=sill[i+1];auto& q=sill[i];
+            if(q[1]>std::max(a[1],b[1])+.025f && std::abs(q[0])<std::min(std::abs(a[0]),std::abs(b[0]))-.025f){
+                const float t=(q[2]-a[2])/std::max(.0001f,b[2]-a[2]);
+                for(size_t axis=0;axis<2;++axis)q[axis]=a[axis]+t*(b[axis]-a[axis]);
+            }
+        }
+        if(upperApertureOnly) {
+            // The independently measured cowl borders are the shared anchors
+            // of the front, rear and side enclosure. Do not replace them with
+            // a higher pane seen at the same longitudinal coordinate.
+            const auto anchor=[](auto& measured,const auto& cowl) {
+                if(measured[1]>cowl[1]+.025f && std::abs(measured[0])<std::abs(cowl[0])-.025f)measured=cowl;
+            };
+            anchor(sill.front(),front);anchor(sill.back(),rear);
+            // A curved upper pane can occupy several stations. Apply the
+            // existing high/inboard island rule to the whole run, rather than
+            // requiring one sample to stand above its immediately adjacent
+            // samples (which are themselves part of that same island).
+            for(size_t span=sill.size()-1;span>=2;--span)for(size_t begin=0;begin+span<sill.size();++begin) {
+                const size_t end=begin+span;const auto a=sill[begin],b=sill[end];bool island=true,raised=false;
+                for(size_t j=begin+1;j<end;++j) {
+                    const float t=float(j-begin)/float(span);
+                    const float y=a[1]+t*(b[1]-a[1]);const float x=a[0]+t*(b[0]-a[0]);
+                    island &= sill[j][1]>=y-.0001f && std::abs(sill[j][0])<std::abs(x)-.025f;
+                    raised |= sill[j][1]>y+.025f;
+                }
+                if(island && raised)for(size_t j=begin+1;j<end;++j) {
+                    const float t=float(j-begin)/float(span);
+                    for(size_t axis=0;axis<2;++axis)sill[j][axis]=a[axis]+t*(b[axis]-a[axis]);
+                }
             }
         }
     }
     fit.sideSillValid=true;
+    // A uniformly sampled chord cannot preserve every bend in a source
+    // window. Measure the lower glass edge at all authored longitudinal
+    // corners for the closed backing only. Keep the established furnishing
+    // profile independent: a structural refinement must not move door trim
+    // or the dashboard into a different part of a swept source window.
+    if(upperApertureOnly)for(size_t side=0;side<2;++side) {
+        const auto& fixed=fit.sideSill[side];
+        std::vector<float> knots;
+        for(const auto& q:fixed)knots.push_back(q[2]);
+        for(size_t at=0;at+2<openings.size();at+=3) {
+            const auto t=openings.subspan(at,3);
+            if(!connectedGlass[at/3] || !CockpitSideOpening(t,fit) || size_t(t[0].pos[0]>=0)!=side)continue;
+            for(const auto& q:t)if(q.pos[2]>fixed.front()[2] && q.pos[2]<fixed.back()[2])knots.push_back(q.pos[2]);
+        }
+        std::sort(knots.begin(),knots.end());
+        knots.erase(std::unique(knots.begin(),knots.end(),[](float a,float b){return std::abs(a-b)<.000001f;}),knots.end());
+        std::vector<std::array<float,3>> contour;
+        for(float z:knots) {
+            auto q=CockpitSideSillAt(fit,side,z);
+            const auto band=CockpitUpperSideApertureAt(fit,openings,side,z,connectedGlass);
+            if(z>fixed.front()[2]+.000001f && z<fixed.back()[2]-.000001f && std::isfinite(band[3])) {
+                const bool pillarIsland=band[1]>q[1]+.025f && std::abs(band[0])<std::abs(q[0])-.025f;
+                // Refine only downward notches missed by the sampled belt.
+                // The coarse fit has already rejected upper/inboard islands;
+                // a dense query must not raise it or move the shell inward.
+                if(!pillarIsland)q[1]=std::min(q[1],band[1]);
+            }
+            contour.push_back(q);
+        }
+        // UV tessellation adds many longitudinal stations on the same
+        // straight source edge. Retain bends, discard numerically collinear
+        // subdivisions before generating and clipping the interior mesh.
+        std::vector<std::array<float,3>> compact;
+        for(const auto& q:contour) {
+            while(compact.size()>1) {
+                const auto& a=compact[compact.size()-2];const auto& b=compact.back();
+                const double t=double(b[2]-a[2])/std::max(.000000001,double(q[2]-a[2]));
+                double error=0;
+                for(size_t axis=0;axis<2;++axis) {
+                    const double d=double(b[axis])-double(a[axis])-t*double(q[axis]-a[axis]);error+=d*d;
+                }
+                if(error>1e-10)break;
+                compact.pop_back();
+            }
+            compact.push_back(q);
+        }
+        fit.backingSideContour[side]=std::move(compact);
+    }
 }
 
 // The last argument is used by the owned-data regression audit to reproduce
