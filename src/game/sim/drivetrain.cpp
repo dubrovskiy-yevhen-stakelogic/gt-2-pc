@@ -370,20 +370,23 @@ void ApplyBrakeAssist(CarBody& body, const uint8_t* scratch, int32_t yawBrakeGai
     int32_t thresholds[4];
     thresholds[0] = thresholds[1] = body.tyres[0].peakSlipRatioPos;
     thresholds[2] = thresholds[3] = body.tyres[1].peakSlipRatioPos;
-    if (slideSensitivity != 0 && slideMeasure != 0) {
+    // A zero yaw has no inside or outside: the old ternary picked the left wheel for it, so a slide that
+    // crossed zero braked the left front and pushed the car left.
+    const bool leftYaw = body.yawRate > 0, rightYaw = body.yawRate < 0;
+    if (slideSensitivity != 0 && slideMeasure != 0 && (leftYaw || rightYaw)) {
         int32_t factor = 0x1000 - MulLo(slideMeasure, slideSensitivity) / 100;
         if (factor < 0) factor = 0;
-        const uint32_t side = body.yawRate > 0 ? 1 : 0;
+        const uint32_t side = leftYaw ? 1 : 0;
         thresholds[side] = MulLo(factor, thresholds[side]) >> 12;
         thresholds[side + 2] = MulLo(factor, thresholds[side + 2]) >> 12;
         for (int32_t& t : thresholds)
             if (t > 0x1000) t = 0x1000;
     }
     // Stability pass: brake the front wheel on the side of the yaw while the slide angle exceeds the threshold.
-    if (yawBrakeGain != 0) {
+    if (yawBrakeGain != 0 && (leftYaw || rightYaw)) {
         const int32_t excess = Sub(slideAngle, yawBrakeThreshold);
         if (excess > 0) {
-            Wheel& w = body.wheels[body.yawRate > 0 ? 1 : 0];
+            Wheel& w = body.wheels[leftYaw ? 1 : 0]; // outside front
             int32_t brake = Add(w.brakeInput, MulLo(yawBrakeGain, excess) >> 9);
             if (brake > 0x1000) brake = 0x1000;
             w.brakeInput = int16_t(brake);
