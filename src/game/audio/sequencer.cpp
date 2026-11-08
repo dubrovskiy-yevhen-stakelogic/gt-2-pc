@@ -76,9 +76,15 @@ void Sequencer::NoteOn(Track& t, int trackIndex, uint8_t note, uint8_t velocity,
         int found = -1;
         for (int k = 0; k < kSlots; k++) { // circular search from the cursor for a slot without a voice
             const int i = (cursor_ + k) % kSlots;
-            if (slots_[size_t(i)].handle < 0) {
+            Slot& slot = slots_[size_t(i)];
+            if (slot.handle < 0) {
                 found = i;
                 break;
+            }
+            if (!slot.owned) { // a stopped player's slot: release its old voice and reuse it now (0x8007A4D8)
+                driver_.Release(&slot.handle);
+                driver_.Detach(&slot.handle);
+                if (slot.handle < 0) { found = i; break; }
             }
         }
         if (found < 0) continue; // no slot: the note is dropped
@@ -93,6 +99,7 @@ void Sequencer::NoteOn(Track& t, int trackIndex, uint8_t note, uint8_t velocity,
         s.programPan = p.pan;
         s.programVolume = p.volume;
         s.countdown = length + ticks + t.countdown;
+        s.fresh = true; // the slot update below must not release a note that starts this tick
         s.bend = t.bend;
         uint16_t lr[2];
         SlotVolume(s, lr);
@@ -195,7 +202,8 @@ void Sequencer::Tick() {
             s.owned = false;
             continue;
         }
-        s.countdown -= ticks;
+        if (s.fresh) s.fresh = false; // a short note due late in the field still gets this field to sound
+        else s.countdown -= ticks;
         if (s.countdown < 1 && !s.released) {
             driver_.Release(&s.handle);
             driver_.Detach(&s.handle); // free the sequencer slot at key-off; the mixer voice keeps decaying on its own

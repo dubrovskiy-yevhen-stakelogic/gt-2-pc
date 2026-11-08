@@ -110,7 +110,12 @@ void Mixer::Release(int8_t* handle) {
 
 void Mixer::Detach(int8_t* handle) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (Voice* v = Bound(handle)) { v->handle = nullptr; *handle = -1; }
+    // Clear the caller's slot even when the voice already ended by itself: Bound() only finds active
+    // voices, and the sequencer would otherwise keep the slot busy forever (issue 35's leak).
+    if (!handle || *handle < 0 || *handle >= kVoices) return;
+    Voice& v = voices_[size_t(*handle)];
+    if (v.handle == handle) v.handle = nullptr;
+    *handle = -1;
 }
 
 void Mixer::Poll() {
