@@ -170,6 +170,9 @@ std::string CarName(const career::CareerData& data, uint32_t carId) {
 // The race data of race `race`: the course with the event's settings block, the grid's cars.
 void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::CareerData& data, const EventPlan& p, int32_t race, RaceData& out) {
     DataOptions options;
+    sim::ShellState shell;
+    shell.gameMode = 2; // 0x801D5866: every event race runs in game mode 2 (race block + 0x0A)
+    options.shell = &shell;
     options.eventSettings = &p.settings;
     LoadRaceTrack(disc, vol, RaceCourse(vol, p, race), options, out);
     // The race overlay's "Start Race" (0x800178B0 -> 0x8001710C(loop, 1, 2)) runs every event race in game mode 2 (race block
