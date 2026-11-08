@@ -26,7 +26,7 @@ Secrets belong to the repository that hosts the release, not to a contributor's 
 
 Reuse the existing `gt2-release.jks`. APKs signed with a different key cannot replace an installed app; Android refuses the update. A new key is only appropriate for a new identity and requires users to uninstall first.
 
-A missing key still fails the Android job for a `release` event or a manual run with a tag, but the other platforms are published anyway and the release is left without the Quest APK. The run shows the warning on the `publish` job. Manual runs without a tag build a debug-signed APK for testing instead.
+A missing key still fails the Android job for a `release` event or a manual run with a tag, but every other build job uploads its own archive independently, so the release is left without only the Quest APK. Manual runs without a tag build a debug-signed APK for testing instead.
 
 Base64-encode a keystore and set the secrets with GitHub CLI:
 
@@ -55,7 +55,7 @@ Optional, but a public macOS download is blocked by Gatekeeper on first launch u
 
 1. Add the secrets to the fork or repository.
 2. Run **Actions → Release binaries → Run workflow** on `main` with the tag input empty.
-3. The `publish` job stays skipped. Download the artifacts from the run.
+3. No release assets are uploaded, because the tag input is empty. Download the workflow artifacts from the run.
 4. With the Android key set, the Android job uploads `release-android` containing the signed `GT2-VR-<version>.apk`. Without it, it uploads `android-debug` instead.
 5. Verify the APK certificate and check that its SHA-256 matches the key you intend to keep:
 
@@ -66,7 +66,7 @@ apksigner verify --verbose --print-certs GT2-VR-<version>.apk
 ## Publish a release
 
 1. Create or publish a GitHub release with a tag.
-2. The workflow runs for the `release: published` event, checks out that tag, builds every target and attaches the `release-*` artifacts to the release.
+2. The workflow runs for the `release: published` event, checks out that tag and builds every target. Each build job uploads its own `release-*` artifacts as soon as it finishes, so one failed platform does not block the rest.
 3. Alternatively, run the workflow manually with the tag of an existing release.
 
-`ANDROID_KEYSTORE_BASE64` is needed for the Quest APK. Without it the Android job fails, but the other five platform archives are still uploaded, with a warning on the `publish` job. The `publish` job only downloads `release-*` artifacts, so debug or unsigned test builds cannot be attached by accident.
+`ANDROID_KEYSTORE_BASE64` is needed for the Quest APK. Without it the Android job fails, but the other five jobs still upload their own archives. Each job uploads only the `release-*` files it produced, so debug or unsigned test builds cannot be attached by accident.
