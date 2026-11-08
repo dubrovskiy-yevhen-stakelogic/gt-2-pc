@@ -25,8 +25,11 @@ int main() {
         sequencer.Start(file,0,bank,programs,16384);
         gt2::audio::AudioFrameClock clock;std::atomic<int> ticks{0};
         clock.Start([&]{sequencer.Tick();++ticks;});
-        // No render/view Frame calls while a synthetic model load blocks.
-        std::this_thread::sleep_for(300ms);
+        // No render/view Frame calls while a synthetic model load blocks. Poll so a loaded
+        // CI runner cannot fail the check by scheduling the clock thread late.
+        const auto deadline=std::chrono::steady_clock::now()+5s;
+        while((driver.starts.load()!=1 || driver.releases.load()!=1) && std::chrono::steady_clock::now()<deadline)
+            std::this_thread::sleep_for(5ms);
         Check(driver.starts==1 && driver.releases==1,"render stall stretched a four-tick music note");
         {
             gt2::audio::ScopedMixPause pause;

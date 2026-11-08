@@ -163,8 +163,17 @@ jobs:
 
           # The game loads this DLL at runtime when PCVR is used.
           $nupkg = Join-Path $env:RUNNER_TEMP 'openxr.nupkg'
-          Invoke-WebRequest -UseBasicParsing -OutFile $nupkg `
-            -Uri 'https://github.com/KhronosGroup/OpenXR-SDK/releases/download/release-1.1.58/OpenXR.Loader.1.1.58.nupkg'
+          for ($attempt = 1; $attempt -le 4; $attempt++) {
+            try {
+              Invoke-WebRequest -UseBasicParsing -OutFile $nupkg `
+                -Uri 'https://github.com/KhronosGroup/OpenXR-SDK/releases/download/release-1.1.58/OpenXR.Loader.1.1.58.nupkg'
+              break
+            } catch {
+              if ($attempt -eq 4) { throw }
+              Write-Warning "OpenXR loader download attempt $attempt failed; retrying."
+              Start-Sleep -Seconds (5 * $attempt)
+            }
+          }
           if ((Get-FileHash $nupkg -Algorithm SHA256).Hash.ToLowerInvariant() -ne
               '08b3f7c8d0f51c7c01b4a1237da2c5c8da2c2df6b9f21eab7da4d04d7028fbff') {
             throw 'OpenXR loader download failed its checksum'
@@ -247,7 +256,7 @@ jobs:
       - name: Require the release signing key
         if: (github.event_name == 'release' || inputs.tag != '') && env.ANDROID_KEYSTORE_BASE64 == ''
         run: |
-          echo "::error::ANDROID_KEYSTORE_BASE64 is required to publish the Quest APK"
+          echo "::error::ANDROID_KEYSTORE_BASE64 is required to publish the Quest APK. See docs/RELEASING.md."
           exit 1
 
       - uses: actions/setup-java@v6
