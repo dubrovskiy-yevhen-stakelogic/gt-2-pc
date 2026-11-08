@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <cstring>
+#include <optional>
 #include <span>
 #include <stdexcept>
 
@@ -20,7 +22,33 @@ std::vector<uint8_t> ReadRootFile(const DiscImage& disc, const IsoFile& file) {
     return data;
 }
 
+// Member `index` of GT2.OVL, inflated, without asking for the disc's build.
+std::vector<uint8_t> ReadOverlayBytes(const DiscImage& disc, uint32_t index) {
+    auto file = disc.FindRootFile("GT2.OVL");
+    if (!file) throw std::runtime_error("GT2.OVL not found in the disc root");
+    const std::vector<uint8_t> ovl = ReadRootFile(disc, *file);
+    if (ovl.size() < 8) throw std::runtime_error("GT2.OVL: too small");
+    const uint32_t count = ReadU32(ovl.data()) / 8;
+    if (count == 0 || count > 64 || count * 8 > ovl.size()) throw std::runtime_error("GT2.OVL: bad member table");
+    if (index >= count) throw std::runtime_error("GT2.OVL: member index out of range");
+    const uint32_t offset = ReadU32(ovl.data() + index * 8), packed = ReadU32(ovl.data() + index * 8 + 4);
+    if (offset > ovl.size() || packed > ovl.size() - offset) throw std::runtime_error("GT2.OVL: member outside the file");
+    return Gunzip(std::span<const uint8_t>(ovl.data() + offset, packed));
+}
+
 } // namespace
+
+bool IsCombinedDisc(const DiscImage& disc) {
+    // stepPatchMainMenuOverlay writes li a2, 7 where the stock menu clamp reads li a2, 6; this survives every version of
+    // the script (with and without FMVs) and is not present in the Simulation disc's stock member 1.
+    static constexpr uint8_t kMarker[] = {0x07, 0x00, 0x06, 0x24, 0xFD, 0xFF, 0x02, 0x24};
+    try {
+        const std::vector<uint8_t> member = ReadOverlayBytes(disc, 1);
+        return std::search(member.begin(), member.end(), kMarker, kMarker + sizeof(kMarker)) != member.end();
+    } catch (...) {
+        return false;
+    }
+}
 
 const uint8_t* GuestImage::At(uint32_t address, size_t size) const {
     if (!Contains(address, size)) {
@@ -45,7 +73,72 @@ uint32_t UiAddress(const GuestImage& image, uint32_t address, bool arcade) {
         profile.ranges = ArcadeEuUiRanges();
     return profile.Data(address, image.module);
 }
+namespace {
+
+// The arcade build whose layout corresponds to a simulation build (Silent's combined disc keeps the Simulation
+// executable and its overlays; the Arcade code reads their data at the Arcade build's addresses).
+const ExeProfile* ArcadeCounterpart(const ExeProfile& sim) {
+    for (const ExeProfile& p : KnownProfiles())
+        if (p.arcade && ((sim.build == ExeBuild::kSimUs12 && p.build == ExeBuild::kArcadeUs11) ||
+                         (sim.build == ExeBuild::kSimEu && p.build == ExeBuild::kArcadeEu)))
+            return &p;
+    return nullptr;
+}
+
+// A Simulation-layout image seen through the Arcade build's addresses: every byte a profile range maps is copied to its
+// Arcade address, and the copied pointers (overlay / RAM addresses) are translated with it. Data the port addresses by
+// Arcade build constants (arcade menu tables, the EXE's movie table and font) then reads as on the Arcade disc.
+GuestImage ArcadeLayout(const GuestImage& image, const ExeProfile& arcade) {
+    GuestImage out;
+    out.base = image.base;
+    out.module = image.module;
+    out.fileName = image.fileName;
+    out.fileSha1 = image.fileSha1;
+    out.profile = &arcade;
+    uint32_t end = image.base;
+    for (const ProfileRange& r : arcade.ranges) {
+        if (r.scope != image.module) continue;
+        const uint32_t from = std::max(r.simStart, image.base), to = std::min(r.simEnd, image.End());
+        if (from >= to) continue;
+        end = std::max(end, uint32_t(int64_t(to) + r.delta));
+    }
+    out.bytes.assign(end - image.base, 0);
+    std::vector<uint32_t> source(out.bytes.size(), 0);
+    for (const ProfileRange::Kind kind : {ProfileRange::kAligned, ProfileRange::kRefRun, ProfileRange::kFact})
+        for (const ProfileRange& r : arcade.ranges) {
+            if (r.kind != kind || r.scope != image.module) continue;
+            const uint32_t from = std::max(r.simStart, image.base), to = std::min(r.simEnd, image.End());
+            for (uint32_t s = from; s < to; s++) {
+                const int64_t at = int64_t(s) + r.delta;
+                if (at < image.base || at >= end) continue;
+                out.bytes[size_t(at - image.base)] = image.bytes[s - image.base];
+                source[size_t(at - image.base)] = s;
+            }
+        }
+    auto translate = [&](GuestImage& copy, const std::vector<uint32_t>& source, int scope) {
+        for (size_t o = 0; o + 4 <= copy.bytes.size(); o += 4) {
+            const uint32_t from = source[o];
+            if (from == 0 || (from & 3) != 0 || source[o + 3] != from + 3) continue; // a word copied as a word
+            uint32_t w;
+            std::memcpy(&w, copy.bytes.data() + o, 4);
+            std::optional<uint32_t> t;
+            if (w >= image.base && w < image.End()) t = arcade.TryData(w, scope);
+            else if (w >= 0x800B0000u && w < 0x80200000u) t = arcade.TryData(w, -1);
+            if (t) std::memcpy(copy.bytes.data() + o, &*t, 4);
+        }
+    };
+    translate(out, source, image.module);
+    return out;
+}
+
+} // namespace
+
 GuestImage UiLayout(GuestImage image, bool arcade) {
+    if (arcade && image.profile && (image.profile->build == ExeBuild::kSimUs12 || image.profile->build == ExeBuild::kSimEu))
+        if (const ExeProfile* counterpart = ArcadeCounterpart(*image.profile)) {
+            image = ArcadeLayout(image, *counterpart);
+            if (image.profile->build == ExeBuild::kArcadeUs11) return image; // the reference Arcade layout
+        }
     if (!image.profile || (image.profile->build != ExeBuild::kSimEu && image.profile->build != ExeBuild::kArcadeEu))
         return image;
     const auto ranges = arcade ? ArcadeEuUiRanges() : image.profile->ranges;
@@ -130,6 +223,12 @@ GuestImage LoadExeImage(const DiscImage &disc) {
     image.fileName = name;
     image.fileSha1 = Sha1Hex(raw);
     image.profile = FindProfile(image.fileSha1);
+    if (!image.profile && IsCombinedDisc(disc)) {
+        // The combined script patches only a few words of the Simulation executable, so its SHA-1 matches no profile.
+        // Every address still belongs to the Simulation layout: play it as that build.
+        for (const ExeProfile& p : KnownProfiles())
+            if (!p.arcade && image.fileName == p.exeName) image.profile = &p;
+    }
     image.unknownBuild = image.profile == nullptr;
     image.module = -1;
     return image;

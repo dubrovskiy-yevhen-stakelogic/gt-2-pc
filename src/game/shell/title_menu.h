@@ -23,6 +23,7 @@ namespace gt2::shell {
 // Title menu results (0x801EF5F3).
 enum TitleResult : int {
     kTitleNone = -1, kStartGame = 0, kReplayTheater = 1, kOptions = 2, kSaveGame = 3, kLoadGame = 4, kDataTransfer = 5, kAttractDemo = 6,
+    kArcadeMode = 7, // the combined disc's added row
 };
 
 // A 12-byte sprite entry of member 1 {u8 u, u8 v, u16 clut, u16 w, u16 h, u16 tpage, pad}.
@@ -49,7 +50,7 @@ class TitleMenu {
 public:
     static constexpr uint32_t kWidget = 0x8004BC28u, kResults = 0x8004BC04u, kSpriteIndex = 0x8004BC14u, kRowTemplate = 0x8004BC24u;
     static constexpr uint32_t kSpriteTables = 0x8004BC5Cu; // u32 [language] -> 12-byte sprites
-    static constexpr int kRows = 8, kIdleFields = 900;
+    static constexpr int kMaxRows = 9, kIdleFields = 900;   // 8 rows stock; 9 on the combined disc (Arcade Mode inserted)
 
     TitleMenu(const GuestImage& ovl1, uint8_t language);
     TitleMenu(const TitleMenu&) = delete; // the widget's callback points at this object
@@ -78,12 +79,13 @@ public:
 private:
     int32_t RowCallback(int command, const MenuListWidget& w, int row, const MenuListRowDraw* draw);
 
-    std::array<int16_t, kRows> results_{}, spriteIndex_{};
+    std::array<int16_t, kMaxRows> results_{}, spriteIndex_{};
     uint8_t templateFlags_ = 0, templateBrightness_ = 0;
     int16_t templateReveal_ = 0;
-    std::array<TitleSprite, kRows> sprites_{};
+    std::array<TitleSprite, kMaxRows> sprites_{};
     MenuListWidget widget_;
-    std::array<TitleRowState, kRows> rows_{};
+    std::array<TitleRowState, kMaxRows> rows_{};
+    int rowCount_ = 8, lastAction_ = 6; // the combined disc inserts Arcade Mode before the stock actions
     int16_t fade_ = 0;        // 0x8004BC00: background brightness 0..12
     int16_t leave_ = 0x10;    // 0x8004BC02: fields of the fade-out after a choice
     int16_t state_ = 0;       // 0x800B122C: 0 opening delay, 1 running, 2 leaving

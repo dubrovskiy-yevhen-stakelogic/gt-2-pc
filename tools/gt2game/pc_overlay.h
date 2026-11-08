@@ -41,6 +41,11 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
                            bool deterministic = false, const std::string& script = {}, const std::string& shot = {}, bool sound = true,
                            bool playStartup = true);
 bool TakeGameChangeRequest();
+// The title's combined Arcade Mode row returns to the launcher with that picker row selected; `direct` starts it without
+// showing the picker again (the combined title <-> Arcade menus transition).
+void RequestGameChange(const std::string& preferred = {}, bool direct = false);
+std::string TakeGameChangePreference();
+bool TakeGameChangeDirect();
 void SetDiscImportAvailable(bool available);
 bool TakeDiscImportRequest();
 bool ConsoleStartupHandled();

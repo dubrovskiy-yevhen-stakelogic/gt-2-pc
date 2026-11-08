@@ -31,6 +31,7 @@ const ExeProfile kProfiles[] = {
 };
 
 const ExeProfile* g_active = &kProfiles[0];
+bool g_combinedArcade = false;
 
 std::string Hex(uint32_t v) {
     char text[16];
@@ -88,5 +89,7 @@ const ExeProfile& ProfileOf(const DiscImage& disc) { return ProfileOf(LoadExeIma
 
 const ExeProfile& ActiveProfile() { return *g_active; }
 void SetActiveProfile(const ExeProfile& profile) { g_active = &profile; }
+bool CombinedArcadeFlow() { return g_combinedArcade; }
+void SetCombinedArcadeFlow(bool enabled) { g_combinedArcade = enabled; }
 
 } // namespace gt2

@@ -21,6 +21,7 @@
 // 0x801EF6B0). The code addresses its strings by those RAM addresses.
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -89,5 +90,8 @@ struct TitleAssets {
 std::vector<uint8_t> InflateEmbeddedGzip(const GuestImage& image, uint32_t address);
 std::vector<uint8_t> InflateEmbeddedGzipNamed(const GuestImage& image, const char* name);
 std::vector<uint8_t> EuropeanArcadeText(const std::vector<uint8_t>& data, bool global);
+// A string offset of the European block -> the reference (US) block offset, when the string moved between builds.
+std::optional<uint32_t> EuropeanArcadeTextOffset(uint32_t europeanOffset);
+std::optional<uint32_t> EuropeanGlobalTextOffset(uint32_t europeanOffset);
 
 } // namespace gt2

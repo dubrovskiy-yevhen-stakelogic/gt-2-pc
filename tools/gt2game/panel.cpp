@@ -24,7 +24,7 @@ namespace gt2game {
 namespace {
 // The arcade disc (gt2formats/exe_profile.h ExeProfile::arcade): its flow has no GT-mode menus (member 4's fonts are not
 // read) and the race overlay's menu assets come in the Simulation layout (arcade_post_race.h LoadArcadeRaceMenuAssets).
-bool ArcadeDisc(const gt2::DiscImage& disc) { return gt2::ProfileOf(disc).arcade; }
+bool ArcadeDisc(const gt2::DiscImage& disc) { (void)disc; return gt2::ArcadeFlow(); }
 gt2::RaceMenuAssets MenuAssetsOf(const gt2::DiscImage& disc, const gt2::GtfsVolume& vol, gt2::RaceMenuAssets::Pictures pictures) {
     return ArcadeDisc(disc) ? LoadArcadeRaceMenuAssets(disc, vol) : gt2::RaceMenuAssets::Load(disc, vol, pictures);
 }

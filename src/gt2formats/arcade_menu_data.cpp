@@ -1,6 +1,8 @@
 #include "gt2formats/arcade_menu_data.h"
 
+#include <cstring>
 #include <stdexcept>
+#include <utility>
 
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/title_assets.h"
@@ -9,6 +11,32 @@
 namespace gt2 {
 
 namespace {
+
+// The Simulation disc's arcade overlay copies its own regional text blocks to lower Simulation RAM addresses. Pointers
+// in its member-2 data still name those addresses: move them to the reference block offsets the menus draw from.
+constexpr uint32_t kSimArcadeTextBase = 0x800F84E0u, kSimArcadeTextStride = 0x314;
+constexpr uint32_t kSimGlobalTextBase = 0x801EF6B0u, kSimGlobalTextStride = 0x7A9;
+constexpr uint32_t kArcadeGlobalTextBase = 0x801EF0E0u, kArcadeGlobalTextStride = 0x76F;
+
+void TranslateSimulationTextPointers(GuestImage& image) {
+    for (size_t at = 0; at + 4 <= image.bytes.size(); at += 4) {
+        uint32_t word;
+        std::memcpy(&word, image.bytes.data() + at, 4);
+        uint32_t translated = 0;
+        auto translate = [&](uint32_t base, uint32_t stride, uint32_t outBase, uint32_t outStride, auto offsetOf) {
+            if (word < base || word - base >= stride) return false;
+            uint32_t offset = word - base;
+            if (const auto mapped = offsetOf(offset)) offset = *mapped;
+            if (offset >= outStride) return false;
+            translated = outBase + offset;
+            return true;
+        };
+        if (!translate(kSimArcadeTextBase, kSimArcadeTextStride, ArcadeMenuData::kTextBase, ArcadeMenuData::kTextStride, EuropeanArcadeTextOffset) &&
+            !translate(kSimGlobalTextBase, kSimGlobalTextStride, kArcadeGlobalTextBase, kArcadeGlobalTextStride, EuropeanGlobalTextOffset))
+            continue;
+        std::memcpy(image.bytes.data() + at, &translated, 4);
+    }
+}
 
 constexpr uint32_t kEventNames = 0x8002729Cu, kLevelBytes = 0x800272DCu, kGameModes = 0x8004F8ECu, kTransmissions = 0x8004FBD0u;
 constexpr uint32_t kCourseLists[ArcadeMenuData::kCourseListCount] = {0x80050730u, 0x800509F0u, 0x80050CB0u, 0x80050FB0u,
@@ -39,9 +67,10 @@ std::string ArcadeMenuData::Text(uint32_t address) const {
 
 ArcadeMenuData ArcadeMenuData::Load(const DiscImage& disc, uint8_t language) {
     ArcadeMenuData m;
-    if (!ProfileOf(disc).arcade) throw std::runtime_error("arcade menu data: the disc is not US Arcade v1.1 (its member 2 layout is not mapped)");
+    if (!ArcadeFlow()) throw std::runtime_error("arcade menu data: the disc is not playing the Arcade flow");
     const auto original=LoadOverlayImage(disc,2);
     m.ovl2 = UiLayout(original,true);
+    if (!ProfileOf(disc).arcade) TranslateSimulationTextPointers(m.ovl2);
     const GuestImage& o = m.ovl2;
     for (uint32_t level = 0; level < 4; level++)
         for (uint32_t cls = 0; cls < 4; cls++) m.eventNames[level][cls] = m.ImageString(o.Get<uint32_t>(kEventNames + (level * 4 + cls) * 4));
@@ -88,11 +117,30 @@ ArcadeMenuData ArcadeMenuData::Load(const DiscImage& disc, uint8_t language) {
     }
     for (uint32_t k = 0; k < m.classSUnlock.size(); k++) m.classSUnlock[k] = o.Get<int8_t>(kClassSUnlock + k);
     for (uint32_t k = 0; k < m.bonusUnlock.size(); k++) m.bonusUnlock[k] = o.Get<int8_t>(kBonusUnlock + k);
-    const std::vector<uint8_t> txd = InflateEmbeddedGzipNamed(original, "data-arcade.txd");
-    const size_t at = size_t(language) * kTextStride;
-    if (at + kTextStride > txd.size()) throw std::runtime_error("arcade menu data: no data-arcade.txd block for the language");
-    m.text.assign(txd.begin() + std::ptrdiff_t(at), txd.begin() + std::ptrdiff_t(at + kTextStride));
-    if (ProfileOf(disc).build == ExeBuild::kArcadeEu) m.text = EuropeanArcadeText(txd, false);
+    // The Arcade disc names the gzip; the Simulation disc's copy carries no file name header, and it sits just past the
+    // last mapped range, so find the member's (only) gzip header when the name lookup fails.
+    std::vector<uint8_t> txd;
+    try {
+        txd = InflateEmbeddedGzipNamed(original, "data-arcade.txd");
+    } catch (const std::exception&) {
+        for (uint32_t at = original.base; at + 10 < original.End() && txd.empty(); at++)
+            if (original.Get<uint8_t>(at) == 0x1F && original.Get<uint8_t>(at + 1) == 0x8B && original.Get<uint8_t>(at + 2) == 8) {
+                try { // the text is the multi-block member; the overlay holds no other such gzip
+                    std::vector<uint8_t> candidate = InflateEmbeddedGzip(original, at);
+                    if (candidate.size() >= 2 * kTextStride) txd = std::move(candidate);
+                } catch (const std::exception&) {}
+            }
+        if (txd.empty()) throw std::runtime_error("arcade menu data: data-arcade.txd not found");
+    }
+    // The Simulation disc's arcade overlay stores the seven regional blocks (the European layout); the Arcade disc's
+    // copy keeps only the reference layout. Convert either to the reference block the menus address.
+    if (txd.size() >= 7 * 0x314) {
+        m.text = EuropeanArcadeText(txd, false); // the reference block of language 1, grown for the patched strings
+    } else {
+        const size_t at = size_t(language) * kTextStride;
+        if (at + kTextStride > txd.size()) throw std::runtime_error("arcade menu data: no data-arcade.txd block for the language");
+        m.text.assign(txd.begin() + std::ptrdiff_t(at), txd.begin() + std::ptrdiff_t(at + kTextStride));
+    }
     m.text.push_back(0);
     return m;
 }

@@ -221,7 +221,7 @@ bool RunArcadeGhostSession(GameWindow& window, const DiscImage& disc, const Gtfs
     std::optional<shell::ReplayRowText> cardText;
     if (sessionAssets) {
         try {
-            cardAssets = screens::RaceCardAssets(*sessionAssets, TitleAssets::LoadArcade(disc, vol).SimLayoutScreens());
+            cardAssets = screens::RaceCardAssets(*sessionAssets, (options.combined ? TitleAssets::Load(disc, vol) : TitleAssets::LoadArcade(disc, vol)).SimLayoutScreens());
             cardText = shell::ReplayRowText::Load(vol, *cardAssets);
         } catch (const std::exception& e) {
             std::printf("arcade: no memory-card views (%s)\n", e.what());
@@ -643,7 +643,7 @@ bool RunArcadeBattleSession(GameWindow& window, const DiscImage& disc, const Gtf
     std::optional<shell::ReplayRowText> cardText;
     if (postAssets) {
         try {
-            cardAssets = screens::RaceCardAssets(*postAssets, TitleAssets::LoadArcade(disc, vol).SimLayoutScreens());
+            cardAssets = screens::RaceCardAssets(*postAssets, (options.combined ? TitleAssets::Load(disc, vol) : TitleAssets::LoadArcade(disc, vol)).SimLayoutScreens());
             cardText = shell::ReplayRowText::Load(vol, *cardAssets);
         } catch (const std::exception& e) {
             std::printf("arcade: no memory-card views (%s)\n", e.what());
@@ -776,7 +776,9 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         std::printf("startup: Arcade %s %.1f ms\n",stage,std::chrono::duration<double,std::milli>(now-loadTime).count());
         loadTime=now;
     };
-    const TitleAssets titleAssets = TitleAssets::LoadArcade(disc, vol);
+    // The combined disc starts at the Arcade menus (its patched main menu jumps straight to member 2); the Simulation
+    // title assets supply the fonts and global strings, so the Arcade title / first-boot screens are not shown.
+    const TitleAssets titleAssets = options.combined ? TitleAssets::Load(disc, vol) : TitleAssets::LoadArcade(disc, vol);
     traceLoad("title assets");
     const arcade::ArcadeMenuAssets menuAssets = arcade::ArcadeMenuAssets::Load(disc, vol);
     traceLoad("menu assets");
@@ -805,11 +807,11 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     auto view = std::make_unique<gt2view::TitleView>(*renderer);
     view->SetRasterRules(rules);
     enum class Screen { kTitle, kNotice, kMenus, kTitleScreen };
-    Screen screen = Screen::kTitle;
+    Screen screen = options.combined ? Screen::kMenus : Screen::kTitle;
     // The title's Replay Theater / Options / Save Game / Load Game / Data Transfer and the first-boot auto-load on the session's
     // career (arcade_title.h).
     ArcadeTitleScreens titleScreens(titleAssets, vol, options, careerBlock);
-    if (titleScreens.StartBoot()) screen = Screen::kTitleScreen; // 0x800112F4: the first-boot view (0x8004AE28)
+    if (!options.combined && titleScreens.StartBoot()) screen = Screen::kTitleScreen; // 0x800112F4: the first-boot view (0x8004AE28)
     const MenuVram* uploaded = nullptr;
     auto use = [&](const MenuVram& vram) {
         if (uploaded == &vram) return;
@@ -913,6 +915,8 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         catch (const std::exception& e) {std::printf("Arcade expanded garage: %s\n",e.what());}
     }
     menus.SetCards({shell::CardSlot{options.card1Path}, shell::CardSlot{options.card2Path}}); // LOAD GUEST GARAGE
+    if (options.combined) // the original's patched main menu: 0x8005DA3C(2) straight into the menus
+        menus.Reset(false);
     // Dev aid: GT2_ARCADE_RACE_SETUP=<file> (a RaceCaptureSetup: gt2verify --race-capture's <capture>.setup or --arcade-setup-out)
     // runs that race block's race and what follows it (the mode 6 session or the road race session) on the new game's career,
     // without the menus - automated runs of the arcade loop.
@@ -971,13 +975,16 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
         return r != MovieResult::kClosed;
     };
     const bool automated = !options.globalScript.empty() || !options.shots.empty() || !options.anyShots.empty() || options.quitAfter > 0 || options.noRace;
-    if (!options.noMovies && (options.forceMovies || !automated)) {
+    if (!options.combined && !options.noMovies && (options.forceMovies || !automated)) {
         sfx.reset();
         if (!PlayBootScreens(window, disc, !options.noSound)) return 0;
         resetView();
         openSound();
     }
     if (movies && (options.forceMovies || !automated) && !playMovie(kMovieIntro)) return 0; // EXE main 0x8005D670: member 5 first
+    // The combined disc skips the boot screens but keeps the Arcade intro; its menu music starts after the intro has reset
+    // the audio device.
+    if (options.combined && sfx) sfx->StartArcadeMusic(careerBlock[0xB3]);
     std::unique_ptr<TitleAttractDemos> attract; // the attract cycle (0x801EF030, 0x801EF02E; title_attract.h)
     uint32_t menusVram = menus.VramVersion();
     std::string noticeLine;
@@ -1170,12 +1177,22 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             if (outcome == arcade::ArcadeMenus::kEnding) { // result 5 / 6 -> member 5 0x800114E0(1 / 0) -> the title (member 1)
                 if (sfx) sfx->StopMusic();
                 if (!playMovie(menus.EndingRow() == 0 ? kMovieEndingA : kMovieEndingB)) break;
+                if (options.combined) { // the combined disc returns to its simulation title
+                    gt2game::RequestGameChange("combined-simulation", true);
+                    window.Close();
+                    break;
+                }
                 titleScreens.SetCareer(menus.Career());
                 title.Reset();
                 screen = Screen::kTitle;
                 prims.clear();
             } else if (outcome == arcade::ArcadeMenus::kTitle) { // result 4 -> 0x801EF024 = 0 -> member 1
                 if (sfx) sfx->StopMusic();
+                if (options.combined) { // member 1 is the combined disc's simulation title
+                    gt2game::RequestGameChange("combined-simulation", true);
+                    window.Close();
+                    break;
+                }
                 titleScreens.SetCareer(menus.Career()); // the race results' course flags go back to the title's Save
                 title.Reset();
                 screen = Screen::kTitle;

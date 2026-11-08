@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 
 #include "game/arcade/arcade_battle.h"
@@ -232,13 +233,16 @@ ArcadeMenuAssets ArcadeMenuAssets::Load(const DiscImage& disc, const GtfsVolume&
     a.exe = UiLayout(LoadExeImage(disc), true);
     {
         const std::vector<uint8_t> global = InflateEmbeddedGzipNamed(LoadOverlayImage(disc, 1), "data-global.txd");
-        const size_t at = size_t(language) * kGlobalTextStride;
-        if (global.size() < at + kGlobalTextStride) throw std::runtime_error("arcade menus: data-global.txd has no block for the language");
-        a.globalText.assign(global.begin() + std::ptrdiff_t(at), global.begin() + std::ptrdiff_t(at + kGlobalTextStride));
-        if (ProfileOf(disc).build == ExeBuild::kArcadeEu) a.globalText = EuropeanArcadeText(global, true);
+        if (!ProfileOf(disc).arcade && global.size() >= 7 * TitleAssets::kGlobalTextStride) {
+            a.globalText = EuropeanArcadeText(global, true); // the combined disc keeps the seven-block regional layout
+        } else {
+            const size_t at = size_t(language) * kGlobalTextStride;
+            if (global.size() < at + kGlobalTextStride) throw std::runtime_error("arcade menus: data-global.txd has no block for the language");
+            a.globalText.assign(global.begin() + std::ptrdiff_t(at), global.begin() + std::ptrdiff_t(at + kGlobalTextStride));
+            if (ProfileOf(disc).build == ExeBuild::kArcadeEu) a.globalText = EuropeanArcadeText(global, true);
+        }
     }
-    const auto fontExe = LoadExeImage(disc);
-    a.exeFont = LoadHudFont(fontExe, UiAddress(fontExe, kExeSmallFont, true));
+    a.exeFont = LoadHudFont(a.exe, UiAddress(a.exe, kExeSmallFont, true));
     a.carLogos = vol.Read("arcade/arc_carlogo");
     const auto carNames=CarInfoDirectory::Load(vol);
     for(size_t i=0;i<carNames.Count();++i) {

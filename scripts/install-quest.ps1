@@ -3,7 +3,7 @@ param(
     [string]$Serial,
     [string]$Apk = (Join-Path (Split-Path $PSScriptRoot) 'android/app/build/outputs/apk/debug/app-debug.apk'),
     [string]$Runtime = (Join-Path (Split-Path $PSScriptRoot) 'runtime'),
-    [ValidateSet('arcade','simulation')][string]$Mode = 'arcade',
+    [ValidateSet('arcade','simulation','combined')][string]$Mode = 'arcade',
     [switch]$BothDiscs,
     [switch]$Gt4Only,
     [string]$Gt4Bundle,

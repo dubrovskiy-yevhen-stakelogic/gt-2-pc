@@ -75,7 +75,7 @@ if (!(Test-Path $tool) -or !(Test-Path $game)) { throw 'Build outputs gt2game.ex
 if (!$DiscImage -or $DiscImage.Count -eq 0) {
     Add-Type -AssemblyName System.Windows.Forms
     $dialog = New-Object System.Windows.Forms.OpenFileDialog
-    $dialog.Title = 'Select GT2 US or European Arcade and/or Simulation disc images'
+    $dialog.Title = 'Select GT2 Arcade, Simulation and/or Combined disc images'
     $dialog.Filter = 'PS1 disc images or archives|*.bin;*.cue;*.iso;*.zip;*.7z|All files|*.*'
     $dialog.Multiselect = $true
     if ($dialog.ShowDialog() -ne 'OK') { throw 'No disc image selected.' }
@@ -115,10 +115,11 @@ foreach ($source in ($sources | Select-Object -Unique)) {
     $json = & $tool inspect $source
     if ($LASTEXITCODE -ne 0) { throw "Unsupported or damaged image: $source" }
     $info = $json | ConvertFrom-Json
-    if ($modes.ContainsKey($info.mode)) { throw "Select only one $($info.mode) disc." }
-    $modes[$info.mode] = $true
+    $mode = if ($info.combined) { 'combined' } else { $info.mode }
+    if ($modes.ContainsKey($mode)) { throw "Select only one $mode disc." }
+    $modes[$mode] = $true
     $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
-    $data = Join-Path $job $info.mode
+    $data = Join-Path $job $mode
     & $tool extract $source $data
     if ($LASTEXITCODE -ne 0) { throw "Extraction failed. Diagnostics and partial files remain in $job" }
     if ((Get-FileHash -LiteralPath (Join-Path $data 'disc.raw2352') -Algorithm SHA256).Hash -ne $hash) { throw 'Disc copy hash mismatch.' }
@@ -130,9 +131,9 @@ foreach ($source in ($sources | Select-Object -Unique)) {
     $assetHashes = @(Get-ChildItem -LiteralPath (Join-Path $data 'assets') -Recurse -File | ForEach-Object {
         [ordered]@{ path = $_.FullName.Substring($data.Length + 1).Replace('\','/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
     })
-    [ordered]@{ format = 1; mode = $info.mode; exeSha1 = $info.exeSha1; discSha256 = $hash; assets = $assetHashes } |
+    [ordered]@{ format = 1; mode = $mode; combined = [bool]$info.combined; exeSha1 = $info.exeSha1; discSha256 = $hash; assets = $assetHashes } |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $data 'install-manifest.json') -Encoding UTF8
-    $prepared += [pscustomobject]@{ Mode = $info.mode; Data = $data }
+    $prepared += [pscustomobject]@{ Mode = $mode; Data = $data }
 }
 
 # Publish only validated data. Keep old data and executables for rollback, and retain all saves.
@@ -170,7 +171,7 @@ foreach ($runtime in @('META','STEAMVR','VD')) {
         "setlocal`r`nset `"XR_RUNTIME_JSON=`"`r`nset `"GT2_XR_RUNTIME=$policy`"")
     [IO.File]::WriteAllText((Join-Path $InstallDir "PLAY-PCVR-$runtime.bat"), $selected, [Text.Encoding]::ASCII)
 }
-foreach ($mode in 'arcade','simulation') {
+foreach ($mode in 'arcade','simulation','combined') {
     foreach ($legacy in @("PLAY-$mode.bat", "PLAY-PCVR-$mode.bat")) {
         $path = Join-Path $InstallDir $legacy
         if (Test-Path -LiteralPath $path) {

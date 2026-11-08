@@ -68,14 +68,14 @@ NSString* DiscPath(NSURL* selection) {
     return [path.stringByDeletingLastPathComponent stringByAppendingPathComponent:name];
 }
 bool HasDisc(const std::filesystem::path& root) {
-    for (const char* mode : {"arcade", "simulation"})
+    for (const char* mode : {"arcade", "simulation", "combined"})
         if (std::filesystem::is_regular_file(root / mode / "disc.raw2352") && std::filesystem::is_directory(root / mode / "assets")) return true;
     return false;
 }
 bool Import(NSString* helper, const std::filesystem::path& root) {
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     panel.title = @"Import your Gran Turismo 2 discs";
-    panel.message = @"Select your Arcade and/or Simulation BIN/CUE images (raw 2352-byte sectors). Game data is not included. Existing saves are kept.";
+    panel.message = @"Select your Arcade, Simulation and/or Combined BIN/CUE images (raw 2352-byte sectors). Game data is not included. Existing saves are kept.";
     panel.canChooseDirectories = NO; panel.allowsMultipleSelection = YES;
     if ([panel runModal] != NSModalResponseOK) return false;
     NSMutableArray<NSDictionary*>* inputs = [NSMutableArray array];
@@ -86,7 +86,9 @@ bool Import(NSString* helper, const std::filesystem::path& root) {
         NSString* result = Run(helper, @[@"inspect", image]);
         NSDictionary* info = [NSJSONSerialization JSONObjectWithData:[result dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nullptr];
         NSString* mode = [info isKindOfClass:NSDictionary.class] ? info[@"mode"] : nil;
-        if (![mode isEqualToString:@"arcade"] && ![mode isEqualToString:@"simulation"]) Fail(@"Unrecognized game disc.");
+        const bool combined = [info isKindOfClass:NSDictionary.class] && [info[@"combined"] boolValue];
+        if (combined) mode = @"combined";
+        if (![mode isEqualToString:@"arcade"] && ![mode isEqualToString:@"simulation"] && ![mode isEqualToString:@"combined"]) Fail(@"Unrecognized game disc.");
         if ([modes containsObject:mode]) Fail(@"Select only one disc for each mode.");
         [modes addObject:mode]; [inputs addObject:@{@"image": image, @"mode": mode}];
     }

@@ -80,6 +80,11 @@ const ExeProfile& ProfileOf(const DiscImage& disc);
 // gt2verify, gt2game's capture comparison). Defaults to the Simulation profile.
 const ExeProfile& ActiveProfile();
 void SetActiveProfile(const ExeProfile& profile);
+// Silent's combined disc keeps the Simulation executable but runs the Arcade flow when the player picks it. `ArcadeFlow`
+// is the mode check of the game (menus, tables); `arcade` in the profile still means "the Arcade build".
+bool CombinedArcadeFlow();
+void SetCombinedArcadeFlow(bool enabled);
+inline bool ArcadeFlow() { return ActiveProfile().arcade || CombinedArcadeFlow(); }
 // Race-map translation with the active profile (shorthand for ActiveProfile().Race / Code).
 inline uint32_t RaceAddress(uint32_t simAddress) { return ActiveProfile().Race(simAddress); }
 

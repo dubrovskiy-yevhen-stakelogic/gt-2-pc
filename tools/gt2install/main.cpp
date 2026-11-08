@@ -1,6 +1,7 @@
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
 #include "gt2formats/exe_profile.h"
+#include "gt2formats/overlay_data.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -24,7 +25,8 @@ int main(int argc, char** argv) {
         const char* mode = profile.arcade ? "arcade" : "simulation";
         gt2::GtfsVolume volume(disc);
         if (std::string(argv[1]) == "inspect") {
-            std::cout << "{\"mode\":\"" << mode << "\",\"exeSha1\":\"" << profile.exeSha1 << "\",\"assets\":" << volume.Files().size() << "}\n";
+            std::cout << "{\"mode\":\"" << mode << "\",\"combined\":" << (gt2::IsCombinedDisc(disc) ? "true" : "false")
+                      << ",\"exeSha1\":\"" << profile.exeSha1 << "\",\"assets\":" << volume.Files().size() << "}\n";
             return 0;
         }
         if (argc != 4) throw std::runtime_error("extract requires a new destination directory");
