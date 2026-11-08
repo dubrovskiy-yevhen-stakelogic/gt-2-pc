@@ -11,6 +11,7 @@
 #include "game/menu/menu_runtime.h"
 #include "game/shell/title_attract.h"
 #include "game/sim/ground.h"
+#include "game/sim/disc_data.h"
 #include "game/arcade/arcade_setup.h"
 #include "game/pc_features.h"
 #include "platform/input/dualsense.h"
@@ -366,6 +367,20 @@ static void CheckLicenceBonusModelMotion() {
 
 int main(int argc, char** argv) {
     try {
+        for (uint8_t speed : std::array<uint8_t, 3>{0, 80, 100}) {
+            const auto shell = gt2::sim::EventRaceShell(speed);
+            Check(shell.gameMode == 2, "GT event uses mode 2 before constants are built");
+            Check(shell.byte801D5869 == (speed == 0 ? 1 : 0), "GT event preserves standing/rolling start");
+            Check(gt2::sim::ShellControlClass(shell, false) == 0, "GT events have no wheel damage");
+            Check(gt2::sim::ShellControlClass(shell, true) == 0, "GT dirt events have no wheel damage");
+        }
+        {
+            gt2::sim::ShellState arcade;
+            arcade.gameMode = 2; arcade.modeFlag65 = 0; arcade.modeFlag5D = 1;
+            Check(gt2::sim::ShellControlClass(arcade, false) == 2, "Arcade damage option remains enabled");
+            arcade.modeFlag5D = 0;
+            Check(gt2::sim::ShellControlClass(arcade, false) == 0, "Arcade damage option remains disabled");
+        }
         CheckRegionalUiTail();
         CheckGmPagePictures();
         CheckLicenceBonusModelMotion();

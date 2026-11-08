@@ -72,6 +72,14 @@ struct ShellState {
     uint32_t raceClock = 46900;
 };
 
+// GT-mode events use mode 2, but must retain the event's standing/rolling start flag.
+inline ShellState EventRaceShell(uint8_t startSpeed) {
+    ShellState shell;
+    shell.gameMode = 2;
+    shell.byte801D5869 = startSpeed != 0 ? 0 : 1;
+    return shell;
+}
+
 // 0x800418E8 for the shell state and the course.
 int32_t ShellControlClass(const ShellState& shell, bool dirtCourse);
 
