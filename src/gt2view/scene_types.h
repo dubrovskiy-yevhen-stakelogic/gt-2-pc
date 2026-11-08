@@ -114,6 +114,14 @@ struct DrawItem {
     std::array<float,4> nativeModelRotation{0,0,0,1};
 };
 
+// Reversed-Z band of a draw. The top band belongs to the 2D layers (HUD,
+// menus, panels); without it the cockpit's band hides them on the direct
+// swapchain path, where the scene and the 2D layers share one depth buffer.
+inline int DepthBand(const DrawItem& item, bool stereo) {
+    const bool screen = item.space == kSpaceScreen && (stereo || item.cabinDepth == 0);
+    return screen ? 3 : int(std::min(item.cabinDepth, 2u));
+}
+
 // Submit depth-writing world surfaces before the distant backdrop. The sky
 // remains ahead of transparency, so glass still blends with its background.
 // Call before appending mirrors/HUD; never cross a depth-clear boundary.

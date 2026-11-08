@@ -1060,7 +1060,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (item.vertexCount == 0) continue;
         // Reversed Z: disjoint ranges preserve depth within each layer and
         // guarantee that grass/curbs cannot overwrite occupied interior pixels.
-        const int depthLayer=recordStereo_ && item.space==kSpaceScreen?3:int(std::min(item.cabinDepth,2u));
+        const int depthLayer=DepthBand(item,recordStereo_);
         if(boundCabinDepth!=depthLayer) {
             // Screen HUD must also remain in front of the cabin. Preserve
             // reversed-Z ordering within each layer, including its alpha draws.
