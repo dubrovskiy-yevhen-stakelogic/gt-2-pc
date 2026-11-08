@@ -25,6 +25,7 @@
 #include "game/shell/title_menu.h"
 #include "game/shell/title_options.h"
 #include "game/shell/title_screens.h"
+#include "gt2view/scene_types.h"
 #include <chrono>
 #include <array>
 #include <cmath>
@@ -351,6 +352,19 @@ static void CheckPcChanges(const char* discPath) {
     }
 }
 
+static void CheckDepthBands() {
+    using namespace gt2view;
+    DrawItem hud; // HUD, menus and panels: the top band, in front of the cockpit
+    Check(DepthBand(hud, false) == 3, "2D layers stay above the desktop cockpit");
+    DrawItem cabin; cabin.space = kSpaceScreen; cabin.cabinDepth = 1;
+    Check(DepthBand(cabin, false) == 1, "the cabin keeps its own band");
+    DrawItem world; world.space = kSpaceWorld;
+    Check(DepthBand(world, false) == 0, "the course keeps the scene band");
+    DrawItem controls; controls.space = kSpaceWorld; controls.cabinDepth = 2;
+    Check(DepthBand(controls, false) == 2, "tracked controls keep the control band");
+    Check(DepthBand(cabin, true) == 3 && DepthBand(hud, true) == 3, "stereo screen layers keep the top band");
+}
+
 static void CheckLicenceBonusModelMotion() {
     using namespace gt2;
     menu::OverlayModelCamera camera = menu::ModelViewCamera(0x160, 0x1E0); // 0x8004E070
@@ -383,6 +397,7 @@ int main(int argc, char** argv) {
         }
         CheckRegionalUiTail();
         CheckGmPagePictures();
+        CheckDepthBands();
         CheckLicenceBonusModelMotion();
         CheckRegionalCareerScreens(argc > 1 ? argv[1] : nullptr);
         {
