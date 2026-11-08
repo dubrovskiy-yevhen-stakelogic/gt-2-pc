@@ -10,6 +10,7 @@
 #include "android_host.h"
 #include <stdexcept>
 #include "game_main.h"
+#include "disc_launch.h"
 #include "pc_overlay.h"
 #include "game_window.h"
 #include "game/shell/title_options.h"
@@ -150,17 +151,20 @@ void android_main(android_app* app) {
                     std::string mode = "arcade";
                     std::ifstream modeFile(root / "launch-mode.txt");
                     std::string requested; modeFile >> requested;
-                    if (requested == "arcade" || requested == "simulation") mode = requested;
+                    if (requested == "combined") requested = "combined-simulation"; // installer preference
+                    if (gt2game::ValidDiscSelection(requested)) mode = requested;
                     else if (!std::filesystem::exists(root / mode / "disc.raw2352")) mode = "simulation";
                     gt2::shell::InitializeSharedVrSettings(gt2::os::SavesDir(),kInitialSettings,kInitialOverlay);
-                    gt2game::LoadOverlaySettings((gt2::os::SavesDir()/mode/"settings.txt").string());
-                    bool firstLaunch = true;
+                    gt2game::LoadOverlaySettings((gt2::os::SavesDir()/gt2game::DescribeDiscSelection(mode).saveMode/"settings.txt").string());
+                    bool firstLaunch = true, directLaunch = false;
                     for (;;) {
-                        mode = gt2game::SelectGameDisc(root.string(), mode, true, false, {}, {}, true, firstLaunch);
+                        if (!directLaunch || !std::filesystem::exists(root / gt2game::DescribeDiscSelection(mode).folder / "disc.raw2352"))
+                            mode = gt2game::SelectGameDisc(root.string(), mode, true, false, {}, {}, true, firstLaunch);
+                        directLaunch = false;
                         if (mode.empty()) break;
                         firstLaunch = false;
                         { std::ofstream choice(root / "launch-mode.txt"); choice << mode; }
-                        const auto saves = gt2::os::SavesDir() / mode;
+                        const auto saves = gt2::os::SavesDir() / gt2game::DescribeDiscSelection(mode).saveMode;
                         std::filesystem::create_directories(saves);
                         // Seed only a new disc profile; updates keep the player's saved preferences.
                         if (!std::filesystem::exists(saves / "settings.txt") &&
@@ -174,13 +178,17 @@ void android_main(android_app* app) {
                             writeSettings("settings.txt", kInitialSettings);
                             writeSettings("settings.txt.overlay", kInitialOverlay);
                         }
-                        std::vector<std::string> args = {"gt2game", (root / mode).string(), "--vr",
-                            "--settings", (saves / "settings.txt").string(), "--card", (saves / "card1.mcd").string()};
+                        auto args = gt2game::InstalledDiscArguments("gt2game", root, gt2::os::SavesDir(), mode);
+                        args.push_back("--vr");
                         std::vector<char*> argv;
                         for (auto& arg : args) argv.push_back(arg.data());
                         const int code = gt2game::GameMain(int(argv.size()), argv.data());
                         __android_log_print(ANDROID_LOG_INFO, "GT2.Quest", "GameMain returned %d", code);
                         if (code != 0 || !gt2game::TakeGameChangeRequest()) break;
+                        const auto next = gt2game::TakeGameChangePreference();
+                        const bool direct = gt2game::TakeGameChangeDirect();
+                        if (gt2game::ValidDiscSelection(next)) { mode = next; directLaunch = direct; }
+                        gt2game::SetFakePadScript({}); gt2game::SetFakePad2Script({});
                     }
                 } catch (const std::exception& e) {
                     std::fprintf(stderr, "Startup failed: %s\n", e.what());
