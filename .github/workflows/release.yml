@@ -11,8 +11,9 @@ name: Release binaries
 #
 # Android signing secrets: ANDROID_KEYSTORE_BASE64 (base64 of the release .jks),
 # ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_PASSWORD (defaults to the store
-# password) and ANDROID_KEY_ALIAS (defaults to gt2-release). They are required
-# when uploading to a release; manual runs without them build a debug-signed APK.
+# password) and ANDROID_KEY_ALIAS (defaults to gt2-release). Without them the
+# Android job fails and the release is published without the Quest APK; manual
+# runs without a tag build a debug-signed APK instead.
 on:
   workflow_dispatch:
     inputs:
@@ -27,6 +28,22 @@ permissions:
   contents: read
 
 jobs:
+  preflight:
+    name: Check release secrets
+    runs-on: ubuntu-24.04
+    outputs:
+      android_key: ${{ steps.check.outputs.android_key }}
+    steps:
+      - id: check
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "android_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android_key=false" >> "$GITHUB_OUTPUT"
+          fi
+
   macos:
     name: macOS ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
@@ -239,6 +256,7 @@ jobs:
 
   android:
     name: Android arm64 (Quest)
+    needs: preflight
     runs-on: ubuntu-24.04
     env:
       # Base64 of the existing release .jks plus its passwords. Without them
@@ -254,7 +272,7 @@ jobs:
           ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Require the release signing key
-        if: (github.event_name == 'release' || inputs.tag != '') && env.ANDROID_KEYSTORE_BASE64 == ''
+        if: (github.event_name == 'release' || inputs.tag != '') && needs.preflight.outputs.android_key == 'false'
         run: |
           echo "::error::ANDROID_KEYSTORE_BASE64 is required to publish the Quest APK. See docs/RELEASING.md."
           exit 1
@@ -430,8 +448,14 @@ jobs:
 
   publish:
     name: Upload release assets
-    needs: [macos, windows, linux, android, web, steamdeck]
-    if: ${{ github.event_name == 'release' || inputs.tag != '' }}
+    needs: [preflight, macos, windows, linux, android, web, steamdeck]
+    if: >-
+      always() && (github.event_name == 'release' || inputs.tag != '') &&
+      needs.macos.result == 'success' && needs.windows.result == 'success' &&
+      needs.linux.result == 'success' && needs.web.result == 'success' &&
+      needs.steamdeck.result == 'success' &&
+      (needs.android.result == 'success' ||
+       (needs.android.result == 'failure' && needs.preflight.outputs.android_key == 'false'))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -441,6 +465,10 @@ jobs:
           path: release-assets
           pattern: release-*
           merge-multiple: true
+
+      - name: Warn about the missing Android APK
+        if: needs.android.result == 'failure' && needs.preflight.outputs.android_key == 'false'
+        run: echo "::warning::Uploading without the Android APK because ANDROID_KEYSTORE_BASE64 is not configured."
 
       - name: Upload assets to the release
         env:

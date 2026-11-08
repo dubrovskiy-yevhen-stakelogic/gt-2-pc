@@ -26,7 +26,7 @@ Secrets belong to the repository that hosts the release, not to a contributor's 
 
 Reuse the existing `gt2-release.jks`. APKs signed with a different key cannot replace an installed app; Android refuses the update. A new key is only appropriate for a new identity and requires users to uninstall first.
 
-The build treats a missing key as an error for a `release` event or a manual run with a tag. Manual runs without a tag build a debug-signed APK for testing instead.
+A missing key still fails the Android job for a `release` event or a manual run with a tag, but the other platforms are published anyway and the release is left without the Quest APK. The run shows the warning on the `publish` job. Manual runs without a tag build a debug-signed APK for testing instead.
 
 Base64-encode a keystore and set the secrets with GitHub CLI:
 
@@ -69,4 +69,4 @@ apksigner verify --verbose --print-certs GT2-VR-<version>.apk
 2. The workflow runs for the `release: published` event, checks out that tag, builds every target and attaches the `release-*` artifacts to the release.
 3. Alternatively, run the workflow manually with the tag of an existing release.
 
-A release run needs `ANDROID_KEYSTORE_BASE64`; without it the Android job stops before building. The `publish` job only downloads `release-*` artifacts, so debug or unsigned test builds cannot be attached by accident.
+`ANDROID_KEYSTORE_BASE64` is needed for the Quest APK. Without it the Android job fails, but the other five platform archives are still uploaded, with a warning on the `publish` job. The `publish` job only downloads `release-*` artifacts, so debug or unsigned test builds cannot be attached by accident.
