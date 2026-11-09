@@ -386,7 +386,8 @@ std::vector<CarMeshVertex> BuildCarMesh(const CarModel& model, const CarMeshOpti
     const float s = static_cast<float>(CarBodyMetresPerUnit(lod));
     std::vector<CarMeshVertex> out;
 
-    for (const CarPolygon& p : lod.polygons) {
+    for (size_t index = 0; index < lod.polygons.size(); index++) {
+        const CarPolygon& p = lod.polygons[opt.reverseDrawOrder ? lod.polygons.size() - 1 - index : index];
         static constexpr int kTri[3] = {0, 1, 2};
         static constexpr int kQuadRing[6] = {0, 1, 3, 1, 2, 3}; // the PS1's split: GPU slots (v0 v1 v3 v2) -> (v0 v1 v3) + (v1 v2 v3)
         static constexpr int kQuadStrip[6] = {0, 1, 2, 1, 3, 2};

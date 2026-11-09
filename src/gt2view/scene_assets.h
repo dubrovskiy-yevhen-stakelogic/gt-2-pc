@@ -581,8 +581,11 @@ public:
             if (slots_[i].id == key) return int(i);
         if (slots_.size() >= carSlotLimit_) return -1;
         const uint32_t slot = uint32_t(slots_.size());
-        CarModel model = ParseCarModel(vol_.Read("carobj/" + id + ".cdo"));
-        CarTexture texture = ParseCarTexture(vol_.Read("carobj/" + id + ".cdp"));
+        // Bit 0 of the course flags marks the night courses: their stock cars have lit-lamp models and textures (.cno /
+        // .cnp). Added GT4 catalogue cars only ship the day .cdo / .cdp scaffold, so keep those when the night pair is absent.
+        const bool night = courseNight_ && vol_.Has("carobj/" + id + ".cno") && vol_.Has("carobj/" + id + ".cnp");
+        CarModel model = ParseCarModel(vol_.Read("carobj/" + id + (night ? ".cno" : ".cdo")));
+        CarTexture texture = ParseCarTexture(vol_.Read("carobj/" + id + (night ? ".cnp" : ".cdp")));
 
         std::vector<SceneVertex> vertices;
         CarMeshOptions meshOptions;
@@ -592,6 +595,7 @@ public:
         std::array<std::array<float, 3>, 4> wheelCentres{};
         std::array<std::array<uint32_t, 2>, 4> wheelRanges{};
         meshOptions.wheelsAtOrigin = true;
+        meshOptions.reverseDrawOrder = true; // lamps over their housings (car_mesh.h)
         meshOptions.wheelCentres = &wheelCentres;
         meshOptions.wheelRanges = &wheelRanges;
         for (const CarMeshVertex& v : BuildCarMesh(model, meshOptions)) {
@@ -1400,7 +1404,7 @@ public:
                 d.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+i;
                 d.vertexCount=3;std::copy_n(mvp,16,d.mvp);items.push_back(d);}return;
         }
-        gt2::CarMeshOptions options;options.wheels=false;
+        gt2::CarMeshOptions options;options.wheels=false;options.reverseDrawOrder=true; // same order as the uploaded body
         const auto mesh=gt2::BuildCarMesh(slots_.at(size_t(slot)).model,options);
         const auto fit=SlotCockpitFit(slot);
         for(size_t i=0;i+2<mesh.size();i+=3){
