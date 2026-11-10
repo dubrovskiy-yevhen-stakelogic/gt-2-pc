@@ -289,9 +289,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix="gt2-zip-") as stage:
         wrapper = Path(stage) / archive.stem
         wrapper.mkdir()
-        run("ditto", app, wrapper / f"{args.name}.app")
+        run("ditto", app, wrapper / "GT2.app")
         (wrapper / "READ-ME.txt").write_text(
-            f"Open {args.name}.app. Drag it to Applications if you want to keep it.\n"
+            "Open GT2.app. Drag it to Applications if you want to keep it.\n"
             "No build tools or Vulkan SDK are needed. On first launch, select your own GT2 BIN/CUE images.\n"
             "Saves: ~/Library/Application Support/GT2/saves\n"
             + ("Apple notarization: accepted.\n" if notary else
