@@ -20,7 +20,7 @@ platform scripts for builders.
 | Windows PCVR / OpenXR | same MSI/zip, then `PLAY-PCVR-*.bat` in the data folder | PC with a connected headset |
 | Quest standalone | `GT2-VR-<version>.apk` over USB/ADB or a headset installer | On the headset |
 | macOS | `GT2-<version>-macos-<arch>.dmg` | Mac, flat screen |
-| Steam Deck / desktop Linux | `GT2-<version>-steamdeck.flatpak`; `INSTALL-STEAMDECK.sh` adds the Deck shortcut | Linux, flat screen |
+| Steam Deck / desktop Linux | `GT2-<version>-linux-x86_64.flatpak`; `INSTALL-STEAMDECK.sh` adds the Deck shortcut | Linux, flat screen |
 | Browser | `GT2-Web-<version>.zip`, or serve `web/` from a source kit | Browser, flat screen |
 
 The Windows MSI and portable ZIP use precompiled tools; the macOS DMG and Linux
@@ -181,7 +181,7 @@ saves are preserved by the normal update path.
 
 - **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. Open settings with F10. See [PCVR setup](docs/PCVR.md).
 - **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
-- **Linux / Steam Deck:** `flatpak install --user GT2-<version>-steamdeck.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
+- **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
 - **Quest:** install `GT2-VR-<version>.apk`, then use the installer scripts to prepare your disc data over ADB; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.
 - **Browser:** download the web ZIP, or run `python web/serve-web.py --directory web --port 8080` from a source kit, then open `http://127.0.0.1:8080/`. For deployment, upload the contents of `web/` to a static HTTPS host. Keep `index.html`, `launcher.js`, `gt2.js` and `gt2.wasm` together; serve Wasm as `application/wasm`. Opening the HTML through `file://` does not work. See [browser build and hosting](docs/WEB.md).
 

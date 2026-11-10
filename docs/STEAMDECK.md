@@ -6,11 +6,11 @@ preset. `INSTALL-LINUX.sh` installs the Quest game from a Linux computer.
 
 ## Install on Steam Deck
 
-1. Switch to **Desktop Mode** and download `GT2-<version>-steamdeck.flatpak`.
+1. Switch to **Desktop Mode** and download `GT2-<version>-linux-x86_64.flatpak`.
 2. Open a terminal in the download folder and run:
 
    ```sh
-   flatpak install --user GT2-<version>-steamdeck.flatpak
+   flatpak install --user GT2-<version>-linux-x86_64.flatpak
    ```
 
 3. Open **GT2** from the application menu and choose your disc. In Gaming Mode,
@@ -33,7 +33,7 @@ No FUSE setup is required. Installed Flatpak tools and runtimes remain available
 for subsequent builds.
 
 Pass the downloaded Flatpak to the installer to skip its local build:
-`bash INSTALL-STEAMDECK.sh GT2-<version>-steamdeck.flatpak`. Without a package
+`bash INSTALL-STEAMDECK.sh GT2-<version>-linux-x86_64.flatpak`. Without a package
 beside the installer, it downloads the build tools and compiles from the
 included source.
 

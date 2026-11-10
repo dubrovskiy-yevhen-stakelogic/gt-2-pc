@@ -276,7 +276,7 @@ jobs:
           tar -C dist -czf "dist/GT2-${version}-linux-x86_64.tar.gz" "GT2-${version}-linux-x86_64"
           mkdir -p release-assets
           cp "dist/GT2-${version}-linux-x86_64.tar.gz" release-assets/
-          (cd release-assets && sha256sum *.tar.gz > "SHA256SUMS-linux-x86_64.txt")
+          (cd release-assets && sha256sum *.tar.gz > "SHA256SUMS-linux-x86_64-tarball.txt")
 
       - uses: actions/upload-artifact@v7
         with:
@@ -499,7 +499,7 @@ jobs:
           [ -f "$bundle" ] || { echo "Flatpak bundle not found"; exit 1; }
           mkdir -p release-assets
           cp "$bundle" release-assets/
-          (cd release-assets && sha256sum *.flatpak > SHA256SUMS-steamdeck.txt)
+          (cd release-assets && sha256sum *.flatpak > SHA256SUMS-linux-x86_64.txt)
 
       - uses: actions/upload-artifact@v7
         with:

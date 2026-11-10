@@ -16,6 +16,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot
+# A launcher starts this without a console: keep the optional prompts out of its way.
+$interactive = -not [Console]::IsInputRedirected
 $manifest = Get-Content -LiteralPath (Join-Path $root 'release-manifest.json') -Raw | ConvertFrom-Json
 if ($manifest.version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Unexpected release version.' }
 $apkName = "GT2-VR-$($manifest.version).apk"
@@ -58,21 +60,26 @@ if ($Gt4Bundle) {
     if ($LASTEXITCODE -ne 0) { throw 'GT4 bundle validation failed; nothing was installed.' }
 }
 if (!$PSBoundParameters.ContainsKey('HdMedia') -and !$DiscImage) {
-    . (Join-Path $PSScriptRoot 'hd-upscale.ps1')
-    $HdMedia = Select-HdMediaForInstall
+    if ($interactive) {
+        . (Join-Path $PSScriptRoot 'hd-upscale.ps1')
+        $HdMedia = Select-HdMediaForInstall
+    } else { $HdMedia = 'Original' }
 }
 if ($Bios -and $NoBios) { throw 'Choose either -Bios or -NoBios.' }
 if (!$Bios -and !$NoBios -and !$DiscImage) {
-    Write-Host 'PlayStation startup is optional. The game works without a BIOS.'
-    Write-Host 'Existing prepared intros are retained; disable them in the VR menu if desired.'
-    $choice = Read-Host 'Prepare the original startup from your own PS1 BIOS? (y/N)'
-    if ($choice -match '^(y|yes)$') {
-        Add-Type -AssemblyName System.Windows.Forms
-        $dialog = New-Object System.Windows.Forms.OpenFileDialog
-        $dialog.Title = 'Optional PS1 BIOS dump (512 KiB)'
-        $dialog.Filter = 'BIOS files (*.bin;*.rom)|*.bin;*.rom|All files (*.*)|*.*'
-        try { if ($dialog.ShowDialog() -eq 'OK') { $Bios = $dialog.FileName } }
-        finally { $dialog.Dispose() }
+    if (!$interactive) { $NoBios = $true }
+    else {
+        Write-Host 'PlayStation startup is optional. The game works without a BIOS.'
+        Write-Host 'Existing prepared intros are retained; disable them in the VR menu if desired.'
+        $choice = Read-Host 'Prepare the original startup from your own PS1 BIOS? (y/N)'
+        if ($choice -match '^(y|yes)$') {
+            Add-Type -AssemblyName System.Windows.Forms
+            $dialog = New-Object System.Windows.Forms.OpenFileDialog
+            $dialog.Title = 'Optional PS1 BIOS dump (512 KiB)'
+            $dialog.Filter = 'BIOS files (*.bin;*.rom)|*.bin;*.rom|All files (*.*)|*.*'
+            try { if ($dialog.ShowDialog() -eq 'OK') { $Bios = $dialog.FileName } }
+            finally { $dialog.Dispose() }
+        }
     }
 }
 if ($Bios -and (!(Test-Path -LiteralPath $Bios -PathType Leaf) -or (Get-Item -LiteralPath $Bios).Length -ne 524288)) {

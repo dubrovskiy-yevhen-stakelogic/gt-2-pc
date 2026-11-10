@@ -10,7 +10,7 @@ bundled or downloaded; supply your own supported BIN/CUE images.
 | Windows portable | `GT2-<version>-windows-x64.zip` | `INSTALL-PC.bat` |
 | Quest standalone | `GT2-VR-<version>.apk` | Headset installer or ADB |
 | macOS | `GT2-<version>-macos-<arch>.dmg` | Drag GT2 to Applications |
-| Linux desktop / Steam Deck | `GT2-<version>-steamdeck.flatpak` | `flatpak install --user <file>` |
+| Linux desktop / Steam Deck | `GT2-<version>-linux-x86_64.flatpak` | `flatpak install --user <file>` |
 | Browser | `GT2-Web-<version>.zip` | Serve the contents over HTTP(S) |
 
 The same x86_64 Flatpak runs on Steam Deck and other Flatpak-enabled Linux

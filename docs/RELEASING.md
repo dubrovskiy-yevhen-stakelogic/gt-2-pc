@@ -9,7 +9,7 @@
 | Linux x86_64 | — (the tarball is a workflow artifact only) |
 | Quest / Android arm64 | `GT2-VR-<version>.apk` |
 | Browser / WebAssembly | `GT2-Web-<version>.zip` |
-| Linux / Steam Deck | `GT2-<version>-steamdeck.flatpak` |
+| Linux / Steam Deck | `GT2-<version>-linux-x86_64.flatpak` |
 
 The Windows MSI installs the program files; the first run asks where to keep discs, saves and media. The portable ZIP starts the same flow from `INSTALL-PC.bat`. One x86_64 Flatpak serves both Steam Deck and desktop Linux.
 
