@@ -1,17 +1,28 @@
 # Release binaries
 
-`.github/workflows/release.yml` builds every supported target and attaches the archives to a GitHub release. Manual runs without a tag only keep workflow artifacts, so they are safe for testing on a fork.
+`.github/workflows/release.yml` builds every supported target and attaches the release files to a GitHub release. The Linux tarball stays a workflow artifact; the release Linux download is the Flatpak. Manual runs without a tag only keep workflow artifacts, so they are safe for testing on a fork.
 
 | Job | Release assets |
 |---|---|
 | macOS arm64 / x86_64 | `GT2-<version>-macos-<arch>.zip`, `.dmg`, release manifest |
 | Windows x64 | `GT2-<version>-windows-x64.msi` (installer) and `.zip` (portable game, tools and OpenXR loader) |
-| Linux x86_64 | `GT2-<version>-linux-x86_64.tar.gz` |
+| Linux x86_64 | — (the tarball is a workflow artifact only) |
 | Quest / Android arm64 | `GT2-VR-<version>.apk` |
 | Browser / WebAssembly | `GT2-Web-<version>.zip` |
-| Steam Deck | `GT2-<version>-steamdeck.flatpak` |
+| Linux / Steam Deck | `GT2-<version>-steamdeck.flatpak` |
 
 The Windows MSI installs the program files; the first run asks where to keep discs, saves and media. The portable ZIP starts the same flow from `INSTALL-PC.bat`. One x86_64 Flatpak serves both Steam Deck and desktop Linux.
+
+## Launcher compatibility
+
+Quiver Launcher (quiverlauncher.com) picks one release file per platform:
+
+- It ignores `.dmg`, so macOS uses the ZIP. That ZIP wraps `GT2.app` with a read-me, so launchers that flatten a lone wrapper keep the app bundle intact.
+- It prefers a ZIP over an MSI on Windows. The catalog entry needs `preferredExecutables.windows: ["GT2.bat", "gt2game.exe"]`; without it a launcher picks another tool from `tools/`. The MSI stays for users who want a system installer; its first Play still needs the GT2 shortcut once to import a disc.
+- It prefers a `.tar.gz` over a `.flatpak`, so the Linux tarball is only a workflow artifact. The release Linux download is the Flatpak.
+- The catalog entry keeps `preferredExecutables.macos: ["GT2.app"]` and may add `preferredExecutables.linux: ["gt2launcher"]`.
+
+Do not replace assets on an already-published release: Quiver pins their SHA-256 and refuses changed files. Publish a new tag instead.
 
 ## Required secrets
 

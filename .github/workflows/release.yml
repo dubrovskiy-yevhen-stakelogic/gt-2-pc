@@ -246,10 +246,8 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   linux:
-    name: Linux x86_64
+    name: Linux x86_64 tarball
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -282,22 +280,12 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: release-linux-x86_64
+          # A workflow artifact for non-Flatpak systems. The release's Linux
+          # download is the Flatpak, so launchers never pick this build tree.
+          name: linux-x86_64-tarball
           path: release-assets/
           if-no-files-found: error
           compression-level: 0
-
-      - name: Upload assets to the release
-        if: github.event_name == 'release' || inputs.tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
-        run: |
-          set -euo pipefail
-          [ -n "$TAG" ] || { echo "No release tag provided"; exit 1; }
-          gh release view "$TAG" >/dev/null
-          gh release upload "$TAG" release-assets/* --clobber
 
   android:
     name: Android arm64 (Quest)
