@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Built by .github/workflows/release.yml after scripts/package-player.ps1:
      wix build gt2.wxs -ext WixToolset.UI.wixext -arch x64
-       -b <staged player package> -d Version=<version> -d LicenseRtf=<this folder>/LICENSE.rtf -->
+       -d StageDir=<staged player package> -d Version=<version> -d LicenseRtf=<this folder>/LICENSE.rtf -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="GT2" Manufacturer="GT2 PC contributors" Version="$(var.Version)"
@@ -21,7 +21,7 @@
   </Package>
   <Fragment>
     <ComponentGroup Id="Payload" Directory="INSTALLFOLDER">
-      <Files Include="**" />
+      <Files Include="$(var.StageDir)\**" />
     </ComponentGroup>
   </Fragment>
   <Fragment>

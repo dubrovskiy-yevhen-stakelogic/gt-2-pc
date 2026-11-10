@@ -207,10 +207,16 @@ jobs:
           dotnet tool install --tool-path $wix wix --version 5.0.2
           & "$wix\wix.exe" extension add -g WixToolset.UI.wixext/5.0.2
           New-Item -ItemType Directory -Force release-assets | Out-Null
+          $msi = "release-assets/GT2-$version-windows-x64.msi"
           & "$wix\wix.exe" build installer/windows/gt2.wxs -ext WixToolset.UI.wixext -arch x64 `
-            -b $stage -d Version=$version `
+            -d StageDir=$stage -d Version=$version `
             -d "LicenseRtf=$(Join-Path $PWD 'installer/windows/LICENSE.rtf')" `
-            -o "release-assets/GT2-$version-windows-x64.msi"
+            -o $msi
+          # The empty-payload MSI is a few hundred KiB; the real one carries the game.
+          if (!(Test-Path $msi) -or (Get-Item $msi).Length -lt 1MB) {
+            throw "The MSI payload is missing or truncated: $msi"
+          }
+          Remove-Item 'release-assets/*.wixpdb' -Force -ErrorAction SilentlyContinue
 
       - name: Collect assets
         shell: pwsh
