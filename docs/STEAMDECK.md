@@ -1,32 +1,41 @@
 # Steam Deck / SteamOS
 
-The native Linux game uses SDL2 and Vulkan. Install in Desktop Mode using the
-included Flatpak scripts. `INSTALL-LINUX.sh` installs the Quest game from a Linux
-computer; use `INSTALL-STEAMDECK.sh` for the desktop game.
+The native Linux game uses SDL2 and Vulkan. Steam Deck and desktop Linux use the
+same x86_64 Flatpak; `INSTALL-STEAMDECK.sh` adds the Deck desktop shortcut and
+preset. `INSTALL-LINUX.sh` installs the Quest game from a Linux computer.
 
 ## Install on Steam Deck
 
-1. Switch to **Desktop Mode** and extract **GT2-0.9.0.zip**
-   into a writable folder. Open the extracted folder, not the ZIP preview.
-2. Double-click **INSTALL-STEAMDECK.sh** and select **Execute**. A terminal window
-   opens automatically and stays open after completion or an error.
-3. Wait for **GT2 INSTALLED**. Open the new **GT2** desktop shortcut to choose
-   your disc. If KDE asks whether to trust the shortcut, allow it to launch.
+1. Switch to **Desktop Mode** and download `GT2-<version>-steamdeck.flatpak`.
+2. Open a terminal in the download folder and run:
 
-No commands need to be typed. The installer downloads the build tool and
-Freedesktop 25.08 SDK/runtime from Flathub, compiles the game, runs its tests and
-installs the resulting package. Allow several GB of free space and keep the
-window open during downloads and compilation. No `sudo`, `pacman` or changes
-to the SteamOS system partition are needed.
+   ```sh
+   flatpak install --user GT2-<version>-steamdeck.flatpak
+   ```
+
+3. Open **GT2** from the application menu and choose your disc. In Gaming Mode,
+   add it to Steam from the same menu.
+
+The Flatpak is one x86_64 bundle for Steam Deck and other Flatpak-enabled Linux
+desktops; there is no separate Deck binary. The Deck preset is applied by the
+Steam Deck launcher, not baked into the package.
+
+For the desktop shortcut and the Deck-specific launcher, extract the source
+archive and double-click **INSTALL-STEAMDECK.sh**. It installs the bundled
+Flatpak, or builds it when none is supplied. A terminal opens automatically and
+stays open after completion or an error. If you build locally, allow several GB
+of free space; no `sudo`, `pacman` or changes to the SteamOS system partition are
+needed.
 
 Build files and the package cache live in `~/.cache/gt2/steamdeck-build` (or under
 `XDG_CACHE_HOME` when set). The extracted installer can be on a removable drive.
 No FUSE setup is required. Installed Flatpak tools and runtimes remain available
 for subsequent builds.
 
-If a prebuilt **GT2-0.9.0-steamdeck.flatpak** is included beside the installer,
-it installs that package directly without downloading build tools or compiling.
-The complete release contains source, so its first installation builds locally.
+Pass the downloaded Flatpak to the installer to skip its local build:
+`bash INSTALL-STEAMDECK.sh GT2-<version>-steamdeck.flatpak`. Without a package
+beside the installer, it downloads the build tools and compiles from the
+included source.
 
 If installation stops, the window shows the failed step. The full log is
 **GT2-SteamDeck-install.log**, beside **INSTALL-STEAMDECK.sh**. Send that file

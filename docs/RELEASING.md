@@ -5,11 +5,13 @@
 | Job | Release assets |
 |---|---|
 | macOS arm64 / x86_64 | `GT2-<version>-macos-<arch>.zip`, `.dmg`, release manifest |
-| Windows x64 | `GT2-<version>-windows-x64.zip` (game, tools and the OpenXR loader) |
+| Windows x64 | `GT2-<version>-windows-x64.msi` (installer) and `.zip` (portable game, tools and OpenXR loader) |
 | Linux x86_64 | `GT2-<version>-linux-x86_64.tar.gz` |
 | Quest / Android arm64 | `GT2-VR-<version>.apk` |
 | Browser / WebAssembly | `GT2-Web-<version>.zip` |
 | Steam Deck | `GT2-<version>-steamdeck.flatpak` |
+
+The Windows MSI installs the program files; the first run asks where to keep discs, saves and media. The portable ZIP starts the same flow from `INSTALL-PC.bat`. One x86_64 Flatpak serves both Steam Deck and desktop Linux.
 
 ## Required secrets
 

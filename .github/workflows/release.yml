@@ -160,24 +160,10 @@ jobs:
           ctest --test-dir build_ci --output-on-failure
           if errorlevel 1 exit /b 1
 
-      - name: Collect assets
+      - name: Ensure the OpenXR loader
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $version = [regex]::Match(
-            (Get-Content CMakeLists.txt -Raw), 'project\(gt2pc VERSION ([0-9.]+)').Groups[1].Value
-          $stage = Join-Path $env:RUNNER_TEMP "GT2-$version-windows-x64"
-          New-Item -ItemType Directory -Force $stage | Out-Null
-          $executables = @(
-            'gt2game.exe', 'gt2install.exe', 'gt2checks.exe', 'gt2media.exe',
-            'gt2bootcapture.exe', 'gt2tool.exe', 'gt4assettool.exe',
-            'gt4nativemetadata.exe', 'gt4materialmetadata.exe',
-            'gt4specdbexport.exe', 'gt4showroomexport.exe')
-          foreach ($name in $executables) { Copy-Item "build_ci/$name" $stage }
-          Copy-Item LICENSE, THIRD_PARTY.md, README.md $stage
-          New-Item -ItemType Directory -Force (Join-Path $stage 'LICENSES') | Out-Null
-          Copy-Item third_party/openxr/LICENSE (Join-Path $stage 'LICENSES/OpenXR-Apache-2.0.txt')
-
           # The game loads this DLL at runtime when PCVR is used.
           $nupkg = Join-Path $env:RUNNER_TEMP 'openxr.nupkg'
           for ($attempt = 1; $attempt -le 4; $attempt++) {
@@ -198,14 +184,46 @@ jobs:
           $loader = Join-Path $env:RUNNER_TEMP 'openxr-loader'
           Copy-Item $nupkg (Join-Path $env:RUNNER_TEMP 'openxr.zip')
           Expand-Archive -LiteralPath (Join-Path $env:RUNNER_TEMP 'openxr.zip') -DestinationPath $loader -Force
-          Copy-Item (Join-Path $loader 'native/x64/release/bin/openxr_loader.dll') $stage
 
-          New-Item -ItemType Directory -Force 'release-assets' | Out-Null
-          $archive = "release-assets/GT2-$version-windows-x64.zip"
-          Compress-Archive -Path $stage -DestinationPath $archive
-          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  GT2-$version-windows-x64.zip" |
-            Set-Content "release-assets/GT2-$version-windows-x64.zip.sha256" -Encoding ASCII
+      - name: Package player files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [regex]::Match(
+            (Get-Content CMakeLists.txt -Raw), 'project\(gt2pc VERSION ([0-9.]+)').Groups[1].Value
+          $stage = Join-Path $env:RUNNER_TEMP "GT2-$version-windows-x64"
+          ./scripts/package-player.ps1 -SkipApk -BuildDir build_ci -Output $stage `
+            -OpenXRLoader (Join-Path $env:RUNNER_TEMP 'openxr-loader/native/x64/release/bin/openxr_loader.dll')
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [regex]::Match(
+            (Get-Content CMakeLists.txt -Raw), 'project\(gt2pc VERSION ([0-9.]+)').Groups[1].Value
+          $stage = Join-Path $env:RUNNER_TEMP "GT2-$version-windows-x64"
+          # Pin the MSI toolchain so release output is reproducible.
+          $wix = Join-Path $env:RUNNER_TEMP 'wix'
+          dotnet tool install --tool-path $wix wix --version 5.0.2
+          & "$wix\wix.exe" extension add -g WixToolset.UI.wixext/5.0.2
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          & "$wix\wix.exe" build installer/windows/gt2.wxs -ext WixToolset.UI.wixext -arch x64 `
+            -b $stage -d Version=$version `
+            -d "LicenseRtf=$(Join-Path $PWD 'installer/windows/LICENSE.rtf')" `
+            -o "release-assets/GT2-$version-windows-x64.msi"
+
+      - name: Collect assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [regex]::Match(
+            (Get-Content CMakeLists.txt -Raw), 'project\(gt2pc VERSION ([0-9.]+)').Groups[1].Value
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item (Join-Path $env:RUNNER_TEMP "GT2-$version-windows-x64.zip") `
+            "release-assets/GT2-$version-windows-x64.zip"
+          Get-ChildItem release-assets -File |
+            ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } |
+            Set-Content release-assets/SHA256SUMS-windows-x64.txt -Encoding ASCII
 
       - uses: actions/upload-artifact@v7
         with:

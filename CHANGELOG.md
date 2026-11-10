@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Installation and packaging
+
+- Ship per-platform release files: a Windows MSI, a macOS DMG, one x86_64 Flatpak for Linux and Steam Deck, the Quest APK and a portable Windows ZIP.
+- Ask where to store discs, saves and media on Windows instead of always using the C: drive, and reuse the recorded location on updates.
+- Apply the Steam Deck window preset from the Deck launcher so the same Flatpak behaves normally on desktop Linux.
+
 ## 0.9.1 - Cockpits, race results and platform fixes
 
 ### Cockpits and VR

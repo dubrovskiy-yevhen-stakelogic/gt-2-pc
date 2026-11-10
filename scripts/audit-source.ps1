@@ -33,7 +33,7 @@ try {
         & {
             $asset = $path -in @($allowedImage, $readmeImage, $gt4Image, 'third_party/vrhands/BigHandLeft.uxrh', 'third_party/vrhands/BigHandRight.uxrh')
             $extension = [IO.Path]::GetExtension($path)
-            $text = $extension -match '^\.(cpp|mm|h|hpp|c|cs|csproj|sln|glsl|vert|frag|cmake|ps1|py|sh|command|md|txt|json|yaml|yml|java|xml|properties|gradle|inc|cmd|bat|service|conf|html|js|cjs|desktop|svg)$' -or
+            $text = $extension -match '^\.(cpp|mm|h|hpp|c|cs|csproj|sln|glsl|vert|frag|cmake|ps1|py|sh|command|md|txt|json|yaml|yml|java|xml|properties|gradle|inc|cmd|bat|service|conf|html|js|cjs|desktop|svg|wxs|rtf)$' -or
                 [IO.Path]::GetFileName($path) -in @('LICENSE', '.gitignore', '.gitattributes')
             if (!$asset -and !$text) { throw "Unexpected source file type: $path" }
             if (!$asset -and [Array]::IndexOf([IO.File]::ReadAllBytes((Join-Path $Repo $path)), [byte]0) -ge 0) {
