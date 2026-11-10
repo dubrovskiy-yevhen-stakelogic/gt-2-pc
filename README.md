@@ -9,19 +9,21 @@ it is rebuilt.
 
 **[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
-**Download the file for your platform from the latest release.** Each packaged
-build contains the game, disc importer and media tools; no compiler or SDK is
-needed. The tagged source archive on GitHub still contains the full source and
-platform scripts for builders.
+**Download the file for your platform from the [latest release](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/releases).** Each packaged build contains the game, disc importer and media tools; no compiler, SDK or toolchain is needed. The tagged source archive on GitHub still contains the full source and platform scripts for builders.
 
-| Platform | Start here | Where the game runs |
+| Platform | Easiest install | Where the game runs |
 |---|---|---|
-| Windows desktop | `GT2-<version>-windows-x64.msi`, or the portable `.zip` (`INSTALL-PC.bat`) | Windows PC |
-| Windows PCVR / OpenXR | same MSI/zip, then `PLAY-PCVR-*.bat` in the data folder | PC with a connected headset |
+| Windows desktop | `GT2-<version>-windows-x64.msi` | Windows PC |
+| Windows PCVR / OpenXR | same MSI, then `PLAY-PCVR-*.bat` in the data folder | PC with a connected headset |
 | Quest standalone | `GT2-VR-<version>.apk` over USB/ADB or a headset installer | On the headset |
 | macOS | `GT2-<version>-macos-<arch>.dmg` | Mac, flat screen |
-| Steam Deck / desktop Linux | `GT2-<version>-linux-x86_64.flatpak`; `INSTALL-STEAMDECK.sh` adds the Deck shortcut | Linux, flat screen |
+| Steam Deck / desktop Linux | `GT2-<version>-linux-x86_64.flatpak` | Linux, flat screen |
 | Browser | `GT2-Web-<version>.zip`, or serve `web/` from a source kit | Browser, flat screen |
+
+The portable `GT2-<version>-windows-x64.zip` is an alternative to the MSI, and
+`INSTALL-STEAMDECK.sh` adds the Steam Deck desktop shortcut. Source kits build
+with `INSTALL.bat`, `INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are
+only needed for development or unsupported architectures.
 
 The Windows MSI and portable ZIP use precompiled tools; the macOS DMG and Linux
 Flatpak are precompiled packages. Source kits build with `INSTALL.bat`,
