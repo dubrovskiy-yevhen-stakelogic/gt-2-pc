@@ -1,4 +1,5 @@
 #include "pc_overlay.h"
+#include "gt2_version.h"
 #include "gt2formats/hd_media.h"
 #include "gt2formats/model_set.h"
 #include "gt2formats/car_info.h"
@@ -1123,6 +1124,7 @@ void ShowSettingsMenu(GameWindow& window) {
             rows.push_back("Back");
         }
         if (!vr && title.starts_with("GT2 VR")) title.replace(0, 6, "GT2");
+        if (page == 0) title += std::string(" / v") + gt2::kVersion;
         if (!first) {
             if (!window.BeginFrame()) break;
             if (window.MenuPressed() || window.SettingsPressed() || window.Pressed(gt2::keys::kF10)) break;

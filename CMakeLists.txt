@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
-project(gt2pc VERSION 0.9.1 LANGUAGES C CXX)
+project(gt2pc VERSION 0.9.2 LANGUAGES C CXX)
+configure_file(src/game/version.in.h ${CMAKE_CURRENT_BINARY_DIR}/release-version/gt2_version.h @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/release-version)
 option(GT2_COCKPIT_PREVIEW "Enable garage cockpit inspection" ON)
 add_compile_definitions(GT2_COCKPIT_PREVIEW=$<BOOL:${GT2_COCKPIT_PREVIEW}>)
 option(GT2_BUILD_XRSIM "Build the optional OpenXR development simulator" OFF)

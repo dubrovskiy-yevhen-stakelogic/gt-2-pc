@@ -13,7 +13,7 @@ if ($true) {
     $publicDocs = @('COCKPIT-NEXT-RELEASE.md', 'COCKPIT-REMAINING-0.9.1.json', 'COCKPIT.md', 'COCKPIT-SHAPE-REGRESSION.md', 'BACKDROP-REGRESSION.md', 'EUROPEAN-DISCS.md', 'HD-MEDIA.md',
         'LINUX-INSTALL.md', 'STEAMDECK.md', 'MACOS.md', 'MIPMAPS.md', 'PCVR.md', 'PLAYER-INSTALL.md', 'QUEST.md',
         'SAVE-TRANSFER.md', 'VALIDATION.md', 'wheel-profile-provenance.json',
-        'WEB.md', 'WHEEL-PROFILES.md', 'WHEELS.md', 'GT4-CARS.md', 'RELEASE-0.9.0.md', 'RELEASE-0.9.1.md',
+        'WEB.md', 'WHEEL-PROFILES.md', 'WHEELS.md', 'GT4-CARS.md', 'RELEASE-0.9.0.md', 'RELEASE-0.9.1.md', 'RELEASE-0.9.2.md',
         'RELEASING.md')
     # The root allowlist excludes runtime game data. tools/xrsim/runtime is
     # source code and must remain part of the exported simulator.

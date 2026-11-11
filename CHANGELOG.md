@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.9.2 - Installation, car lights and HUD fixes
+
+### Game fixes
+
+- Keep HUD, menus and licence-result panels above the cockpit on the direct Vulkan path, including with MSAA disabled.
+- Restore stock car lamps over their coplanar housings and use night models/textures on night courses. Cars without a night pair retain their day assets.
+- Drive both split-screen players' brake lights from their own brake input.
+- Fix combined-disc selection on Quest and switching between Arcade and Simulation in direct-launch sessions, keeping mode-specific save paths.
+- Preserve rolling starts when entering GT Mode events with the corrected race shell.
+- Show the running game version in the title of the custom settings menu on desktop, VR and browser builds.
+
+### Release scope
+
+This release uses the public main branch. Network multiplayer, new HD car models
+and fully authored 3D cockpits are planned for future releases and remain in development.
+Existing split-screen, GT4 imports and current cockpit rendering remain available.
+
 
 ### Installation and packaging
 

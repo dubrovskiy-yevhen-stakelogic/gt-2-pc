@@ -36,6 +36,26 @@ Supply your own supported disc images. Game data, BIOS and saves are not include
 The screenshots illustrate gameplay. Release history is in
 [CHANGELOG.md](CHANGELOG.md); the feature list below describes the current project.
 
+## Version and bug reports
+
+Open the custom **GT2 settings menu** (F10 on desktop, the settings/menu button
+in VR) and read the version in its title, for example **v0.9.2**. Include that
+version, your platform and the steps to reproduce when reporting a bug. Older
+builds without a version label should be updated before comparing results.
+
+Version 0.9.2 focuses on ready-to-install packages, car lights, cockpit/HUD
+layering and combined-disc fixes. See [the changelog](CHANGELOG.md#092---installation-car-lights-and-hud-fixes).
+
+## Planned for future releases
+
+- Network multiplayer.
+- New HD car models.
+- Fully authored 3D cockpits.
+
+These features are still in development and are **not included in 0.9.2**.
+The existing local split-screen mode, GT4 model import and current cockpit
+rendering are separate features and remain available. No release dates are promised.
+
 ## Features
 
 - A fitted cockpit for live single-player Driver view, with moving steering wheel and hands, speed/RPM needles, seat adjustments and a central rear-view mirror. Replays and split-screen retain their existing views. See [cockpit controls](docs/COCKPIT.md).
