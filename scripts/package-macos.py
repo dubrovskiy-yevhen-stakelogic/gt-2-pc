@@ -284,13 +284,26 @@ def main():
         run("spctl", "--assess", "--type", "execute", app)
         upload.unlink()
     archive = out / f"GT2-{version}-macos-{arch}.zip"
-    run("ditto", "-c", "-k", "--keepParent", app, archive)
+    # A wrapper folder with the app and a read-me: launchers flatten a lone
+    # wrapper, and a second entry keeps the .app bundle intact.
+    with tempfile.TemporaryDirectory(prefix="gt2-zip-") as stage:
+        wrapper = Path(stage) / archive.stem
+        wrapper.mkdir()
+        run("ditto", app, wrapper / "GT2.app")
+        (wrapper / "READ-ME.txt").write_text(
+            "Open GT2.app. Drag it to Applications if you want to keep it.\n"
+            "No build tools or Vulkan SDK are needed. On first launch, select your own GT2 BIN/CUE images.\n"
+            "Saves: ~/Library/Application Support/GT2/saves\n"
+            + ("Apple notarization: accepted.\n" if notary else
+               "Apple notarization: not notarized. If macOS blocks it, Control-click GT2 -> Open.\n"))
+        run("ditto", "-c", "-k", "--keepParent", wrapper, archive)
     with tempfile.TemporaryDirectory(prefix="gt2-dmg-", dir=out) as stage:
         shutil.copytree(app, Path(stage) / "GT2.app", symlinks=True)
         (Path(stage) / "Applications").symlink_to("/Applications")
         (Path(stage) / "READ-ME.txt").write_text("Drag GT2 to Applications. Open it and select your own GT2 BIN/CUE images.\n"
             "No build tools or Vulkan SDK are needed. Saves: ~/Library/Application Support/GT2/saves\n"
-            + ("Apple notarization: accepted.\n" if notary else "Apple notarization: not notarized.\n"))
+            + ("Apple notarization: accepted.\n" if notary else
+               "Apple notarization: not notarized. If macOS blocks it, Control-click GT2 -> Open.\n"))
         dmg = out / f"GT2-{version}-macos-{arch}.dmg"
         run("hdiutil", "create", "-volname", f"GT2 {version}", "-srcfolder", stage, "-format", "UDZO", dmg)
     if notary:

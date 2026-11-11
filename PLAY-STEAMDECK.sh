@@ -26,7 +26,7 @@ while :; do
     if "$gt2_choose"; then
         gt2_picker || exit 0
     fi
-    gt2_options=(--user --env=GT2_HOST_DISC_PICKER=1 --command=gt2launcher)
+    gt2_options=(--user --env=GT2_HOST_DISC_PICKER=1 --env=GT2_STEAMDECK=1 --command=gt2launcher)
     gt2_import=()
     if [ -n "$gt2_image" ]; then
         gt2_options+=("--filesystem=$gt2_image:ro")

@@ -1,15 +1,24 @@
 # GT2 for macOS
 
 The native desktop game includes Arcade, Simulation, movies, sound, controller
-support and the cockpit view. Installation builds from the included source.
+support and the cockpit view.
 
-## Install
+## Install from the release
 
-Extract **GT2-0.9.0.zip** into Downloads. Close an existing GT2 instance,
-then open **INSTALL-MACOS.command**, or run in Terminal:
+Open **GT2-<version>-macos-arm64.dmg** or the x86_64 file on an Intel Mac, drag
+**GT2** to Applications and open it. No Apple Command Line Tools, Homebrew,
+CMake, Vulkan SDK or compiler are needed. If macOS blocks an unnotarized build,
+**Control-click GT2 → Open**. Discs, saves and
+media stay in `~/Library/Application Support/GT2`; reinstalling or updating the
+app leaves them in place.
+
+## Build from source
+
+Extract the source kit, close an existing GT2 instance, then open
+**INSTALL-MACOS.command**, or run in Terminal:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.9.0/INSTALL-MACOS.command"
+bash "$HOME/Downloads/GT2-<version>/INSTALL-MACOS.command"
 ```
 
 This archive installs from source. The first run prepares Apple Command Line
@@ -54,7 +63,7 @@ Install the release and import your discs first. Close GT2, then open
 **PREPARE-HD.command**, or run:
 
 ```sh
-bash "$HOME/Downloads/GT2-0.9.0/PREPARE-HD.command"
+bash "$HOME/Downloads/GT2-<version>/PREPARE-HD.command"
 ```
 
 Choose pictures, menu text and HUD, or also full-screen Arcade movies.

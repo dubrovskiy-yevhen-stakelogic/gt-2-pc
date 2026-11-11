@@ -17,6 +17,18 @@ if (!$PSBoundParameters.ContainsKey('HdMedia') -and !$DiscImage) {
 }
 $repo = Split-Path $PSScriptRoot
 $InstallDir = [IO.Path]::GetFullPath($InstallDir)
+if (!$PSBoundParameters.ContainsKey('InstallDir')) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = 'Choose where GT2 keeps discs, saves and media. Keep it outside the program folder.'
+    $dialog.SelectedPath = $env:USERPROFILE
+    if (Test-Path -LiteralPath $InstallDir) { $dialog.SelectedPath = $InstallDir }
+    $dialog.ShowNewFolderButton = $true
+    try {
+        if ($dialog.ShowDialog() -ne 'OK') { throw 'No game data folder selected.' }
+        $InstallDir = [IO.Path]::GetFullPath($dialog.SelectedPath)
+    } finally { $dialog.Dispose() }
+}
 $build = if ([IO.Path]::IsPathRooted($BuildDir)) { $BuildDir } else { Join-Path $repo $BuildDir }
 
 function Refresh-ToolPath {

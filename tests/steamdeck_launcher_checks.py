@@ -59,7 +59,7 @@ exec /bin/bash "$GT2_TEST_ROOT/$1"'''
         self.assertEqual(self.run_launcher(), 0, self.result.stderr)
         self.assertFalse((self.root / 'picker').exists())
         args = (self.root / 'call-1').read_text().splitlines()
-        self.assertEqual(args, ['run', '--user', '--env=GT2_HOST_DISC_PICKER=1', '--command=gt2launcher', 'io.github.gt2pc.GT2'])
+        self.assertEqual(args, ['run', '--user', '--env=GT2_HOST_DISC_PICKER=1', '--env=GT2_STEAMDECK=1', '--command=gt2launcher', 'io.github.gt2pc.GT2'])
 
     def test_first_launch_or_overlay_request_uses_host_picker(self):
         self.env['TEST_REQUEST'] = '1'
@@ -69,7 +69,7 @@ exec /bin/bash "$GT2_TEST_ROOT/$1"'''
         self.assertEqual(args[-2], '--import')
         self.assertTrue(args[-1].endswith('/disc with spaces.iso'))
         self.assertIn('--filesystem=' + args[-1] + ':ro', args)
-        self.assertEqual(len(args), 8)
+        self.assertEqual(len(args), 9)
 
     def test_explicit_import_skips_initial_game_launch(self):
         self.assertEqual(self.run_launcher(True), 0, self.result.stderr)

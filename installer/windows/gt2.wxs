@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Built by .github/workflows/release.yml after scripts/package-player.ps1:
+     wix build gt2.wxs -ext WixToolset.UI.wixext -arch x64
+       -d StageDir=<staged player package> -d Version=<version> -d LicenseRtf=<this folder>/LICENSE.rtf -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="GT2" Manufacturer="GT2 PC contributors" Version="$(var.Version)"
+           UpgradeCode="C331A768-AFC0-45F2-AFFE-C46F6FE9AA81" Scope="perUserOrMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer GT2 version is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="INSTALLFOLDER" Name="GT2" />
+    </StandardDirectory>
+    <Feature Id="Main" Title="GT2" Level="1">
+      <ComponentGroupRef Id="Payload" />
+      <ComponentRef Id="StartMenuShortcuts" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+  </Package>
+  <Fragment>
+    <ComponentGroup Id="Payload" Directory="INSTALLFOLDER">
+      <Files Include="$(var.StageDir)\**" />
+    </ComponentGroup>
+  </Fragment>
+  <Fragment>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="GT2" />
+    </StandardDirectory>
+    <Component Id="StartMenuShortcuts" Directory="ProgramMenuDir" Guid="18405D1C-7C55-4B2F-9474-B04522B0AD26">
+      <Shortcut Id="PlayShortcut" Name="GT2" Description="Play GT2"
+                Target="[INSTALLFOLDER]GT2.bat" WorkingDirectory="INSTALLFOLDER" />
+      <Shortcut Id="ImportShortcut" Name="GT2 - Import disc" Description="Choose a disc image and prepare GT2"
+                Target="[INSTALLFOLDER]INSTALL-PC.bat" WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveProgramMenuDir" On="uninstall" />
+    </Component>
+  </Fragment>
+  <Fragment>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="FB6C97EB-BFDC-4566-BA8C-5001288872E1">
+        <Shortcut Id="DesktopPlayShortcut" Name="GT2" Description="Play GT2"
+                  Target="[INSTALLFOLDER]GT2.bat" WorkingDirectory="INSTALLFOLDER" />
+      </Component>
+    </StandardDirectory>
+  </Fragment>
+</Wix>

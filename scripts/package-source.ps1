@@ -13,7 +13,7 @@ try {
     $revision = $null; $sourceDirty = $null
     if (!$FileSystem) {
         & git diff --quiet HEAD --
-        $sourceDirty = $LASTEXITCODE -ne 0 -or @(& git ls-files --others --exclude-standard src tools tests cmake scripts docs third_party).Count -gt 0
+        $sourceDirty = $LASTEXITCODE -ne 0 -or @(& git ls-files --others --exclude-standard src tools tests cmake scripts docs third_party installer).Count -gt 0
         if ($sourceDirty -and !$AllowUncommitted) { throw 'Source has uncommitted changes. Use -AllowUncommitted to export the working files.' }
         $revision = (& git rev-parse HEAD).Trim()
     }

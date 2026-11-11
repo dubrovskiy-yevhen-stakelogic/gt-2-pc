@@ -9,24 +9,28 @@ it is rebuilt.
 
 **[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
-**Download the current complete release: `GT2-0.9.1.zip`.** It contains the common
-source, all platform installation/build scripts, precompiled Windows tools, a signed Quest APK, and a ready-to-deploy `web/`
-folder. You do not need an older release for VR, macOS or Steam Deck.
+**Download the file for your platform from the [latest release](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/releases).** Each packaged build contains the game, disc importer and media tools; no compiler, SDK or toolchain is needed. The tagged source archive on GitHub still contains the full source and platform scripts for builders.
 
-| Platform | Start here | Where the game runs |
+| Platform | Easiest install | Where the game runs |
 |---|---|---|
-| Windows desktop | `INSTALL-PC.bat`, then `PLAY.bat` in the installed folder | Windows PC |
-| Windows PCVR / OpenXR | `INSTALL-PCVR.bat`, then `PLAY-PCVR-META.bat`, `PLAY-PCVR-STEAMVR.bat` or `PLAY-PCVR-VD.bat` | PC with a connected headset |
-| Quest standalone | `INSTALL-QUEST.bat`; see [Quest installation](docs/QUEST.md) | On the headset |
-| macOS | `INSTALL-MACOS.command` | Mac, flat screen |
-| Steam Deck / desktop Linux | `INSTALL-STEAMDECK.sh` | Linux, flat screen |
-| Browser | Serve `web/`, open `index.html` over HTTP(S), select your BIN and press Start | Browser, flat screen |
+| Windows desktop | `GT2-<version>-windows-x64.msi` | Windows PC |
+| Windows PCVR / OpenXR | same MSI, then `PLAY-PCVR-*.bat` in the data folder | PC with a connected headset |
+| Quest standalone | `GT2-VR-<version>.apk` over USB/ADB or a headset installer | On the headset |
+| macOS | `GT2-<version>-macos-<arch>.dmg` | Mac, flat screen |
+| Steam Deck / desktop Linux | `GT2-<version>-linux-x86_64.flatpak` | Linux, flat screen |
+| Browser | `GT2-Web-<version>.zip`, or serve `web/` from a source kit | Browser, flat screen |
 
-Windows and Quest installers use the compiled files under `native/` and prepare
-your local disc data. Mac and Steam Deck installers build from the included source.
-The browser files are already compiled. This is one release with different
-platform entry points. Native applications retain their platform-specific VR,
-controller and graphics features; the browser runs in flat-screen mode.
+The portable `GT2-<version>-windows-x64.zip` is an alternative to the MSI, and
+`INSTALL-STEAMDECK.sh` adds the Steam Deck desktop shortcut. Source kits build
+with `INSTALL.bat`, `INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are
+only needed for development or unsupported architectures.
+
+The Windows MSI and portable ZIP use precompiled tools; the macOS DMG and Linux
+Flatpak are precompiled packages. Source kits build with `INSTALL.bat`,
+`INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are only needed for
+development or unsupported architectures. Native applications retain their
+platform-specific VR, controller and graphics features; the browser runs in
+flat-screen mode.
 
 Supply your own supported disc images. Game data, BIOS and saves are not included.
 The screenshots illustrate gameplay. Release history is in
@@ -171,15 +175,17 @@ the browser version does not load it.
 
 ## Install and play
 
-Extract the complete ZIP into a writable folder. Keep the source and scripts
-together. Native installation may download build prerequisites; no game images
-are downloaded. Existing data and saves are preserved by the normal update path.
+Download the file for your platform from the
+[latest release](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/releases).
+The packaged builds need no compiler or dependency installation. No game images
+are downloaded; choose your own when the installer prompts. Existing data and
+saves are preserved by the normal update path.
 
-- **Windows / PCVR:** run `INSTALL-PC.bat` or `INSTALL-PCVR.bat`. Open settings with F10. Select the PLAY launcher for your installed OpenXR runtime; see [PCVR setup](docs/PCVR.md).
-- **Quest:** run `INSTALL-QUEST.bat`; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.
-- **macOS:** run `INSTALL-MACOS.command`, then the installed `GT2.app`. See [macOS setup](docs/MACOS.md).
-- **Steam Deck:** switch to Desktop Mode, extract the ZIP, run `INSTALL-STEAMDECK.sh` and open the installed GT2 shortcut. See [Steam Deck setup](docs/STEAMDECK.md).
-- **Browser:** run `python web/serve-web.py --directory web --port 8080`, then open `http://127.0.0.1:8080/`. For deployment, upload the contents of `web/` to a static HTTPS host. Keep `index.html`, `launcher.js`, `gt2.js` and `gt2.wasm` together; serve Wasm as `application/wasm`. Opening the HTML through `file://` does not work. See [browser build and hosting](docs/WEB.md).
+- **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. Open settings with F10. See [PCVR setup](docs/PCVR.md).
+- **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
+- **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
+- **Quest:** install `GT2-VR-<version>.apk`, then use the installer scripts to prepare your disc data over ADB; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.
+- **Browser:** download the web ZIP, or run `python web/serve-web.py --directory web --port 8080` from a source kit, then open `http://127.0.0.1:8080/`. For deployment, upload the contents of `web/` to a static HTTPS host. Keep `index.html`, `launcher.js`, `gt2.js` and `gt2.wasm` together; serve Wasm as `application/wasm`. Opening the HTML through `file://` does not work. See [browser build and hosting](docs/WEB.md).
 
 Supported disc revisions and image requirements are listed in
 [European disc support](docs/EUROPEAN-DISCS.md) and [player installation](docs/PLAYER-INSTALL.md).

@@ -25,7 +25,7 @@ if ($true) {
         $files.Add($name)
     }
     $pending = New-Object 'System.Collections.Generic.Stack[string]'
-    foreach ($name in @('src', 'tools', 'tests', 'cmake', 'scripts', 'docs', 'third_party', 'android', 'db', 're')) {
+    foreach ($name in @('src', 'tools', 'tests', 'cmake', 'scripts', 'docs', 'third_party', 'android', 'db', 're', 'installer')) {
         $path = Join-Path $root $name
         if (!(Test-Path -LiteralPath $path -PathType Container)) { throw "Missing source directory: $name" }
         $pending.Push($path)

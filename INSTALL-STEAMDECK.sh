@@ -55,7 +55,7 @@ if command -v flock >/dev/null; then
         gt2_fail 1
     fi
 fi
-gt2_bundle="${1:-$gt2_root/GT2-${gt2_version}-steamdeck.flatpak}"
+gt2_bundle="${1:-$gt2_root/GT2-${gt2_version}-linux-x86_64.flatpak}"
 if [ "$#" -gt 0 ] && [ ! -s "$gt2_bundle" ]; then
     echo "Package not found: $gt2_bundle"
     gt2_fail 1
