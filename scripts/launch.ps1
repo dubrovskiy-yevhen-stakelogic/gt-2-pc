@@ -14,8 +14,8 @@ function Get-GameData {
 $data = Get-GameData
 if (!(Test-Path -LiteralPath (Join-Path $data 'gt2game.exe'))) {
     # First run, or the data folder moved: import the disc, then start the game.
-    $install = @('-Target', 'PC')
-    if ([Console]::IsInputRedirected) { $install += @('-HdMedia', 'Original', '-NoBios') }
+    $install = @{ Target = 'PC' }
+    if ([Console]::IsInputRedirected) { $install.HdMedia = 'Original'; $install.NoBios = $true }
     & (Join-Path $PSScriptRoot 'install-player.ps1') @install
     $data = Get-GameData
 }
