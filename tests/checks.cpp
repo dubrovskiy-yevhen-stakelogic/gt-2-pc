@@ -283,6 +283,8 @@ static void CheckPcChanges(const char* discPath) {
     if (discPath) {
         DiscImage disc(discPath);
         const auto exe = LoadExeImage(disc);
+        const auto& previousProfile = ActiveProfile();
+        SetActiveProfile(ProfileOf(exe)); // The installer also validates standalone Arcade discs.
         GtfsVolume vol(disc);
         Check(!shell::AttractDemoFilePath(LoadOverlayImage(disc, 1), vol, 1).empty(), "disc attract replay resolves");
         auto checkArcade = [&] {
@@ -349,6 +351,7 @@ static void CheckPcChanges(const char* discPath) {
         std::fill(expected.begin(), expected.end(), 0.0f);
         music.MixStream(actual.data(), 44100); reference.MixStream(expected.data(), 44100);
         Check(actual == expected, "race music resumes sample-identically at the paused position");
+        SetActiveProfile(previousProfile);
     }
 }
 

@@ -18,6 +18,8 @@ Existing split-screen, GT4 imports and current cockpit rendering remain availabl
 
 ### Installation and packaging
 
+- Fix first-run Windows argument binding and validate standalone Arcade discs with their correct profile, preventing false installer failures.
+
 - Ship per-platform release files: a Windows MSI, a macOS DMG, one x86_64 Flatpak for Linux and Steam Deck, the Quest APK and a portable Windows ZIP.
 - Ask where to store discs, saves and media on Windows instead of always using the C: drive, and reuse the recorded location on updates.
 - Let the Windows GT2 launcher import the disc on first run and start the game, and refresh the game in the chosen data folder after a launcher update without importing again.
