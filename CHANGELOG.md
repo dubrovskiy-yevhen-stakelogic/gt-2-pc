@@ -4,6 +4,11 @@
 
 ### Game fixes
 
+- Apply the configured music and sound-effect volumes to Arcade, Simulation and title menus. ([#48](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/48))
+- Keep short menu-music notes from being cut at their start and release completed voices correctly. ([#58](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/58))
+- Run GT Mode event races with the correct game mode, fixing unintended damage behaviour. ([#55](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/55))
+- Support Silent's combined disc with Arcade and Simulation selection, separate saves, and the correct Arcade intro, ending and menu music. ([#59](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/59))
+
 - Keep HUD, menus and licence-result panels above the cockpit on the direct Vulkan path, including with MSAA disabled.
 - Restore stock car lamps over their coplanar housings and use night models/textures on night courses. Cars without a night pair retain their day assets.
 - Drive both split-screen players' brake lights from their own brake input.
