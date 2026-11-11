@@ -1,3 +1,5 @@
+[![Release binaries](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml/badge.svg)](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml)
+
 ![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
 # Gran Turismo 2 PC, VR & Browser
