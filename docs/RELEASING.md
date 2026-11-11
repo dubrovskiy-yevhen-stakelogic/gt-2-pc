@@ -83,3 +83,7 @@ apksigner verify --verbose --print-certs GT2-VR-<version>.apk
 3. Alternatively, run the workflow manually with the tag of an existing release.
 
 `ANDROID_KEYSTORE_BASE64` is needed for the Quest APK. Without it the Android job fails, but the other five jobs still upload their own archives. Each job uploads only the `release-*` files it produced, so debug or unsigned test builds cannot be attached by accident.
+
+### Combined Quest and PCVR download
+
+The release workflow assembles `GT2-VR-<version>.zip` after both Windows and signed Android jobs succeed. It contains the APK, Windows import tools, `INSTALL-QUEST.bat` (also `INSTALL.bat`) and `INSTALL-PCVR.bat`. Players need only this archive and their own disc image, not a source kit or a separate APK download. The workflow checks package hashes and both installer entry points before uploading, then adds a direct download link to the release notes. Debug-only runs do not publish a VR archive. The assembler comes from the workflow revision; game binaries come from the selected tag in the same run.

@@ -305,6 +305,8 @@ jobs:
 
   android:
     name: Android arm64 (Quest)
+    outputs:
+      signed: ${{ steps.sign.outputs.signed }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -370,6 +372,7 @@ jobs:
           fi
 
       - name: Sign APK
+        id: sign
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           set -euo pipefail
@@ -391,6 +394,7 @@ jobs:
           "$tools/apksigner" verify --verbose --print-certs "release-assets/GT2-VR-$version.apk"
           "$tools/zipalign" -c -p 4 "release-assets/GT2-VR-$version.apk"
           rm -f "$keystore"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
           (cd release-assets && sha256sum *.apk > SHA256SUMS-android.txt)
 
       - name: Keep the debug APK for testing
@@ -573,3 +577,70 @@ jobs:
           [ -n "$TAG" ] || { echo "No release tag provided"; exit 1; }
           gh release view "$TAG" >/dev/null
           gh release upload "$TAG" release-assets/* --clobber
+
+  vr:
+    name: Quest and PCVR installer ZIP
+    needs: [windows, android]
+    if: needs.android.outputs.signed == 'true'
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      # Packaging tools follow this workflow; binaries come only from this run's tag builds.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-windows-x64
+          path: inputs/windows
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-android
+          path: inputs/android
+      - name: Package and verify VR installers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python tests/vr_package_checks.py
+          if ($LASTEXITCODE -ne 0) { throw 'VR package regression checks failed' }
+          $windows = @(Get-ChildItem inputs/windows/*-windows-x64.zip)
+          $apk = @(Get-ChildItem inputs/android/GT2-VR-*.apk)
+          if ($windows.Count -ne 1 -or $apk.Count -ne 1) { throw 'Expected one Windows ZIP and one signed APK' }
+          python scripts/package-vr.py --windows $windows[0].FullName --apk $apk[0].FullName --output release-assets
+          if ($LASTEXITCODE -ne 0) { throw 'VR packaging failed' }
+          $zip = Get-ChildItem release-assets/GT2-VR-*.zip
+          Expand-Archive $zip.FullName -DestinationPath verify-vr
+          $root = Get-ChildItem verify-vr -Directory
+          foreach ($target in @('Quest','PCVR')) {
+            & "$($root.FullName)/scripts/install-player.ps1" -VerifyOnly -Target $target
+          }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-vr
+          path: release-assets/
+          if-no-files-found: error
+          compression-level: 0
+      - name: Publish VR archive and installation instructions
+        if: github.event_name == 'release' || inputs.tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assets = @(Get-ChildItem release-assets -File | ForEach-Object FullName)
+          gh release upload $env:TAG @assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'VR upload failed' }
+          $body = gh release view $env:TAG --json body --jq .body
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read release notes' }
+          $zip = Get-ChildItem release-assets/GT2-VR-*.zip
+          $url = "https://github.com/$env:GH_REPO/releases/download/$env:TAG/$($zip.Name)"
+          $notes = $body -join "`n"
+          if (!$notes.Contains($url)) {
+            $intro = "## Quest and PCVR`n`n[Download $($zip.Name)]($url)`n`nExtract on Windows. Quest: run INSTALL-QUEST.bat (or INSTALL.bat). PCVR: run INSTALL-PCVR.bat. The APK and disc-import tools are included; no source kit or separate APK download is needed. Supply your own game disc image.`n`n"
+            [IO.File]::WriteAllText("$env:RUNNER_TEMP/vr-release-notes.md", $intro + $notes)
+            gh release edit $env:TAG --notes-file "$env:RUNNER_TEMP/vr-release-notes.md"
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot update VR download instructions' }
+          }
