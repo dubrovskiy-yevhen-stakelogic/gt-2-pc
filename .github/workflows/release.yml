@@ -255,14 +255,25 @@ jobs:
     name: Linux x86_64 tarball
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out workflow tools
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve APT helper for tagged builds
+        run: |
+          python3 tests/release_workflow_checks.py
+          install -m 644 scripts/apt-install.sh "$RUNNER_TEMP/gt2-apt-install.sh"
+
+      - name: Check out game sources
+        uses: actions/checkout@v7
         with:
           # Manual publication builds the requested tag; other runs use the triggering commit.
           ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
 
       - name: Install build dependencies
         run: |
-          bash scripts/apt-install.sh \
+          bash "$RUNNER_TEMP/gt2-apt-install.sh" \
             cmake ninja-build g++ pkg-config python3 \
             libsdl2-dev libgtk-3-dev libvulkan-dev glslc
 
@@ -305,7 +316,18 @@ jobs:
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out workflow tools
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve APT helper for tagged builds
+        run: |
+          python3 tests/release_workflow_checks.py
+          install -m 644 scripts/apt-install.sh "$RUNNER_TEMP/gt2-apt-install.sh"
+
+      - name: Check out game sources
+        uses: actions/checkout@v7
         with:
           # Manual publication builds the requested tag; other runs use the triggering commit.
           ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
@@ -325,7 +347,7 @@ jobs:
 
       - name: Install Android NDK, CMake and glslc
         run: |
-          bash scripts/apt-install.sh glslc
+          bash "$RUNNER_TEMP/gt2-apt-install.sh" glslc
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
           sdkmanager --sdk_root="$ANDROID_HOME" --install \
             "platforms;android-35" "build-tools;35.0.0" \
@@ -416,7 +438,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out workflow tools
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve APT helper for tagged builds
+        run: |
+          python3 tests/release_workflow_checks.py
+          install -m 644 scripts/apt-install.sh "$RUNNER_TEMP/gt2-apt-install.sh"
+
+      - name: Check out game sources
+        uses: actions/checkout@v7
         with:
           # Manual publication builds the requested tag; other runs use the triggering commit.
           ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
@@ -424,7 +457,7 @@ jobs:
       - name: Install Emscripten 6.0.10
         run: |
           set -euo pipefail
-          bash scripts/apt-install.sh cmake ninja-build python3
+          bash "$RUNNER_TEMP/gt2-apt-install.sh" cmake ninja-build python3
           mkdir -p work/toolchains
           git clone --depth 1 --branch 6.0.10 \
             https://github.com/emscripten-core/emsdk.git work/toolchains/emsdk-6.0.10
@@ -475,7 +508,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out workflow tools
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve APT helper for tagged builds
+        run: |
+          python3 tests/release_workflow_checks.py
+          install -m 644 scripts/apt-install.sh "$RUNNER_TEMP/gt2-apt-install.sh"
+
+      - name: Check out game sources
+        uses: actions/checkout@v7
         with:
           # Manual publication builds the requested tag; other runs use the triggering commit.
           ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
@@ -485,7 +529,7 @@ jobs:
           set -euo pipefail
           # eu-strip comes from elfutils; flatpak-builder strips the debug info.
           # librsvg2-common lets the export step validate the SVG app icon.
-          bash scripts/apt-install.sh flatpak flatpak-builder elfutils librsvg2-common
+          bash "$RUNNER_TEMP/gt2-apt-install.sh" flatpak flatpak-builder elfutils librsvg2-common
           for attempt in 1 2 3; do
             flatpak remote-add --user --if-not-exists flathub \
               https://flathub.org/repo/flathub.flatpakrepo || true
