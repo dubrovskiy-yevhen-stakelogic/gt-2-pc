@@ -207,10 +207,14 @@ VkSceneRenderer::~VkSceneRenderer() {
     DestroyPipelineSet(msaaPipelines_);
     DestroyPipelineSet(msaaModelPipelines_);DestroyPipelineSet(msaaModelCullPipelines_);
     DestroyPipelineSet(stereoPipelines_);
+    DestroyPipelineSet(stereo2dPipelines_);
+    DestroyPipelineSet(stereo2dCachedHudPipelines_);
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
     DestroyStereoTarget();
-    DestroyImage(mirrorColor_); DestroyImage(mirrorDepth_);
+    DestroyImage(mirrorColor_); DestroyImage(mirrorMsaa_); DestroyImage(mirrorMsaaDepth_); DestroyImage(mirrorDepth_);
+    DestroyImage(menuCarColor_); DestroyImage(menuCarMsaa_); DestroyImage(menuCarDepth_);
+    DestroyPipelineSet(menuCarPipelines_);
     DestroyImage(paintStudio_);DestroyImage(paintCourse_);DestroyBuffer(paintUpload_);DestroyBuffer(paintProbeUpload_);
     DestroyImage(nativeEnvironment_);DestroyImage(nativeEnvironmentDepth_);DestroyBuffer(nativeEnvironmentViews_);
     vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
@@ -465,10 +469,16 @@ void VkSceneRenderer::DestroyImage(Image& img) {
 
 void VkSceneRenderer::CreateSceneTargets() {
     DestroySceneTargets();
+    DestroyImage(mirrorMsaa_);
+    DestroyImage(mirrorMsaaDepth_);
     const VkSampleCountFlagBits samples = ClampSamples(options_.msaa);
     const float scale = std::clamp(options_.sceneScale, 0.25f, 4.0f);
     if (!options_.sceneWidth && !options_.sceneHeight && scale == 1.0f && samples == VK_SAMPLE_COUNT_1_BIT) return; // the direct path: everything into the swapchain image
     if (extent_.width == 0 || extent_.height == 0) return;
+    if (samples != VK_SAMPLE_COUNT_1_BIT) {
+        mirrorMsaa_ = CreateImage(kMirrorExtent, colorFormat_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samples, VK_IMAGE_ASPECT_COLOR_BIT);
+        mirrorMsaaDepth_ = CreateImage(kMirrorExtent, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samples, VK_IMAGE_ASPECT_DEPTH_BIT);
+    }
     sceneExtent_ = {std::max(1u, uint32_t(std::lround(float(extent_.width) * scale))), std::max(1u, uint32_t(std::lround(float(extent_.height) * scale)))};
     if (options_.sceneWidth && options_.sceneHeight) sceneExtent_ = {options_.sceneWidth, options_.sceneHeight};
     sceneColor_ = CreateImage(sceneExtent_, colorFormat_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_SAMPLE_COUNT_1_BIT,
@@ -825,7 +835,7 @@ void VkSceneRenderer::FlushFrameUploads() {
     deferUploads_ = false;
 }
 void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>& vertices) {
-    if (first>=kModelSetVertexBase && !vertices.empty()) {
+    if (first>=kModelSetVertexBase && first!=kMenuCarCompositeVertexBase && !vertices.empty()) {
         PromoteModelTextures(first,vertices); return;
     }
     SetVerticesRaw(first,vertices);
@@ -946,6 +956,16 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     WaitFrame();
     FlushFrameUploads();
     PrepareFrameTextures(items,sceneItems);
+    const bool hasMenuCar = std::any_of(items.begin(), items.end(),
+        [](const DrawItem& item) { return item.space == kSpaceMenuCar && item.vertexCount != 0; });
+    if (hasMenuCar && ClampSamples(options_.msaa) != VK_SAMPLE_COUNT_1_BIT) {
+        EnsureMenuCarTarget(extent_);
+        menuCarActive_ = menuCarColor_.image != VK_NULL_HANDLE;
+        if (menuCarActive_) BindRearView(menuCarColor_.view, true);
+    } else {
+        if (rearViewIsMenuCar_) BindRearView(mirrorColor_.view, false);
+        menuCarActive_ = false;
+    }
     if(gpuQueries_){
         gpuMs_=-1;
     }
@@ -985,6 +1005,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     RecordNativeEnvironment();
     if(gpuQueries_)vkCmdWriteTimestamp(cmd_,VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,gpuQueries_,3);
     RecordMirrorPass(items, sceneItems);
+    if (menuCarActive_) RecordMenuCarPass(items);
     sceneItems = std::min(sceneItems, items.size());
     if (sceneItems > 0 && sceneTargets_) {
         DrawScenePass(items, sceneItems, imageIndex);
@@ -1043,7 +1064,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
     VkRect2D scissor{{0, 0}, extent};
     vkCmdSetViewport(cmd_, 0, 1, &viewport);
     vkCmdSetScissor(cmd_, 0, 1, &scissor);
-    const VkDescriptorSet descriptors = recordMirror_ ? mirrorSourceSet_ : descSet_;
+    const VkDescriptorSet descriptors = (recordMirror_ || recordMenuCar_) ? mirrorSourceSet_ : descSet_;
     vkCmdBindDescriptorSets(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &descriptors, 0, nullptr);
     const VkBuffer vertexBuffers[3] = {vertexBuffer_.buffer, rectBuffer_.buffer,environmentCodes_.buffer};
     const VkDeviceSize zero[3] = {0, 0,0};
@@ -1054,9 +1075,16 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
     int boundDepthBias = -1;
     int boundCabinDepth = 0;
     bool clipped = false;
+    bool compositeDrawn = false; // one menu-car composite per 2D pass, even when a page appends two cars
     for (size_t i = first; i < last; i++) {
         const DrawItem& item = items[i];
         if ((item.space == kSpaceMirrorSource) != recordMirror_) continue;
+        const bool menuCarItem = item.space == kSpaceMenuCar;
+        const bool menuCarTexture = item.space == kSpaceMenuCarTexture;
+        if (recordMenuCar_) {
+            if (!menuCarItem) continue;
+        } else if (menuCarItem ? menuCarActive_ : (menuCarTexture && (!menuCarActive_ || compositeDrawn))) continue;
+        if (menuCarTexture) compositeDrawn = true;
         if (item.vertexCount == 0) continue;
         // Reversed Z: disjoint ranges preserve depth within each layer and
         // guarantee that grass/curbs cannot overwrite occupied interior pixels.
@@ -1152,7 +1180,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
             (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
         bool modelOnly=false;
-        if(!recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
+        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
             const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
             auto [found,added]=modelRanges_.try_emplace(range,true);
@@ -1179,7 +1207,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0;
         const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);
         if (pipelineKey != boundPipeline) {
-            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
+            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : recordStereo2D_ ? (hud ? stereo2dCachedHudPipelines_[which] : stereo2dPipelines_[which]) : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
             const float k = which == 0 ? 0.5f : 0.25f;
             const float constants[4] = {k, k, k, 1.0f};
             vkCmdSetBlendConstants(cmd_, constants);
@@ -1214,9 +1242,10 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.paint = item.paint;
         params.brakeLit = item.brakeLit & 0x3fffffffu;
         params.stpPass = item.stpPass;
-        params.options = i < sceneItems ? sceneOptions : 0u;
-        if(i<sceneItems && nativeCameraActive_)params.options|=16u;
-        if (!recordMirror_ && (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT) params.options |= 4u;
+        const bool sceneLike = i < sceneItems || item.space == kSpaceMenuCar;
+        params.options = sceneLike ? sceneOptions : 0u;
+        if(sceneLike && nativeCameraActive_)params.options|=16u;
+        if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
@@ -1236,27 +1265,134 @@ void VkSceneRenderer::RecordMirrorPass(const std::vector<DrawItem>& items, size_
         last = i + 1;
     }
     if (!last && mirrorInitialized_) return;
+    const bool msaa = mirrorMsaa_.image != VK_NULL_HANDLE && mirrorMsaaDepth_.image != VK_NULL_HANDLE;
     Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT,
         mirrorInitialized_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, mirrorInitialized_ ? VkAccessFlags(VK_ACCESS_SHADER_READ_BIT) : VkAccessFlags(0),
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, mirrorInitialized_ ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    Transition(cmd_, mirrorDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+    const Image& mirrorDepth = msaa ? mirrorMsaaDepth_ : mirrorDepth_;
+    Transition(cmd_, mirrorDepth.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    RenderTarget target;
-    target.colorView = mirrorColor_.view; target.colorFormat = colorFormat_;
-    target.depthView = mirrorDepth_.view; target.depthFormat = kDepthFormat;
-    target.extent = kMirrorExtent; target.layers = 1;
-    BeginTargetRendering(target, VK_ATTACHMENT_LOAD_OP_CLEAR);
+    if (msaa)
+        Transition(cmd_, mirrorMsaa_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    color.imageView = msaa ? mirrorMsaa_.view : mirrorColor_.view;
+    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    if (msaa) {
+        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+        color.resolveImageView = mirrorColor_.view;
+        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    depth.imageView = mirrorDepth.view;
+    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth.clearValue.depthStencil = {0.0f, 0};
+    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
+    ri.renderArea = {{0, 0}, kMirrorExtent};
+    ri.layerCount = 1;
+    ri.colorAttachmentCount = 1;
+    ri.pColorAttachments = &color;
+    ri.pDepthAttachment = &depth;
+    cmdBeginRendering_(cmd_, &ri);
     recordMirror_ = true;
-    RecordItems(items, first, last, kMirrorExtent, pipelines_, sceneItems);
+    RecordItems(items, first, last, kMirrorExtent, msaa ? msaaPipelines_ : pipelines_, sceneItems);
     recordMirror_ = false;
     cmdEndRendering_(cmd_);
     Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     mirrorInitialized_ = true;
+}
+
+void VkSceneRenderer::BindRearView(VkImageView view, bool menuCar) {
+    if (!view || !descSet_) return;
+    VkDescriptorImageInfo info{decodedSampler_, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet = descSet_;
+    write.dstBinding = 6;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo = &info;
+    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    rearViewIsMenuCar_ = menuCar;
+}
+
+void VkSceneRenderer::EnsureMenuCarTarget(VkExtent2D extent) {
+    const VkSampleCountFlagBits samples = ClampSamples(options_.msaa);
+    if (samples == VK_SAMPLE_COUNT_1_BIT || extent.width == 0 || extent.height == 0 || colorFormat_ == VK_FORMAT_UNDEFINED) return;
+    if (menuCarColor_.image && menuCarExtent_.width == extent.width && menuCarExtent_.height == extent.height && menuCarSamples_ == samples) return;
+    vkDeviceWaitIdle(device_);
+    DestroyImage(menuCarColor_);
+    DestroyImage(menuCarMsaa_);
+    DestroyImage(menuCarDepth_);
+    DestroyPipelineSet(menuCarPipelines_);
+    menuCarExtent_ = extent;
+    menuCarSamples_ = samples;
+    menuCarColor_ = CreateImage(extent, colorFormat_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+    menuCarMsaa_ = CreateImage(extent, colorFormat_, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, samples, VK_IMAGE_ASPECT_COLOR_BIT);
+    menuCarDepth_ = CreateImage(extent, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, samples, VK_IMAGE_ASPECT_DEPTH_BIT);
+    CreatePipelineSet(samples, menuCarPipelines_);
+    menuCarInitialized_ = false;
+    rearViewIsMenuCar_ = false; // the target view changed; Draw rebinds it
+}
+
+// The menu/showroom car is 3D but sits in the middle of a 2D frame. Render only its items into a
+// multisampled target, resolve, and let the 2D list composite it at the same position.
+void VkSceneRenderer::RecordMenuCarPass(const std::vector<DrawItem>& items) {
+    if (!menuCarColor_.image || !menuCarMsaa_.image) return;
+    Transition(cmd_, menuCarColor_.image, VK_IMAGE_ASPECT_COLOR_BIT,
+        menuCarInitialized_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        menuCarInitialized_ ? VkAccessFlags(VK_ACCESS_SHADER_READ_BIT) : VkAccessFlags(0),
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        menuCarInitialized_ ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    Transition(cmd_, menuCarMsaa_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    Transition(cmd_, menuCarDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    color.imageView = menuCarMsaa_.view;
+    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+    color.resolveImageView = menuCarColor_.view;
+    color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    depth.imageView = menuCarDepth_.view;
+    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth.clearValue.depthStencil = {0.0f, 0};
+    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
+    ri.renderArea = {{0, 0}, menuCarExtent_};
+    ri.layerCount = 1;
+    ri.colorAttachmentCount = 1;
+    ri.pColorAttachments = &color;
+    ri.pDepthAttachment = &depth;
+    cmdBeginRendering_(cmd_, &ri);
+    recordMenuCar_ = true;
+    RecordItems(items, 0, items.size(), menuCarExtent_, menuCarPipelines_, items.size());
+    recordMenuCar_ = false;
+    cmdEndRendering_(cmd_);
+    Transition(cmd_, menuCarColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    menuCarInitialized_ = true;
 }
 
 void VkSceneRenderer::UploadPaintEnvironment() {
@@ -1622,10 +1758,17 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
         (stereoSamples_ == VK_SAMPLE_COUNT_1_BIT ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
     stereoDepth_ = CreateImage(stereoExtent_, kDepthFormat, depthUsage,
                                stereoSamples_, VK_IMAGE_ASPECT_DEPTH_BIT, 2);
+    // The HUD/menu pass is always single-sample, so it needs its own depth target.
+    stereoDepth2D_ = CreateImage(stereoExtent_, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                 VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 2);
     DestroyPipelineSet(stereoPipelines_);
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
     CreatePipelineSet(stereoSamples_, stereoPipelines_, true, multiview ? 0x3u : 0u);
+    DestroyPipelineSet(stereo2dPipelines_);
+    DestroyPipelineSet(stereo2dCachedHudPipelines_);
+    CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, stereo2dPipelines_, true, multiview ? 0x3u : 0u);
+    CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, stereo2dCachedHudPipelines_, true, multiview ? 0x3u : 0u, true, true);
     DestroyPipelineSet(stereoModelPipelines_);
     DestroyPipelineSet(stereoModelCullPipelines_);
     CreatePipelineSet(stereoSamples_, stereoModelPipelines_, true, multiview ? 0x3u : 0u, false, false, true);
@@ -1661,20 +1804,24 @@ void VkSceneRenderer::DestroyStereoTarget() {
     DestroyImage(stereoColor_);
     DestroyImage(stereoMsaa_);
     DestroyImage(stereoDepth_);
+    DestroyImage(stereoDepth2D_);
     stereoReady_ = false;
 }
 
 // One pass of a stereo frame: `layer` < 0 = a single multiview pass (viewMask 0b11) writing both array layers,
-// otherwise one array layer with the eye index in the push constant.
-void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer) {
+// otherwise one array layer with the eye index in the push constant. `hudPass` selects the 1x pass after the
+// multisampled scene: HUD, panels and menus keep the desktop path's hard 2D pixels in VR too.
+void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer, bool hudPass) {
     const Image& colorTarget = externalStereoImage_ ? externalStereoViews_.at(externalStereoImage_) : stereoColor_;
-    const bool msaa = stereoMsaa_.image != VK_NULL_HANDLE;
+    const bool msaa = !hudPass && stereoMsaa_.image != VK_NULL_HANDLE;
     const bool all = layer < 0;
     const size_t eye = all ? 0 : size_t(layer);
+    const size_t first = hudPass ? sceneItems : 0;
+    const size_t last = hudPass ? items.size() : sceneItems;
     VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     color.imageView = msaa ? (all ? stereoMsaa_.view : stereoMsaa_.layer[eye]) : (all ? colorTarget.view : colorTarget.layer[eye]);
     color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color.loadOp = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
     color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
     if (msaa) {
@@ -1683,11 +1830,12 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
         color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
     VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = all ? stereoDepth_.view : stereoDepth_.layer[eye];
+    depth.imageView = hudPass ? (all ? stereoDepth2D_.view : stereoDepth2D_.layer[eye])
+                              : (all ? stereoDepth_.view : stereoDepth_.layer[eye]);
     depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     // Only single-sample depth is submitted to OpenXR. Multisample depth is tile-local scratch.
-    depth.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    depth.storeOp = (hudPass || msaa) ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
     depth.clearValue.depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
     VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
     ri.renderArea = {{0, 0}, stereoExtent_};
@@ -1707,7 +1855,9 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     recordEye_ = uint32_t(eye);
     recordLayers_ = 1;
     recordStereo_ = true;
-    RecordItems(items, 0, items.size(), stereoExtent_, stereoPipelines_, sceneItems);
+    recordStereo2D_ = hudPass;
+    RecordItems(items, first, last, stereoExtent_, hudPass ? stereo2dPipelines_ : stereoPipelines_, sceneItems);
+    recordStereo2D_ = false;
     recordStereo_ = false;
     recordEye_ = 0;
     cmdEndRendering_(cmd_);
@@ -1741,6 +1891,8 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
     culling_ = {};
     WaitFrame();
     FlushFrameUploads();
+    if (rearViewIsMenuCar_) BindRearView(mirrorColor_.view, false);
+    menuCarActive_ = false;
     PrepareFrameTextures(items,sceneItems);
     Check(vkResetFences(device_, 1, &fence_), "vkResetFences");
     std::memcpy(viewBuffer_.mapped, &stereoViews_, sizeof(StereoViews)); // the frame in flight has finished above
@@ -1777,11 +1929,24 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 2);
 
     sceneItems = std::min(sceneItems, items.size());
+    const bool hasScene = sceneItems > 0;
+    const bool has2D = sceneItems < items.size();
+    if (has2D)
+        Transition(cmd_, stereoDepth2D_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 2);
     if (stereoMultiview_) {
-        RecordStereoPass(items, sceneItems, -1);
+        if (hasScene) RecordStereoPass(items, sceneItems, -1, false);
+        if (has2D) RecordStereoPass(items, sceneItems, -1, true);
     } else {
-        RecordStereoPass(items, sceneItems, 0);
-        RecordStereoPass(items, sceneItems, 1);
+        if (hasScene) {
+            RecordStereoPass(items, sceneItems, 0, false);
+            RecordStereoPass(items, sceneItems, 1, false);
+        }
+        if (has2D) {
+            RecordStereoPass(items, sceneItems, 0, true);
+            RecordStereoPass(items, sceneItems, 1, true);
+        }
     }
 
     if (!externalStereoImage_ || capture) Transition(cmd_, colorTarget.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

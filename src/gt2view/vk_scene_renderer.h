@@ -85,6 +85,7 @@ public:
     void SetFoveation(int level);
     int Foveation() const { return rateImage_.image ? foveation_ : 0; }
     void EnableDecodedTextures(bool enabled) { decodedEnabled_ = enabled; }
+    bool MenuCarMsaaTarget() const override { return true; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }
     double EnvironmentGpuMilliseconds() const {return environmentGpuMs_;}
@@ -164,7 +165,7 @@ private:
     void UploadDecodedTextures();
     void PrepareFrameTextures(const std::vector<DrawItem>& items,size_t sceneItems);
     // Records `items` once per eye into the stereo target (`layer` < 0 = one multiview pass).
-    void RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer);
+    void RecordStereoPass(const std::vector<DrawItem>& items, size_t sceneItems, int layer, bool hudPass = false);
     void RecordMirrorPass(const std::vector<DrawItem>& items, size_t sceneItems);
     void CreateSceneTargets();  // the offscreen scene target for options_ at the window's extent
     void DestroySceneTargets();
@@ -237,8 +238,18 @@ private:
     VkExtent2D sceneExtent_{};
     Image sceneColor_, sceneMsaa_, sceneDepth_;
     static constexpr VkExtent2D kMirrorExtent{480, 128};
-    Image mirrorColor_, mirrorDepth_;
+    Image mirrorColor_, mirrorMsaa_, mirrorMsaaDepth_, mirrorDepth_;
     bool mirrorInitialized_ = false, recordMirror_ = false;
+    // The menu/showroom 3D car: rendered into its own MSAA target and composited at its 2D position.
+    VkExtent2D menuCarExtent_{};
+    VkSampleCountFlagBits menuCarSamples_ = VK_SAMPLE_COUNT_1_BIT;
+    Image menuCarColor_, menuCarMsaa_, menuCarDepth_;
+    VkPipeline menuCarPipelines_[9] = {};
+    bool menuCarActive_ = false, menuCarInitialized_ = false, recordMenuCar_ = false;
+    bool rearViewIsMenuCar_ = false;
+    void EnsureMenuCarTarget(VkExtent2D extent);
+    void RecordMenuCarPass(const std::vector<DrawItem>& items);
+    void BindRearView(VkImageView view, bool menuCar);
     Image paintStudio_,paintCourse_;
     Image nativeEnvironment_,nativeEnvironmentDepth_;
     Buffer nativeEnvironmentViews_;
@@ -270,6 +281,7 @@ private:
     VkFormat stereoFormat_ = VK_FORMAT_UNDEFINED;
     VkSampleCountFlagBits stereoSamples_ = VK_SAMPLE_COUNT_1_BIT;
     Image stereoColor_, stereoMsaa_, stereoDepth_;
+    Image stereoDepth2D_; // 1x depth for the stereo HUD/menu pass (the scene's depth may be needed by the compositor)
     Image rateImage_; Buffer rateUpload_;
     VkExtent2D rateExtent_{}, rateTexel_{};
     int foveation_ = 0; bool rateUploaded_ = false;
@@ -289,7 +301,10 @@ private:
     VkPipeline cachedHudPipelines_[9] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
     std::vector<uint8_t> cachedDraws_;
     VkPipeline stereoPipelines_[9] = {}; // the stereo shader at the stereo target's sample count
+    VkPipeline stereo2dPipelines_[9] = {}; // 2D after the stereo scene: always 1x
+    VkPipeline stereo2dCachedHudPipelines_[9] = {};
     bool recordStereo_ = false;
+    bool recordStereo2D_ = false;        // the 1x stereo pass after the scene (HUD/menus)
     uint32_t recordEye_ = 0;             // the eye index RecordItems pushes (the two-pass path)
     uint32_t recordLayers_ = 1;          // array layers of the target being recorded (vkCmdClearAttachments)
     StereoViews stereoViews_;

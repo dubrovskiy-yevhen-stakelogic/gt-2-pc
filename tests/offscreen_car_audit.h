@@ -3,6 +3,7 @@
 #include "gt2view/shading_rate.h"
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <stdexcept>
 #include <vector>
 namespace {
@@ -14,7 +15,18 @@ struct Device {
     Device() {
         VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
         app.pApplicationName = "GT2 cockpit corpus"; app.apiVersion = VK_API_VERSION_1_3;
+        uint32_t instanceExtensionCount = 0;
+        Check(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr));
+        std::vector<VkExtensionProperties> instanceExtensions(instanceExtensionCount);
+        Check(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensions.data()));
+        const char* portability = VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
+        const bool hasPortability = std::any_of(instanceExtensions.begin(), instanceExtensions.end(),
+                                                [portability](const VkExtensionProperties& e) { return std::strcmp(e.extensionName, portability) == 0; });
         VkInstanceCreateInfo create{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO}; create.pApplicationInfo = &app;
+        if (hasPortability) {
+            create.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+            create.enabledExtensionCount = 1; create.ppEnabledExtensionNames = &portability;
+        }
         Check(vkCreateInstance(&create, nullptr, &existing.instance));
         uint32_t count = 0; Check(vkEnumeratePhysicalDevices(existing.instance, &count, nullptr));
         std::vector<VkPhysicalDevice> devices(count);
@@ -41,11 +53,21 @@ struct Device {
         multiview.multiview = VK_TRUE; multiview.pNext = &v13;
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR rate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
         existing.shadingRate = gt2view::ShadingRateFeatures(existing.physical, rate);
-        const char* extension = VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME;
         if (existing.shadingRate) v13.pNext = &rate;
         VkDeviceCreateInfo device{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
         device.pNext = &multiview; device.queueCreateInfoCount = 1; device.pQueueCreateInfos = &queue;
-        if (existing.shadingRate) { device.enabledExtensionCount = 1; device.ppEnabledExtensionNames = &extension; }
+        std::vector<const char*> deviceExtensions;
+        uint32_t deviceExtensionCount = 0;
+        Check(vkEnumerateDeviceExtensionProperties(existing.physical, nullptr, &deviceExtensionCount, nullptr));
+        std::vector<VkExtensionProperties> availableDeviceExtensions(deviceExtensionCount);
+        Check(vkEnumerateDeviceExtensionProperties(existing.physical, nullptr, &deviceExtensionCount, availableDeviceExtensions.data()));
+        for (const char* name : {"VK_KHR_portability_subset", VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME})
+            if (std::any_of(availableDeviceExtensions.begin(), availableDeviceExtensions.end(),
+                            [name](const VkExtensionProperties& e) { return std::strcmp(e.extensionName, name) == 0; }))
+                deviceExtensions.push_back(name);
+        device.enabledExtensionCount = uint32_t(deviceExtensions.size());
+        device.ppEnabledExtensionNames = deviceExtensions.data();
+        if (existing.shadingRate) v13.pNext = &rate;
         Check(vkCreateDevice(existing.physical, &device, nullptr, &existing.device));
         vkGetDeviceQueue(existing.device, existing.queueFamily, 0, &existing.queue);
     }

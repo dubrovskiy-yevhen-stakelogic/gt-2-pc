@@ -1732,6 +1732,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         items.insert(items.end(), blended.begin(), blended.end());
         std::copy(assets.SkyColor().begin(), assets.SkyColor().end(), renderer.clearColor);
 
+        std::vector<DrawItem> lateMirrorFrame; // the mirror's 2D chrome: after the scene, so MSAA never covers it
         // The rear-view mirror (0x800294D4, camera + 0x109: the driver view not looking back; not split, game mode != 0,
         // frame-rate mode 0x801D5864 > 1 - 2 in every dumped 30 Hz race): a second view drawn over the scene before the
         // HUD, in the frame's rectangle (100, 20) 120 x 32 (centred like the HUD's centre block), from the camera copy
@@ -1799,9 +1800,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if(OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).mirror) cockpit.AppendMirror(items, carMvp, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).mirrorScalePercent*.01f);
                 assets.AppendSideMirrorItems(items, carSlot, carMvp, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).sideMirrors);
                 tagSpace(items, surfaceFirst, kSpaceWorld);
-            } else items.insert(items.end(), mirrorFrame.begin(), mirrorFrame.end());
+            } else lateMirrorFrame = std::move(mirrorFrame);
         }
         sceneCount = items.size(); // the HUD and the panels below are 2D layers at the window's resolution
+        items.insert(items.end(), lateMirrorFrame.begin(), lateMirrorFrame.end()); // 1x mirror chrome
 
         if (hud && phase != Phase::kPreRace && phase != Phase::kSettings) { // the HUD's inputs: the player's car record and the race shell (race_shell.h)
             const sim::CarBody& body = race.CarAt(0).body; // car record + 0x2C
