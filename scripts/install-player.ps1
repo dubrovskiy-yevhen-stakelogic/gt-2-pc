@@ -11,6 +11,7 @@ param(
     [string]$Gt4Bundle,
     [string]$Python = 'python',
     [switch]$NoBios,
+    [switch]$ReuseExisting,
     [switch]$VerifyOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -28,7 +29,7 @@ foreach ($entry in $manifest.files) {
     $path = Join-Path $root $entry.path
     if (!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $entry.sha256) { throw "Release file failed verification: $($entry.path)" }
 }
-$required = @('tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/launch.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')
+$required = @('tools/gt2game.exe','tools/openxr_loader.dll','tools/gt2install.exe','tools/gt2checks.exe','scripts/install-player.ps1','scripts/install.ps1','scripts/launch.ps1','scripts/existing-install.ps1','scripts/platform-tools.ps1','scripts/transfer-saves.ps1')
 if ($Target -eq 'Quest') { $required += @($apkName,'scripts/install-quest.ps1') }
 foreach ($requiredFile in $required) {
     if (!$seen.ContainsKey($requiredFile)) { throw "Required release file is missing from the manifest: $requiredFile" }
@@ -51,6 +52,15 @@ if (!$PSBoundParameters.ContainsKey('InstallDir')) {
             if ($dialog.ShowDialog() -ne 'OK') { throw 'No game data folder selected.' }
             $InstallDir = $dialog.SelectedPath
         } finally { $dialog.Dispose() }
+    }
+}
+# Only launcher startup requests reuse; explicit Import Disc keeps importing.
+if ($ReuseExisting -and $Target -ne 'Quest' -and !$DiscImage -and !$Gt4Bundle) {
+    . (Join-Path $PSScriptRoot 'existing-install.ps1')
+    if (Test-Gt2ExistingData $InstallDir) {
+        Update-Gt2ExistingData -PackageRoot $root -Data $InstallDir
+        Write-Host "Existing game updated: $InstallDir. Discs, saves and HD media retained."
+        return
     }
 }
 if ($Gt4Bundle) {

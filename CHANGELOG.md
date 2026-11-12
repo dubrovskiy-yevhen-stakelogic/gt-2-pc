@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Reuse existing Windows game data when moving from an older ZIP installation to MSI. Detect the legacy default folder and attach an existing selected folder without reimporting discs or rebuilding HD media; retain saves.
+
 ## 0.9.2 - Installation, car lights and HUD fixes
 
 ### Game fixes

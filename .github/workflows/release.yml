@@ -602,6 +602,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          ./tests/existing-install-checks.ps1
           python tests/vr_package_checks.py
           if ($LASTEXITCODE -ne 0) { throw 'VR package regression checks failed' }
           $windows = @(Get-ChildItem inputs/windows/*-windows-x64.zip)
