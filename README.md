@@ -1,4 +1,5 @@
 [![Release binaries](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml/badge.svg)](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml)
+[![Quiver Launcher](https://img.shields.io/badge/Quiver_Launcher-Get_it-00A0F8)](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser)
 
 ![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
 
@@ -203,6 +204,7 @@ The packaged builds need no compiler or dependency installation. No game images
 are downloaded; choose your own when the installer prompts. Existing data and
 saves are preserved by the normal update path.
 
+- **Quiver Launcher:** find **Gran Turismo 2 PC, VR & Browser** in the [Quiver catalog](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser) and press **Get**. Quiver downloads the release file for your platform and keeps the game updated.
 - **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. Open settings with F10. See [PCVR setup](docs/PCVR.md).
 - **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
 - **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
