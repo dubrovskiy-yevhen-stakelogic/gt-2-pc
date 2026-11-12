@@ -1848,7 +1848,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.brake = interp ? LerpInt(previous.brake, body.brake, at) : body.brake;            // car + 0x612
             hf.steerInput = interp ? LerpInt(previous.steerInput, body.steerInput, at) : body.steerInput; // car + 0x768
             hf.handbrake = body.handbrake;         // car + 0x614
-            hf.frontSteer = {body.wheels[0].wearGrip, body.wheels[1].wearGrip}; // car + 0x498 / 0x500 (original reads these offsets)
+            hf.frontSteer = {body.wheels[0].steerAngle, body.wheels[1].steerAngle}; // car + 0x498 / 0x500 (the car record is the body at +0x2C)
             hf.metric = OverlayMetricUnits(config.metric);
             for (size_t i = 0; i < race.CarCount(); i++) { // car + 0x832 / 0x83A: the integer metres of the world position
                 const sim::CarPose carPose = interp ? InterpolatedPoseRounded(previous.poses[i], race.Pose(i), at) : race.Pose(i);

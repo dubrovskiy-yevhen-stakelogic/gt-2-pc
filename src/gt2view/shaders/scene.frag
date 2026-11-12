@@ -275,6 +275,13 @@ void shadeScene() {
         if(c.a<0.001 || (pc.stpPass==2u && c.a<0.5)) discard;
         outColor=vec4(c.rgb/c.a,pc.stpPass==2u?1.0:c.a); return;
     }
+    if ((inFlags & 8388608u) != 0u) { // kNearestUi: HUD texels stay nearest even when the rest is smoothed
+        ivec2 lo=clamp(ivec2(floor(inRect.xy)),ivec2(0),ivec2(1023));
+        ivec2 hi=clamp(max(ivec2(ceil(inRect.zw))-1,lo),lo,ivec2(1023));
+        vec4 c=uiTexel(ivec2(floor(texelCoord)),lo,hi,color);
+        if(c.a<0.5) discard;
+        outColor=vec4(c.rgb/c.a,1); return;
+    }
     if ((inFlags & 262144u) != 0u) {
         int limit = (inFlags & 131072u) != 0u ? 1023 : 255;
         ivec2 lo = clamp(ivec2(floor(inRect.xy)), ivec2(0), ivec2(limit));

@@ -47,6 +47,7 @@ static_assert(sizeof(NativeSceneLighting)==80);
 static_assert(sizeof(NativeModelVertex)==16 && sizeof(NativeModelMaterial)==96);
 constexpr uint32_t kModelAtlasTexture = 1u << 22; // Vulkan promotes GT4 external textures to hardware-filtered atlas regions.
 constexpr uint32_t kModelClampU = 1u << 23;
+constexpr uint32_t kNearestUi = 1u << 23; // UI: force nearest texels even with smooth filtering (native models reuse the bit)
 constexpr uint32_t kModelClampV = 1u << 24;
 constexpr uint32_t kModelOpaque = 1u << 25;
 constexpr uint32_t kDebugBackfaces = 1u << 26; // Diagnostic only; preserve texture alpha masks.

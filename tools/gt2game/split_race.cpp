@@ -257,6 +257,7 @@ SplitHud SplitHudOf(const sim::RaceSim& race, const std::array<const camera::Rac
         f.brake = body.brake;
         f.handbrake = body.handbrake;
         f.steerInput = body.steerInput;
+        f.frontSteer = {body.wheels[0].steerAngle, body.wheels[1].steerAngle};
         f.metric = c.metric;
         f.courseMap = c.courseMap;
         f.mapHighlight = 0; // 0x80029064's fifth argument
