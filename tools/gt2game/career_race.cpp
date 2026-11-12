@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "game/audio/menu_music.h"
+#include "game/pc_features.h"
 #include "game/career/career_state.h"
 #include "game/career/championship.h"
 #include "game/career/events.h"
@@ -170,10 +171,11 @@ std::string CarName(const career::CareerData& data, uint32_t carId) {
 // The race data of race `race`: the course with the event's settings block, the grid's cars.
 void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::CareerData& data, const EventPlan& p, int32_t race, RaceData& out) {
     DataOptions options;
-    const sim::ShellState shell = sim::EventRaceShell(p.settings[0]);
+    const sim::ShellState shell = sim::EventRaceShell(p.settings[0], gt2::pc::simulationDamage);
     options.shell = &shell;
     options.eventSettings = &p.settings;
     LoadRaceTrack(disc, vol, RaceCourse(vol, p, race), options, out);
+    out.liveSimulationDamage = true; // the port's damage switch applies during the race
     // The race overlay's "Start Race" (0x800178B0 -> 0x8001710C(loop, 1, 2)) runs every event race in game mode 2 (race block
     // + 0xA): the AI catch-up of 0x8003EBF0 by the event row's settings (0x8003C12C -> 0x80041E4C, enabled in modes 2 / 4 / 0xC),
     // the rear-view mirror (0x800294D4: mode != 0). Captured: CBM0001 race block + 0xA = 2 (work/re/testrun/ev_race.bin.setup;

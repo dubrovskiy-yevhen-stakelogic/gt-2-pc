@@ -72,11 +72,13 @@ struct ShellState {
     uint32_t raceClock = 46900;
 };
 
-// GT-mode events use mode 2, but must retain the event's standing/rolling start flag.
-inline ShellState EventRaceShell(uint8_t startSpeed) {
+// GT-mode events use mode 2, but must retain the event's standing/rolling start flag. `damage` is our port option:
+// the mode-2 path of 0x800418E8 returns class 2 only when modeFlag65 != 1 and modeFlag5D == 1, so set both.
+inline ShellState EventRaceShell(uint8_t startSpeed, bool damage = false) {
     ShellState shell;
     shell.gameMode = 2;
     shell.byte801D5869 = startSpeed != 0 ? 0 : 1;
+    if (damage) shell.modeFlag5D = 1, shell.modeFlag65 = 0;
     return shell;
 }
 

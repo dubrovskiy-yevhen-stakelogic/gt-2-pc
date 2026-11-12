@@ -361,6 +361,12 @@ void RaceSim::Setup(const Track& track, const CourseExtras& extras, const SimCon
     SetupShell(shellOptions_);
 }
 
+void RaceSim::SetPlayerDamage(bool enabled) {
+    const bool damage = enabled && constants_.gameMode != 3 && !physics_.move.dirtCourse;
+    constants_.shellControlClass = damage ? 2 : 0;
+    physics_.move.controlClass = constants_.shellControlClass;
+}
+
 int32_t HandicapGridOffset(uint8_t entryKind, int8_t handicap, uint8_t gameMode) { // 0x80012CD4
     int32_t s1 = 0;
     if (entryKind == kEntryPlayer1 && handicap != 0) s1 = handicap > 0 ? handicap * 10 : 1;

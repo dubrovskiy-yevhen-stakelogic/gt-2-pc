@@ -183,6 +183,7 @@ void Save() {
         out << "profiler=" << int(profiler) << "\n";
         out << "vr_foveation=" << foveation << "\n";
         out << "vr_refresh=" << vrRefresh << "\nunlock_sim_events=" << int(gt2::pc::unlockSimulationEvents)
+            << "\nsimulation_damage=" << int(gt2::pc::simulationDamage)
             << "\nskip_race_replays=" << int(gt2::pc::skipRaceReplays) << "\n";
         out.flush();
         if (!out) throw std::runtime_error("cannot write overlay settings");
@@ -218,6 +219,7 @@ void LoadOverlaySettings(const std::string& basePath) {
     gt2::hd::SetEnabled(true);
     gt2::pc::SetUnlocks(false, false);
     gt2::pc::unlockSimulationEvents = false;
+    gt2::pc::simulationDamage = false;
     gt2::pc::skipRaceReplays = false;
     settingsPath = basePath + ".overlay";
     std::istringstream in(gt2::shell::ReadPreferences(settingsPath)+"\n"+
@@ -272,6 +274,7 @@ void LoadOverlaySettings(const std::string& basePath) {
         else if (key == "vr_refresh") vrRefresh = std::clamp(std::atoi(value.c_str()), 72, 120);
         else if (key == "vr_render_scale") vrScale = std::clamp(std::atoi(value.c_str()), 50, 200);
         else if (key == "unlock_sim_events") gt2::pc::unlockSimulationEvents = value == "1";
+        else if (key == "simulation_damage") gt2::pc::simulationDamage = value == "1";
         else if (key == "skip_race_replays") gt2::pc::skipRaceReplays = value == "1";
         else if (key == "unlock_courses") courses = value == "1";
         else if (key == "unlock_cars") cars = value == "1";
@@ -1017,7 +1020,7 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
             if (discImportAvailable) rows.push_back("Import another game disc...");
             rows.push_back("Campaign / saves...");
             rows.push_back("Quit game");
@@ -1067,11 +1070,12 @@ void ShowSettingsMenu(GameWindow& window) {
                     std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"), "Back"};
         }
         if (page == 2) {
-            title = "GT2 VR / CHEATS";
+            title = "GT2 VR / OPTIONS AND CHEATS";
             rows = {"Arcade - all tracks: " + std::string(gt2::pc::unlockCourses ? "ON" : "OFF"),
                 "Arcade - all cars: " + std::string(gt2::pc::unlockCars ? "ON" : "OFF"),
                 "Simulation - all licences GOLD", "Simulation - 99,999,999 credits", "Simulation - all cars catalogue",
                 "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"), "Simulation - GT4 cars catalogue", "Arcade - add all cars to garage",
+                "Simulation - car damage: " + std::string(gt2::pc::simulationDamage ? "ON" : "OFF"),
                 "Auto replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF" : "ON"), "Back"};
         }
         if (page == 3) {
@@ -1264,10 +1268,14 @@ void ShowSettingsMenu(GameWindow& window) {
                         catch (const std::exception& e) {status=e.what();}
                     }
                     if (selected == 8 && page == 2 && direction) {
+                        gt2::pc::simulationDamage = !gt2::pc::simulationDamage;
+                        status = "Saved. Simulation car damage: " + std::string(gt2::pc::simulationDamage ? "ON. Event races apply it on the next start." : "OFF.");
+                    }
+                    if (selected == 9 && page == 2 && direction) {
                         gt2::pc::skipRaceReplays = !gt2::pc::skipRaceReplays;
                         status = "Saved. Automatic replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF." : "ON.");
                     }
-                    if (selected == 9 && page == 2) { page = 0; selected = 0; }
+                    if (selected == 10 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
