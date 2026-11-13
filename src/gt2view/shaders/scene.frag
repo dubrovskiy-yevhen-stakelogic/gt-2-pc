@@ -410,6 +410,8 @@ void shadeScene() {
 }
 
 void main() {
+    // kSpaceMenuCarTexture: the glued menu/showroom car target, alpha preserved for compositing over 2D.
+    if (pc.space == 5u) { outColor = texture(rearView, inTexel); return; }
     shadeScene();
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);

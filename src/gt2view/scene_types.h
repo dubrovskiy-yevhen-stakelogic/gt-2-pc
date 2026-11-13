@@ -88,7 +88,9 @@ inline bool NativeEnvironmentBlend(uint32_t blend) {return blend==kBlendNativeEn
 //            applies the eye's view-projection
 //   kSky:    the same, with the eye translation dropped - the backdrop sits at infinity and is identical in both eyes
 //   kMirrorSource: full rear-camera clip matrix, drawn only into the shared mirror texture
-enum DrawSpace : uint32_t { kSpaceWorld = 0, kSpaceSky = 1, kSpaceScreen = 2, kSpaceMirrorSource = 3 };
+enum DrawSpace : uint32_t { kSpaceWorld = 0, kSpaceSky = 1, kSpaceScreen = 2, kSpaceMirrorSource = 3,
+                            kSpaceMenuCar = 4,          // menu/showroom 3D car: its own MSAA target, composited as 2D
+                            kSpaceMenuCarTexture = 5 }; // the composite quad for kSpaceMenuCar (scene.frag tests 5u)
 
 struct DrawItem {
     uint32_t firstVertex = 0, vertexCount = 0;
@@ -119,7 +121,8 @@ struct DrawItem {
 // menus, panels); without it the cockpit's band hides them on the direct
 // swapchain path, where the scene and the 2D layers share one depth buffer.
 inline int DepthBand(const DrawItem& item, bool stereo) {
-    const bool screen = item.space == kSpaceScreen && (stereo || item.cabinDepth == 0);
+    const bool screen = (item.space == kSpaceScreen || item.space == kSpaceMenuCar || item.space == kSpaceMenuCarTexture) &&
+                        (stereo || item.cabinDepth == 0);
     return screen ? 3 : int(std::min(item.cabinDepth, 2u));
 }
 
@@ -201,6 +204,8 @@ struct RenderOptions {
 class SceneRendererState {
 public:
     virtual ~SceneRendererState() = default;
+    // The native Vulkan renderer can put the menu/showroom 3D car through its own MSAA target.
+    virtual bool MenuCarMsaaTarget() const { return false; }
     // Native menu/font and profiler occupy reserved ranges above the original scene/HUD buffers.
     static constexpr uint32_t kNativeUiVertexBase = 1 << 20, kNativeUiVertexLimit = 16384;
     static constexpr uint32_t kProfilerVertexBase = kNativeUiVertexBase + kNativeUiVertexLimit;
@@ -214,7 +219,8 @@ public:
 #endif
     static constexpr uint32_t kModelSetVertexStride = GT2_MODEL_SET_VERTEX_STRIDE;
     static constexpr uint32_t kPaintProbeVertexBase = kModelSetVertexBase + 8 * kModelSetVertexStride;
-    static constexpr uint32_t kMaxVertices = kPaintProbeVertexBase + 6 * 40000;
+    static constexpr uint32_t kMenuCarCompositeVertexBase = kPaintProbeVertexBase + 6 * 40000;
+    static constexpr uint32_t kMaxVertices = kMenuCarCompositeVertexBase + 6;
     static constexpr uint32_t kNativeFontRow = 2048, kNativeFontRows = 144;
     static constexpr uint32_t kMenuReflectionRow = kNativeFontRow + kNativeFontRows;
     static constexpr uint32_t kVramWidth = 1024, kVramRows = kMenuReflectionRow + 512;

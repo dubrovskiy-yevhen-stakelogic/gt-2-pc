@@ -395,12 +395,37 @@ void MenuCarView::AppendSlot(std::vector<DrawItem>& items, int slot, int32_t lif
     // The drawing area of the car's environment (0x8008034C with the viewport rectangle), in window fractions.
     auto toWindowX = [&](float x) { return ((x / kW * 2.0f - 1.0f) * asx + 1.0f) * 0.5f; };
     auto toWindowY = [&](float y) { return ((y / kH * 2.0f - 1.0f) * asy + 1.0f) * 0.5f; };
+    const bool msaaCar = renderer_.MenuCarMsaaTarget();
     for (size_t i = first; i < items.size(); i++) {
+        if (msaaCar) items[i].space = kSpaceMenuCar;
         items[i].scissor[0] = toWindowX(float(projection.x0));
         items[i].scissor[1] = toWindowY(float(projection.y0));
         items[i].scissor[2] = toWindowX(float(projection.x0 + projection.w));
         items[i].scissor[3] = toWindowY(float(projection.y0 + projection.h));
     }
+    if (!msaaCar) return;
+    // Composite the car's 3D target back at this exact point in the 2D order. At 1x the renderer
+    // leaves the car items in the ordinary 2D pass and skips this quad.
+    std::vector<SceneVertex> overlay(6);
+    constexpr float xy[6][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, -1}, {1, 1}, {-1, 1}};
+    constexpr float uv[6][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 0}, {1, 1}, {0, 1}};
+    for (int k = 0; k < 6; k++) {
+        overlay[size_t(k)].pos[0] = xy[k][0];
+        overlay[size_t(k)].pos[1] = xy[k][1];
+        overlay[size_t(k)].pos[2] = 1.0f;
+        overlay[size_t(k)].texel[0] = uv[k][0];
+        overlay[size_t(k)].texel[1] = uv[k][1];
+        overlay[size_t(k)].flags = 0;
+    }
+    renderer_.SetVertices(SceneRendererState::kMenuCarCompositeVertexBase, overlay);
+    DrawItem composite;
+    composite.firstVertex = SceneRendererState::kMenuCarCompositeVertexBase;
+    composite.vertexCount = 6;
+    composite.space = kSpaceMenuCarTexture;
+    composite.blend = kBlendAlpha;
+    const float compositeIdentity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    std::copy(compositeIdentity, compositeIdentity + 16, composite.mvp);
+    items.push_back(composite);
 }
 
 } // namespace gt2view
