@@ -1047,7 +1047,6 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
             vertices.push_back(v);
         }
     }
-    renderer_.ApplyHdUi(vertices);
     // The input display's wheel tile, arrows and B / A frame keep their original pixel steps even when the rest of
     // the HUD uses smooth filtering: its one-texel borders and arrow edges otherwise blur into soft gradients.
     auto pageOf = [](uint16_t tpage) {
@@ -1069,6 +1068,7 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
             v.flags |= kNearestUi;
         }
     }
+    renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(kVertexBase, vertices);
     size_t first = 0;
     while (first < quads_.size()) {

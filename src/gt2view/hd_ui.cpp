@@ -23,7 +23,7 @@ void SceneRendererState::ApplyHdUi(std::vector<SceneVertex>& vertices) {
     }
     if(hdUiEnabled_ || options_.smoothTextures) {
         for(auto& v:vertices)
-            if((v.flags & kTextured) && !(v.flags & (kOverlay|kExternalTexture|kHandTexture))) v.flags |= kSmoothUi;
+            if((v.flags & kTextured) && !(v.flags & (kOverlay|kExternalTexture|kHandTexture|kNearestUi))) v.flags |= kSmoothUi;
     }
     if(!hdUiEnabled_ || vramShadow_.empty()) return;
     ++hdUiFrame_;
@@ -33,7 +33,7 @@ void SceneRendererState::ApplyHdUi(std::vector<SceneVertex>& vertices) {
         if(it!=hdUiPages_.end() && it->second >= 0) hdUiSlots_[size_t(it->second)].used=hdUiFrame_;
     }
     for(auto& v:vertices) {
-        if(!(v.flags & kTextured) || (v.flags & (kOverlay|kExternalTexture|kHdUi|0x200u))) continue;
+        if(!(v.flags & kTextured) || (v.flags & (kOverlay|kExternalTexture|kHdUi|kNearestUi|0x200u))) continue;
         const uint32_t depth=(v.flags>>8)&1u;
         const uint32_t x=v.page&65535, y=v.page>>16;
         if(x+(64u<<depth)>1024 || y+256>kVramRows) continue;
