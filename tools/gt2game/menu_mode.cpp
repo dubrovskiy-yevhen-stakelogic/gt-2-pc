@@ -34,6 +34,7 @@
 #include "gt2vfs/gtfs.h"
 #include "gt2view/menu_view.h"
 #include "gt2view/scene_renderer.h"
+#include "graphics_options.h"
 #include "panel.h"
 
 using namespace gt2;
@@ -186,6 +187,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
     runtime.Start(options.startPage);
 
     gt2view::SceneRenderer& renderer = window.Renderer();
+    renderer.SetOptions(gt2game::RenderOptionsOf(gt2game::CurrentGraphics()));
     renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0.0f;
     gt2view::MenuView view(renderer);
     auto carView = std::make_unique<gt2view::MenuCarView>(renderer, vol);

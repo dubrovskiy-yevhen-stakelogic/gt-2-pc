@@ -325,6 +325,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     if (!options.noMovies && (options.forceMovies || !automatedBoot) &&
         !gt2game::PlayBootScreens(window, disc, !options.noSound)) return 0;
     gt2view::SceneRenderer* renderer = &window.Renderer();
+    renderer->SetOptions(gt2game::RenderOptionsOf(gt2game::CurrentGraphics()));
     renderer->clearColor[0] = renderer->clearColor[1] = renderer->clearColor[2] = 0.0f;
     auto view = std::make_unique<gt2view::TitleView>(*renderer);
     const MenuCanvas::Rules rules = options.compare.empty() ? MenuCanvas::Rules::kPs1 : MenuCanvas::Rules::kInterpreter;
@@ -683,6 +684,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
             if (!optionsRunning) {
                 music->Stop();
                 storeSettings(); // ours: the options also go to the PC settings file for races without a career
+                window.Renderer().SetOptions(gt2game::RenderOptionsOf(gt2game::CurrentGraphics()));
                 optionsScreen.reset();
                 screen = Screen::kTitle;
                 title.Reset();

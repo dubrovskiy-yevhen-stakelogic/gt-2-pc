@@ -40,6 +40,7 @@
 #include "game/shell/title_menu.h"
 #include "game/shell/title_screens.h"
 #include "game_window.h"
+#include "graphics_options.h"
 #include "pc_overlay.h"
 #include "movie_player.h"
 #include "boot_screen.h"
@@ -803,6 +804,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     if (!options.globalScript.empty()) window.AddScript(options.globalScript);
     for (const auto& s : options.anyShots) window.AddShot(s.first, s.second);
     gt2view::SceneRenderer* renderer = &window.Renderer();
+    renderer->SetOptions(gt2game::RenderOptionsOf(gt2game::CurrentGraphics()));
     const MenuCanvas::Rules rules = options.compare.empty() ? MenuCanvas::Rules::kPs1 : MenuCanvas::Rules::kInterpreter;
     auto view = std::make_unique<gt2view::TitleView>(*renderer);
     view->SetRasterRules(rules);
