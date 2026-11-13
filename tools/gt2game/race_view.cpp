@@ -1137,7 +1137,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if (window.Pressed(keys::kPageDown)) replayButtons |= 0x1000;
             }
             // P after the finish: the replay of the race just driven (the recorded stream from the race's start).
-            if (window.Pressed('P') && !replaying && !config.replay && race.CarAt(0).body.finishFlag != 0 && replayDriver.stream.Frames() > 0) {
+            // Not with a flow: the flow applies the result and starts its own replay (playLast); P here would skip
+            // flow->finished and leave an empty RaceViewResult (the post-race views then report a Retire).
+            if (!flow && window.Pressed('P') && !replaying && !config.replay && race.CarAt(0).body.finishFlag != 0 && replayDriver.stream.Frames() > 0) {
                 ReplayStream recorded = replayDriver.stream;
                 recorded.End(false); // 0x800167D0: the last run flushed
                 writeReplay();
