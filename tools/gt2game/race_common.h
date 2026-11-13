@@ -69,6 +69,8 @@ struct RaceData {
     std::shared_ptr<const gt2::LicenseTest> replayLicense; // a licence replay's test (RaceOptions::license points here)
     int courseIndex = -1;                    // .crsinfo entry of the track
     std::string trackName;                   // crsobj/<name>.tro
+    // Our port option: a GT-mode event race follows the "Simulation - car damage" switch while it runs (career_race.cpp).
+    bool liveSimulationDamage = false;
     gt2::sim::RaceShellOptions shell;        // the race shell's overlay tables and the course's point-to-point flag (race_shell.h)
     // Development cross-check (--dump): the same data as the original had it in memory.
     bool haveDump = false;

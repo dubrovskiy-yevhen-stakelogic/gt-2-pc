@@ -285,6 +285,11 @@ public:
     void Setup(const Track& track, const CourseExtras& extras, const SimConstants& constants, const RaceCourseData& courseData,
                std::vector<CarParams> params, const std::vector<RaceSlot>& slots, const RaceShellOptions& shellOptions = {});
 
+    // Our port option: switch the GT-mode event race's damage while it runs. Class 2 accumulates wall damage and
+    // bends the wheels; class 0 stops both (the damage already stored stays and returns when switched on again).
+    void SetPlayerDamage(bool enabled);
+    int ShellControlClass() const { return constants_.shellControlClass; }
+
     // Replaces the dynamic state with a snapshot of the original's car objects and contact tables (the whole
     // 0xB40-byte car records, as they sit in a RAM dump) for a settle / compare run. Setup must have run with the
     // same car count and records.
