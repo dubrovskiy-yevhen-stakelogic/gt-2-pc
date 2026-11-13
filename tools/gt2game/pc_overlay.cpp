@@ -1439,7 +1439,8 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
     std::printf("player: disc picker (%s), %zu installed disc(s)\n", vrMode ? "VR" : "desktop", modes.size());
     while (window.BeginFrame()) {
         if (window.Pressed(gt2::keys::kEscape) || window.Pressed(gt2::keys::kBack)) return {};
-        if (window.Pressed(gt2::keys::kUp) || window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
+        if (window.Pressed(gt2::keys::kUp)) selected = (selected + int(modes.size()) - 1) % int(modes.size());
+        if (window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
         if (window.Pressed(gt2::keys::kReturn)) {
             std::printf("player: selected %s\n", modes[size_t(selected)].c_str());
             const bool arcade = modes[size_t(selected)].starts_with("arcade") || modes[size_t(selected)] == "combined-arcade";
