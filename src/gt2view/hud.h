@@ -48,7 +48,7 @@ struct HudFrame {
     int brake = 0;              // car + 0x612
     int handbrake = 0;          // car + 0x614
     int steerInput = 0;         // car + 0x768: the pad's steering, -100 (right) .. 100 (left)
-    std::array<int, 2> frontSteer{}; // car + 0x498 / 0x500: the original's input-display values (always 0x1000 = straight quads)
+    std::array<int, 2> frontSteer{}; // car + 0x498 / 0x500: the front wheels' steer angles for the input display
     int gear = 1;               // car + 0x644, 0 = reverse
     bool neutral = false;       // Native H-pattern gearbox, without changing the physics gear-array index.
     bool wheelDirectionBlocked = false;
@@ -148,7 +148,7 @@ private:
         uint32_t color[4] = {};  // GP0 colour words (0xBBGGRR)
         int u = 0, v = 0, w = 0, h = 0;
         uint16_t clut = 0;
-        bool semi = false, gouraud = false;
+        bool semi = false, gouraud = false, textured = false;
         int anchor = 0;
     };
     struct Quad {
@@ -171,6 +171,9 @@ private:
     void Tile(int x, int y, int w, int h, uint32_t colorWord);
     void PolyF4(const int xs[4], const int ys[4], uint32_t colorWord);
     void PolyG4(const int xs[4], const int ys[4], const uint32_t colors[4]);
+    // A textured quad (u0, v0)..(u1, v1) of the texture page / CLUT; the corners are x / y, in the GPU's
+    // TL, TR, BL, BR order (the same order as PolyF4).
+    void TexturedQuad(const int xs[4], const int ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord);
     void Bar(int x, int y, int w);                         // 0x8006B77C with the rectangle 0x8002F8E0
     void Glyphs(const std::vector<gt2::HudFontSprite>& sprites, uint32_t colorWord);
     void Needle(int angle, int pivotX, int pivotY, const gt2::HudTables::Needle& n); // 0x8002BF14

@@ -1174,7 +1174,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             uint64_t(item.firstVertex)+item.vertexCount<=uint64_t(TitleView::kVertexBase)+TitleView::kVertexLimit &&
             !std::getenv("GT2_AUDIT_GENERAL_UI_SHADER");
         constexpr uint32_t uiFlags=kTextured|kRawTexture|kOverlay|kSemiTransparent|kCullBack|(3u<<kNearTierShift)|
-            kIntegerModulate|kClampTextureRect|kHdUi|kSmoothUi|kUiMap|kReconstructedUi|(3u<<8);
+            kIntegerModulate|kClampTextureRect|kHdUi|kSmoothUi|kUiMap|kReconstructedUi|kNearestUi|(3u<<8);
         if(uiOnly)for(uint32_t v=0;v<item.vertexCount;++v)if(vertexFlags_.at(size_t(item.firstVertex)+v) & ~uiFlags){uiOnly=false;break;}
         const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0;
         const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);

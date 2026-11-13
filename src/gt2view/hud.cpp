@@ -20,6 +20,12 @@ constexpr uint32_t kSemi = 0x2000000;
 
 // VRAM of the console's HUD data (words): the sheet's dial slot and CLUT, the course map.
 constexpr int kFontX = 384, kSheetX = 512, kDialClutRow = 228;
+// The replay input display's front-wheel texture: a 12 x 16 4-bit tile whose 6 x 10 centre is the original green
+// quad with a one-pixel black border, with a transparent margin. Drawing it textured keeps the sprite-style pixel
+// steps of the input display's arrows instead of a high-resolution flat outline.
+constexpr int kTyreTexX = 768, kTyreTexY = 0, kTyreTexW = 12, kTyreTexH = 16;
+constexpr uint16_t kTyreTpage = uint16_t(kTyreTexX / 64);
+constexpr uint16_t kTyreClut = uint16_t((kTyreTexX / 16) | ((kTyreTexY + kTyreTexH) << 6));
 constexpr uint32_t kSinTable = 0x80093150u; // 4096 + 1024 entries: sin, and cos at +0x400 (0x8002BCF0)
 
 // 16-bit pair add of the original's packed screen words (x in the low half, y in the high half): a negative x
@@ -131,6 +137,23 @@ void Hud::UploadBlock() {
         for (int x = 0; x < gt2::RaceFont::kWords; x++) block_[size_t(y) * 1024 + size_t(kFontX + x)] = font_.words[size_t(y) * gt2::RaceFont::kWords + size_t(x)];
     for (int y = 0; y < gt2::HudSheet::kSheetRows; y++)
         for (int x = 0; x < gt2::HudSheet::kSheetWords; x++) block_[size_t(y) * 1024 + size_t(kSheetX + x)] = sheet_.sheet[size_t(y) * gt2::HudSheet::kSheetWords + size_t(x)];
+    // The input display's wheel tile (kTyreTexX): 0 = black border, 1 = the quad's green, 15 = transparent.
+    for (int y = 0; y < kTyreTexH; y++) {
+        for (int group = 0; group < kTyreTexW / 4; group++) {
+            uint16_t word = 0;
+            for (int i = 0; i < 4; i++) {
+                const int tx = group * 4 + i;
+                uint16_t index = 15;
+                if (tx >= 3 && tx <= 8 && y >= 3 && y <= 12)
+                    index = (tx == 3 || tx == 8 || y == 3 || y == 12) ? 0 : 1;
+                word |= uint16_t(index << (i * 4));
+            }
+            block_[size_t(kTyreTexY + y) * 1024 + kTyreTexX + group] = word;
+        }
+    }
+    block_[size_t(kTyreTexY + kTyreTexH) * 1024 + kTyreTexX] = 0x8000;     // black: 0x0000 would be transparent
+    block_[size_t(kTyreTexY + kTyreTexH) * 1024 + kTyreTexX + 1] = 0x1D85; // 0x3C6428 at 5 bits per channel
+    // kTyreTexX + 15 stays 0: the transparent texel of the tile's margin.
     if (uploadedDial_ >= 0) { // the car's dial face over face slot 0 of the sheet, its CLUT at (512, 228) (captured license test)
         const gt2::HudSheet::Dial& dial = sheet_.dials[size_t(uploadedDial_)];
         for (int y = 0; y < gt2::HudSheet::kDialRows; y++)
@@ -222,6 +245,25 @@ void Hud::PolyF4(const int xs[4], const int ys[4], uint32_t colorWord) {
     std::fill(c.color, c.color + 4, colorWord & 0xFFFFFF);
     c.semi = (colorWord & kSemi) != 0;
     Packet({c});
+}
+
+void Hud::TexturedQuad(const int xs[4], const int ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord) {
+    Cmd mode;
+    mode.kind = Cmd::kMode;
+    mode.tpage = tpage;
+    Cmd c;
+    c.kind = Cmd::kPoly;
+    c.textured = true;
+    std::copy(xs, xs + 4, c.x);
+    std::copy(ys, ys + 4, c.y);
+    c.u = u0;
+    c.v = v0;
+    c.w = u1;
+    c.h = v1;
+    c.clut = clut;
+    std::fill(c.color, c.color + 4, colorWord & 0xFFFFFF);
+    c.semi = (colorWord & kSemi) != 0;
+    Packet({mode, c});
 }
 
 void Hud::PolyG4(const int xs[4], const int ys[4], const uint32_t colors[4]) {
@@ -662,9 +704,10 @@ static uint32_t WearStageColor(int v) {
 
 // 0x8002DE8C (x 296, y 124): two rows (front at y - 8, rear at y + 8), per wheel a damage tint sprite (fade
 // 0x8002F904 -> 0x8002F908 by damage / 256) and a wear sprite in the wear stage's colour; all sprites of a row are
-// centred on (x, row y) - the sheet's cells place the left / right tyre.
+// centred on (x, row y) - the sheet's cells place the left / right tyre. The HUD's "Tyre indicators" option shows
+// the panel in every race, not only when tyre wear or damage makes the original draw it.
 void Hud::TyrePanel(const HudFrame& f, int x, int y) {
-    if (!f.tyrePanel || !haveTyreSprites_) return;
+    if (!haveTyreSprites_) return;
     for (int row = 0; row < 2; row++) {
         const int cy = y - 8 + row * 16;
         const int left = row * 2, right = row * 2 + 1;
@@ -702,9 +745,21 @@ void Hud::InputBars(const HudFrame& f, int x, int y) {
     Mode(uint16_t(d.tpage | 0x20));
 }
 
-// 0x8002DBB0 (x 150, y 204), Replay Info level 2: the < > steering arrows (the side being steered is tinted 0x4080,
-// the other 0x303030). The front-wheel steer-angle quads are omitted.
+// 0x8002DBB0 (x 150, y 204), Replay Info level 2: two front-wheel sprites (the original's green quad over its black
+// outline, turned by the wheel's steer angle) and the < > steering arrows (the side being steered is tinted 0x4080,
+// the other 0x303030). The wheels use a textured tile so their pixel steps match the arrows and the pedal bars.
 void Hud::InputSteering(const HudFrame& f, int x, int y) {
+    for (int i = 0; i < 2; i++) {
+        const int angle = -int(int16_t(f.frontSteer[size_t(i)]));
+        const int pivotX = x + (i == 0 ? -7 : 7); // 0x8002DBB0: left at x - 7, right at x + 7
+        int xs[4], ys[4];
+        RotatePoint(sinTable_, angle, -0x60, -0x80, xs[0], ys[0]); // the 12 x 16 tile around its 6 x 10 wheel
+        RotatePoint(sinTable_, angle, 0x60, -0x80, xs[1], ys[1]);
+        RotatePoint(sinTable_, angle, -0x60, 0x80, xs[2], ys[2]);
+        RotatePoint(sinTable_, angle, 0x60, 0x80, xs[3], ys[3]);
+        for (int k = 0; k < 4; k++) PackedAdd(xs[k], ys[k], pivotX, y - 8);
+        TexturedQuad(xs, ys, 0, 0, kTyreTexW, kTyreTexH, kTyreTpage, kTyreClut, 0x808080);
+    }
     const int steer = std::clamp(int(f.steerInput), -100, 100);
     const gt2::HudSpriteDesc& left = tables_.inputSteerLeft;
     const gt2::HudSpriteDesc& right = tables_.inputSteerRight;
@@ -900,7 +955,7 @@ void Hud::Build2P(const HudFrame& top, const HudFrame& bottom, float windowAspec
             Needles(f, 0x114, car ? 0xB4 : 0x44);
             Tachometer(f, 0x114, car ? 0xB4 : 0x44);
             TurboGauge(f, 0xE0, car ? 0xCC : 0x5C);
-            TyrePanel(f, 0x128, car ? 0x8C : 0x1C);
+            if (f.visibility.tyres) TyrePanel(f, 0x128, car ? 0x8C : 0x1C);
         }
         anchor_ = kAnchorLeft;
         LapBlock(f, 0xC, car ? 0x7C : 0x10);
@@ -920,11 +975,22 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
             if (c.kind == Cmd::kPoly) {
                 // GPU quad v0 v1 v2 v3 (triangles 0-1-2, 1-2-3) -> our corners TL TR BR BL = v0 v1 v3 v2
                 static constexpr int kMap[4] = {0, 1, 3, 2};
+                const int u[4] = {c.u, c.w, c.u, c.w}, v[4] = {c.v, c.v, c.h, c.h}; // v0 TL, v1 TR, v2 BL, v3 BR
                 for (int k = 0; k < 4; k++) {
                     q.x[k] = float(c.x[kMap[k]]);
                     q.y[k] = float(c.y[kMap[k]]);
-                    q.u[k] = q.v[k] = 0;
+                    if (c.textured) {
+                        q.u[k] = float(u[kMap[k]]);
+                        q.v[k] = float(v[kMap[k]]);
+                    } else {
+                        q.u[k] = q.v[k] = 0;
+                    }
                     q.color[k] = ColorOf(c.color[kMap[k]]);
+                }
+                if (c.textured) {
+                    q.textured = true;
+                    q.page = uint32_t((tpage & 0xF) * 64) | ((kRowBase + uint32_t(((tpage >> 4) & 1) * 256)) << 16);
+                    q.clut = uint32_t((c.clut & 0x3F) * 16) | ((kRowBase + uint32_t(c.clut >> 6)) << 16);
                 }
             } else {
                 const float x0 = float(c.x[0]), y0 = float(c.y[0]), x1 = float(c.x[0] + c.w), y1 = float(c.y[0] + c.h);
@@ -982,6 +1048,27 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
         }
     }
     renderer_.ApplyHdUi(vertices);
+    // The input display's wheel tile, arrows and B / A frame keep their original pixel steps even when the rest of
+    // the HUD uses smooth filtering: its one-texel borders and arrow edges otherwise blur into soft gradients.
+    auto pageOf = [](uint16_t tpage) {
+        return uint32_t((tpage & 0xF) * 64) | ((kRowBase + uint32_t(((tpage >> 4) & 1) * 256)) << 16);
+    };
+    auto clutOf = [](uint16_t clut) {
+        return uint32_t((clut & 0x3F) * 16) | ((kRowBase + uint32_t(clut >> 6)) << 16);
+    };
+    const uint32_t tyrePage = pageOf(kTyreTpage), tyreClut = clutOf(kTyreClut);
+    const uint32_t inputPage = pageOf(tables_.inputFrame.tpage);
+    const uint32_t inputCluts[3] = {clutOf(tables_.inputFrame.clut), clutOf(tables_.inputSteerLeft.clut), clutOf(tables_.inputSteerRight.clut)};
+    for (SceneVertex& v : vertices) {
+        bool nearest = v.page == tyrePage && v.clut == tyreClut;
+        if (!nearest && v.page == inputPage)
+            for (uint32_t clut : inputCluts)
+                if (v.clut == clut) { nearest = true; break; }
+        if (nearest) {
+            v.flags &= ~(kSmoothUi | kHdUi | kReconstructedUi);
+            v.flags |= kNearestUi;
+        }
+    }
     renderer_.SetVertices(kVertexBase, vertices);
     size_t first = 0;
     while (first < quads_.size()) {
