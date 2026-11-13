@@ -12,7 +12,8 @@
 // by a device thread, so the game thread only programs voices. Optional: a game without a sound device runs on.
 //
 // One implementation per platform behind this interface - audio_device_win32.cpp (waveOut) today; the Quest build
-// adds audio_device_aaudio.cpp. The private members below are the platform file's own state.
+// adds audio_device_aaudio.cpp. The SDL backend (macOS / Linux) opens the device at its own rate and resamples.
+// The private members below are the platform file's own state.
 namespace gt2::audio {
 
 class AudioDevice {

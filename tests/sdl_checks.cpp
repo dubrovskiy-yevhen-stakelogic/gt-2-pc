@@ -59,6 +59,8 @@ int main() {
             Require(input.Port1().buttons == 0, "script hold expiry");
         }
         SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+        // The dummy driver reports no default rate: force 48 kHz so the 44.1 -> 48 kHz resampling path is covered.
+        SDL_setenv("GT2_AUDIO_DEVICE_RATE", "48000", 1);
         gt2::audio::Mixer mixer;
         AudioProbe probe;
         mixer.SetStream(&probe);
