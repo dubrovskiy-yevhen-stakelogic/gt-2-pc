@@ -570,9 +570,10 @@ void ResultsView::Setup(const ResultsInput& in) { // 0x80050FD0
         place = TextObject::FromTemplate(o, kResPlace, a_.Text(in.winner ? kStrPlayer2Wins : kStrPlayer1Wins));
         place.c0 = o.Get<uint32_t>(kPlaceColours);
     } else {
-        uint32_t p = uint32_t(in.place - 1);
+        const bool retired = in.place <= 0; // 0x801D5E88 <= 0: the post-race menu shows "Retire"
+        uint32_t p = retired ? 0 : uint32_t(in.place - 1);
         if (p >= 6) p = 0;
-        place = TextObject::FromTemplate(o, kResPlace, a_.Text(o.Get<uint32_t>(kPlaceStrings + p * 4)));
+        place = TextObject::FromTemplate(o, kResPlace, a_.Text(retired ? kStrRetire : o.Get<uint32_t>(kPlaceStrings + p * 4)));
         place.c0 = o.Get<uint32_t>(kPlaceColours + p * 4);
     }
     placeBand = Band::Read(o, kResPlaceBand);
