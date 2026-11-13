@@ -1269,7 +1269,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == 8 && page == 2 && direction) {
                         gt2::pc::simulationDamage = !gt2::pc::simulationDamage;
-                        status = "Saved. Simulation car damage: " + std::string(gt2::pc::simulationDamage ? "ON. Event races apply it on the next start." : "OFF.");
+                        status = "Saved. Simulation car damage: " + std::string(gt2::pc::simulationDamage ? "ON. Applies when entering the next event." : "OFF. Applies when entering the next event.");
                     }
                     if (selected == 9 && page == 2 && direction) {
                         gt2::pc::skipRaceReplays = !gt2::pc::skipRaceReplays;

@@ -175,7 +175,7 @@ void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::
     options.shell = &shell;
     options.eventSettings = &p.settings;
     LoadRaceTrack(disc, vol, RaceCourse(vol, p, race), options, out);
-    out.liveSimulationDamage = true; // the port's damage switch applies during the race
+    out.simulationEvent = true;
     // The race overlay's "Start Race" (0x800178B0 -> 0x8001710C(loop, 1, 2)) runs every event race in game mode 2 (race block
     // + 0xA): the AI catch-up of 0x8003EBF0 by the event row's settings (0x8003C12C -> 0x80041E4C, enabled in modes 2 / 4 / 0xC),
     // the rear-view mirror (0x800294D4: mode != 0). Captured: CBM0001 race block + 0xA = 2 (work/re/testrun/ev_race.bin.setup;
@@ -511,8 +511,10 @@ bool RunSaveReplayScreen(GameWindow& window, Panels& panels, const DiscImage& di
 // laps, handicap, slow car boost - the menus' copies, menus_gtmode.md 10.3; + 4 is career + 5, not BuildReplayFile's 1). Both
 // captured blocks (licence B-1 and event CBM0001 on work/memcards/gt2_save_1car.mcd) hold 00 02 01 00 02 00 01 there = that career.
 void MenuRaceBlock(ReplayFile& f, const career::CareerState& s) {
+    const bool damage = f.SimulationDamage();
     const uint8_t* career = reinterpret_cast<const uint8_t*>(&s);
     for (size_t k = 1; k <= 7; k++) f.raceBlock[k] = career[k + 1];
+    f.SetSimulationDamage(damage);
 }
 
 // Race block + 0x44 (0x801D58A0, 16 bytes): the sponsor category the menus copy from the event / licence test row + 0x94 (ovl4

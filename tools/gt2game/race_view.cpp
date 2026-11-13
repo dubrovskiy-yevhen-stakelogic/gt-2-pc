@@ -1326,10 +1326,6 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 for (size_t i = 0; i < race.CarCount(); i++) previous.wheels[i] = race.Wheels(i);
             }
             if (particles) smoke.Update(); // 0x80016978 from BeginFrame, before the physics of the frame
-            if (data.liveSimulationDamage) {
-                race.SetPlayerDamage(gt2::pc::simulationDamage);
-                data.constants.shellControlClass = race.ShellControlClass();
-            }
             const uint32_t buttons[2] = {enterPressedForShell, enterPressedForShell};
             race.Step(pads.data(), buttons);
             wheelShiftHint.Tick(race.WheelDirectionBlocked(0), race.CarAt(0).body.gear, !replaying && phase == Phase::kRacing);

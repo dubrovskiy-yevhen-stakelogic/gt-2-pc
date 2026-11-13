@@ -1,3 +1,4 @@
+#include "gt2formats/replay.h"
 #include "gt2formats/track.h"
 #include "gt2formats/boot_images.h"
 #include "gt2formats/overlay_data.h"
@@ -384,8 +385,35 @@ static void CheckLicenceBonusModelMotion() {
 
 int main(int argc, char** argv) {
     try {
+        {
+            gt2::ReplayFile replay;
+            replay.raceBlock[0xA] = 2;
+            replay.raceBlock[9] = 1;
+            replay.SetSimulationDamage(true);
+            Check(replay.SimulationDamage(), "Simulation replay retains enabled damage");
+            Check(replay.raceBlock[9] == 1, "Simulation replay retains GT event tables");
+            replay.raceBlock[0x5A] = 1;
+            replay.cars.resize(1);
+            gt2::ReplayStream stream;
+            stream.Init(false, gt2::ReplayStream::kPlayerCapacity);
+            stream.Record(gt2::ReplayFrame{});
+            stream.End(false);
+            replay.stream = stream.Bytes();
+            const auto loaded = gt2::ParseReplayFile(gt2::WriteReplayFile(replay, {}));
+            Check(loaded.SimulationDamage() && loaded.raceBlock[9] == 1, "saved replay roundtrip preserves GT damage and event tables");
+            auto copied = replay;
+            copied.SetSimulationDamage(false);
+            Check(!copied.SimulationDamage() && replay.SimulationDamage(), "replay damage is independent of later settings");
+            replay.raceBlock[0xA] = 3;
+            Check(!replay.SimulationDamage(), "licence replay ignores Simulation damage marker");
+            replay.raceBlock[0xA] = 2; replay.raceBlock[9] = 0;
+            Check(!replay.SimulationDamage(), "Arcade replay keeps original damage rules");
+        }
         for (uint8_t speed : std::array<uint8_t, 3>{0, 80, 100}) {
             const auto shell = gt2::sim::EventRaceShell(speed);
+            const auto damaged = gt2::sim::EventRaceShell(speed, true);
+            Check(gt2::sim::ShellControlClass(damaged, false) == 2, "GT event damage enabled at setup");
+            Check(gt2::sim::ShellControlClass(damaged, true) == 0, "GT dirt event remains undamaged");
             Check(shell.gameMode == 2, "GT event uses mode 2 before constants are built");
             Check(shell.byte801D5869 == (speed == 0 ? 1 : 0), "GT event preserves standing/rolling start");
             Check(gt2::sim::ShellControlClass(shell, false) == 0, "GT events have no wheel damage");

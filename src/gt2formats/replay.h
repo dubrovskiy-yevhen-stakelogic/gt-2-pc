@@ -132,6 +132,13 @@ struct ReplayFile {
     // played by the car of pad slot 3 (0x80014030 -> 0x80013C90 with the pad object 0x800A95D8). Empty in the other modes.
     std::vector<uint8_t> stream2;
 
+    // Native-port extension: bit 7 of the car-damage option records Simulation damage.
+    // Keep +9 = 1 so replay loading still uses GT event tables, not Arcade tables.
+    bool SimulationDamage() const { return raceBlock[0xA] == 2 && raceBlock[9] == 1 && (raceBlock[1] & 0x80) != 0; }
+    void SetSimulationDamage(bool enabled) {
+        if (raceBlock[0xA] == 2 && raceBlock[9] == 1)
+            raceBlock[1] = uint8_t((raceBlock[1] & 0x7F) | (enabled ? 0x80 : 0));
+    }
     uint8_t GameMode() const { return raceBlock[0xA]; }
     uint8_t Laps() const { return raceBlock[0xF]; }
     uint8_t Countdown() const { return raceBlock[0xD]; }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Latch Simulation damage when entering an event so changes to preferences cannot alter its replay. Save the native damage option with the replay, retaining GT event-table selection; changes apply when entering the next event.
+
 - Keep input HUD wheels, arrows and pedal frames on original nearest texels even when HD UI assets are available.
 
 - Reuse existing Windows game data when moving from an older ZIP installation to MSI. Detect the legacy default folder and attach an existing selected folder without reimporting discs or rebuilding HD media; retain saves.

@@ -5,7 +5,7 @@ namespace gt2::pc {
 inline bool unlockCourses = false;
 inline bool unlockCars = false;
 inline bool unlockSimulationEvents = false;
-inline bool simulationDamage = false; // GT-mode event races keep the arcade damage / pit flags (arcade has its own Car Damage option)
+inline bool simulationDamage = false; // Latched when loading a GT event; changing preferences must not change its replay.
 inline bool skipRaceReplays = false; // no automatic replay after a race finish or a pause-menu exit
 inline uint64_t unlockRevision = 0;
 inline void SetUnlocks(bool courses, bool cars) {

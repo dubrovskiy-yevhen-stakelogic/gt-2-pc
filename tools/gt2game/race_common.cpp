@@ -142,6 +142,7 @@ static sim::ShellState ReplayShellState(const ReplayFile& replay) {
     s.modeFlag65 = b[0x9];
     s.gameMode = b[0xA];
     s.byte801D5869 = b[0xD];
+    if (replay.SimulationDamage()) { s.modeFlag5D = 1; s.modeFlag65 = 0; }
     s.flag800A951C = 1;
     return s;
 }
@@ -657,6 +658,7 @@ ReplayFile BuildReplayFile(const GtfsVolume& vol, const RaceData& data, size_t c
     b[0x8] = c.step.rate == 60 ? 1 : 2;           // 0x801D5864 frame-rate mode
     b[0x9] = 1;
     b[0xA] = c.gameMode;                          // 0x801D5866
+    r.SetSimulationDamage(data.simulationEvent && c.shellControlClass == 2);
     b[0xD] = options.countdown ? 1 : 0;           // 0x801D5869
     b[0xF] = options.laps;                        // 0x801D586B
     auto putString = [&](size_t offset, size_t size, const std::string& text) {
