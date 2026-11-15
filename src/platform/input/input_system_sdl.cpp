@@ -5,9 +5,32 @@
 #include <stdexcept>
 #include <utility>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 namespace gt2::input {
 namespace {
 using detail::FakePad;
+#ifdef __EMSCRIPTEN__
+// SDL2's Emscripten joystick driver stubs rumble (SDL_Unsupported, no capabilities), so drive the
+// browser Gamepad API directly. Browsers without a vibration actuator remain silent.
+EM_JS(int, WebRumble, (const char* name, int low, int high, int ms), {
+    const pads = navigator['getGamepads'] ? navigator['getGamepads']() : [];
+    const want = UTF8ToString(name);
+    let pad = null;
+    for (const p of pads) if (p && p['id'] === want && p['vibrationActuator']) { pad = p; break; }
+    // shortcut: two pads with the same id are indistinguishable here, the first one rumbles
+    if (!pad) for (const p of pads) if (p && p['vibrationActuator']) { pad = p; break; }
+    if (!pad) return 0;
+    const result = pad['vibrationActuator']['playEffect']('dual-rumble', {
+        startDelay: 0, duration: ms,
+        strongMagnitude: low / 65535, weakMagnitude: high / 65535
+    });
+    if (result && result['catch']) result['catch'](function () {});
+    return 1;
+});
+#endif
 class SdlPad final : public Device {
 public:
     explicit SdlPad(SDL_GameController* pad) : pad_(pad) {}
@@ -43,9 +66,19 @@ public:
         const auto low = Uint16(int(large) * 257 * strength / 100);
         const auto high = Uint16((small & 1) ? 65535 * strength / 100 : 0);
         // Renewed each field; a stalled client cannot leave the pad vibrating indefinitely.
+#ifdef __EMSCRIPTEN__
+        WebRumble(SDL_GameControllerName(pad_), low, high, 150);
+#else
         SDL_GameControllerRumble(pad_, low, high, 150);
+#endif
     }
-    bool HasMotors() const override { return SDL_GameControllerHasRumble(pad_) == SDL_TRUE; }
+    bool HasMotors() const override {
+#ifdef __EMSCRIPTEN__
+        return true; // the browser reports the actuator only with the pad, not as a capability
+#else
+        return SDL_GameControllerHasRumble(pad_) == SDL_TRUE;
+#endif
+    }
     std::string Name() const override {
         const char* name = SDL_GameControllerName(pad_);
         return name ? name : "SDL gamepad";
