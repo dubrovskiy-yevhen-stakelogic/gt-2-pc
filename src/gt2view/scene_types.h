@@ -67,6 +67,12 @@ constexpr uint32_t kHdUi = 1u << 17; // Offline enlarged indices; the palette st
 // "nearness" 0..3 (3 - ((word0 >> 27) & 3), the original's OT offset of 16 entries per step): coplanar decals are
 // drawn on top of the surface they lie on by a small relative depth offset (vertex shader).
 constexpr uint32_t kSemiTransparent = 1u << 10, kCullBack = 1u << 11, kNearTierShift = 12;
+// A flat road decal (start/finish line, kerb, painted strip) lying on the asphalt. It gets a fixed extra depth
+// offset so a subpixel camera step cannot flip it against the road it is painted on.
+constexpr uint32_t kCourseDecal = 1u << 29;
+// Course road texels: a one-texel prefilter of saturated/pale painted texels (baked lines), so a moving camera
+// fades the line edge instead of crawling. Asphalt stays sharp.
+constexpr uint32_t kCourseSoft = 1u << 19;
 // kIntegerModulate: textured 2D (menus) - the colour modulation in the GPU's integer form, (5-bit texel * 8-bit
 // colour) >> 7, so that the frame equals the console's (gt2view/menu_view.h).
 constexpr uint32_t kIntegerModulate = 1u << 14;

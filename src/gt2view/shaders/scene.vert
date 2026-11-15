@@ -94,6 +94,8 @@ void main() {
     // Ordering-table tier (flags bits 12-13, 0 = none): reversed Z, so a larger clip z is nearer. 2e-5 of the
     // distance per tier (0.6 mm at 30 m) keeps coplanar decals above their surface and nothing else.
     gl_Position.z *= 1.0 + float((inFlags >> 12) & 3u) * 2e-5;
+    // Flat course decals get a fixed extra offset over the asphalt they are painted on.
+    if ((inFlags & 536870912u) != 0u) gl_Position.z *= 1.0005;
     outTexel = inTexel;
     outColor = inColor;
     outPaintView=vec3(0,0,-1);

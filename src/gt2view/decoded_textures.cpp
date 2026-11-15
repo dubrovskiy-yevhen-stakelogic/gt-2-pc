@@ -14,17 +14,14 @@ void VkSceneRenderer::BeginModelTextures() {
 }
 void VkSceneRenderer::PromoteModelTextures(uint32_t first,const std::vector<SceneVertex>& vertices) {
     auto promoted=vertices;
-    size_t textured=0,hardware=0;
     for (auto& vertex:promoted) {
         if (!(vertex.flags & kExternalTexture)) continue;
         modelSourceSizes_[vertex.page]=vertex.clut;
         if(vertex.flags & kModelNative)nativeTextureSources_.insert(vertex.page);
-        ++textured;
         const auto it=modelSourcePixels_.find(vertex.page);
         uint32_t origin=0;
         if (it!=modelSourcePixels_.end() && modelAtlas_.Insert(vertex.page,vertex.clut&65535u,vertex.clut>>16,it->second,origin,nativeTextureSources_.contains(vertex.page))) {
             vertex.page=origin;vertex.flags|=kModelAtlasTexture;
-            ++hardware;
         }
     }
     if (modelAtlas_.dirty) {
@@ -44,7 +41,6 @@ void VkSceneRenderer::PromoteModelTextures(uint32_t first,const std::vector<Scen
         modelAtlas_.dirty=false;modelPending_=true;
     }
     SetVerticesRaw(first,promoted);
-    std::printf("GT4 texture atlas: %zu/%zu textured vertices use hardware sampling\n",hardware,textured);
 }
 void VkSceneRenderer::UploadModelImage() {
     if (modelFullSize_ && modelAtlas_.dirty) {
@@ -162,6 +158,7 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                 materials.erase(std::unique(materials.begin(), materials.end()), materials.end());
             }
             bool supported = true;
+            const bool soften = item.space == kSpaceWorld && item.vertexCount && (vertices[item.firstVertex].flags & kCourseSoft);
             const uint32_t misses = decoded_.misses;
             for (uint64_t key : it->second) {
                 if (key == ~uint64_t(0)) { supported = false; continue; }
@@ -173,7 +170,7 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                 // Decode from the CPU copy: repeated palette reads from the mapped
                 // GPU upload allocation can stall for seconds on discrete GPUs.
                 if (pass == 0) decoded_.Protect(uint32_t(key), clutDepth, item.softParticle != 0);
-                else decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows, item.softParticle != 0);
+                else decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows, item.softParticle != 0, soften);
             }
             cachedDraws_[draw] = supported && decoded_.misses == misses;
         }

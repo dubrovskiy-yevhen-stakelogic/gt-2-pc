@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <unordered_map>
@@ -46,7 +47,7 @@ public:
         }
     }
     template<class Word>
-    void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false) {
+    void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false, bool softenLines = false) {
         if (pixels.empty()) pixels.resize(size_t(kLayers) * kTexels);
         const uint64_t key = Key(page, clutDepth);
         protected_.insert(key);
@@ -101,6 +102,36 @@ public:
                         pixels[base + kTexels + i] = (pixel >> 24) == 128 ? pixel | 0xff000000u : 0;
                         if ((pixel >> 24) == 128) pixel = 0;
                     } else if (pixel) pixel |= 0xff000000u;
+                }
+                if (softenLines) {
+                    const size_t base = size_t(entry.slot) * kTexels;
+                    const std::vector<uint32_t> source(pixels.begin() + base, pixels.begin() + base + kTexels);
+                    const auto painted = [](uint32_t p) {
+                        if ((p >> 24) != 0xff) return false;
+                        const int r = p & 255, g = (p >> 8) & 255, b = (p >> 16) & 255;
+                        const int lo = std::min({r, g, b}), hi = std::max({r, g, b});
+                        return hi - lo > 24 || lo > 0x80;
+                    };
+                    for (uint32_t y = 0; y < 256; ++y) for (uint32_t x = 0; x < 256; ++x) {
+                        const size_t at = y * 256 + x;
+                        const uint32_t center = source[at];
+                        if ((center >> 24) != 0xff) continue;
+                        bool near = painted(center);
+                        for (int dy = -1; dy <= 1 && !near; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                            const int nx = int(x) + dx, ny = int(y) + dy;
+                            if (nx >= 0 && nx < 256 && ny >= 0 && ny < 256 && painted(source[size_t(ny) * 256 + nx])) { near = true; break; }
+                        }
+                        if (!near) continue;
+                        uint32_t r = 0, g = 0, b = 0, count = 0;
+                        for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                            const int nx = int(x) + dx, ny = int(y) + dy;
+                            if (nx < 0 || nx >= 256 || ny < 0 || ny >= 256) continue;
+                            const uint32_t p = source[size_t(ny) * 256 + nx];
+                            if ((p >> 24) != 0xff) continue;
+                            r += p & 255; g += (p >> 8) & 255; b += (p >> 16) & 255; ++count;
+                        }
+                        if (count) pixels[base + at] = (r / count) | ((g / count) << 8) | ((b / count) << 16) | 0xff000000u;
+                    }
                 }
                 target = {page, clutDepth, (entry.slot + 1) | (classes == 2 ? 65536u : 0u) | (classes == 3 ? 131072u : 0u), 1};
                 uploads.push_back(entry.slot);

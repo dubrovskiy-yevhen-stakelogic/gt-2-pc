@@ -3370,6 +3370,28 @@ private:
                 const size_t first = out.size();
                 std::vector<std::array<float, 3>> ring;
                 for (size_t c = 0; c < (p.IsQuad() ? 4u : 3u); c++) ring.push_back(TrackVertexToWorld(chunk, shape.vertices[p.vertex[c]]));
+                // Saturated, pale or thin horizontal road faces are decals (start/finish line, kerb, painted strip)
+                // lying on the asphalt; give them their own tiny depth offset. The road itself is large and grey.
+                if (!extended && &shape==&chunk.road && ring.size() >= 3) {
+                    const int lo = std::min({int(p.color[0][0]), int(p.color[0][1]), int(p.color[0][2])});
+                    const int hi = std::max({int(p.color[0][0]), int(p.color[0][1]), int(p.color[0][2])});
+                    bool decal = hi - lo > 24 || lo > 0x80;
+                    if (!decal) {
+                        const std::array<float, 3> e1{ring[1][0] - ring[0][0], ring[1][1] - ring[0][1], ring[1][2] - ring[0][2]};
+                        const std::array<float, 3> e2{ring[2][0] - ring[0][0], ring[2][1] - ring[0][1], ring[2][2] - ring[0][2]};
+                        const std::array<float, 3> n{e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+                                                     e1[0] * e2[1] - e1[1] * e2[0]};
+                        const float area2 = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+                        float longest = 0;
+                        for (size_t a = 0; a < ring.size(); ++a) for (size_t b = a + 1; b < ring.size(); ++b) {
+                            const float dx = ring[a][0] - ring[b][0], dy = ring[a][1] - ring[b][1], dz = ring[a][2] - ring[b][2];
+                            longest = std::max(longest, std::sqrt(dx * dx + dy * dy + dz * dz));
+                        }
+                        decal = longest > 1e-4f && area2 / longest < 1.5f && std::abs(n[1]) > 0.5f * area2;
+                    }
+                    if (decal) extra |= kCourseDecal;
+                    extra |= kCourseSoft;
+                }
                 CourseSurfaceMesh mesh;
                 if(&shape==&chunk.road)mesh=CoursePolygonMesh(chunk,p,physical[pi]);
                 else{mesh.positions.assign(ring.begin(),ring.end());mesh.weights.resize(4);for(size_t k=0;k<4;++k)mesh.weights[k][k]=1;const auto order=CoursePolygonTriangles(p.IsQuad());mesh.indices.assign(order.begin(),order.end());}

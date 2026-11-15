@@ -835,7 +835,10 @@ void VkSceneRenderer::FlushFrameUploads() {
     deferUploads_ = false;
 }
 void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>& vertices) {
-    if (first>=kModelSetVertexBase && first!=kMenuCarCompositeVertexBase && !vertices.empty()) {
+    // Only the eight native model-set slots use the external-texture atlas. The paint-probe/scenery billboards and
+    // the menu composite live above them and must not run the promotion (and its per-vertex copy) every frame.
+    const uint32_t modelSetEnd = kModelSetVertexBase + 8 * kModelSetVertexStride;
+    if (first >= kModelSetVertexBase && first < modelSetEnd && !vertices.empty()) {
         PromoteModelTextures(first,vertices); return;
     }
     SetVerticesRaw(first,vertices);
