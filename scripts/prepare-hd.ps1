@@ -76,7 +76,7 @@ function Write-HdManifest([string]$Folder,[string]$Profile) {
     [ordered]@{format=1;profile=$Profile;model='realesrgan-x4plus';scale=4;ui='indexed-scale4x-v2';fonts='palette-contours4x-v1';pictures='source-bounded-v1';video='source-bounded-v1';files=$files} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Folder 'manifest.json') -Encoding UTF8
 }
 $discs = @()
-foreach ($mode in @('arcade','simulation')) {
+foreach ($mode in @('arcade','simulation','combined')) {
     $path = Join-Path $Runtime "$mode/disc.raw2352"
     if (Test-Path -LiteralPath $path) {
         $json = & $inspect inspect $path
@@ -170,7 +170,7 @@ if ($HdMedia -ne 'Original') {
             (Test-Path -LiteralPath (Join-Path $previousHd 'movies'))) {
             Copy-Item -LiteralPath (Join-Path $previousHd 'movies') -Destination (Join-Path $stage 'movies') -Recurse
         }
-        if ($HdMedia -eq 'MenusAndMovies' -and $disc.mode -eq 'arcade') {
+        if ($HdMedia -eq 'MenusAndMovies' -and $disc.mode -in @('arcade','combined')) {
             New-Item -ItemType Directory -Force -Path (Join-Path $stage 'movies') | Out-Null
             foreach ($id in $Movies) {
                 if ($id -notin @(24,25,26)) { throw 'Only full-screen movies 24, 25 and 26 are supported.' }
