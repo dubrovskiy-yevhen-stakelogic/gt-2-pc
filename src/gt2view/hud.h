@@ -148,7 +148,8 @@ private:
         uint32_t color[4] = {};  // GP0 colour words (0xBBGGRR)
         int u = 0, v = 0, w = 0, h = 0;
         uint16_t clut = 0;
-        bool semi = false, gouraud = false, textured = false;
+        float fx[4] = {}, fy[4] = {}; // subpixel corners (textured quads); x / y keep their rounded values for dumps
+        bool semi = false, gouraud = false, textured = false, subpixel = false;
         int anchor = 0;
     };
     struct Quad {
@@ -167,13 +168,14 @@ private:
     void Packet(std::initializer_list<Cmd> cmds);
     void Mode(uint16_t tpage);
     void SpriteAt(int x, int y, const gt2::HudSpriteDesc& d, uint32_t colorWord); // RECT with the colour word's flags
+    void SpriteAtF(float x, float y, const gt2::HudSpriteDesc& d, uint32_t colorWord); // subpixel (input-display arrows)
     void SpriteCentred(int cx, int cy, const gt2::HudSpriteDesc& d, uint32_t colorWord);
     void Tile(int x, int y, int w, int h, uint32_t colorWord);
     void PolyF4(const int xs[4], const int ys[4], uint32_t colorWord);
     void PolyG4(const int xs[4], const int ys[4], const uint32_t colors[4]);
     // A textured quad (u0, v0)..(u1, v1) of the texture page / CLUT; the corners are x / y, in the GPU's
-    // TL, TR, BL, BR order (the same order as PolyF4).
-    void TexturedQuad(const int xs[4], const int ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord);
+    // TL, TR, BL, BR order (the same order as PolyF4). Subpixel corners keep a rotated rectangle rectangular.
+    void TexturedQuad(const float xs[4], const float ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord);
     void Bar(int x, int y, int w);                         // 0x8006B77C with the rectangle 0x8002F8E0
     void Glyphs(const std::vector<gt2::HudFontSprite>& sprites, uint32_t colorWord);
     void Needle(int angle, int pivotX, int pivotY, const gt2::HudTables::Needle& n); // 0x8002BF14
