@@ -932,6 +932,7 @@ public:
     void UpdateCarReflection(int slot, const float* world, const std::array<std::array<float, 3>, 3>& cameraAxes, uint16_t tpage = kEnvMapTpage,
                              uint16_t clut = kEnvMapClut, uint8_t colour = 0x60, size_t lodIndex = 0, uint32_t rowBase = 0,
                              bool cockpit = false) {
+        if (!gt2::carReflections) return; // Off: no reflection geometry/pass on any car
         Slot& s = slots_[size_t(slot)];
         if (UsesGt4(slot)) {
             // Store the car's world rotation for mono reflection lookups. The

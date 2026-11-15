@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add **Off** to the GT2 car-reflection setting; the preference is shared between disc profiles and a saved `modern_car_reflections` still selects Modern.
 - Keep a 40 ms SDL audio queue at the output device's sample rate, including 96/192 kHz, and stop cleanly on resampler errors.
 
 - Latch Simulation damage when entering an event so changes to preferences cannot alter its replay. Save the native damage option with the replay, retaining GT event-table selection; changes apply when entering the next event.
