@@ -106,7 +106,7 @@ int GameMain(int argc, char** argv) {
                   "               VR checks (tests\\xr): [--vr-ipd M] [--vr-original-fov] [--vr-eye WxH] [--vr-pose-log <csv>]\n"
                   "               movies (Arcade disc, docs/formats/str_video.md): [--no-movies] [--movies] (boot intro also in scripted runs) [--movie N] (play one, 0..26)\n"
                   "               mods (docs/formats/car_json.md, track_json.md): [--mods <dir>] (<dir>\\cars\\<id>.json, <dir>\\tracks\\<name>.json) [--ai-cars id,id,...] [--mod-physics-check <steps>]\n"
-                  "               graphics (settings.txt / PC SETTINGS; docs/formats/modern_graphics.md): [--vanilla] [--modern] [--frame-rate original|display] [--frame-cap N]\n"
+                  "               graphics (settings.txt / PC SETTINGS; docs/formats/modern_graphics.md): [--vanilla] [--compatibility] [--modern] [--frame-rate original|display] [--frame-cap N]\n"
                   "               [--vsync 0|1] [--render-scale 50..200] [--msaa 1|2|4|8] [--texture-filter nearest|smooth] [--texture-mapping perspective|affine]\n"
                   "               [--draw-distance original|all|<m>] [--max-detail] [--frame-log <csv>] [--interp-alpha A]");
         return 2;
@@ -187,7 +187,8 @@ int GameMain(int argc, char** argv) {
                                                       "--sponsors", "--sponsor-seed", "--mods", "--ai-cars", "--generated-atan", "--laps", "--music",
                                                       // the graphics settings (graphics_options.h) apply to every mode
                                                       "--vanilla", "--modern", "--frame-rate", "--frame-cap", "--vsync", "--render-scale", "--msaa",
-                                                      "--texture-filter", "--texture-mapping", "--draw-distance", "--frame-log", "--windowed"};
+                                                      "--texture-filter", "--texture-mapping", "--draw-distance", "--frame-log", "--windowed",
+                                                      "--compatibility"};
             const std::string a = argv[i];
             if (a.rfind("--", 0) != 0) continue; // a flag's value
             if (std::find(std::begin(kTitleFlags), std::end(kTitleFlags), a) == std::end(kTitleFlags)) titleMode = false;
@@ -197,14 +198,16 @@ int GameMain(int argc, char** argv) {
             if (std::string(argv[i]) == "--settings") titleOptions.settingsPath = argv[i + 1];
         const shell::GraphicsSettings fileGraphics = shell::PcSettings::Load(titleOptions.settingsPath).graphics;
         SetGraphicsFromSettings(fileGraphics);
+        if (ApplyFirstRunPreset(titleOptions.settingsPath)) std::printf("graphics: compatibility preset saved (first run)\n");
         gt2::SetGt4ModelSetRoot(argv[1], gt2::os::DataRoot());
         LoadOverlaySettings(titleOptions.settingsPath);
         std::string frameLogPath;  // --frame-log <csv> (race_view.h)
         double interpAlpha = -1;   // --interp-alpha A (race_view.h)
+        const shell::GraphicsSettings initialGraphics = CurrentGraphics(); // the base of the command line's flags
         for (int i = 2; i < argc; i++) {
             std::string a = argv[i];
             if (a == "--race-screen-check") { raceScreenCheck.assign(argv + i + 1, argv + argc); break; } // panel.h RunRaceScreenCheck
-            if (ParseGraphicsFlag(argc, argv, i, fileGraphics)) continue; // --vanilla, --modern, --frame-rate ... --max-detail
+            if (ParseGraphicsFlag(argc, argv, i, initialGraphics)) continue; // --vanilla, --compatibility, --modern, --frame-rate ... --max-detail
             if (a == "--frame-log" && i + 1 < argc) { frameLogPath = argv[++i]; continue; }
             if (a == "--interp-alpha" && i + 1 < argc) { interpAlpha = std::clamp(std::atof(argv[++i]), 0.0, 1.0); continue; }
             if (a == "--race-menu-check") { raceMenuCheck = true; break; }                                  // race_menu_check.h

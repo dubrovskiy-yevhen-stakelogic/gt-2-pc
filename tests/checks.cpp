@@ -219,6 +219,14 @@ static void CheckPcChanges(const char* discPath) {
     Check(restored.carReflections && !restored.modernCarReflections, "original car reflections survive the tri-state key");
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
+    const shell::GraphicsSettings compatibility = shell::GraphicsSettings::Compatibility();
+    Check(compatibility.lowMemory && compatibility.msaa == 1 && compatibility.renderScale < 100,
+          "compatibility preset lowers the scene and enables the low-memory regime");
+    Check(!shell::GraphicsSettings{}.lowMemory, "standard settings keep the decoded texture cache");
+    shell::GraphicsSettings compatibilityRestored;
+    std::istringstream compatibilitySettings(compatibility.Serialize());
+    while (std::getline(compatibilitySettings, line)) { const auto at = line.find('='); if (at != std::string::npos) compatibilityRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
+    Check(compatibilityRestored == compatibility, "compatibility preset survives the settings round trip");
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

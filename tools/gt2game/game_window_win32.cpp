@@ -7,11 +7,13 @@
 #include <dwmapi.h>
 
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
 #include <thread>
 #include <vector>
 
+#include "graphics_options.h"
 #include "gt2view/vk_context.h"
 
 namespace gt2game {
@@ -142,6 +144,10 @@ Win32Window::Win32Window(const std::string& title, int clientWidth, int clientHe
     if (withRenderer) {
         vulkan_ = std::make_unique<gt2view::VkContext>(hinst, hwnd_);
         renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*vulkan_);
+        if (CurrentGraphics().lowMemory) { // the compatibility profile: no decoded texture cache
+            renderer_->EnableDecodedTextures(false);
+            std::printf("graphics: low-memory profile, decoded texture cache off\n");
+        }
     }
     timeBeginPeriod(1);
 }

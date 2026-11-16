@@ -123,6 +123,20 @@ int main() {
             std::fprintf(stderr, "FAIL: 3D scene did not change between MSAA 1x and 8x\n");
             return 1;
         }
+        // The external texture store grows to the texel ranges content uses (the compatibility profile's memory win):
+        // a PS1-only upload keeps the small default allocation, the model-set range grows it.
+        const uint32_t texel = 0xffffffffu;
+        const uint64_t smallStore = renderer.AllocatedBytes();
+        renderer.UploadExternalTexture(0, 1, &texel);
+        if (renderer.AllocatedBytes() != smallStore) {
+            std::fprintf(stderr, "FAIL: a PS1-range external texel grew the store\n");
+            return 1;
+        }
+        renderer.UploadExternalTexture(gt2view::SceneRendererState::kModelSetTexelBase, 1, &texel);
+        if (renderer.AllocatedBytes() <= smallStore) {
+            std::fprintf(stderr, "FAIL: the model-set range did not grow the external store\n");
+            return 1;
+        }
         std::puts("PASS: MSAA affects the 3D scene and leaves the 2D HUD untouched");
         return 0;
     } catch (const std::exception& e) {

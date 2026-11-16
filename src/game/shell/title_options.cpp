@@ -128,6 +128,7 @@ bool GraphicsSettings::Parse(const std::string& key, const std::string& value) {
     else if (key == "texture_mapping") affine = value == "affine";
     else if (key == "scenery_detail") maxDetail = value == "max";
     else if (key == "draw_distance") drawDistance = value == "all" ? -1 : value == "original" ? 0 : clamp(v, 0, 100000);
+    else if (key == "low_memory") lowMemory = v != 0;
     else return false;
     return true;
 }
@@ -150,6 +151,7 @@ std::string GraphicsSettings::Serialize() const {
     else if (drawDistance == 0) o << "original";
     else o << drawDistance;
     o << "\n";
+    o << "low_memory=" << int(lowMemory) << "\n";
     return o.str();
 }
 

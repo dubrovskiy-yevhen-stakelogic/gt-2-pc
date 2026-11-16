@@ -106,6 +106,9 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: + every chunk within N m;
                                            // -1: every chunk of the course
+    // The compatibility profile's memory regime, not a menu row: the decoded texture cache stays off (the first-run
+    // preset also defaults GT4 models off and the VR eye resolution to 100%). It applies at startup, after a restart.
+    bool lowMemory = false;
     static GraphicsSettings Vanilla() {
         GraphicsSettings g;
         g.frameRate = kFrameRateOriginal;
@@ -117,6 +120,20 @@ struct GraphicsSettings {
         g.smoothTextures = true;
         g.maxDetail = true;
         g.drawDistance = 1000;
+        return g;
+    }
+    // Discussion #77, phase 3: the preset for the Vulkan 1.1/1.2 fallback and GPUs under ~2 GB. Low scene resolution,
+    // no MSAA or HD extras, and the low-memory regime above.
+    static GraphicsSettings Compatibility() {
+        GraphicsSettings g;
+        g.renderScale = 75;
+        g.msaa = 1;
+        g.smoothTextures = false;
+        g.affine = false;
+        g.modernCarReflections = false;
+        g.maxDetail = false;
+        g.drawDistance = 0;
+        g.lowMemory = true;
         return g;
     }
     bool operator==(const GraphicsSettings&) const = default;

@@ -210,7 +210,7 @@ void LoadOverlaySettings(const std::string& basePath) {
     raceView = -1;
     bool legacyOpenView = false;
     carSeatHeights.clear();
-    gt4ModelSet = gt2::Gt4ModelSetInstalled();
+    gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the compatibility profile defaults it off
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;

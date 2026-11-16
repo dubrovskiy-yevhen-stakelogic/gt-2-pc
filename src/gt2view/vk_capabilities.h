@@ -41,9 +41,19 @@ struct VulkanCapabilities {
     uint32_t loaderVersion = 0;
     std::vector<GpuCapability> gpus;
     std::string error; // empty when the loader and a 1.1 instance were available
-    // The best GPU's profile (the renderer prefers discrete GPUs).
+    // The GPU the renderer would choose (first discrete, else the first usable one); null without a usable GPU.
+    const GpuCapability* best() const;
+    // The best GPU's profile.
     GraphicsProfile profile() const;
 };
+
+// The first-run recommendation for the PC settings preset: the render-pass path, or a GPU with less than 2 GB of
+// device-local memory (the renderer's fixed buffers are several hundred MB).
+inline bool RecommendsCompatibility(const VulkanCapabilities& caps) {
+    if (caps.profile() == GraphicsProfile::Compatibility) return true;
+    const GpuCapability* gpu = caps.best();
+    return gpu && gpu->deviceLocalBytes && gpu->deviceLocalBytes < 2ull * 1024 * 1024 * 1024;
+}
 
 // Probes the Vulkan loader dynamically. Never throws and keeps working when the loader is absent.
 VulkanCapabilities ProbeVulkan();

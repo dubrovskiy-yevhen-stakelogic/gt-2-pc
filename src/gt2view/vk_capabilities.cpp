@@ -67,19 +67,24 @@ std::string VersionText(uint32_t version) {
 
 } // namespace
 
-GraphicsProfile VulkanCapabilities::profile() const {
+const GpuCapability* VulkanCapabilities::best() const {
     // The same preference as the renderer's device choice: the first discrete GPU, else the first usable one.
-    GraphicsProfile best = GraphicsProfile::Unsupported;
+    const GpuCapability* best = nullptr;
     int bestScore = -1;
     for (const auto& gpu : gpus) {
         if (gpu.profile == GraphicsProfile::Unsupported) continue;
         const int score = gpu.type == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 2 : 1;
         if (score > bestScore) {
             bestScore = score;
-            best = gpu.profile;
+            best = &gpu;
         }
     }
     return best;
+}
+
+GraphicsProfile VulkanCapabilities::profile() const {
+    const GpuCapability* gpu = best();
+    return gpu ? gpu->profile : GraphicsProfile::Unsupported;
 }
 
 VulkanCapabilities ProbeVulkan() {
@@ -233,6 +238,9 @@ std::string VulkanDiagnosticReport() {
     if (const char* forced = std::getenv("GT2_VK_RENDERPASS"); forced && std::strcmp(forced, "1") == 0)
         text += " - forced by GT2_VK_RENDERPASS=1";
     text += "\n";
+    if (caps.profile() != GraphicsProfile::Unsupported) {
+        text += std::string("  recommended settings preset: ") + (RecommendsCompatibility(caps) ? "compatibility" : "standard") + "\n";
+    }
     return text;
 }
 

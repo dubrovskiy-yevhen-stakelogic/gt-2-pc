@@ -1,4 +1,5 @@
 #include "game_window.h"
+#include "graphics_options.h"
 #include "gt2view/vk_context.h"
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
@@ -75,6 +76,10 @@ public:
             if (render) {
                 context_ = std::make_unique<gt2view::VkContext>(nullptr, window_);
                 renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*context_);
+                if (CurrentGraphics().lowMemory) { // the compatibility profile: no decoded texture cache
+                    renderer_->EnableDecodedTextures(false);
+                    std::printf("graphics: low-memory profile, decoded texture cache off\n");
+                }
             }
         } catch (...) {
             renderer_.reset(); context_.reset();

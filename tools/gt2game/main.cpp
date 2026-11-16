@@ -5,6 +5,7 @@
 #include "../gt2mac/launch_protocol.h"
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
+#include "graphics_options.h"
 #ifndef __EMSCRIPTEN__
 #include "gt2view/vk_capabilities.h"
 #endif
@@ -103,6 +104,7 @@ int main(int argc, char** argv) {
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
             "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
+        ApplyFirstRunPreset((saves / "settings.txt").string()); // before the picker's overlay settings
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;

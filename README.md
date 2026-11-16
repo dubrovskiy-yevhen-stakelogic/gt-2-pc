@@ -255,9 +255,12 @@ No firmware, extracted models or generated HD asset packs are distributed.
 ## Requirements and limits
 
 The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
-rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. Run
-`gt2game --diagnose` to print the loader, the GPUs, their limits and the path
-this machine gets. `GT2_VK_RENDERPASS=1` forces the render-pass path.
+rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. On first run
+the probe selects the **Compatibility** settings preset (75% scene resolution,
+no MSAA, PS1 textures, original scenery detail, lower memory) for a Vulkan
+1.1/1.2 driver or a GPU under ~2 GB; `--compatibility` selects it explicitly and
+`--diagnose` prints the loader, GPUs, limits, the path and the recommended
+preset. `GT2_VK_RENDERPASS=1` forces the render-pass path.
 
 Browser play requires WebGL2, an 8192-pixel texture limit and at least 512 array
 texture layers. The complete BIN is held in memory. One disc is available per

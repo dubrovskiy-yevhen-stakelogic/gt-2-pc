@@ -171,7 +171,8 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     modelUpload_=CreateBuffer(4,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     *static_cast<uint32_t*>(modelUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(handUpload_.mapped) = 0xffffffffu; handPending_ = true;
-    externalBuffer_ = CreateBuffer(sizeof(uint32_t) * kExternalTexels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    externalBuffer_ = CreateBuffer(sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT); // grows to the used texels
+    externalCapacity_ = 1;
     std::memset(externalBuffer_.mapped, 0, static_cast<size_t>(externalBuffer_.size));
     viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes
     std::memset(viewBuffer_.mapped, 0, static_cast<size_t>(viewBuffer_.size));
@@ -273,13 +274,49 @@ VkSceneRenderer::Buffer VkSceneRenderer::CreateBuffer(VkDeviceSize size, VkBuffe
     Check(vkAllocateMemory(device_, &mai, nullptr, &b.memory), "vkAllocateMemory");
     Check(vkBindBufferMemory(device_, b.buffer, b.memory, 0), "vkBindBufferMemory");
     Check(vkMapMemory(device_, b.memory, 0, VK_WHOLE_SIZE, 0, &b.mapped), "vkMapMemory");
+    allocatedBytes_ += b.size;
+    ReportAllocation();
     return b;
 }
 
 void VkSceneRenderer::DestroyBuffer(Buffer& b) {
     if (b.buffer) vkDestroyBuffer(device_, b.buffer, nullptr);
-    if (b.memory) vkFreeMemory(device_, b.memory, nullptr);
+    if (b.memory) { allocatedBytes_ -= b.size; vkFreeMemory(device_, b.memory, nullptr); }
     b = {};
+}
+
+void VkSceneRenderer::ReportAllocation() {
+    constexpr VkDeviceSize step = 64ull << 20;
+    if (allocatedBytes_ / step <= reportedBytes_ / step) return;
+    reportedBytes_ = allocatedBytes_;
+    std::printf("graphics: %llu MiB GPU memory allocated\n", static_cast<unsigned long long>(allocatedBytes_ / (1024 * 1024)));
+}
+
+// Grows the external RGBA8 store to cover `texels`. The store's addresses are absolute, so the first GT4/native model
+// upload reaches its range's base and the buffer grows to there; a PS1-only install never allocates the full size.
+void VkSceneRenderer::EnsureExternalCapacity(uint32_t texels) {
+    if (texels <= externalCapacity_) return;
+    constexpr uint32_t chunk = 1u << 20; // 1 M texels = 4 MiB
+    uint32_t capacity = (texels + chunk - 1) & ~(chunk - 1);
+    if (capacity > kExternalTexels) capacity = kExternalTexels;
+    vkDeviceWaitIdle(device_);
+    Buffer grown = CreateBuffer(size_t(capacity) * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    if (externalBuffer_.mapped && externalBuffer_.size)
+        std::memcpy(grown.mapped, externalBuffer_.mapped, static_cast<size_t>(externalBuffer_.size));
+    const VkDescriptorBufferInfo info{grown.buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstBinding = 1;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.pBufferInfo = &info;
+    for (VkDescriptorSet set : {descSet_, mirrorSourceSet_}) {
+        write.dstSet = set;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+    DestroyBuffer(externalBuffer_);
+    externalBuffer_ = grown;
+    externalCapacity_ = capacity;
+    std::printf("graphics: external texture store %u MiB\n", capacity * 4 / (1024 * 1024));
 }
 
 void VkSceneRenderer::CreateSwapchain() {
@@ -452,6 +489,9 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
     }
     Check(vkAllocateMemory(device_, &mai, nullptr, &img.memory), "vkAllocateMemory(scene)");
     Check(vkBindImageMemory(device_, img.image, img.memory, 0), "vkBindImageMemory(scene)");
+    img.allocated = req.size;
+    allocatedBytes_ += req.size;
+    ReportAllocation();
     VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     vci.image = img.image;
     vci.viewType = cube?VK_IMAGE_VIEW_TYPE_CUBE:layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
@@ -473,7 +513,7 @@ void VkSceneRenderer::DestroyImage(Image& img) {
         if (v) vkDestroyImageView(device_, v, nullptr);
     if (img.view) vkDestroyImageView(device_, img.view, nullptr);
     if (img.image && img.ownsImage) vkDestroyImage(device_, img.image, nullptr);
-    if (img.memory) vkFreeMemory(device_, img.memory, nullptr);
+    if (img.memory) { allocatedBytes_ -= img.allocated; vkFreeMemory(device_, img.memory, nullptr); }
     img = {};
 }
 
@@ -942,6 +982,8 @@ void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uin
 
 void VkSceneRenderer::UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba) {
     if (uint64_t(firstTexel) + count > kExternalTexels) throw std::runtime_error("UploadExternalTexture: texels out of range");
+    if (!count) return;
+    EnsureExternalCapacity(firstTexel + count);
     WriteBuffer(externalBuffer_, size_t(firstTexel) * sizeof(uint32_t), rgba, size_t(count) * sizeof(uint32_t));
     if (firstTexel>=kModelSetTexelBase) {
         modelSourcePixels_[firstTexel].assign(rgba,rgba+count);

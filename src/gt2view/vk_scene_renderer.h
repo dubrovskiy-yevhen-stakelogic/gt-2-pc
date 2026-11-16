@@ -91,6 +91,9 @@ public:
     bool MenuCarMsaaTarget() const override { return true; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }
+    // Device memory this renderer has allocated so far (buffers, images, swapchain images excluded), for the log and
+    // the compatibility profile's budget.
+    uint64_t AllocatedBytes() const { return uint64_t(allocatedBytes_); }
     double EnvironmentGpuMilliseconds() const {return environmentGpuMs_;}
     double GpuMilliseconds() const { return gpuMs_; } // -1 when queue timestamps are unavailable
     // Corpus tools replace all model slots between cars. Give each independent
@@ -159,6 +162,7 @@ private:
         VkImageView layer[6] = {};           // individual stereo eyes or environment cube faces
         uint32_t layers = 1, mipLevels = 1;
         bool ownsImage = true;
+        VkDeviceSize allocated = 0;          // memory size of this image's allocation
     };
     Image CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples, VkImageAspectFlags aspect,
                       uint32_t layers = 1, uint32_t mipLevels = 1,bool cube = false);
@@ -203,6 +207,12 @@ private:
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
     void DestroyBuffer(Buffer& b);
+    // The external texture store grows to the highest texel a model / HD asset uses; a PS1-only install never pays
+    // its full 116 MiB.
+    void EnsureExternalCapacity(uint32_t texels);
+    void ReportAllocation();
+    VkDeviceSize allocatedBytes_ = 0, reportedBytes_ = 0;
+    uint32_t externalCapacity_ = 0;
     uint32_t FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags flags) const;
     void SaveScreenshot(const std::string& path);
     void SaveReadback(const std::string& path, VkExtent2D extent, VkFormat format);

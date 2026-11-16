@@ -119,6 +119,8 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
         DestroyImage(decodedImage_);
         decodedImage_ = CreateImage({256, 256}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, DecodedTextureCache::kLayers, 9);
+        std::printf("graphics: decoded texture cache enabled (%zu MiB upload)\n",
+                    size_t(DecodedTextureCache::kLayers) * DecodedTextureCache::kTexels * 4 / (1024 * 1024));
         VkDescriptorImageInfo info{decodedSampler_, decodedImage_.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = descSet_; write.dstBinding = 3; write.descriptorCount = 1;
