@@ -939,6 +939,7 @@ public:
             s.nativeModelRotation=RotationQuaternion(world);
             return;
         }
+        if (!gt2::carReflections) return;
         if (s.model.lods.empty()) {
             UpdateExternalReflection(slot, world, cameraAxes, tpage, clut, colour, rowBase);
             return;
@@ -1048,7 +1049,7 @@ public:
                 AppendGt4LampItems(items,slot,mvp,(brakeLit?1u:0u)+(courseNight_?2u:0u));
             }
         }
-        if (UsesGt4(slot) && !std::getenv("GT2_DEBUG_CABIN") && !std::getenv("GT2_DEBUG_EXTERIOR")) {
+        if (gt2::carReflections && UsesGt4(slot) && !std::getenv("GT2_DEBUG_CABIN") && !std::getenv("GT2_DEBUG_EXTERIOR")) {
             const auto& car=gt4Cars_[size_t(slot)];
             DrawItem reflection;
             reflection.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+car.count+car.cockpitCount+car.mirrorCount;
@@ -1059,7 +1060,7 @@ public:
             items.push_back(reflection);
             if(car.surfaceReflectionCount){reflection.firstVertex+=reflection.vertexCount;reflection.vertexCount=car.surfaceReflectionCount;reflection.blend=kBlendNativeSurfaceEnvironment;items.push_back(reflection);}
         }
-        if (s.reflectionCount && !UsesGt4(slot)) {
+        if (gt2::carReflections && s.reflectionCount && !UsesGt4(slot)) {
             DrawItem reflection;
             reflection.firstVertex = base + s.vertexCount + s.shadowCount;
             reflection.vertexCount = s.reflectionCount;
@@ -1075,6 +1076,7 @@ public:
         if(!UsesGt4(slot) || state>=6)return;
         const auto& car=gt4Cars_[size_t(slot)];
         for(const auto& range:(seated?car.cabinLamps:car.lamps))if(range.states & (1u<<state)) {
+            if(!gt2::carReflections && (range.blend==kBlendNativeEnvironment || range.blend==kBlendNativeSurfaceEnvironment))continue;
             DrawItem lamp;lamp.nativeModelRotation=slots_[size_t(slot)].nativeModelRotation;lamp.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+range.first;
             lamp.vertexCount=range.count;lamp.blend=range.blend;lamp.stpPass=range.blend==kBlendAlpha?3u:0u;
             lamp.cabinDepth=seated;std::copy_n(mvp,16,lamp.mvp);items.push_back(lamp);
@@ -1230,6 +1232,7 @@ public:
                             wheel.mvp[c * 4 + r] = mvp[r] * model[c * 4] + mvp[4 + r] * model[c * 4 + 1] + mvp[8 + r] * model[c * 4 + 2] + mvp[12 + r] * model[c * 4 + 3];
                     items.push_back(wheel);
                     if(UsesGt4(slot))for(const auto& part:gt4Cars_[size_t(slot)].attachments) {
+                        if(!gt2::carReflections && (part.blend==kBlendNativeEnvironment || part.blend==kBlendNativeSurfaceEnvironment))continue;
                         if(part.wheel!=int(w))continue;
                         const uint32_t lampState=(brakeLit?1u:0u)+(courseNight_?2u:0u);
                         if(part.lampStates && !(part.lampStates & (1u<<lampState)))continue;
@@ -1296,7 +1299,7 @@ public:
                 item.stpPass=range.alpha?3u:0u;items.push_back(item);
             }
             AppendGt4LampItems(items,slot,mvp,(brakeLit?1u:0u)+(courseNight_?2u:0u),true);
-            if(car.cockpitReflectionCount && !std::getenv("GT2_DEBUG_CABIN") && !std::getenv("GT2_DEBUG_EXTERIOR")) {
+            if(gt2::carReflections && car.cockpitReflectionCount && !std::getenv("GT2_DEBUG_CABIN") && !std::getenv("GT2_DEBUG_EXTERIOR")) {
                 item.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+car.cockpitReflectionFirst;
                 item.vertexCount=car.cockpitReflectionCount-car.cockpitSurfaceReflectionCount;item.blend=car.nativeMaterials.empty()?1:kBlendNativeEnvironment;
                 item.stpPass=0;items.push_back(item);
@@ -1312,7 +1315,7 @@ public:
         item.paint = StockPaint(slot,paint);
         std::copy(mvp, mvp + 16, item.mvp);
         items.push_back(item);
-        if (s.cockpitReflectionCount) {
+        if (gt2::carReflections && s.cockpitReflectionCount) {
             item.firstVertex += s.cockpitBodyCount;
             item.vertexCount = s.cockpitReflectionCount;
             item.paint = 0;

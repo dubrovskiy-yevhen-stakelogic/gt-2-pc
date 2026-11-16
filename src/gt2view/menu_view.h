@@ -45,14 +45,14 @@ public:
     void InvalidateCache() { cache_.valid = false; }
     // Polygon / line rules (gt2::MenuCanvas::Rules): the PS1 GPU's (default), or our interpreter GPU's to compare
     // with gt2play captures, which that GPU produced.
-    void SetRasterRules(gt2::MenuCanvas::Rules rules) { coverA_.rules = coverB_.rules = rules; }
+    void SetRasterRules(gt2::MenuCanvas::Rules rules) { InvalidateCache(); coverA_.rules = coverB_.rules = rules; }
     // The frame's size (default the menus' 512 x 480; the race overlay's full-screen views are 352 x 480, shown at the
     // same 4:3 display aspect). At most the canvas' size.
     void SetFrameSize(int width, int height) { frameWidth_ = width, frameHeight_ = height; }
     // Polygons as interpolated triangles (vertex colours, no dither; those with a drawing area of their own clipped to
     // it geometrically) instead of the exact rasterised pixels: for frames with large gouraud areas (the race overlay's
     // view headers), whose pixel runs would not fit the vertex range.
-    void SetInterpolatedPolygons(bool on) { interpolated_ = on; }
+    void SetInterpolatedPolygons(bool on) { if (interpolated_ != on) InvalidateCache(); interpolated_ = on; }
 
 private:
     struct Quad {
@@ -77,6 +77,7 @@ private:
     // Same prims in, same vertices and items out, so the drawn pixels are unchanged.
     struct Cache {
         bool valid = false;
+        bool smoothTextures = false;
         std::vector<gt2::MenuPrim> prims;
         std::vector<DrawItem> items; // the 2D items, without the 3D layer between items[0, split) and the rest
         size_t split = 0;

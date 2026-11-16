@@ -23,7 +23,7 @@ bool SamePrim(const gt2::MenuPrim& a, const gt2::MenuPrim& b) {
 }
 } // namespace
 
-void MenuView::UploadVram(const gt2::MenuVram& vram) { renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data()); }
+void MenuView::UploadVram(const gt2::MenuVram& vram) { InvalidateCache(); renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data()); }
 
 void MenuView::Emit(const gt2::MenuPrim& p) {
     const uint32_t mode = uint32_t(p.tpage >> 5) & 3;
@@ -196,6 +196,7 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
     const int background = frame.clearBehind ? -1 : frame.backgroundId;
     if (background != hdBackground_ || hdGeneration_ != gt2::hd::Generation() ||
         hdPictureRevision_ != renderer_.HdPictureRevision()) {
+        InvalidateCache();
         hdGeneration_=gt2::hd::Generation();
         hdBackground_ = background;
         hdSize_ = background < 0 ? 0 : UploadHdPicture(renderer_, "gt-background-" + std::to_string(background) + ".png", 512, 480);
@@ -214,7 +215,7 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
     }
     // Unchanged 2D layer: its vertices are still in this view's range (nothing else writes it while it shows), so
     // reuse them and only rebuild the 3D layer the frame interleaves. Same prims = same quads = same pixels.
-    if (cache_.valid && cache_.background == background && cache_.hdSize == hdSize_ &&
+    if (cache_.valid && cache_.smoothTextures == renderer_.Options().smoothTextures && cache_.background == background && cache_.hdSize == hdSize_ &&
         cache_.hdRevision == hdPictureRevision_ && cache_.width == frameWidth_ && cache_.height == frameHeight_ &&
         cache_.squarePixels == squarePixels && cache_.aspect == windowAspect && cache_.layer3dAt == frame.layer3dAt &&
         cache_.backgroundPrims == frame.backgroundPrims && cache_.hasLayer3d == bool(layer3d) &&
@@ -289,6 +290,7 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
         first = last + 1;
     }
     cache_.valid = true;
+    cache_.smoothTextures = renderer_.Options().smoothTextures;
     cache_.prims = frame.prims;
     cache_.background = background;
     cache_.hdSize = hdSize_;

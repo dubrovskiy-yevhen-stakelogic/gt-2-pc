@@ -210,6 +210,13 @@ static void CheckPcChanges(const char* discPath) {
     while (std::getline(settings, line)) { const auto at = line.find('='); if (at != std::string::npos) restored.Parse(line.substr(0, at), line.substr(at + 1)); }
     Check(restored == graphics && restored.renderHeight * 16 / 9 == 3840, "4K fixed resolution survives settings round trip");
     Check(restored.modernCarReflections,"modern car reflections survive settings round trip");
+    Check(restored.carReflections,"car reflections are on by default");
+    restored.Parse("car_reflections", "off");
+    Check(!restored.carReflections && !restored.modernCarReflections, "car reflections can be turned off");
+    restored.Parse("car_reflections", "modern");
+    Check(restored.carReflections && restored.modernCarReflections, "modern car reflections survive the tri-state key");
+    restored.Parse("car_reflections", "original");
+    Check(restored.carReflections && !restored.modernCarReflections, "original car reflections survive the tri-state key");
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
 

@@ -1056,7 +1056,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
                 "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
                 "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"),
-                "GT2 car reflections: " + std::string(graphics.modernCarReflections ? "Modern" : "Original"),
+                "GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"),
                 std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"), "Back"};
         }
         if (page == 1 && !vr) {
@@ -1233,7 +1233,11 @@ void ShowSettingsMenu(GameWindow& window) {
                         gt4ModelSet=!gt4ModelSet;
                         status=gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
                     }
-                    if (page==1 && selected==10 && direction) graphics.modernCarReflections=!graphics.modernCarReflections;
+                    if (page==1 && selected==10 && direction) {
+                        if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
+                        else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
+                        else { graphics.carReflections = false; graphics.modernCarReflections = false; }
+                    }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 8) {
