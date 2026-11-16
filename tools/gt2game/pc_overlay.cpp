@@ -1041,7 +1041,7 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
 
 // The port menu's first graphics page, top to bottom: the preset first, so one row changes everything.
 enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
-             kGfxHd, kGfxGt4, kGfxIntro, kGfxVibration, kGfxProfiler, kGfxMore, kGfxBack };
+             kGfxHd, kGfxGt4, kGfxIntro, kGfxProfiler, kGfxMore, kGfxBack };
 // Its "More graphics" sub-page: presentation timing, world detail, memory (Foveation exists in VR only; Back is last).
 enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreMemory, kMoreFoveation };
 
@@ -1100,7 +1100,6 @@ void ShowSettingsMenu(GameWindow& window) {
             rows.push_back("HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"));
             rows.push_back(std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"));
             rows.push_back("PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"));
-            rows.push_back("Vibration: " + std::to_string(rumble) + "%");
             rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
             rows.push_back("More graphics..."); // last: the sub-page of the options that do not fit here
             rows.push_back("Back");
@@ -1133,13 +1132,15 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 6) {
             title = "GT2 VR / CONTROLS";
             rows = {"Steering and wheel", "Button bindings", std::string("Brake to reverse (AT): ")+(controlBindings.brakeReverse ? "ON" : "OFF"),
-                std::string("Steering stick: ")+(controlBindings.steeringStick ? "Right" : "Left"), "Reset controls to defaults", "Back"};
+                std::string("Steering stick: ")+(controlBindings.steeringStick ? "Right" : "Left"), "Reset controls to defaults",
+                "Vibration: " + std::to_string(rumble) + "%", "Back"};
         }
         if (page == 6 && !vr) {
             rows = {std::string("Gamepad bindings: ") + (desktopCustom ? "Custom" : "Original game"), "Button bindings",
                 std::string("Brake to reverse (AT): ") + (desktopBindings.brakeReverse ? "ON" : "OFF"),
                 std::string("Custom steering stick: ") + (desktopBindings.steeringStick ? "Right" : "Left"),
-                "Reset controls to defaults", "DualSense pedal resistance: " + std::to_string(adaptive) + "%", "Back"};
+                "Reset controls to defaults", "DualSense pedal resistance: " + std::to_string(adaptive) + "%",
+                "Vibration: " + std::to_string(rumble) + "%", "Back"};
         }
         if (page == 7) {
             title = "GT2 VR / BINDINGS / PAGE " + std::to_string(controlPage+1);
@@ -1268,7 +1269,6 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == kGfxMsaa) graphics.msaa = Cycle(graphics.msaa, samples, direction);
                     if (selected == kGfxDistance) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
-                    if (selected == kGfxVibration) rumble = std::clamp(rumble + direction * 5, 0, 100);
                     if (selected == kGfxFilter) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == kGfxProfiler) profiler = !profiler;
                     if (selected == kGfxHd && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
@@ -1348,9 +1348,9 @@ void ShowSettingsMenu(GameWindow& window) {
                     else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 7 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
                 }
 #ifdef _WIN32
-                else if (page == 6 && accept && selected == (vr ? 5 : 6)) {
+                else if (page == 6 && accept && selected == (vr ? 6 : 7)) {
                     ShowWheelSettings(window);
-                } else if (page == 6 && accept && selected == (vr ? 6 : 7)) { page = 0; selected = 0; }
+                } else if (page == 6 && accept && selected == (vr ? 7 : 8)) { page = 0; selected = 0; }
 #endif
                 else if (page == 6 && !vr) {
                     if (selected == 0 && direction) desktopCustom = !desktopCustom;
@@ -1359,15 +1359,17 @@ void ShowSettingsMenu(GameWindow& window) {
                     else if (selected == 3 && direction) desktopBindings.steeringStick = 1 - desktopBindings.steeringStick;
                     else if (selected == 4 && accept) { desktopCustom = false; desktopBindings = gt2::vr::DesktopBindings(); }
                     else if (selected == 5 && direction) adaptive = std::clamp(adaptive + direction * 10, 0, 100);
-                    else if (selected == 6 && accept) { page = 0; selected = 0; }
-                    status = "Saved. Original game bindings remain available.";
+                    else if (selected == 6 && direction) { rumble = std::clamp(rumble + direction * 5, 0, 100); window.Input().SetRumbleScale(rumble); status = "Saved. Vibration strength."; }
+                    else if (selected == 7 && accept) { page = 0; selected = 0; }
+                    if (selected != 6) status = "Saved. Original game bindings remain available.";
                 } else if (page == 6) {
                     if (selected==0 && accept) {page=5;selected=0;}
                     else if (selected==1 && accept) {page=7;selected=controlPage=0;}
                     else if (selected==2 && direction) controlBindings.brakeReverse = !controlBindings.brakeReverse;
                     else if (selected==3 && direction) controlBindings.steeringStick = 1-controlBindings.steeringStick;
                     else if (selected==4 && accept) {controlBindings={};drivingSettings={};status="Default controls restored.";}
-                    else if (selected==5 && accept) {page=0;selected=0;}
+                    else if (selected==5 && direction) {rumble = std::clamp(rumble + direction * 5, 0, 100); window.Input().SetRumbleScale(rumble); status="Saved. Vibration strength.";}
+                    else if (selected==6 && accept) {page=0;selected=0;}
                 } else if (page == 7) {
                     if (selected<4 && direction) {
                         auto& binding=(vr ? controlBindings : desktopBindings).source[size_t(controlPage*4+selected)];
