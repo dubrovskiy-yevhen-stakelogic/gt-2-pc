@@ -223,13 +223,13 @@ void LoadOverlaySettings(const std::string& basePath) {
     raceView = -1;
     bool legacyOpenView = false;
     carSeatHeights.clear();
-    gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the compatibility profile defaults it off
+    gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the performance preset defaults it off
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;
     const auto base=gt2::shell::PcSettings::Load(basePath);
     baseMetricUnits = base.metric; baseVrSettings=base.vr;
-    gt2::hd::SetEnabled(true);
+    gt2::hd::SetEnabled(!CurrentGraphics().lowMemory); // the performance preset spends no memory on HD extras
     gt2::pc::SetUnlocks(false, false);
     gt2::pc::unlockSimulationEvents = false;
     gt2::pc::simulationDamage = false;
@@ -1023,20 +1023,20 @@ void ShowWheelSettings(GameWindow& w) {
 
 const char* GraphicsPresetName(const gt2::shell::GraphicsSettings& g) {
     using gt2::shell::GraphicsSettings;
-    if (g == GraphicsSettings::Compatibility()) return "Compatibility";
+    if (g == GraphicsSettings::Performance()) return "Performance";
     if (g == GraphicsSettings::Vanilla()) return "Vanilla";
     if (g == GraphicsSettings::Modern()) return "Modern";
     return "Custom";
 }
 
-// The presets the port menu cycles: Compatibility, Vanilla, Modern. Custom is derived and only a starting point.
+// The presets the port menu cycles: Performance, Vanilla, Modern. Custom is derived and only a starting point.
 gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g, int direction) {
     using gt2::shell::GraphicsSettings;
-    const bool custom = !(g == GraphicsSettings::Compatibility() || g == GraphicsSettings::Vanilla() || g == GraphicsSettings::Modern());
-    int at = g == GraphicsSettings::Compatibility() ? 0 : g == GraphicsSettings::Vanilla() ? 1 : 2;
+    const bool custom = !(g == GraphicsSettings::Performance() || g == GraphicsSettings::Vanilla() || g == GraphicsSettings::Modern());
+    int at = g == GraphicsSettings::Performance() ? 0 : g == GraphicsSettings::Vanilla() ? 1 : 2;
     if (custom) at = direction < 0 ? 1 : 2; // nearest preset in that direction
     else at = std::clamp(at + direction, 0, 2);
-    const GraphicsSettings presets[] = {GraphicsSettings::Compatibility(), GraphicsSettings::Vanilla(), GraphicsSettings::Modern()};
+    const GraphicsSettings presets[] = {GraphicsSettings::Performance(), GraphicsSettings::Vanilla(), GraphicsSettings::Modern()};
     return presets[at];
 }
 
@@ -1051,7 +1051,7 @@ std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
     if (selected == rowCount - 1) return page == 1 ? "Back to the menu." : "Back to the graphics page.";
     if (page == 1) {
         switch (selected) {
-        case kGfxPreset: return "Faster setup for older PCs; simpler graphics.";
+        case kGfxPreset: return "Uses less memory and runs faster; simpler graphics.";
         case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "How sharp the 3D view is; lower is faster.";
         case kGfxFrameLimit: return vr ? "How many times per second the headset updates." : "Limit the frame rate, or follow the screen.";
         case kGfxMsaa: return "Smooths jagged edges; higher costs more.";

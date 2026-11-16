@@ -6,6 +6,7 @@
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
 #include "graphics_options.h"
+#include "support_log.h"
 #ifndef __EMSCRIPTEN__
 #include "gt2view/vk_capabilities.h"
 #endif
@@ -29,13 +30,6 @@ int main(int argc, char** argv) {
     SetDiscImportAvailable(launcher && std::string(launcher) == "1");
 #endif
     std::setvbuf(stdout, nullptr, _IONBF, 0);
-#ifndef __EMSCRIPTEN__
-    if (argc > 1 && std::string(argv[1]) == "--diagnose") {
-        // Discussion #77: runs before any Vulkan call, so it works where the loader or GPU is unusable.
-        std::fputs(gt2view::VulkanDiagnosticReport().c_str(), stdout);
-        return 0;
-    }
-#endif
     if (argc > 1 && std::string(argv[1]) == "--help") {
         std::puts("gt2game [--vr] [--data-root installed-folder] [--save-root saves-folder]\n"
                   "Plays the optional PlayStation intro, then shows installed discs.\n"
@@ -53,6 +47,7 @@ int main(int argc, char** argv) {
     }
 #endif
     if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
+        StartSupportLog(gt2::os::DataRoot() / "logs");
         std::vector<std::string> args(argv, argv + argc);
         int result;
         for (;;) {
@@ -75,7 +70,7 @@ int main(int argc, char** argv) {
     try {
         auto root = gt2::os::DataRoot();
         std::filesystem::path saves;
-        bool vr = false, deterministic = false, sound = true;
+        bool vr = false, deterministic = false, sound = true, diagnose = false;
         std::string pickerScript, pickerShot;
         std::vector<std::string> forwarded;
         for (int i = 1; i < argc; ++i) {
@@ -86,6 +81,7 @@ int main(int argc, char** argv) {
             };
             if (arg == "--data-root") root = value();
             else if (arg == "--save-root") saves = value();
+            else if (arg == "--diagnose") diagnose = true;
             else if (arg == "--picker-script") pickerScript = value();
             else if (arg == "--picker-shot") pickerShot = value();
             else if (arg != "--player" && arg != "--flat") {
@@ -98,14 +94,32 @@ int main(int argc, char** argv) {
         }
         root = std::filesystem::absolute(root);
         if (saves.empty()) saves = root / "saves";
+#ifndef __EMSCRIPTEN__
+        if (diagnose) {
+            // Discussion #77: runs before any Vulkan call, so it works where the loader or GPU is unusable.
+            std::fputs(gt2view::VulkanDiagnosticReport().c_str(), stdout);
+            std::printf("  support log: %s\n", (root / "logs" / "gt2.log").string().c_str());
+            return 0;
+        }
+#else
+        (void)diagnose;
+#endif
+        StartSupportLog(root / "logs"); // probe report + renderer messages for a user's bug report
         std::string preferred = "arcade";
         std::ifstream(saves / "last-disc.txt") >> preferred;
         if (!ValidDiscSelection(preferred))
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
             "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
-        ApplyFirstRunPreset((saves / "settings.txt").string()); // before the picker's overlay settings
+        const RecommendedPreset preset = ApplyRecommendedPreset((saves / "settings.txt").string()); // before the overlay
+        if (preset.memoryTooLow) {
+            LogLine("graphics: cannot start: " + preset.reason);
+            std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", preset.reason.c_str());
+            return 1;
+        }
+        if (preset.applied) LogLine("graphics: performance preset applied (" + preset.reason + ")");
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
+        LogLine("graphics: " + DescribeGraphics(CurrentGraphics()));
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;
         bool directLaunch = false;
@@ -134,7 +148,9 @@ int main(int argc, char** argv) {
             SetFakePadScript({}); SetFakePad2Script({});
         }
     } catch (const std::exception& e) {
+        LogLine(std::string("fatal: ") + e.what());
         std::fprintf(stderr, "Startup failed: %s\n", e.what());
+        if (!SupportLogPath().empty()) std::fprintf(stderr, "Log: %s\n", SupportLogPath().c_str());
         result = 1;
     }
     ReleaseRetainedWindow();

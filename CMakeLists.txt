@@ -386,7 +386,7 @@ if(Vulkan_FOUND AND Vulkan_glslc_FOUND AND WIN32)
   # The product: native game. Must never link gt2interp (no PS1 code execution inside the game).
   add_executable(gt2game tools/gt2game/main.cpp tools/gt2game/menu_mode.cpp tools/gt2game/title_mode.cpp tools/gt2game/game_window.cpp tools/gt2game/race_common.cpp tools/gt2game/split_race.cpp
   tools/gt2game/race_view.cpp tools/gt2game/career_race.cpp tools/gt2game/panel.cpp tools/gt2game/settings_screen.cpp tools/gt2game/race_menu_check.cpp tools/gt2game/machine_test_check.cpp tools/gt2game/change_parts_check.cpp tools/gt2game/race_result_check.cpp tools/gt2game/arcade_race.cpp tools/gt2game/arcade_mode.cpp tools/gt2game/arcade_title.cpp tools/gt2game/title_attract.cpp tools/gt2game/arcade_post_race.cpp tools/gt2game/ghost_replay.cpp tools/gt2game/arcade_menu_check.cpp tools/gt2game/graphics_options.cpp tools/gt2game/frame_interp.cpp tools/gt2game/mods.cpp tools/gt2game/mod_scene.cpp tools/gt2game/movie_player.cpp ${GT2_DEV_DUMP_SOURCES})
-  target_sources(gt2game PRIVATE tools/gt2game/pc_overlay.cpp tools/gt2game/boot_screen.cpp tools/gt2game/game_main.cpp tools/gt2game/game_window_win32.cpp tools/gt2game/game_window_xr.cpp tools/gt2game/cockpit_preview.cpp)
+  target_sources(gt2game PRIVATE tools/gt2game/pc_overlay.cpp tools/gt2game/boot_screen.cpp tools/gt2game/support_log.cpp tools/gt2game/game_main.cpp tools/gt2game/game_window_win32.cpp tools/gt2game/game_window_xr.cpp tools/gt2game/cockpit_preview.cpp)
   add_library(gt2os STATIC src/platform/os/paths_win32.cpp)
   target_include_directories(gt2os PUBLIC src)
   add_library(gt2xr STATIC src/platform/xr/xr_actions.cpp src/platform/xr/xr_session.cpp src/platform/xr/vr_rig.cpp src/platform/xr/vr_driving.cpp)
@@ -431,7 +431,9 @@ if(BUILD_TESTING AND TARGET gt2vk AND (WIN32 OR GT2_BUILD_MACOS_CLIENT OR GT2_BU
   target_include_directories(gt2surfacechecks PRIVATE src ${Vulkan_INCLUDE_DIRS})
   add_test(NAME display_surface_format_checks COMMAND gt2surfacechecks)
   add_executable(gt2profilechecks tests/vulkan_profile_checks.cpp)
+  target_sources(gt2profilechecks PRIVATE src/gt2view/vk_capabilities.cpp)
   target_include_directories(gt2profilechecks PRIVATE src ${Vulkan_INCLUDE_DIRS})
+  target_link_libraries(gt2profilechecks PRIVATE ${CMAKE_DL_LIBS})
   add_test(NAME vulkan_profile_checks COMMAND gt2profilechecks)
 endif()
 

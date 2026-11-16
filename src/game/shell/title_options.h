@@ -106,7 +106,7 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: + every chunk within N m;
                                            // -1: every chunk of the course
-    // The memory regime: the decoded texture cache stays off and the compatibility profile sets it. The PC SETTINGS
+    // The memory regime: the decoded texture cache stays off and the performance preset sets it. The PC SETTINGS
     // "Memory Use" row and the first-run preset set it; the preset also defaults GT4 models off and VR eye resolution
     // to 100%. Low stops the cache at once; going back to Normal restores it on its next use.
     bool lowMemory = false;
@@ -123,9 +123,10 @@ struct GraphicsSettings {
         g.drawDistance = 1000;
         return g;
     }
-    // Discussion #77, phase 3: the preset for the Vulkan 1.1/1.2 fallback and GPUs under ~2 GB. Low scene resolution,
-    // no MSAA, no car reflection pass and no HD extras, and the low-memory regime above.
-    static GraphicsSettings Compatibility() {
+    // Discussion #77, phase 3: the preset for GPUs without much usable video memory. Low scene resolution, no MSAA,
+    // no car reflection pass and no HD extras, and the low-memory regime above. The render-pass path for Vulkan
+    // 1.1/1.2 is chosen from the API version, not from this preset: an old API on a big GPU keeps the standard look.
+    static GraphicsSettings Performance() {
         GraphicsSettings g;
         g.renderScale = 75;
         g.msaa = 1;
@@ -166,6 +167,10 @@ struct PcSettings {
     bool haveCareerOptions = false;
     GameOptions options;
     GraphicsSettings graphics;
+    // The graphics preset the user last had (settings.txt's graphics_preset=): "performance", "vanilla", "modern" or
+    // "custom". Empty when the file never recorded one (an older version, or only the defaults were saved), so the
+    // startup check may still apply the performance preset on a machine that needs it.
+    std::string graphicsPreset;
     VrSettings vr;
     // The controller settings: the career's two pad blocks (+0x0A / +0x5C, 0x52 bytes each: the KEY CONFIGURATION tables,
     // the vibration byte, the ANALOG calibration) mirrored for races without a career, and ours: an analog pad's

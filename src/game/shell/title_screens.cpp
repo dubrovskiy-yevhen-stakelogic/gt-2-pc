@@ -50,9 +50,9 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
     switch (row) {
     case 0: r = {"Speed Units", {"mph", "km/h"}, pc.metric ? 1 : 0}; break;
     case 1: { // first: one row changes all of the graphics below it
-        const bool compatibility = g == GraphicsSettings::Compatibility();
+        const bool performance = g == GraphicsSettings::Performance();
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
-        r = {"Preset", {"Compatibility", "Vanilla", "Custom", "Modern"}, compatibility ? 0 : vanilla ? 1 : modern ? 3 : 2};
+        r = {"Preset", {"Performance", "Vanilla", "Custom", "Modern"}, performance ? 0 : vanilla ? 1 : modern ? 3 : 2};
         break;
     }
     case 2: r = {"Frame Rate", {"Original 30", "Display"}, g.frameRate == GraphicsSettings::kFrameRateOriginal ? 0 : 1}; break;
@@ -87,7 +87,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     const int count = std::min(int(r.values.size()), row == 3 ? int(std::size(kPcCaps)) : row == 5 ? int(std::size(kPcScales))
                                                      : row == 6 ? int(std::size(kPcMsaa)) : row == 10 ? int(std::size(kPcDistances)) : int(r.values.size()));
     int index = r.index;
-    if (row == 1) { // presets are Compatibility / Vanilla / Modern; Custom is derived, never stepped onto
+    if (row == 1) { // presets are Performance / Vanilla / Modern; Custom is derived, never stepped onto
         static constexpr int kPresets[] = {0, 1, 3};
         if (index == 2) index = step < 0 ? 1 : 3; // Custom -> the preset in that direction
         else index = kPresets[std::clamp((index == 0 ? 0 : index == 1 ? 1 : 2) + step, 0, 2)];
@@ -98,7 +98,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     const PcSettings before = pc;
     switch (row) {
     case 0: pc.metric = index == 1; break;
-    case 1: g = index == 0 ? GraphicsSettings::Compatibility() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break; // index 3
+    case 1: g = index == 0 ? GraphicsSettings::Performance() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break; // index 3
     case 2: g.frameRate = index == 0 ? GraphicsSettings::kFrameRateOriginal : GraphicsSettings::kFrameRateDisplay; break;
     case 3: g.frameCap = kPcCaps[index]; break;
     case 4: g.vsync = index == 1; break;

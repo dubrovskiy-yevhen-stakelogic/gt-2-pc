@@ -30,7 +30,8 @@ struct GpuCapability {
     std::string name;
     VkPhysicalDeviceType type = VK_PHYSICAL_DEVICE_TYPE_OTHER;
     uint32_t apiVersion = 0, driverVersion = 0, vendorID = 0, deviceID = 0;
-    uint64_t deviceLocalBytes = 0;
+    uint64_t deviceLocalBytes = 0; // size of the device-local heaps
+    uint64_t availableBytes = 0;   // device-local budget left (VK_EXT_memory_budget); 0 when the driver does not say
     uint32_t maxImageDimension2D = 0;
     bool dynamicRendering = false, multiview = false, swapchain = false;
     GraphicsProfile profile = GraphicsProfile::Unsupported;
@@ -47,12 +48,31 @@ struct VulkanCapabilities {
     GraphicsProfile profile() const;
 };
 
-// The first-run recommendation for the PC settings preset: the render-pass path, or a GPU with less than 2 GB of
-// device-local memory (the renderer's fixed buffers are several hundred MB).
-inline bool RecommendsCompatibility(const VulkanCapabilities& caps) {
-    if (caps.profile() == GraphicsProfile::Compatibility) return true;
+// The standard preset's measured peak is ~504 MiB (a race at 1080p) plus swapchain, render targets, driver overhead
+// and the desktop: below 2 GiB of *available* device-local memory the performance preset is the safe default.
+inline constexpr uint64_t kStandardPresetMemory = 2ull * 1024 * 1024 * 1024;
+// The performance preset still needs its 137 MiB of fixed buffers plus the swapchain and render targets (~400 MiB
+// at 4K) and room for the driver. Below this the game stops with a clear message instead of failing mid-race.
+inline constexpr uint64_t kPerformancePresetFloor = 768ull * 1024 * 1024;
+
+// What the GPU can actually hand out: the budget the driver reports, else the heaps' total (0 = unknown).
+inline uint64_t UsableMemory(const GpuCapability& gpu) {
+    return gpu.availableBytes ? gpu.availableBytes : gpu.deviceLocalBytes;
+}
+
+// Whether the standard settings are safe. This is about memory only: a Vulkan 1.1/1.2 card with plenty of memory is
+// a powerful GPU and keeps the standard preset (the render-pass path is chosen separately, from the API version).
+inline bool RecommendsPerformancePreset(const VulkanCapabilities& caps) {
     const GpuCapability* gpu = caps.best();
-    return gpu && gpu->deviceLocalBytes && gpu->deviceLocalBytes < 2ull * 1024 * 1024 * 1024;
+    return gpu && UsableMemory(*gpu) && UsableMemory(*gpu) < kStandardPresetMemory;
+}
+
+// Hard floor: the performance preset cannot be squeezed below this, so the game refuses to start rather than run
+// out of memory during a race. Unknown memory (0) is not treated as low - some drivers simply do not report it.
+inline bool GraphicsMemoryTooLow(const VulkanCapabilities& caps) {
+    const GpuCapability* gpu = caps.best();
+    return gpu && caps.profile() != GraphicsProfile::Unsupported && UsableMemory(*gpu) &&
+           UsableMemory(*gpu) < kPerformancePresetFloor;
 }
 
 // Probes the Vulkan loader dynamically. Never throws and keeps working when the loader is absent.

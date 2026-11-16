@@ -4,8 +4,8 @@
 // starts; nothing of the simulation, the replays or the checks against the original depends on them.
 //
 // Command line (main.cpp): --vanilla (today's output exactly: Original 30 frame rate, window resolution, no MSAA, PS1
-// nearest texels, perspective-correct mapping, the original's LOD and render lists), --compatibility (the Vulkan
-// 1.1/1.2 and small-VRAM preset), --modern, --frame-rate
+// nearest texels, perspective-correct mapping, the original's LOD and render lists), --performance (the small-VRAM
+// preset; the Vulkan 1.1/1.2 render-pass path is separate), --modern, --frame-rate
 // original|display, --frame-cap N, --vsync 0|1, --render-scale P (percent) , --msaa N, --texture-filter
 // nearest|smooth, --texture-mapping perspective|affine, --draw-distance original|all|<metres>, --max-detail.
 // Any of them pins the session's settings: the PC SETTINGS page still edits and saves settings.txt, but the running
@@ -29,9 +29,16 @@ void SetGraphicsFromPage(const gt2::shell::GraphicsSettings& settings);
 bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::GraphicsSettings& fileSettings);
 bool GraphicsPinned();
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings);
-// First run only (no settings.txt / settings.txt.overlay): stores the probe's compatibility recommendation
-// (Vulkan 1.1/1.2 or under ~2 GB of VRAM) as the preset. Returns true when it wrote it; command-line flags still win.
-bool ApplyFirstRunPreset(const std::string& settingsPath);
+// Applies the performance preset when this machine needs it - usable video memory below what the standard settings
+// need - and never overrides a preset or custom tuning the user has saved. A machine below the preset's own floor
+// reports `memoryTooLow` instead, so the game can stop with a clear message rather than fail during a race.
+// Command-line flags still win. `reason` is one line for the support log.
+struct RecommendedPreset {
+    bool applied = false;
+    bool memoryTooLow = false;
+    std::string reason;
+};
+RecommendedPreset ApplyRecommendedPreset(const std::string& settingsPath);
 
 // The renderer's side of the settings.
 gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& settings);

@@ -64,6 +64,31 @@ int main() {
     clears = MakeRenderPassClears(color, true, true);
     if (clears.count != 3 || clears.values[2].depthStencil.depth != 0.0f) return 23;
 
+    // The preset follows usable memory, not the API version: a Vulkan 1.1/1.2 card with plenty of memory is a
+    // powerful GPU and keeps the standard look; the render-pass path is chosen separately from the API version.
+    gt2view::GpuCapability gpu;
+    gpu.apiVersion = VK_API_VERSION_1_2;
+    gpu.profile = GraphicsProfile::Compatibility;
+    gpu.deviceLocalBytes = 8ull << 30;
+    gpu.availableBytes = 7ull << 30;
+    gt2view::VulkanCapabilities plenty;
+    plenty.gpus.push_back(gpu);
+    if (gt2view::RecommendsPerformancePreset(plenty)) return 24;
+    if (gt2view::GraphicsMemoryTooLow(plenty)) return 25;
+    gt2view::VulkanCapabilities weak = plenty;
+    weak.gpus[0].availableBytes = 1ull << 30;
+    if (!gt2view::RecommendsPerformancePreset(weak)) return 26;
+    if (gt2view::GraphicsMemoryTooLow(weak)) return 27;
+    gt2view::VulkanCapabilities tiny = weak;
+    tiny.gpus[0].availableBytes = 400ull << 20;
+    if (!gt2view::GraphicsMemoryTooLow(tiny)) return 28;
+    // Unknown memory (0) is not treated as low: some drivers do not report a budget, and old APIs are not old cards.
+    gt2view::VulkanCapabilities unknown = plenty;
+    unknown.gpus[0].availableBytes = 0;
+    unknown.gpus[0].deviceLocalBytes = 0;
+    if (gt2view::RecommendsPerformancePreset(unknown)) return 29;
+    if (gt2view::GraphicsMemoryTooLow(unknown)) return 30;
+
     std::puts("PASS: Vulkan 1.1/1.2 fallback profile, env switch, layers and clear values");
     return 0;
 }

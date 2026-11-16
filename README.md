@@ -255,14 +255,19 @@ No firmware, extracted models or generated HD asset packs are distributed.
 ## Requirements and limits
 
 The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
-rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. On first run
-the probe selects the **Compatibility** settings preset (75% scene resolution,
-no MSAA, no car reflections, PS1 textures, original scenery detail, lower memory) for a Vulkan
-1.1/1.2 driver or a GPU under ~2 GB; `--compatibility` selects it explicitly and
-`--diagnose` prints the loader, GPUs, limits, the path and the recommended
-preset. PC SETTINGS shows the preset and every row it changes updates as you
-step it; its **Memory Use** row (Normal / Low) exposes the decoded texture cache
-and memory budget. `GT2_VK_RENDERPASS=1` forces the render-pass path.
+rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. The settings
+preset follows **available video memory, not the API version**: under 2 GiB the
+game starts on the **Performance** preset (75% scene resolution, no MSAA, no car
+reflections, PS1 textures, original scenery detail, no HD extras, lower memory)
+unless you have saved another preset or your own tuning; below 768 MiB it stops
+with a clear message instead of failing during a race. `--performance` selects
+the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
+the path and the recommended preset. PC SETTINGS shows the preset and every row
+it changes updates as you step it; its **Memory Use** row (Normal / Low) exposes
+the decoded texture cache and memory budget. `GT2_VK_RENDERPASS=1` forces the
+render-pass path. Every launch appends `gt2.log` to the logs folder with the
+probe, renderer path, settings and any error - include it in a graphics bug
+report.
 
 Browser play requires WebGL2, an 8192-pixel texture limit and at least 512 array
 texture layers. The complete BIN is held in memory. One disc is available per

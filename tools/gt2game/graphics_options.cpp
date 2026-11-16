@@ -61,7 +61,7 @@ bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::Graphics
         for (const auto& o : g_overrides) g_graphics.Parse(o.first, o.second);
     };
     if (a == "--vanilla") { preset(GraphicsSettings::Vanilla()); return true; }
-    if (a == "--compatibility") { preset(GraphicsSettings::Compatibility()); return true; }
+    if (a == "--performance") { preset(GraphicsSettings::Performance()); return true; }
     if (a == "--modern") { preset(GraphicsSettings::Modern()); return true; }
     if (a == "--max-detail") {
         pin();
@@ -84,21 +84,33 @@ bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::Graphics
     return false;
 }
 
-bool ApplyFirstRunPreset(const std::string& settingsPath) {
+RecommendedPreset ApplyRecommendedPreset(const std::string& settingsPath) {
 #if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     (void)settingsPath;
-    return false; // the browser and Quest builds have their own context and no Vulkan probe
+    return {}; // the browser and Quest builds have their own context and no Vulkan probe
 #else
-    if (settingsPath.empty() || g_pinned || g_overlay) return false;
-    namespace fs = std::filesystem;
-    if (fs::exists(settingsPath) || fs::exists(settingsPath + ".overlay")) return false;
+    RecommendedPreset result;
+    if (settingsPath.empty()) return result;
     const gt2view::VulkanCapabilities caps = gt2view::ProbeVulkan();
-    if (!gt2view::RecommendsCompatibility(caps) && !gt2view::ForceRenderPassPath()) return false;
-    g_graphics = gt2::shell::GraphicsSettings::Compatibility();
+    const gt2view::GpuCapability* gpu = caps.best();
+    const uint64_t usable = gpu ? gt2view::UsableMemory(*gpu) : 0;
+    const auto mib = [](uint64_t bytes) { return std::to_string(bytes / (1024 * 1024)); };
+    if (gt2view::GraphicsMemoryTooLow(caps)) {
+        result.memoryTooLow = true;
+        result.reason = mib(usable) + " MiB of video memory available, at least " + mib(gt2view::kPerformancePresetFloor) + " MiB required";
+        return result;
+    }
+    if (g_pinned || g_overlay) return result; // the command line wins
+    if (!gt2view::RecommendsPerformancePreset(caps) && !gt2view::ForceRenderPassPath()) return result;
+    namespace fs = std::filesystem;
+    gt2::shell::PcSettings stored = gt2::shell::PcSettings::Load(settingsPath);
+    if (!stored.graphicsPreset.empty()) return result; // the user saved a preset or their own tuning: never override it
+    const bool fresh = !fs::exists(settingsPath);
+    stored.graphics = gt2::shell::GraphicsSettings::Performance();
+    if (fresh) stored.vr.renderScale = 100; // the preset's VR budget; the VR page overrides it later
+    g_graphics = stored.graphics; // this session runs it now, not only from the next launch
     gt2::modernCarReflections = false;
-    gt2::shell::PcSettings stored;
-    stored.graphics = g_graphics;
-    stored.vr.renderScale = 100; // the profile's VR budget; the VR page overrides it later
+    gt2::carReflections = false;
     try {
         const fs::path path(settingsPath);
         if (path.has_parent_path()) fs::create_directories(path.parent_path());
@@ -106,7 +118,11 @@ bool ApplyFirstRunPreset(const std::string& settingsPath) {
     } catch (const std::exception&) {
         // The session still runs the preset; the next change writes the file.
     }
-    return true;
+    result.applied = true;
+    result.reason = gt2view::ForceRenderPassPath()
+        ? "forced by GT2_VK_RENDERPASS=1"
+        : mib(usable) + " MiB of video memory available (the standard preset needs " + mib(gt2view::kStandardPresetMemory) + " MiB)";
+    return result;
 #endif
 }
 
@@ -132,7 +148,7 @@ std::string DescribeGraphics(const gt2::shell::GraphicsSettings& s) {
     std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, render scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s%s%s",
                   s.frameRate == gt2::shell::GraphicsSettings::kFrameRateOriginal ? "original 30" : "display", s.frameCap, s.vsync ? "on" : "off", s.renderScale,
                   s.msaa, s.smoothTextures ? "smooth" : "PS1 nearest", s.affine ? "affine" : "perspective", s.maxDetail ? "max" : "original", distance,
-                  s == gt2::shell::GraphicsSettings::Compatibility() ? " (compatibility)"
+                  s == gt2::shell::GraphicsSettings::Performance() ? " (performance)"
                   : s == gt2::shell::GraphicsSettings::Vanilla() ? " (vanilla)" : "",
                   g_pinned ? " [command line]" : "");
     return std::string(line) + (s.renderHeight ? "; fixed scene " + std::to_string(s.renderHeight * 16 / 9) + "x" + std::to_string(s.renderHeight) : "");
