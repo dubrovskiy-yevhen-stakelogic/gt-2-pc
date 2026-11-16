@@ -171,11 +171,6 @@ int main(int argc, char** argv) {
             if (!std::getenv("GT2_SAVE_ROOT")) setenv("GT2_SAVE_ROOT", (support / "saves").c_str(), 1);
             std::filesystem::create_directories(support / "logs");
             const auto log = support / "logs/gt2game.log";
-            std::error_code logError;
-            if (std::filesystem::file_size(log, logError) > 8 * 1024 * 1024 && !logError) {
-                std::filesystem::remove(support / "logs/gt2game.old.log", logError);
-                std::filesystem::rename(log, support / "logs/gt2game.old.log", logError);
-            }
             if (!std::freopen(log.c_str(), "a", stdout) || !std::freopen(log.c_str(), "a", stderr)) Fail(@"Cannot open the game log.");
             setenv(gt2mac::kLauncherEnvironment, "1", 1);
             std::vector<std::string> args{Text([bin stringByAppendingPathComponent:@"gt2game"]), "--data-root", root.string(),
