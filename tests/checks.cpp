@@ -239,6 +239,17 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::PcRowOf(preset, 4).index == 1 && shell::PcRowOf(preset, 10).index == 1,
           "the Compatibility preset updates render scale and memory use immediately");
     Check(shell::StepPcRow(preset, 10, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
+    // Every preset must be steppable both ways; Modern used to apply itself again when stepped left.
+    shell::PcSettings stepping;
+    stepping.graphics = shell::GraphicsSettings::Modern();
+    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
+    stepping.graphics = shell::GraphicsSettings{};
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
+    stepping.graphics = shell::GraphicsSettings{};
+    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
+    stepping.graphics = shell::GraphicsSettings::Compatibility();
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Compatibility steps right to Vanilla");
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

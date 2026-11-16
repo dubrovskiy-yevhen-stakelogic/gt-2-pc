@@ -1019,6 +1019,25 @@ void ShowWheelSettings(GameWindow& w) {
 
 #endif
 
+const char* GraphicsPresetName(const gt2::shell::GraphicsSettings& g) {
+    using gt2::shell::GraphicsSettings;
+    if (g == GraphicsSettings::Compatibility()) return "Compatibility";
+    if (g == GraphicsSettings::Vanilla()) return "Vanilla";
+    if (g == GraphicsSettings::Modern()) return "Modern";
+    return "Custom";
+}
+
+// The presets the port menu cycles: Compatibility, Vanilla, Modern. Custom is derived and only a starting point.
+gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g, int direction) {
+    using gt2::shell::GraphicsSettings;
+    const bool custom = !(g == GraphicsSettings::Compatibility() || g == GraphicsSettings::Vanilla() || g == GraphicsSettings::Modern());
+    int at = g == GraphicsSettings::Compatibility() ? 0 : g == GraphicsSettings::Vanilla() ? 1 : 2;
+    if (custom) at = direction < 0 ? 1 : 2; // nearest preset in that direction
+    else at = std::clamp(at + direction, 0, 2);
+    const GraphicsSettings presets[] = {GraphicsSettings::Compatibility(), GraphicsSettings::Vanilla(), GraphicsSettings::Modern()};
+    return presets[at];
+}
+
 void ShowSettingsMenu(GameWindow& window) {
     const gt2::audio::ScopedMixPause pause;
     PrepareNativeUi(window.Renderer()); window.Input().StopFeedback();
@@ -1077,12 +1096,16 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 1 && !vr) {
             rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
             rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
-            rows[7] = "Display timing...";
+            rows[7] = "More graphics...";
         }
         if (page == 8) {
-            title = "GT2 / DISPLAY TIMING";
+            title = "GT2 / MORE GRAPHICS";
             rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
-                    std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"), "Back"};
+                    std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"),
+                    std::string("Preset: ") + GraphicsPresetName(graphics),
+                    std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal"),
+                    std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
+                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective"), "Back"};
         }
         if (page == 2) {
             title = "GT2 VR / OPTIONS AND CHEATS";
@@ -1256,11 +1279,21 @@ void ShowSettingsMenu(GameWindow& window) {
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 8) {
-                    if (selected == 0) graphics.vsync = !graphics.vsync;
-                    if (selected == 1) graphics.frameRate = !graphics.frameRate;
-                    if (selected == 2) { page = 1; selected = 7; }
-                    SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
-                    status = "Saved.";
+                    if (selected == 0 && direction) graphics.vsync = !graphics.vsync;
+                    if (selected == 1 && direction) graphics.frameRate = !graphics.frameRate;
+                    if (selected == 2 && direction) graphics = CycleGraphicsPreset(graphics, direction);
+                    if (selected == 3 && direction) {
+                        graphics.lowMemory = !graphics.lowMemory;
+                        status = graphics.lowMemory ? "Saved. Low memory: decoded textures off, released on restart."
+                                                    : "Saved. Decoded textures back on.";
+                    }
+                    if (selected == 4 && direction) graphics.maxDetail = !graphics.maxDetail;
+                    if (selected == 5 && direction) graphics.affine = !graphics.affine;
+                    if (selected == 6) { page = 1; selected = 7; }
+                    SetGraphicsFromOverlay(graphics);
+                    window.Renderer().SetLowMemory(graphics.lowMemory);
+                    window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
+                    if (selected != 3) status = "Saved.";
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);

@@ -87,7 +87,11 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     const int count = std::min(int(r.values.size()), row == 2 ? int(std::size(kPcCaps)) : row == 4 ? int(std::size(kPcScales))
                                                      : row == 5 ? int(std::size(kPcMsaa)) : row == 9 ? int(std::size(kPcDistances)) : int(r.values.size()));
     int index = r.index;
-    if (row == 11) index = index == 2 ? (step < 0 ? 1 : 3) : std::clamp(index + step, 0, 3); // Custom steps to the nearest preset
+    if (row == 11) { // presets are Compatibility / Vanilla / Modern; Custom is derived, never stepped onto
+        static constexpr int kPresets[] = {0, 1, 3};
+        if (index == 2) index = step < 0 ? 1 : 3; // Custom -> the preset in that direction
+        else index = kPresets[std::clamp((index == 0 ? 0 : index == 1 ? 1 : 2) + step, 0, 2)];
+    }
     else if (index >= count) index = step > 0 ? count - 1 : 0; // a custom value: the first step lands on the table
     else index = std::clamp(index + step, 0, count - 1);
     GraphicsSettings& g = pc.graphics;
@@ -104,7 +108,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 8: g.maxDetail = index == 1; break;
     case 9: g.drawDistance = kPcDistances[index]; break;
     case 10: g.lowMemory = index == 1; break;
-    default: g = index == 0 ? GraphicsSettings::Compatibility() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break;
+    default: g = index == 0 ? GraphicsSettings::Compatibility() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break; // index 3
     }
     return !(before.metric == pc.metric && before.graphics == pc.graphics);
 }
