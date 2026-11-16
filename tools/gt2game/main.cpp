@@ -6,7 +6,6 @@
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
 #include "graphics_options.h"
-#include "support_log.h"
 #ifndef __EMSCRIPTEN__
 #include "gt2view/vk_capabilities.h"
 #endif
@@ -47,7 +46,6 @@ int main(int argc, char** argv) {
     }
 #endif
     if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
-        StartSupportLog(gt2::os::DataRoot() / "logs");
         std::vector<std::string> args(argv, argv + argc);
         int result;
         for (;;) {
@@ -98,13 +96,11 @@ int main(int argc, char** argv) {
         if (diagnose) {
             // Discussion #77: runs before any Vulkan call, so it works where the loader or GPU is unusable.
             std::fputs(gt2view::VulkanDiagnosticReport().c_str(), stdout);
-            std::printf("  support log: %s\n", (root / "logs" / "gt2.log").string().c_str());
             return 0;
         }
 #else
         (void)diagnose;
 #endif
-        StartSupportLog(root / "logs"); // probe report + renderer messages for a user's bug report
         std::string preferred = "arcade";
         std::ifstream(saves / "last-disc.txt") >> preferred;
         if (!ValidDiscSelection(preferred))
@@ -113,13 +109,11 @@ int main(int argc, char** argv) {
             "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
         const RecommendedPreset preset = ApplyRecommendedPreset((saves / "settings.txt").string()); // before the overlay
         if (preset.memoryTooLow) {
-            LogLine("graphics: cannot start: " + preset.reason);
             std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", preset.reason.c_str());
             return 1;
         }
-        if (preset.applied) LogLine("graphics: performance preset applied (" + preset.reason + ")");
+        if (preset.applied) std::printf("graphics: low spec preset applied (%s)\n", preset.reason.c_str());
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
-        LogLine("graphics: " + DescribeGraphics(CurrentGraphics()));
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;
         bool directLaunch = false;
@@ -148,9 +142,7 @@ int main(int argc, char** argv) {
             SetFakePadScript({}); SetFakePad2Script({});
         }
     } catch (const std::exception& e) {
-        LogLine(std::string("fatal: ") + e.what());
         std::fprintf(stderr, "Startup failed: %s\n", e.what());
-        if (!SupportLogPath().empty()) std::fprintf(stderr, "Log: %s\n", SupportLogPath().c_str());
         result = 1;
     }
     ReleaseRetainedWindow();

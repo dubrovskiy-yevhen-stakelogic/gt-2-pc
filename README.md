@@ -265,9 +265,9 @@ the preset explicitly and `--diagnose` prints the loader, GPUs, available memory
 the path and the recommended preset. PC SETTINGS shows the preset and every row
 it changes updates as you step it; its **Memory Use** row (Normal / Low) exposes
 the decoded texture cache and memory budget. `GT2_VK_RENDERPASS=1` forces the
-render-pass path. Every launch appends `gt2.log` to the logs folder with the
-probe, renderer path, settings and any error - include it in a graphics bug
-report.
+render-pass path. Every launch prints the Vulkan probe (including available memory), the
+renderer path, settings and any error into the launcher's `gt2game.log` -
+include it in a graphics bug report.
 
 Browser play requires WebGL2, an 8192-pixel texture limit and at least 512 array
 texture layers. The complete BIN is held in memory. One disc is available per

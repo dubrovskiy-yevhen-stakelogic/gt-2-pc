@@ -65,7 +65,9 @@
 #include "gt2formats/hd_media.h"
 #include "gt2formats/model_set.h"
 #include "graphics_options.h"
-#include "support_log.h"
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+#include "gt2view/vk_capabilities.h"
+#endif
 #include "panel.h"
 #include "change_parts_check.h"
 #include "race_menu_check.h"
@@ -171,7 +173,11 @@ int GameMain(int argc, char** argv) {
         ArcadeModeOptions arcadeModeOptions; // the arcade disc without a race / mode flag (arcade_mode.h)
         int movieOnly = -1;                  // --movie N: one movie of STREAM.DAT (movie_player.h), then exit
         const std::filesystem::path savesDir = gt2::os::SavesDir();
-        StartSupportLog(gt2::os::DataRoot() / "logs");
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+        // The launcher redirects stdout/stderr to gt2game.log (tools/gt2mac, tools/gt2linux, android_main):
+        // print the probe here so a graphics bug report has the GPU, driver and available memory.
+        std::fputs(gt2view::VulkanDiagnosticReport().c_str(), stdout);
+#endif
         titleOptions.card1Path = (savesDir / "card1.mcd").string();
         titleOptions.settingsPath = (savesDir / "settings.txt").string();
         for (int i = 2; i < argc; i++) {
@@ -202,10 +208,9 @@ int GameMain(int argc, char** argv) {
         SetGraphicsFromSettings(fileGraphics);
         const RecommendedPreset preset = ApplyRecommendedPreset(titleOptions.settingsPath);
         if (preset.memoryTooLow) throw std::runtime_error("not enough video memory: " + preset.reason);
-        if (preset.applied) LogLine("graphics: low spec preset applied (" + preset.reason + ")");
+        if (preset.applied) std::printf("graphics: low spec preset applied (%s)\n", preset.reason.c_str());
         gt2::SetGt4ModelSetRoot(argv[1], gt2::os::DataRoot());
         LoadOverlaySettings(titleOptions.settingsPath);
-        LogLine("graphics: " + DescribeGraphics(CurrentGraphics()));
         std::string frameLogPath;  // --frame-log <csv> (race_view.h)
         double interpAlpha = -1;   // --interp-alpha A (race_view.h)
         const shell::GraphicsSettings initialGraphics = CurrentGraphics(); // the base of the command line's flags
@@ -696,8 +701,6 @@ int GameMain(int argc, char** argv) {
         RunRaceView(window, nullptr, disc, vol, data, carCount, raceOptions, view, nullptr);
         return 0;
     } catch (const std::exception& e) {
-        LogLine(std::string("error: ") + e.what());
-        if (!SupportLogPath().empty()) LogLine("log: " + SupportLogPath());
         std::fprintf(stderr, "error: %s\n", e.what());
         return 1;
     }
