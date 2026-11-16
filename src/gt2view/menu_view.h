@@ -40,6 +40,9 @@ public:
                const std::function<void(std::vector<DrawItem>&)>& layer3d = {});
     // The frame -> NDC mapping of Build: ndc = (frame / size * 2 - 1) * scale.
     static void FrameScale(float windowAspect, bool squarePixels, float& scaleX, float& scaleY);
+    // Forgets the cached 2D layer. The next Build rasterises and uploads it again. Call when another view has written
+    // this one's vertex range (the cockpit preview, a race card, the title) or has replaced the HD UI pages.
+    void InvalidateCache() { cache_.valid = false; }
     // Polygon / line rules (gt2::MenuCanvas::Rules): the PS1 GPU's (default), or our interpreter GPU's to compare
     // with gt2play captures, which that GPU produced.
     void SetRasterRules(gt2::MenuCanvas::Rules rules) { coverA_.rules = coverB_.rules = rules; }
@@ -69,6 +72,24 @@ private:
     SceneRenderer& renderer_;
     uint32_t rowBase_;
     std::vector<Quad> quads_;
+    // An unchanged 2D layer is built once: its vertices stay in the renderer's range and Build only re-appends the
+    // items around the 3D layer (the car view's camera turns every field, the page art and the car floor do not).
+    // Same prims in, same vertices and items out, so the drawn pixels are unchanged.
+    struct Cache {
+        bool valid = false;
+        std::vector<gt2::MenuPrim> prims;
+        std::vector<DrawItem> items; // the 2D items, without the 3D layer between items[0, split) and the rest
+        size_t split = 0;
+        int background = -2;
+        uint32_t hdSize = 0;
+        uint64_t hdRevision = ~uint64_t(0);
+        int width = 0, height = 0;
+        bool squarePixels = false;
+        float aspect = 0;
+        size_t layer3dAt = 0, backgroundPrims = 0;
+        bool hasLayer3d = false;
+    };
+    Cache cache_;
     gt2::MenuCanvas coverA_, coverB_;   // two backgrounds (black / white): a pixel equal in both is covered
     gt2::MenuVram noTextures_;
     int frameWidth_ = gt2::MenuCanvas::kWidth, frameHeight_ = gt2::MenuCanvas::kHeight;

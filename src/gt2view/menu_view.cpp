@@ -12,6 +12,16 @@
 #include "gt2view/scene_assets.h"
 
 namespace gt2view {
+namespace {
+// Every field that reaches Emit: an identical prim emits identical quads.
+bool SamePrim(const gt2::MenuPrim& a, const gt2::MenuPrim& b) {
+    return a.kind == b.kind && std::equal(a.x, a.x + 4, b.x) && std::equal(a.y, a.y + 4, b.y) && a.w == b.w &&
+           a.h == b.h && a.u == b.u && a.v == b.v && std::equal(a.tu, a.tu + 4, b.tu) && std::equal(a.tv, a.tv + 4, b.tv) &&
+           a.tpage == b.tpage && a.clut == b.clut && std::equal(a.colour, a.colour + 4, b.colour) && a.semi == b.semi &&
+           a.dither == b.dither && a.gouraud == b.gouraud && a.clipX0 == b.clipX0 && a.clipY0 == b.clipY0 &&
+           a.clipX1 == b.clipX1 && a.clipY1 == b.clipY1;
+}
+} // namespace
 
 void MenuView::UploadVram(const gt2::MenuVram& vram) { renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data()); }
 
@@ -202,6 +212,20 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
         q.page=SceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
         quads_.push_back(q);
     }
+    // Unchanged 2D layer: its vertices are still in this view's range (nothing else writes it while it shows), so
+    // reuse them and only rebuild the 3D layer the frame interleaves. Same prims = same quads = same pixels.
+    if (cache_.valid && cache_.background == background && cache_.hdSize == hdSize_ &&
+        cache_.hdRevision == hdPictureRevision_ && cache_.width == frameWidth_ && cache_.height == frameHeight_ &&
+        cache_.squarePixels == squarePixels && cache_.aspect == windowAspect && cache_.layer3dAt == frame.layer3dAt &&
+        cache_.backgroundPrims == frame.backgroundPrims && cache_.hasLayer3d == bool(layer3d) &&
+        cache_.prims.size() == frame.prims.size() &&
+        std::equal(cache_.prims.begin(), cache_.prims.end(), frame.prims.begin(), SamePrim)) {
+        const auto split = cache_.items.begin() + std::ptrdiff_t(cache_.split);
+        items.insert(items.end(), cache_.items.begin(), split);
+        if (layer3d) layer3d(items);
+        items.insert(items.end(), split, cache_.items.end());
+        return;
+    }
     size_t splitQuad = SIZE_MAX; // quads before it are drawn at the far depth, before the 3D layer
     for (size_t i = 0; i < frame.prims.size(); i++) {
         if (layer3d && i == frame.layer3dAt) splitQuad = quads_.size();
@@ -239,10 +263,13 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
     renderer_.ApplyHdUi(vertices);
     renderer_.SetVertices(kVertexBase, vertices);
     const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    cache_.items.clear();
+    cache_.split = 0;
     size_t first = 0;
     bool layerDone = !layer3d;
     while (first < quads_.size() || !layerDone) {
         if (!layerDone && first == splitQuad) {
+            cache_.split = cache_.items.size();
             layer3d(items);
             layerDone = true;
             continue;
@@ -257,9 +284,21 @@ void MenuView::Build(const gt2::MenuFrame& frame, float windowAspect, std::vecto
         item.blend = quads_[first].blend;
         item.stpPass = quads_[first].stpPass;
         std::copy(identity, identity + 16, item.mvp);
+        cache_.items.push_back(item);
         items.push_back(item);
         first = last + 1;
     }
+    cache_.valid = true;
+    cache_.prims = frame.prims;
+    cache_.background = background;
+    cache_.hdSize = hdSize_;
+    cache_.hdRevision = hdPictureRevision_;
+    cache_.width = frameWidth_, cache_.height = frameHeight_;
+    cache_.squarePixels = squarePixels;
+    cache_.aspect = windowAspect;
+    cache_.layer3dAt = frame.layer3dAt;
+    cache_.backgroundPrims = frame.backgroundPrims;
+    cache_.hasLayer3d = bool(layer3d);
 }
 
 // ---------------------------------------------------------------- the car view

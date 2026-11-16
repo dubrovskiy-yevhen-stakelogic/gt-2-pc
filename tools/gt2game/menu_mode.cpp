@@ -236,6 +236,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             // The modal owns GPU storage only. Keep the live page, popup, cursor and career intact.
             uploadedPage=0xFFFFFFFFu;logoModel=0;shownWheels=ShownWheels{};
             carView=std::make_unique<gt2view::MenuCarView>(renderer,vol);
+            view.InvalidateCache(); // the preview uploaded its own 2D layer into the shared vertex range
             previousHeld=0;repeatTimer=0;
             window.SetTitle("gt2game - GT mode");
             if(window.Closed())break;
@@ -298,6 +299,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
             logoModel = 0;
             shownWheels = ShownWheels{};
             carView = std::make_unique<gt2view::MenuCarView>(renderer, vol);
+            view.InvalidateCache(); // the race's card screens uploaded their own 2D layer
             renderer.clearColor[0] = renderer.clearColor[1] = renderer.clearColor[2] = 0.0f;
             window.SetTitle("gt2game - GT mode");
             window.ResetPacing();
