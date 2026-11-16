@@ -389,7 +389,7 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * (rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
+        const float y = 112 + float(i) * (rows.size()>12 ? 28.f : rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
         if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
     }
@@ -1081,22 +1081,21 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 1) {
             title = "GT2 VR / GRAPHICS";
-            rows = {"Eye resolution: " + std::to_string(vrScale) + "% (restart)",
-                "Refresh rate: " + std::to_string(vrRefresh) + " Hz",
-                "MSAA: " + std::to_string(graphics.msaa) + "x",
-                "Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"),
-                "Vibration: " + std::to_string(rumble) + "%", "Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"),
-                "FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"),
-                "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
-                "HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"),
-                "PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"),
-                "GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"),
-                std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"), "Back"};
-        }
-        if (page == 1 && !vr) {
-            rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
-            rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
-            rows[7] = "More graphics...";
+            rows.push_back(vr ? std::string("Eye resolution: ") + std::to_string(vrScale) + "% (restart)"
+                              : std::string("Resolution: ") + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%"));
+            rows.push_back(vr ? std::string("Refresh rate: ") + std::to_string(vrRefresh) + " Hz"
+                              : std::string("Frame limit: ") + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display")));
+            rows.push_back("MSAA: " + std::to_string(graphics.msaa) + "x");
+            rows.push_back("Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"));
+            rows.push_back("Vibration: " + std::to_string(rumble) + "%");
+            rows.push_back("Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"));
+            rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
+            rows.push_back("HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"));
+            rows.push_back("PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"));
+            rows.push_back("GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"));
+            rows.push_back(std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"));
+            rows.push_back("More graphics..."); // last: the sub-page of the options that do not fit here
+            rows.push_back("Back");
         }
         if (page == 8) {
             title = "GT2 / MORE GRAPHICS";
@@ -1105,7 +1104,9 @@ void ShowSettingsMenu(GameWindow& window) {
                     std::string("Preset: ") + GraphicsPresetName(graphics),
                     std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal"),
                     std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
-                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective"), "Back"};
+                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective")};
+            if (vr) rows.push_back("Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"));
+            rows.push_back("Back");
         }
         if (page == 2) {
             title = "GT2 VR / OPTIONS AND CHEATS";
@@ -1262,20 +1263,19 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 4) rumble = std::clamp(rumble + direction * 5, 0, 100);
                     if (selected == 5) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == 6) profiler = !profiler;
-                    if (vr && selected == 7) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
-                    if (selected == 8 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
-                    if (selected == 9 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
-                    if (!vr && selected == 7 && accept) { page = 8; selected = 0; }
-                    else if (selected == 12) { page = 0; selected = 0; }
-                    if (page==1 && selected==11 && direction) {
-                        gt4ModelSet=!gt4ModelSet;
-                        status=gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
-                    }
-                    if (page==1 && selected==10 && direction) {
+                    if (selected == 7 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
+                    if (selected == 8 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
+                    if (selected == 9 && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
                         else { graphics.carReflections = false; graphics.modernCarReflections = false; }
                     }
+                    if (selected == 10 && direction) {
+                        gt4ModelSet = !gt4ModelSet;
+                        status = gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
+                    }
+                    if (selected == 11 && accept) { page = 8; selected = 0; }
+                    if (selected == 12) { page = 0; selected = 0; }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 8) {
@@ -1289,7 +1289,12 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == 4 && direction) graphics.maxDetail = !graphics.maxDetail;
                     if (selected == 5 && direction) graphics.affine = !graphics.affine;
-                    if (selected == 6) { page = 1; selected = 7; }
+                    if (vr && selected == 6 && direction) {
+                        foveation = (foveation + direction + 4) % 4;
+                        window.Renderer().SetFoveation(foveation);
+                        status = "Saved. Centre and HUD stay full resolution.";
+                    }
+                    if (selected == int(rows.size()) - 1) { page = 1; selected = 11; }
                     SetGraphicsFromOverlay(graphics);
                     window.Renderer().SetLowMemory(graphics.lowMemory);
                     window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
