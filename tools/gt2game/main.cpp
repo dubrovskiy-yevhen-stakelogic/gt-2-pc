@@ -5,6 +5,9 @@
 #include "../gt2mac/launch_protocol.h"
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
+#ifndef __EMSCRIPTEN__
+#include "gt2view/vk_capabilities.h"
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -24,6 +27,30 @@ int main(int argc, char** argv) {
     const char* launcher = std::getenv("GT2_LINUX_LAUNCHER");
     SetDiscImportAvailable(launcher && std::string(launcher) == "1");
 #endif
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+#ifndef __EMSCRIPTEN__
+    if (argc > 1 && std::string(argv[1]) == "--diagnose") {
+        // Discussion #77: runs before any Vulkan call, so it works where the loader or GPU is unusable.
+        std::fputs(gt2view::VulkanDiagnosticReport().c_str(), stdout);
+        return 0;
+    }
+#endif
+    if (argc > 1 && std::string(argv[1]) == "--help") {
+        std::puts("gt2game [--vr] [--data-root installed-folder] [--save-root saves-folder]\n"
+                  "Plays the optional PlayStation intro, then shows installed discs.\n"
+                  "Flat mode starts fullscreen. Alt+Enter toggles windowed mode; --windowed starts in a window.\n"
+                  "--diagnose reports the Vulkan loader, GPUs and the renderer path this machine gets.\n"
+                  "Advanced tools: gt2game <disc-folder-or-image> [options]");
+        return 0;
+    }
+#ifdef _WIN32
+    // Vulkan is a load-time DLL: report a missing loader instead of failing inside the loader.
+    if (!gt2view::VulkanLoaderInstalled()) {
+        std::fputs("Startup failed: the Vulkan loader (vulkan-1.dll) was not found. Install or update the graphics driver, then run "
+                   "gt2game --diagnose.\n", stderr);
+        return 1;
+    }
+#endif
     if (argc > 1 && !std::string(argv[1]).starts_with("--")) {
         std::vector<std::string> args(argv, argv + argc);
         int result;
@@ -42,14 +69,6 @@ int main(int argc, char** argv) {
         gt2_web_game_exit(result);
 #endif
         return result == 0 && TakeDiscImportRequest() ? gt2mac::kImportDiscExitCode : result;
-    }
-    std::setvbuf(stdout, nullptr, _IONBF, 0);
-    if (argc > 1 && std::string(argv[1]) == "--help") {
-        std::puts("gt2game [--vr] [--data-root installed-folder] [--save-root saves-folder]\n"
-                  "Plays the optional PlayStation intro, then shows installed discs.\n"
-                  "Flat mode starts fullscreen. Alt+Enter toggles windowed mode; --windowed starts in a window.\n"
-                  "Advanced tools: gt2game <disc-folder-or-image> [options]");
-        return 0;
     }
     int result = 0;
     try {

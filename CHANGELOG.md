@@ -13,6 +13,7 @@
 
 - Group content and media settings separately from graphics; keep vibration under Controls.
 - Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
+- Run on Vulkan 1.1/1.2 GPUs with a render-pass fallback (Vulkan 1.3 keeps dynamic rendering), report the loader, GPUs and chosen path with `gt2game --diagnose`, and start with a clear error on a machine without `vulkan-1.dll` instead of failing inside the loader. ([#77](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/discussions/77), @lucianodato)
 
 - Keep browser rumble on the selected controller, including identical pads and reconnects.
 - Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.

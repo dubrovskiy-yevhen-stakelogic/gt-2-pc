@@ -32,7 +32,7 @@ cmake -S "$gt2_root" -B "$gt2_build" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_PREFIX_PATH="$gt2_prefix" "${gt2_cmake_args[@]}"
 cmake --build "$gt2_build" --parallel "$(sysctl -n hw.logicalcpu)" --target \
     gt2game gt2install gt2media gt2maclauncher gt2checks gt2disclaunchchecks gt2assetchecks gt2hdchecks gt2wheelchecks \
-    gt2vrchecks gt2drivingchecks gt2questchecks gt2sdlchecks gt2surfacechecks \
+    gt2profilechecks gt2vrchecks gt2drivingchecks gt2questchecks gt2sdlchecks gt2surfacechecks \
     gt2menushortcutchecks gt2audioclockchecks gt2expansionchecks gt2modelsetchecks \
     gt2sdlaudiochecks gt2paintdeltachecks gt2hduipolicychecks gt2msaa2daudit
 ctest --test-dir "$gt2_build" --output-on-failure

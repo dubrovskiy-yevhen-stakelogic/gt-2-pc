@@ -1,6 +1,8 @@
 #pragma once
 #include "gt2view/model_texture_atlas.h"
+#include <array>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -16,7 +18,8 @@ namespace gt2view {
 // must put zNear into the clip z row (see ReversedZ in the callers); 2D layers use z = 1 (always in front, later
 // quads over earlier ones).
 //
-// Minimal Vulkan 1.3 (dynamic rendering) renderer: one vertex buffer, one PS1-VRAM buffer, N draws.
+// Minimal Vulkan renderer: dynamic rendering on 1.3, the same passes through render passes on 1.1/1.2; one vertex
+// buffer, one PS1-VRAM buffer, N draws.
 // One frame in flight.
 //
 // The instance / surface / device belong to the VkContext handed in (gt2view/vk_context.h): this class owns the
@@ -175,8 +178,27 @@ private:
     void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[9], size_t sceneItems);
     // The swapchain image `imageIndex` with the window's depth buffer, as a target for BeginTargetRendering.
     RenderTarget WindowTarget(uint32_t imageIndex) const;
-    // Begins dynamic rendering into `target` (colour loaded or cleared, depth cleared and not stored).
-    void BeginTargetRendering(const RenderTarget& target, VkAttachmentLoadOp colorLoad);
+    // What a recorded pass needs beyond the target: resolve attachment, a colour-only MSAA pass, clear value,
+    // stereo foveation. The 1.3 path maps this to VkRenderingAttachmentInfo, the fallback to a render pass.
+    struct PassOptions {
+        VkAttachmentLoadOp colorLoad = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        VkImageView resolveView = VK_NULL_HANDLE;
+        bool discardColor = false;    // the MSAA colour is only the resolve source
+        bool transparentClear = false;
+        bool shadingRate = false;     // stereo: per-eye foveation attachment
+    };
+    // Begins dynamic rendering or, on Vulkan 1.1/1.2, an equivalent render pass into `target`.
+    void BeginTargetRendering(const RenderTarget& target, const PassOptions& options);
+    void EndTargetRendering();
+    void BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options);
+    VkRenderPass GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
+                               VkAttachmentLoadOp colorLoad);
+    void DestroyFramebuffers();
+    bool useDynamicRendering_ = false;
+    // Render passes are shared by every pipeline/framebuffer of the same attachment set; framebuffers are rebuilt
+    // whenever an image view is destroyed.
+    std::map<std::array<uint64_t, 5>, VkRenderPass> renderPasses_;
+    std::map<std::array<uint64_t, 4>, VkFramebuffer> framebuffers_;
     void DrawScenePass(const std::vector<DrawItem>& items, size_t sceneItems, uint32_t imageIndex);
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
