@@ -20,10 +20,10 @@ constexpr uint32_t kSemi = 0x2000000;
 
 // VRAM of the console's HUD data (words): the sheet's dial slot and CLUT, the course map.
 constexpr int kFontX = 384, kSheetX = 512, kDialClutRow = 228;
-// The replay input display's front-wheel texture: a 12 x 16 4-bit tile whose 6 x 10 centre is the original green
-// quad with a one-pixel black border, with a transparent margin. Drawing it textured keeps the sprite-style pixel
-// steps of the input display's arrows instead of a high-resolution flat outline.
-constexpr int kTyreTexX = 768, kTyreTexY = 0, kTyreTexW = 12, kTyreTexH = 16;
+// The replay input display's wheel tile: a 16 x 16 4-bit tile with a transparent margin around the original's
+// 6 x 12 black outline and 4 x 10 green wheel. A texture keeps the rotated edges on texel boundaries (hard pixels)
+// instead of the anti-aliased edge of a rotated flat quad.
+constexpr int kTyreTexX = 768, kTyreTexY = 0, kTyreTexW = 16, kTyreTexH = 16;
 constexpr uint16_t kTyreTpage = uint16_t(kTyreTexX / 64);
 constexpr uint16_t kTyreClut = uint16_t((kTyreTexX / 16) | ((kTyreTexY + kTyreTexH) << 6));
 constexpr uint32_t kSinTable = 0x80093150u; // 4096 + 1024 entries: sin, and cos at +0x400 (0x8002BCF0)
@@ -137,15 +137,15 @@ void Hud::UploadBlock() {
         for (int x = 0; x < gt2::RaceFont::kWords; x++) block_[size_t(y) * 1024 + size_t(kFontX + x)] = font_.words[size_t(y) * gt2::RaceFont::kWords + size_t(x)];
     for (int y = 0; y < gt2::HudSheet::kSheetRows; y++)
         for (int x = 0; x < gt2::HudSheet::kSheetWords; x++) block_[size_t(y) * 1024 + size_t(kSheetX + x)] = sheet_.sheet[size_t(y) * gt2::HudSheet::kSheetWords + size_t(x)];
-    // The input display's wheel tile (kTyreTexX): 0 = black border, 1 = the quad's green, 15 = transparent.
+    // The input display's wheel tile: 0 = black outline, 1 = green wheel, 15 = transparent margin.
     for (int y = 0; y < kTyreTexH; y++) {
         for (int group = 0; group < kTyreTexW / 4; group++) {
             uint16_t word = 0;
             for (int i = 0; i < 4; i++) {
                 const int tx = group * 4 + i;
                 uint16_t index = 15;
-                if (tx >= 3 && tx <= 8 && y >= 3 && y <= 12)
-                    index = (tx == 3 || tx == 8 || y == 3 || y == 12) ? 0 : 1;
+                if (tx >= 5 && tx <= 10 && y >= 2 && y <= 13)
+                    index = (tx == 5 || tx == 10 || y == 2 || y == 13) ? 0 : 1;
                 word |= uint16_t(index << (i * 4));
             }
             block_[size_t(kTyreTexY + y) * 1024 + kTyreTexX + group] = word;
@@ -153,7 +153,6 @@ void Hud::UploadBlock() {
     }
     block_[size_t(kTyreTexY + kTyreTexH) * 1024 + kTyreTexX] = 0x8000;     // black: 0x0000 would be transparent
     block_[size_t(kTyreTexY + kTyreTexH) * 1024 + kTyreTexX + 1] = 0x1D85; // 0x3C6428 at 5 bits per channel
-    // kTyreTexX + 15 stays 0: the transparent texel of the tile's margin.
     if (uploadedDial_ >= 0) { // the car's dial face over face slot 0 of the sheet, its CLUT at (512, 228) (captured license test)
         const gt2::HudSheet::Dial& dial = sheet_.dials[size_t(uploadedDial_)];
         for (int y = 0; y < gt2::HudSheet::kDialRows; y++)
@@ -225,6 +224,25 @@ void Hud::SpriteAt(int x, int y, const gt2::HudSpriteDesc& d, uint32_t colorWord
 // The HUD routines centre their sprites as x - (w << 16 >> 17), y - (h >> 1).
 void Hud::SpriteCentred(int cx, int cy, const gt2::HudSpriteDesc& d, uint32_t colorWord) { SpriteAt(cx - (d.w >> 1), cy - (d.h >> 1), d, colorWord); }
 
+// A sprite at a subpixel position (the input display's arrow glyphs are left-aligned in their 12-pixel cells).
+void Hud::SpriteAtF(float x, float y, const gt2::HudSpriteDesc& d, uint32_t colorWord) {
+    Cmd c;
+    c.kind = Cmd::kSprite;
+    c.subpixel = true;
+    c.fx[0] = x;
+    c.fy[0] = y;
+    c.x[0] = int(std::lround(x));
+    c.y[0] = int(std::lround(y));
+    c.u = d.u;
+    c.v = d.v;
+    c.w = d.w;
+    c.h = d.h;
+    c.clut = d.clut;
+    c.color[0] = colorWord & 0xFFFFFF;
+    c.semi = (colorWord & kSemi) != 0;
+    Packet({c});
+}
+
 void Hud::Tile(int x, int y, int w, int h, uint32_t colorWord) {
     Cmd c;
     c.kind = Cmd::kTile;
@@ -247,15 +265,20 @@ void Hud::PolyF4(const int xs[4], const int ys[4], uint32_t colorWord) {
     Packet({c});
 }
 
-void Hud::TexturedQuad(const int xs[4], const int ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord) {
+void Hud::TexturedQuad(const float xs[4], const float ys[4], int u0, int v0, int u1, int v1, uint16_t tpage, uint16_t clut, uint32_t colorWord) {
     Cmd mode;
     mode.kind = Cmd::kMode;
     mode.tpage = tpage;
     Cmd c;
     c.kind = Cmd::kPoly;
     c.textured = true;
-    std::copy(xs, xs + 4, c.x);
-    std::copy(ys, ys + 4, c.y);
+    c.subpixel = true;
+    std::copy(xs, xs + 4, c.fx);
+    std::copy(ys, ys + 4, c.fy);
+    for (int k = 0; k < 4; k++) {
+        c.x[k] = int(std::lround(xs[k]));
+        c.y[k] = int(std::lround(ys[k]));
+    }
     c.u = u0;
     c.v = v0;
     c.w = u1;
@@ -311,6 +334,14 @@ static void RotatePoint(const std::array<int16_t, 5120>& table, int angle, int r
     const int c = table[size_t((angle & 0xFFF) + 0x400)], s = table[size_t(angle & 0xFFF)];
     x = (((r * c) >> 12) - ((w * s) >> 12) + 4) >> 4;
     y = (((w * c) >> 12) + ((r * s) >> 12) - 8) >> 4;
+}
+
+// The same rotation without the pixel rounding: 1/16 pixels in, 1/16 pixels out (the wheel tile needs subpixel
+// corners, or rounding all four of them turns the rotated rectangle into a parallelogram).
+static void RotatePointFixed(const std::array<int16_t, 5120>& table, int angle, int r, int w, int& x, int& y) {
+    const int c = table[size_t((angle & 0xFFF) + 0x400)], s = table[size_t(angle & 0xFFF)];
+    x = ((r * c) >> 12) - ((w * s) >> 12);
+    y = ((w * c) >> 12) + ((r * s) >> 12);
 }
 
 // 0x8002BF14: a gouraud quad from radius0 +- half0 to radius1 +- half1, colours (c0, c1, c0, c1).
@@ -745,27 +776,36 @@ void Hud::InputBars(const HudFrame& f, int x, int y) {
     Mode(uint16_t(d.tpage | 0x20));
 }
 
-// 0x8002DBB0 (x 150, y 204), Replay Info level 2: two front-wheel sprites (the original's green quad over its black
-// outline, turned by the wheel's steer angle) and the < > steering arrows (the side being steered is tinted 0x4080,
-// the other 0x303030). The wheels use a textured tile so their pixel steps match the arrows and the pedal bars.
+// 0x8002DBB0 (x 150, y 204), Replay Info level 2: two front wheels (the original's green quad 0x1C x 0x4C over its
+// black outline 0x33 x 0x63, half sizes in 1/16 px, both turned by the wheel's steer angle) and the < > steering
+// arrows (the side being steered is tinted 0x4080, the other 0x303030). The wheel is drawn from a tile so its rotated
+// edges stay on texel boundaries and keep the input display's pixel steps.
 void Hud::InputSteering(const HudFrame& f, int x, int y) {
     for (int i = 0; i < 2; i++) {
         const int angle = -int(int16_t(f.frontSteer[size_t(i)]));
         const int pivotX = x + (i == 0 ? -7 : 7); // 0x8002DBB0: left at x - 7, right at x + 7
-        int xs[4], ys[4];
-        RotatePoint(sinTable_, angle, -0x60, -0x80, xs[0], ys[0]); // the 12 x 16 tile around its 6 x 10 wheel
-        RotatePoint(sinTable_, angle, 0x60, -0x80, xs[1], ys[1]);
-        RotatePoint(sinTable_, angle, -0x60, 0x80, xs[2], ys[2]);
-        RotatePoint(sinTable_, angle, 0x60, 0x80, xs[3], ys[3]);
-        for (int k = 0; k < 4; k++) PackedAdd(xs[k], ys[k], pivotX, y - 8);
+        float xs[4], ys[4];
+        auto corner = [&](int k, int r, int w) {
+            int rx, ry;
+            RotatePointFixed(sinTable_, angle, r, w, rx, ry);
+            xs[k] = float(pivotX) + float(rx) / 16.0f;
+            ys[k] = float(y - 8) - 0.5f + float(ry) / 16.0f;
+        };
+        corner(0, -0x80, -0x80); // the 16 x 16 tile around its 6 x 12 wheel
+        corner(1, 0x80, -0x80);
+        corner(2, -0x80, 0x80);
+        corner(3, 0x80, 0x80);
         TexturedQuad(xs, ys, 0, 0, kTyreTexW, kTyreTexH, kTyreTpage, kTyreClut, 0x808080);
     }
     const int steer = std::clamp(int(f.steerInput), -100, 100);
     const gt2::HudSpriteDesc& left = tables_.inputSteerLeft;
     const gt2::HudSpriteDesc& right = tables_.inputSteerRight;
-    SpriteAt(x - (left.w >> 1) - 6, y - (left.h >> 1) + 6, left, steer > 0 ? 0x4080 : 0x303030);
+    // The 9-pixel arrow glyphs are left-aligned in their 12-pixel cells, so centre the visible glyph on the wheel:
+    // cell x = wheel pivot - 4.5.
+    constexpr float kArrowGlyphCentre = 4.5f;
+    SpriteAtF(float(x - 7) - kArrowGlyphCentre, float(y - (left.h >> 1) + 6), left, steer > 0 ? 0x4080 : 0x303030);
     Mode(uint16_t(left.tpage | 0x20));
-    SpriteAt(x - (right.w >> 1) + 10, y - (right.h >> 1) + 6, right, steer < 0 ? 0x4080 : 0x303030);
+    SpriteAtF(float(x + 7) - kArrowGlyphCentre, float(y - (right.h >> 1) + 6), right, steer < 0 ? 0x4080 : 0x303030);
     Mode(uint16_t(right.tpage | 0x20));
 }
 
@@ -977,15 +1017,16 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
                 static constexpr int kMap[4] = {0, 1, 3, 2};
                 const int u[4] = {c.u, c.w, c.u, c.w}, v[4] = {c.v, c.v, c.h, c.h}; // v0 TL, v1 TR, v2 BL, v3 BR
                 for (int k = 0; k < 4; k++) {
-                    q.x[k] = float(c.x[kMap[k]]);
-                    q.y[k] = float(c.y[kMap[k]]);
+                    const int src = kMap[k];
+                    q.x[k] = c.subpixel ? c.fx[src] : float(c.x[src]);
+                    q.y[k] = c.subpixel ? c.fy[src] : float(c.y[src]);
                     if (c.textured) {
-                        q.u[k] = float(u[kMap[k]]);
-                        q.v[k] = float(v[kMap[k]]);
+                        q.u[k] = float(u[src]);
+                        q.v[k] = float(v[src]);
                     } else {
                         q.u[k] = q.v[k] = 0;
                     }
-                    q.color[k] = ColorOf(c.color[kMap[k]]);
+                    q.color[k] = ColorOf(c.color[src]);
                 }
                 if (c.textured) {
                     q.textured = true;
@@ -993,7 +1034,8 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
                     q.clut = uint32_t((c.clut & 0x3F) * 16) | ((kRowBase + uint32_t(c.clut >> 6)) << 16);
                 }
             } else {
-                const float x0 = float(c.x[0]), y0 = float(c.y[0]), x1 = float(c.x[0] + c.w), y1 = float(c.y[0] + c.h);
+                const float x0 = c.subpixel ? c.fx[0] : float(c.x[0]), y0 = c.subpixel ? c.fy[0] : float(c.y[0]);
+                const float x1 = x0 + float(c.w), y1 = y0 + float(c.h);
                 const float xs[4] = {x0, x1, x1, x0}, ys[4] = {y0, y0, y1, y1};
                 std::copy(xs, xs + 4, q.x);
                 std::copy(ys, ys + 4, q.y);
