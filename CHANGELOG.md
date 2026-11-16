@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep browser rumble on the selected controller, including identical pads and reconnects.
+- Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
+- Refresh cached menus after HD media, texture smoothing or raster settings change.
+
 - Keep the FPS profiler's 1% low line aligned with the FPS and GPU lines.
 - Rumble supported controllers in the browser build through the Gamepad API, so pads vibrate in Chrome, Edge and Safari on macOS; Firefox exposes no vibration actuator. ([#88](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/issues/88), @lucianodato)
 

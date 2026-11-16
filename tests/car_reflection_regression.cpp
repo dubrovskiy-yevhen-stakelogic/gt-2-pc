@@ -40,6 +40,32 @@ int main(int argc,char** argv){try{
         SceneAssets assets(renderer,vol,true);assets.SetGt4Enabled(gt4);const int slot=assets.UseCar(id);
         if(slot<0 || (gt4 && !assets.UsesGt4(slot)))throw std::runtime_error("car unavailable "+id);
         ++paths;const auto fit=assets.SlotCockpitFit(slot);
+        // Off must suppress already uploaded reflections, without reloading the car.
+        // On again must restore the same draw ranges for both original and GT4 cars.
+        for(bool cabin:{false,true}) {
+            auto draws=[&](){std::vector<DrawItem> items;
+                if(cabin)assets.AppendCockpitBodyItems(items,slot,identity,0);
+                else assets.AppendCarItems(items,slot,identity,0,0);
+                return items;};
+            gt2::carReflections=true;assets.UpdateCarReflection(slot,identity,axes);
+            assets.UpdateCockpitReflection(slot,identity,axes);
+            const auto on=draws();
+            gt2::carReflections=false;assets.UpdateCarReflection(slot,identity,axes);
+            assets.UpdateCockpitReflection(slot,identity,axes);
+            const auto off=draws();
+            for(const auto& item:off)if(item.blend==kBlendStockSurfaceEnvironment ||
+                item.blend==kBlendNativeEnvironment || item.blend==kBlendNativeSurfaceEnvironment)
+                throw std::runtime_error("reflection Off submitted environment geometry: "+id);
+            gt2::carReflections=true;assets.UpdateCarReflection(slot,identity,axes);
+            assets.UpdateCockpitReflection(slot,identity,axes);
+            const auto restored=draws();
+            if(restored.size()!=on.size())throw std::runtime_error("reflection On did not restore draws: "+id);
+            for(size_t i=0;i<on.size();++i)if(on[i].firstVertex!=restored[i].firstVertex ||
+                on[i].vertexCount!=restored[i].vertexCount || on[i].blend!=restored[i].blend)
+                throw std::runtime_error("reflection On changed draw ranges: "+id);
+            if(!cabin && on.size()==off.size())throw std::runtime_error("reflection Off removed no exterior pass: "+id);
+        }
+
         std::vector<DrawItem> mirrors;assets.AppendSideMirrorItems(mirrors,slot,identity);
         size_t badMirrors=0,mirrorTriangles=0;
         std::vector<DrawItem> disabled;assets.AppendSideMirrorItems(disabled,slot,identity,false);

@@ -13,27 +13,64 @@ namespace gt2::input {
 namespace {
 using detail::FakePad;
 #ifdef __EMSCRIPTEN__
-// SDL2's Emscripten joystick driver stubs rumble (SDL_Unsupported, no capabilities), so drive the
-// browser Gamepad API directly. Browsers without a vibration actuator remain silent.
-EM_JS(int, WebRumble, (const char* name, int low, int high, int ms), {
+// SDL's browser backend enumerates connected pads in initial index order, then
+// appends hot-plugged pads. Mirror that order, including non-controller devices.
+// Connection handles stay distinct when a browser index is reused after unplugging.
+EM_JS(void, WebInitGamepads, (), {
+    const state = { pads: [], next: 1 };
+    state.connect = function(event) {
+        const index = event['gamepad']['index'];
+        if (!state.pads.some(p => p.index === index))
+            state.pads.push({index: index, handle: state.next++});
+    };
+    state.disconnect = function(event) {
+        state.pads = state.pads.filter(p => p.index !== event['gamepad']['index']);
+    };
+    Module['gt2Gamepads'] = state;
+    window.addEventListener('gamepadconnected', state.connect);
+    window.addEventListener('gamepaddisconnected', state.disconnect);
     const pads = navigator['getGamepads'] ? navigator['getGamepads']() : [];
-    const want = UTF8ToString(name);
-    let pad = null;
-    for (const p of pads) if (p && p['id'] === want && p['vibrationActuator']) { pad = p; break; }
-    // shortcut: two pads with the same id are indistinguishable here, the first one rumbles
-    if (!pad) for (const p of pads) if (p && p['vibrationActuator']) { pad = p; break; }
-    if (!pad) return 0;
-    const result = pad['vibrationActuator']['playEffect']('dual-rumble', {
-        startDelay: 0, duration: ms,
-        strongMagnitude: low / 65535, weakMagnitude: high / 65535
-    });
-    if (result && result['catch']) result['catch'](function () {});
-    return 1;
+    for (const pad of pads) if (pad) state.connect({gamepad: pad});
+});
+EM_JS(void, WebQuitGamepads, (), {
+    const state = Module['gt2Gamepads'];
+    if (!state) return;
+    window.removeEventListener('gamepadconnected', state.connect);
+    window.removeEventListener('gamepaddisconnected', state.disconnect);
+    delete Module['gt2Gamepads'];
+});
+EM_JS(int, WebGamepadHandle, (int deviceIndex), {
+    const state = Module['gt2Gamepads'];
+    const pad = state && state.pads[deviceIndex];
+    return pad ? pad.handle : 0;
+});
+EM_JS(int, WebRumble, (int handle, int low, int high, int ms), {
+    const state = Module['gt2Gamepads'];
+    const connection = state && state.pads.find(p => p.handle === handle);
+    if (!connection || !navigator['getGamepads']) return 0;
+    const pad = navigator['getGamepads']()[connection.index];
+    const actuator = pad && pad['vibrationActuator'];
+    if (!actuator || typeof actuator['playEffect'] !== 'function') return 0;
+    if (ms < 0) return 1; // Capability query, without starting an effect.
+    try {
+        const result = actuator['playEffect']('dual-rumble', {
+            startDelay: 0, duration: ms,
+            strongMagnitude: low / 65535, weakMagnitude: high / 65535
+        });
+        if (result && result['catch']) result['catch'](function () {});
+        return 1;
+    } catch (error) { return 0; }
 });
 #endif
 class SdlPad final : public Device {
 public:
-    explicit SdlPad(SDL_GameController* pad) : pad_(pad) {}
+    explicit SdlPad(SDL_GameController* pad, int deviceIndex) : pad_(pad) {
+#ifdef __EMSCRIPTEN__
+        webHandle_ = WebGamepadHandle(deviceIndex);
+#else
+        (void)deviceIndex;
+#endif
+    }
     ~SdlPad() override { SetMotors(0, 0); SDL_GameControllerClose(pad_); }
     SDL_JoystickID Id() const { return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pad_)); }
     bool Poll(int, Ps1PadFrame& out) override {
@@ -67,14 +104,14 @@ public:
         const auto high = Uint16((small & 1) ? 65535 * strength / 100 : 0);
         // Renewed each field; a stalled client cannot leave the pad vibrating indefinitely.
 #ifdef __EMSCRIPTEN__
-        WebRumble(SDL_GameControllerName(pad_), low, high, 150);
+        WebRumble(webHandle_, low, high, 150);
 #else
         SDL_GameControllerRumble(pad_, low, high, 150);
 #endif
     }
     bool HasMotors() const override {
 #ifdef __EMSCRIPTEN__
-        return true; // the browser reports the actuator only with the pad, not as a capability
+        return WebRumble(webHandle_, 0, 0, -1) != 0;
 #else
         return SDL_GameControllerHasRumble(pad_) == SDL_TRUE;
 #endif
@@ -85,6 +122,9 @@ public:
     }
 private:
     SDL_GameController* pad_;
+#ifdef __EMSCRIPTEN__
+    int webHandle_ = 0;
+#endif
 };
 bool Active(const Ps1PadFrame& f, const Ps1PadFrame& rest) {
     if (f.type == kTypeNone) return false;
@@ -97,11 +137,22 @@ bool Active(const Ps1PadFrame& f, const Ps1PadFrame& rest) {
 struct InputSystem::DirectInputState {};
 InputSystem::InputSystem() {
     SDL_SetMainReady();
-    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
+#ifdef __EMSCRIPTEN__
+    WebInitGamepads();
+#endif
+    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+#ifdef __EMSCRIPTEN__
+        WebQuitGamepads();
+#endif
+        throw std::runtime_error(SDL_GetError());
+    }
 }
 InputSystem::~InputSystem() {
     StopFeedback(); devices_.clear();
     SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+#ifdef __EMSCRIPTEN__
+    WebQuitGamepads();
+#endif
 }
 void InputSystem::AttachWindow(void* window) { hwnd_ = window; rescan_ = true; }
 void InputSystem::AddFakePad(const std::string& script, int port) {
@@ -118,7 +169,7 @@ void InputSystem::Rescan(int field) {
             if (const auto* pad = dynamic_cast<SdlPad*>(device.get()); pad && pad->Id() == id) open = true;
         if (open) continue;
         if (auto* controller = SDL_GameControllerOpen(i)) {
-            auto pad = std::make_unique<SdlPad>(controller);
+            auto pad = std::make_unique<SdlPad>(controller, i);
             log_.push_back("connected: " + pad->Name());
             AddDevice(std::move(pad));
         } else log_.push_back(std::string("cannot open gamepad: ") + SDL_GetError());
