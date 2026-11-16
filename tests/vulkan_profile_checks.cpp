@@ -73,11 +73,11 @@ int main() {
     gpu.availableBytes = 7ull << 30;
     gt2view::VulkanCapabilities plenty;
     plenty.gpus.push_back(gpu);
-    if (gt2view::RecommendsPerformancePreset(plenty)) return 24;
+    if (gt2view::RecommendsLowSpecPreset(plenty)) return 24;
     if (gt2view::GraphicsMemoryTooLow(plenty)) return 25;
     gt2view::VulkanCapabilities weak = plenty;
     weak.gpus[0].availableBytes = 1ull << 30;
-    if (!gt2view::RecommendsPerformancePreset(weak)) return 26;
+    if (!gt2view::RecommendsLowSpecPreset(weak)) return 26;
     if (gt2view::GraphicsMemoryTooLow(weak)) return 27;
     gt2view::VulkanCapabilities tiny = weak;
     tiny.gpus[0].availableBytes = 400ull << 20;
@@ -86,7 +86,7 @@ int main() {
     gt2view::VulkanCapabilities unknown = plenty;
     unknown.gpus[0].availableBytes = 0;
     unknown.gpus[0].deviceLocalBytes = 0;
-    if (gt2view::RecommendsPerformancePreset(unknown)) return 29;
+    if (gt2view::RecommendsLowSpecPreset(unknown)) return 29;
     if (gt2view::GraphicsMemoryTooLow(unknown)) return 30;
 
     std::puts("PASS: Vulkan 1.1/1.2 fallback profile, env switch, layers and clear values");

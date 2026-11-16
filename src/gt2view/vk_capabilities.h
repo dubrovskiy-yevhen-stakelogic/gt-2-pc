@@ -49,11 +49,11 @@ struct VulkanCapabilities {
 };
 
 // The standard preset's measured peak is ~504 MiB (a race at 1080p) plus swapchain, render targets, driver overhead
-// and the desktop: below 2 GiB of *available* device-local memory the performance preset is the safe default.
+// and the desktop: below 2 GiB of *available* device-local memory the low spec preset is the safe default.
 inline constexpr uint64_t kStandardPresetMemory = 2ull * 1024 * 1024 * 1024;
-// The performance preset still needs its 137 MiB of fixed buffers plus the swapchain and render targets (~400 MiB
-// at 4K) and room for the driver. Below this the game stops with a clear message instead of failing mid-race.
-inline constexpr uint64_t kPerformancePresetFloor = 768ull * 1024 * 1024;
+// The low spec preset's 137 MiB of fixed buffers plus swapchain, depth and scene targets (~45 MiB at 1080p, ~170 MiB
+// at 4K) and driver overhead. 512 MiB covers 1080p with headroom; 4K on such a card is the tight case.
+inline constexpr uint64_t kLowSpecPresetFloor = 512ull * 1024 * 1024;
 
 // What the GPU can actually hand out: the budget the driver reports, else the heaps' total (0 = unknown).
 inline uint64_t UsableMemory(const GpuCapability& gpu) {
@@ -62,17 +62,17 @@ inline uint64_t UsableMemory(const GpuCapability& gpu) {
 
 // Whether the standard settings are safe. This is about memory only: a Vulkan 1.1/1.2 card with plenty of memory is
 // a powerful GPU and keeps the standard preset (the render-pass path is chosen separately, from the API version).
-inline bool RecommendsPerformancePreset(const VulkanCapabilities& caps) {
+inline bool RecommendsLowSpecPreset(const VulkanCapabilities& caps) {
     const GpuCapability* gpu = caps.best();
     return gpu && UsableMemory(*gpu) && UsableMemory(*gpu) < kStandardPresetMemory;
 }
 
-// Hard floor: the performance preset cannot be squeezed below this, so the game refuses to start rather than run
+// Hard floor: the low spec preset cannot be squeezed below this, so the game refuses to start rather than run
 // out of memory during a race. Unknown memory (0) is not treated as low - some drivers simply do not report it.
 inline bool GraphicsMemoryTooLow(const VulkanCapabilities& caps) {
     const GpuCapability* gpu = caps.best();
     return gpu && caps.profile() != GraphicsProfile::Unsupported && UsableMemory(*gpu) &&
-           UsableMemory(*gpu) < kPerformancePresetFloor;
+           UsableMemory(*gpu) < kLowSpecPresetFloor;
 }
 
 // Probes the Vulkan loader dynamically. Never throws and keeps working when the loader is absent.

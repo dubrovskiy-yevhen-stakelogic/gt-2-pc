@@ -257,10 +257,10 @@ No firmware, extracted models or generated HD asset packs are distributed.
 The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
 rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. The settings
 preset follows **available video memory, not the API version**: under 2 GiB the
-game starts on the **Performance** preset (75% scene resolution, no MSAA, no car
+game starts on the **Low spec** preset (75% scene resolution, no MSAA, no car
 reflections, PS1 textures, original scenery detail, no HD extras, lower memory)
-unless you have saved another preset or your own tuning; below 768 MiB it stops
-with a clear message instead of failing during a race. `--performance` selects
+unless you have saved another preset or your own tuning; below 512 MiB it stops
+with a clear message instead of failing during a race. `--low-spec` selects
 the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
 the path and the recommended preset. PC SETTINGS shows the preset and every row
 it changes updates as you step it; its **Memory Use** row (Normal / Low) exposes

@@ -238,10 +238,10 @@ void PcSettings::Save(const std::string& path) const {
     o << "rumble_scale=" << rumbleScale << "\n";
     o << graphics.Serialize();
     // A saved preset or custom tuning is a user choice the startup check must not override. The plain defaults
-    // record nothing, so a machine that later reports low memory can still be moved to the performance preset.
+    // record nothing, so a machine that later reports low memory can still be moved to the low spec preset.
     if (graphics != GraphicsSettings{}) {
         o << "graphics_preset="
-          << (graphics == GraphicsSettings::Performance() ? "performance"
+          << (graphics == GraphicsSettings::LowSpec() ? "low_spec"
               : graphics == GraphicsSettings::Vanilla()    ? "vanilla"
               : graphics == GraphicsSettings::Modern()     ? "modern" : "custom")
           << "\n";

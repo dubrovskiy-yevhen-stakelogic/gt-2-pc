@@ -223,13 +223,13 @@ void LoadOverlaySettings(const std::string& basePath) {
     raceView = -1;
     bool legacyOpenView = false;
     carSeatHeights.clear();
-    gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the performance preset defaults it off
+    gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the low spec preset defaults it off
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
     metricUnits = -1;
     playStationIntro = true;
     const auto base=gt2::shell::PcSettings::Load(basePath);
     baseMetricUnits = base.metric; baseVrSettings=base.vr;
-    gt2::hd::SetEnabled(!CurrentGraphics().lowMemory); // the performance preset spends no memory on HD extras
+    gt2::hd::SetEnabled(!CurrentGraphics().lowMemory); // the low spec preset spends no memory on HD extras
     gt2::pc::SetUnlocks(false, false);
     gt2::pc::unlockSimulationEvents = false;
     gt2::pc::simulationDamage = false;
@@ -1023,20 +1023,20 @@ void ShowWheelSettings(GameWindow& w) {
 
 const char* GraphicsPresetName(const gt2::shell::GraphicsSettings& g) {
     using gt2::shell::GraphicsSettings;
-    if (g == GraphicsSettings::Performance()) return "Performance";
+    if (g == GraphicsSettings::LowSpec()) return "Low spec";
     if (g == GraphicsSettings::Vanilla()) return "Vanilla";
     if (g == GraphicsSettings::Modern()) return "Modern";
     return "Custom";
 }
 
-// The presets the port menu cycles: Performance, Vanilla, Modern. Custom is derived and only a starting point.
+// The presets the port menu cycles: Low spec, Vanilla, Modern. Custom is derived and only a starting point.
 gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g, int direction) {
     using gt2::shell::GraphicsSettings;
-    const bool custom = !(g == GraphicsSettings::Performance() || g == GraphicsSettings::Vanilla() || g == GraphicsSettings::Modern());
-    int at = g == GraphicsSettings::Performance() ? 0 : g == GraphicsSettings::Vanilla() ? 1 : 2;
+    const bool custom = !(g == GraphicsSettings::LowSpec() || g == GraphicsSettings::Vanilla() || g == GraphicsSettings::Modern());
+    int at = g == GraphicsSettings::LowSpec() ? 0 : g == GraphicsSettings::Vanilla() ? 1 : 2;
     if (custom) at = direction < 0 ? 1 : 2; // nearest preset in that direction
     else at = std::clamp(at + direction, 0, 2);
-    const GraphicsSettings presets[] = {GraphicsSettings::Performance(), GraphicsSettings::Vanilla(), GraphicsSettings::Modern()};
+    const GraphicsSettings presets[] = {GraphicsSettings::LowSpec(), GraphicsSettings::Vanilla(), GraphicsSettings::Modern()};
     return presets[at];
 }
 

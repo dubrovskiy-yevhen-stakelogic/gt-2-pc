@@ -4,7 +4,7 @@
 // starts; nothing of the simulation, the replays or the checks against the original depends on them.
 //
 // Command line (main.cpp): --vanilla (today's output exactly: Original 30 frame rate, window resolution, no MSAA, PS1
-// nearest texels, perspective-correct mapping, the original's LOD and render lists), --performance (the small-VRAM
+// nearest texels, perspective-correct mapping, the original's LOD and render lists), --low-spec (the small-VRAM
 // preset; the Vulkan 1.1/1.2 render-pass path is separate), --modern, --frame-rate
 // original|display, --frame-cap N, --vsync 0|1, --render-scale P (percent) , --msaa N, --texture-filter
 // nearest|smooth, --texture-mapping perspective|affine, --draw-distance original|all|<metres>, --max-detail.
@@ -29,7 +29,7 @@ void SetGraphicsFromPage(const gt2::shell::GraphicsSettings& settings);
 bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::GraphicsSettings& fileSettings);
 bool GraphicsPinned();
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings);
-// Applies the performance preset when this machine needs it - usable video memory below what the standard settings
+// Applies the low spec preset when this machine needs it - usable video memory below what the standard settings
 // need - and never overrides a preset or custom tuning the user has saved. A machine below the preset's own floor
 // reports `memoryTooLow` instead, so the game can stop with a clear message rather than fail during a race.
 // Command-line flags still win. `reason` is one line for the support log.

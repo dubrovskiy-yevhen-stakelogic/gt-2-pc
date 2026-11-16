@@ -220,14 +220,14 @@ static void CheckPcChanges(const char* discPath) {
     Check(restored.carReflections && !restored.modernCarReflections, "original car reflections survive the tri-state key");
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
-    const shell::GraphicsSettings performance = shell::GraphicsSettings::Performance();
-    Check(performance.lowMemory && performance.msaa == 1 && performance.renderScale < 100 && !performance.carReflections,
-          "performance preset lowers the scene, drops car reflections and enables the low-memory regime");
+    const shell::GraphicsSettings lowSpec = shell::GraphicsSettings::LowSpec();
+    Check(lowSpec.lowMemory && lowSpec.msaa == 1 && lowSpec.renderScale < 100 && !lowSpec.carReflections,
+          "low spec preset lowers the scene, drops car reflections and enables the low-memory regime");
     Check(!shell::GraphicsSettings{}.lowMemory, "standard settings keep the decoded texture cache");
-    shell::GraphicsSettings performanceRestored;
-    std::istringstream performanceSettings(performance.Serialize());
-    while (std::getline(performanceSettings, line)) { const auto at = line.find('='); if (at != std::string::npos) performanceRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
-    Check(performanceRestored == performance, "performance preset survives the settings round trip");
+    shell::GraphicsSettings lowSpecRestored;
+    std::istringstream lowSpecSettings(lowSpec.Serialize());
+    while (std::getline(lowSpecSettings, line)) { const auto at = line.find('='); if (at != std::string::npos) lowSpecRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
+    Check(lowSpecRestored == lowSpec, "low spec preset survives the settings round trip");
 
     // The PC SETTINGS page derives every row from the settings: stepping the preset updates the rows it changes.
     shell::PcSettings preset;
@@ -235,9 +235,9 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps to Vanilla");
     Check(shell::PcRowOf(preset, 2).index == 0 && shell::PcRowOf(preset, 6).index == 0 && shell::PcRowOf(preset, 7).index == 0,
           "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
-    Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::Performance(), "the preset steps to Performance");
+    Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps to Low spec");
     Check(shell::PcRowOf(preset, 5).index == 1 && shell::PcRowOf(preset, 11).index == 1,
-          "the Performance preset updates render scale and memory use immediately");
+          "the Low spec preset updates render scale and memory use immediately");
     Check(shell::StepPcRow(preset, 11, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
     // Every preset must be steppable both ways; Modern used to apply itself again when stepped left.
     shell::PcSettings stepping;
@@ -248,19 +248,19 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
     stepping.graphics = shell::GraphicsSettings{};
     Check(shell::StepPcRow(stepping, 1, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
-    stepping.graphics = shell::GraphicsSettings::Performance();
-    Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Performance steps right to Vanilla");
+    stepping.graphics = shell::GraphicsSettings::LowSpec();
+    Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
 
     // A saved preset is the user's choice: the startup memory check must not override it. Plain defaults record
-    // nothing, so a machine that reports low memory can still be moved to the performance preset.
+    // nothing, so a machine that reports low memory can still be moved to the low spec preset.
     {
         const auto path = std::filesystem::temp_directory_path() / "gt2-preset-marker-check.txt";
         shell::PcSettings chosen;
-        chosen.graphics = shell::GraphicsSettings::Performance();
+        chosen.graphics = shell::GraphicsSettings::LowSpec();
         chosen.Save(path.string());
         const shell::PcSettings loaded = shell::PcSettings::Load(path.string());
-        Check(loaded.graphicsPreset == "performance" && loaded.graphics == chosen.graphics,
-              "a saved performance preset is recorded as the user's choice");
+        Check(loaded.graphicsPreset == "low_spec" && loaded.graphics == chosen.graphics,
+              "a saved low spec preset is recorded as the user's choice");
         shell::PcSettings tuned;
         tuned.graphics.msaa = 2;
         tuned.Save(path.string());
