@@ -124,7 +124,7 @@ struct GraphicsSettings {
         return g;
     }
     // Discussion #77, phase 3: the preset for the Vulkan 1.1/1.2 fallback and GPUs under ~2 GB. Low scene resolution,
-    // no MSAA or HD extras, and the low-memory regime above.
+    // no MSAA, no car reflection pass and no HD extras, and the low-memory regime above.
     static GraphicsSettings Compatibility() {
         GraphicsSettings g;
         g.renderScale = 75;
@@ -132,6 +132,7 @@ struct GraphicsSettings {
         g.smoothTextures = false;
         g.affine = false;
         g.modernCarReflections = false;
+        g.carReflections = false;
         g.maxDetail = false;
         g.drawDistance = 0;
         g.lowMemory = true;

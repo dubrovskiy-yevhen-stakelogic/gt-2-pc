@@ -257,7 +257,7 @@ No firmware, extracted models or generated HD asset packs are distributed.
 The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
 rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. On first run
 the probe selects the **Compatibility** settings preset (75% scene resolution,
-no MSAA, PS1 textures, original scenery detail, lower memory) for a Vulkan
+no MSAA, no car reflections, PS1 textures, original scenery detail, lower memory) for a Vulkan
 1.1/1.2 driver or a GPU under ~2 GB; `--compatibility` selects it explicitly and
 `--diagnose` prints the loader, GPUs, limits, the path and the recommended
 preset. PC SETTINGS shows the preset and every row it changes updates as you
