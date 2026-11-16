@@ -231,25 +231,25 @@ static void CheckPcChanges(const char* discPath) {
 
     // The PC SETTINGS page derives every row from the settings: stepping the preset updates the rows it changes.
     shell::PcSettings preset;
-    Check(shell::PcRowOf(preset, 11).index == 2, "the default settings show the Custom preset");
-    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps to Vanilla");
-    Check(shell::PcRowOf(preset, 1).index == 0 && shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 6).index == 0,
+    Check(shell::PcRowOf(preset, 1).index == 2, "the first graphics row is the Custom preset");
+    Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps to Vanilla");
+    Check(shell::PcRowOf(preset, 2).index == 0 && shell::PcRowOf(preset, 6).index == 0 && shell::PcRowOf(preset, 7).index == 0,
           "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
-    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Compatibility(), "the preset steps to Compatibility");
-    Check(shell::PcRowOf(preset, 4).index == 1 && shell::PcRowOf(preset, 10).index == 1,
+    Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::Compatibility(), "the preset steps to Compatibility");
+    Check(shell::PcRowOf(preset, 5).index == 1 && shell::PcRowOf(preset, 11).index == 1,
           "the Compatibility preset updates render scale and memory use immediately");
-    Check(shell::StepPcRow(preset, 10, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
+    Check(shell::StepPcRow(preset, 11, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
     // Every preset must be steppable both ways; Modern used to apply itself again when stepped left.
     shell::PcSettings stepping;
     stepping.graphics = shell::GraphicsSettings::Modern();
-    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
+    Check(shell::StepPcRow(stepping, 1, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
+    Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
     stepping.graphics = shell::GraphicsSettings{};
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
+    Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
     stepping.graphics = shell::GraphicsSettings{};
-    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
+    Check(shell::StepPcRow(stepping, 1, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
     stepping.graphics = shell::GraphicsSettings::Compatibility();
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Compatibility steps right to Vanilla");
+    Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Compatibility steps right to Vanilla");
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

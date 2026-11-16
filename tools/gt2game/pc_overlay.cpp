@@ -389,8 +389,9 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * (rows.size()>12 ? 28.f : rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
-        if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
+        const float step = rows.size()>13 ? 26.f : rows.size()>12 ? 28.f : rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f;
+        const float y = 112 + float(i) * step;
+        if (int(i) == selected) canvas.Quad(44, y - 5, 711, step < 31.f ? step - 2.f : 34.f, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
     }
     canvas.Text(54, 479, status.substr(0, 57), 0xa8b7c8);
@@ -1038,6 +1039,12 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
     return presets[at];
 }
 
+// The port menu's first graphics page, top to bottom: the preset first, so one row changes everything.
+enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxVibration, kGfxFilter, kGfxProfiler,
+             kGfxHd, kGfxIntro, kGfxReflections, kGfxGt4, kGfxMore, kGfxBack };
+// Its "More graphics" sub-page (Foveation exists in VR only; Back is the last row).
+enum : int { kMoreVsync = 0, kMorePresentation, kMoreMemory, kMoreScenery, kMoreMapping, kMoreFoveation };
+
 void ShowSettingsMenu(GameWindow& window) {
     const gt2::audio::ScopedMixPause pause;
     PrepareNativeUi(window.Renderer()); window.Input().StopFeedback();
@@ -1081,6 +1088,7 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 1) {
             title = "GT2 VR / GRAPHICS";
+            rows.push_back(std::string("Preset: ") + GraphicsPresetName(graphics));
             rows.push_back(vr ? std::string("Eye resolution: ") + std::to_string(vrScale) + "% (restart)"
                               : std::string("Resolution: ") + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%"));
             rows.push_back(vr ? std::string("Refresh rate: ") + std::to_string(vrRefresh) + " Hz"
@@ -1101,7 +1109,6 @@ void ShowSettingsMenu(GameWindow& window) {
             title = "GT2 / MORE GRAPHICS";
             rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
                     std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"),
-                    std::string("Preset: ") + GraphicsPresetName(graphics),
                     std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal"),
                     std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
                     std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective")};
@@ -1234,11 +1241,12 @@ void ShowSettingsMenu(GameWindow& window) {
                         window.Close(); done = true;
                     } else { page = 0; selected = 4; }
                 }
-                else if (page == 1 && (direction || selected == 12)) {
+                else if (page == 1 && (direction || selected == kGfxBack)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     status = "Saved.";
-                    if (vr && selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
-                    if (vr && selected == 1) {
+                    if (selected == kGfxPreset && direction) { graphics = CycleGraphicsPreset(graphics, direction); status = "Saved. Preset applies now."; }
+                    if (vr && selected == kGfxResolution) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
+                    if (vr && selected == kGfxFrameLimit) {
                         const auto rates = window.RefreshRates();
                         if (!rates.empty()) {
                             auto it = std::find(rates.begin(), rates.end(), vrRefresh);
@@ -1247,58 +1255,58 @@ void ShowSettingsMenu(GameWindow& window) {
                             if (window.SetRefreshRate(rate)) vrRefresh = rate; else status = "Headset refused refresh rate; unchanged.";
                         } else status = "Headset does not offer refresh-rate selection.";
                     }
-                    if (!vr && selected == 0) {
+                    if (!vr && selected == kGfxResolution) {
                         const int resolutions[] = {50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,
                             130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,-720,-1080,-1440,-2160};
                         const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
                         graphics.renderHeight = choice < 0 ? -choice : 0;
                         if (choice > 0) graphics.renderScale = choice;
                     }
-                    if (!vr && selected == 1) {
+                    if (!vr && selected == kGfxFrameLimit) {
                         const int caps[] = {0,30,60,72,80,90,120,144,165,240};
                         graphics.frameCap = Cycle(graphics.frameCap, caps, direction);
                     }
-                    if (selected == 2) graphics.msaa = Cycle(graphics.msaa, samples, direction);
-                    if (selected == 3) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
-                    if (selected == 4) rumble = std::clamp(rumble + direction * 5, 0, 100);
-                    if (selected == 5) graphics.smoothTextures = !graphics.smoothTextures;
-                    if (selected == 6) profiler = !profiler;
-                    if (selected == 7 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
-                    if (selected == 8 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
-                    if (selected == 9 && direction) {
+                    if (selected == kGfxMsaa) graphics.msaa = Cycle(graphics.msaa, samples, direction);
+                    if (selected == kGfxDistance) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
+                    if (selected == kGfxVibration) rumble = std::clamp(rumble + direction * 5, 0, 100);
+                    if (selected == kGfxFilter) graphics.smoothTextures = !graphics.smoothTextures;
+                    if (selected == kGfxProfiler) profiler = !profiler;
+                    if (selected == kGfxHd && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
+                    if (selected == kGfxIntro && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
+                    if (selected == kGfxReflections && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
                         else { graphics.carReflections = false; graphics.modernCarReflections = false; }
                     }
-                    if (selected == 10 && direction) {
+                    if (selected == kGfxGt4 && direction) {
                         gt4ModelSet = !gt4ModelSet;
                         status = gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
                     }
-                    if (selected == 11 && accept) { page = 8; selected = 0; }
-                    if (selected == 12) { page = 0; selected = 0; }
-                    SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
+                    if (selected == kGfxMore && accept) { page = 8; selected = 0; }
+                    if (selected == kGfxBack) { page = 0; selected = 0; }
+                    SetGraphicsFromOverlay(graphics); window.Renderer().SetLowMemory(graphics.lowMemory);
+                    window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
                     window.Input().SetRumbleScale(rumble);
                 } else if (page == 8) {
-                    if (selected == 0 && direction) graphics.vsync = !graphics.vsync;
-                    if (selected == 1 && direction) graphics.frameRate = !graphics.frameRate;
-                    if (selected == 2 && direction) graphics = CycleGraphicsPreset(graphics, direction);
-                    if (selected == 3 && direction) {
+                    if (selected == kMoreVsync && direction) graphics.vsync = !graphics.vsync;
+                    if (selected == kMorePresentation && direction) graphics.frameRate = !graphics.frameRate;
+                    if (selected == kMoreMemory && direction) {
                         graphics.lowMemory = !graphics.lowMemory;
                         status = graphics.lowMemory ? "Saved. Low memory: decoded textures off, released on restart."
                                                     : "Saved. Decoded textures back on.";
                     }
-                    if (selected == 4 && direction) graphics.maxDetail = !graphics.maxDetail;
-                    if (selected == 5 && direction) graphics.affine = !graphics.affine;
-                    if (vr && selected == 6 && direction) {
+                    if (selected == kMoreScenery && direction) graphics.maxDetail = !graphics.maxDetail;
+                    if (selected == kMoreMapping && direction) graphics.affine = !graphics.affine;
+                    if (vr && selected == kMoreFoveation && direction) {
                         foveation = (foveation + direction + 4) % 4;
                         window.Renderer().SetFoveation(foveation);
                         status = "Saved. Centre and HUD stay full resolution.";
                     }
-                    if (selected == int(rows.size()) - 1) { page = 1; selected = 11; }
+                    if (selected == int(rows.size()) - 1) { page = 1; selected = kGfxMore; }
                     SetGraphicsFromOverlay(graphics);
                     window.Renderer().SetLowMemory(graphics.lowMemory);
                     window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
-                    if (selected != 3) status = "Saved.";
+                    if (selected != kMoreMemory) status = "Saved.";
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);

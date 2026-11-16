@@ -49,34 +49,34 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
     PcRow r;
     switch (row) {
     case 0: r = {"Speed Units", {"mph", "km/h"}, pc.metric ? 1 : 0}; break;
-    case 1: r = {"Frame Rate", {"Original 30", "Display"}, g.frameRate == GraphicsSettings::kFrameRateOriginal ? 0 : 1}; break;
-    case 2:
-        r = {"Frame Cap", {"Off", "30", "60", "120", "144", "165", "240"}, 0};
-        r.index = IndexOf(kPcCaps, g.frameCap, r.values, "%d");
-        break;
-    case 3: r = {"VSync", {"Off", "On"}, g.vsync ? 1 : 0}; break;
-    case 4:
-        r = {"Render Scale", {"50%", "75%", "100%", "125%", "150%", "200%"}, 0};
-        r.index = IndexOf(kPcScales, g.renderScale, r.values, "%d%%");
-        break;
-    case 5:
-        r = {"Anti-Aliasing", {"Off", "MSAA 2x", "MSAA 4x", "MSAA 8x"}, 0};
-        r.index = IndexOf(kPcMsaa, g.msaa, r.values, "MSAA %dx");
-        break;
-    case 6: r = {"Textures", {"PS1 Nearest", "Smooth"}, g.smoothTextures ? 1 : 0}; break;
-    case 7: r = {"Texture Mapping", {"Perspective", "Affine PS1"}, g.affine ? 1 : 0}; break;
-    case 8: r = {"Scenery Detail", {"Original", "Max"}, g.maxDetail ? 1 : 0}; break;
-    case 9:
-        r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
-        r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
-        break;
-    case 10: r = {"Memory Use", {"Normal", "Low"}, g.lowMemory ? 1 : 0}; break; // not a preset row: the decoded cache
-    default: {
+    case 1: { // first: one row changes all of the graphics below it
         const bool compatibility = g == GraphicsSettings::Compatibility();
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
         r = {"Preset", {"Compatibility", "Vanilla", "Custom", "Modern"}, compatibility ? 0 : vanilla ? 1 : modern ? 3 : 2};
         break;
     }
+    case 2: r = {"Frame Rate", {"Original 30", "Display"}, g.frameRate == GraphicsSettings::kFrameRateOriginal ? 0 : 1}; break;
+    case 3:
+        r = {"Frame Cap", {"Off", "30", "60", "120", "144", "165", "240"}, 0};
+        r.index = IndexOf(kPcCaps, g.frameCap, r.values, "%d");
+        break;
+    case 4: r = {"VSync", {"Off", "On"}, g.vsync ? 1 : 0}; break;
+    case 5:
+        r = {"Render Scale", {"50%", "75%", "100%", "125%", "150%", "200%"}, 0};
+        r.index = IndexOf(kPcScales, g.renderScale, r.values, "%d%%");
+        break;
+    case 6:
+        r = {"Anti-Aliasing", {"Off", "MSAA 2x", "MSAA 4x", "MSAA 8x"}, 0};
+        r.index = IndexOf(kPcMsaa, g.msaa, r.values, "MSAA %dx");
+        break;
+    case 7: r = {"Textures", {"PS1 Nearest", "Smooth"}, g.smoothTextures ? 1 : 0}; break;
+    case 8: r = {"Texture Mapping", {"Perspective", "Affine PS1"}, g.affine ? 1 : 0}; break;
+    case 9: r = {"Scenery Detail", {"Original", "Max"}, g.maxDetail ? 1 : 0}; break;
+    case 10:
+        r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
+        r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
+        break;
+    default: r = {"Memory Use", {"Normal", "Low"}, g.lowMemory ? 1 : 0}; break; // not a preset row: the decoded cache
     }
     return r;
 }
@@ -84,10 +84,10 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
 // Steps row `row` by `step` (-1 / +1, no wrap); true when a setting changed.
 bool StepPcRow(PcSettings& pc, int row, int step) {
     const PcRow r = PcRowOf(pc, row);
-    const int count = std::min(int(r.values.size()), row == 2 ? int(std::size(kPcCaps)) : row == 4 ? int(std::size(kPcScales))
-                                                     : row == 5 ? int(std::size(kPcMsaa)) : row == 9 ? int(std::size(kPcDistances)) : int(r.values.size()));
+    const int count = std::min(int(r.values.size()), row == 3 ? int(std::size(kPcCaps)) : row == 5 ? int(std::size(kPcScales))
+                                                     : row == 6 ? int(std::size(kPcMsaa)) : row == 10 ? int(std::size(kPcDistances)) : int(r.values.size()));
     int index = r.index;
-    if (row == 11) { // presets are Compatibility / Vanilla / Modern; Custom is derived, never stepped onto
+    if (row == 1) { // presets are Compatibility / Vanilla / Modern; Custom is derived, never stepped onto
         static constexpr int kPresets[] = {0, 1, 3};
         if (index == 2) index = step < 0 ? 1 : 3; // Custom -> the preset in that direction
         else index = kPresets[std::clamp((index == 0 ? 0 : index == 1 ? 1 : 2) + step, 0, 2)];
@@ -98,17 +98,17 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     const PcSettings before = pc;
     switch (row) {
     case 0: pc.metric = index == 1; break;
-    case 1: g.frameRate = index == 0 ? GraphicsSettings::kFrameRateOriginal : GraphicsSettings::kFrameRateDisplay; break;
-    case 2: g.frameCap = kPcCaps[index]; break;
-    case 3: g.vsync = index == 1; break;
-    case 4: g.renderScale = kPcScales[index]; break;
-    case 5: g.msaa = kPcMsaa[index]; break;
-    case 6: g.smoothTextures = index == 1; break;
-    case 7: g.affine = index == 1; break;
-    case 8: g.maxDetail = index == 1; break;
-    case 9: g.drawDistance = kPcDistances[index]; break;
-    case 10: g.lowMemory = index == 1; break;
-    default: g = index == 0 ? GraphicsSettings::Compatibility() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break; // index 3
+    case 1: g = index == 0 ? GraphicsSettings::Compatibility() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break; // index 3
+    case 2: g.frameRate = index == 0 ? GraphicsSettings::kFrameRateOriginal : GraphicsSettings::kFrameRateDisplay; break;
+    case 3: g.frameCap = kPcCaps[index]; break;
+    case 4: g.vsync = index == 1; break;
+    case 5: g.renderScale = kPcScales[index]; break;
+    case 6: g.msaa = kPcMsaa[index]; break;
+    case 7: g.smoothTextures = index == 1; break;
+    case 8: g.affine = index == 1; break;
+    case 9: g.maxDetail = index == 1; break;
+    case 10: g.drawDistance = kPcDistances[index]; break;
+    default: g.lowMemory = index == 1; break;
     }
     return !(before.metric == pc.metric && before.graphics == pc.graphics);
 }
