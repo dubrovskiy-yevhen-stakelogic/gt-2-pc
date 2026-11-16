@@ -13,6 +13,7 @@ namespace gt2 {
 inline std::filesystem::path gt4ModelSetRoot;
 inline bool gt4ModelSetEnabled = false;
 inline bool modernCarReflections = false;
+inline bool carReflections = true; // false: skip every car reflection pass (Off)
 inline void SetGt4ModelSetRoot(const std::string& disc, const std::filesystem::path& fallback) {
     if (const char* path = std::getenv("GT2_GT4_MODEL_SET")) { gt4ModelSetRoot = path; return; }
     auto path = std::filesystem::path(disc);

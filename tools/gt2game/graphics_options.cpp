@@ -24,10 +24,10 @@ std::vector<std::pair<std::string, std::string>> g_overrides;
 const gt2::shell::GraphicsSettings& CurrentGraphics() { return g_graphics; }
 
 void SetGraphicsFromSettings(const gt2::shell::GraphicsSettings& settings) {
-    if (!g_pinned && !g_overlay) {g_graphics = settings;gt2::modernCarReflections=settings.modernCarReflections;}
+    if (!g_pinned && !g_overlay) {g_graphics = settings;gt2::modernCarReflections=settings.modernCarReflections;gt2::carReflections=settings.carReflections;}
 }
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings) {
-    if (!g_pinned) { g_graphics = settings; g_overlay = true; gt2::modernCarReflections=settings.modernCarReflections;}
+    if (!g_pinned) { g_graphics = settings; g_overlay = true; gt2::modernCarReflections=settings.modernCarReflections;gt2::carReflections=settings.carReflections;}
 }
 
 bool GraphicsPinned() { return g_pinned; }
@@ -79,6 +79,7 @@ gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& s) {
     o.smoothTextures = s.smoothTextures;
     o.affine = s.affine;
     gt2::modernCarReflections=s.modernCarReflections;
+    gt2::carReflections=s.carReflections;
     o.vsync = s.vsync;
     return o;
 }
