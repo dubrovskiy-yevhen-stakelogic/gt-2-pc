@@ -1040,10 +1040,10 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
 }
 
 // The port menu's first graphics page, top to bottom: the preset first, so one row changes everything.
-enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxVibration, kGfxFilter, kGfxProfiler,
-             kGfxHd, kGfxIntro, kGfxReflections, kGfxGt4, kGfxMore, kGfxBack };
-// Its "More graphics" sub-page (Foveation exists in VR only; Back is the last row).
-enum : int { kMoreVsync = 0, kMorePresentation, kMoreMemory, kMoreScenery, kMoreMapping, kMoreFoveation };
+enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
+             kGfxHd, kGfxGt4, kGfxIntro, kGfxVibration, kGfxProfiler, kGfxMore, kGfxBack };
+// Its "More graphics" sub-page: presentation timing, world detail, memory (Foveation exists in VR only; Back is last).
+enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreMemory, kMoreFoveation };
 
 void ShowSettingsMenu(GameWindow& window) {
     const gt2::audio::ScopedMixPause pause;
@@ -1095,13 +1095,13 @@ void ShowSettingsMenu(GameWindow& window) {
                               : std::string("Frame limit: ") + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display")));
             rows.push_back("MSAA: " + std::to_string(graphics.msaa) + "x");
             rows.push_back("Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"));
-            rows.push_back("Vibration: " + std::to_string(rumble) + "%");
             rows.push_back("Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"));
-            rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
-            rows.push_back("HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"));
-            rows.push_back("PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"));
             rows.push_back("GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"));
+            rows.push_back("HD textures and media: " + std::string(gt2::hd::Enabled() ? "ON" : "OFF"));
             rows.push_back(std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"));
+            rows.push_back("PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"));
+            rows.push_back("Vibration: " + std::to_string(rumble) + "%");
+            rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
             rows.push_back("More graphics..."); // last: the sub-page of the options that do not fit here
             rows.push_back("Back");
         }
@@ -1109,9 +1109,9 @@ void ShowSettingsMenu(GameWindow& window) {
             title = "GT2 / MORE GRAPHICS";
             rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
                     std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"),
-                    std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal"),
                     std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
-                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective")};
+                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective"),
+                    std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal")};
             if (vr) rows.push_back("Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"));
             rows.push_back("Back");
         }
