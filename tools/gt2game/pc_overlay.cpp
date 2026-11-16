@@ -1051,29 +1051,29 @@ std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
     if (selected == rowCount - 1) return page == 1 ? "Back to the menu." : "Back to the graphics page.";
     if (page == 1) {
         switch (selected) {
-        case kGfxPreset: return "75% scene, no MSAA, no reflections, low memory.";
-        case kGfxResolution: return vr ? "Per-eye resolution; restart to apply." : "Scene resolution: lower runs faster.";
-        case kGfxFrameLimit: return vr ? "Headset refresh rate." : "Display rate, or a fixed frame cap.";
-        case kGfxMsaa: return "Anti-aliasing of the 3D scene (1x = off).";
-        case kGfxDistance: return "Original course lists; larger loads more scenery.";
-        case kGfxFilter: return "Smooth filters bilinearly; Original keeps PS1 texels.";
-        case kGfxReflections: return "Off, Original, or Modern cube reflections.";
-        case kGfxHd: return "Prepared HD assets when installed.";
-        case kGfxGt4: return "GT4 car models when the pack is installed.";
-        case kGfxIntro: return "The original boot intro.";
-        case kGfxProfiler: return "Writes the frame-time CSV.";
-        case kGfxMore: return "VSync, frame presentation, scenery, mapping, memory.";
+        case kGfxPreset: return "Faster setup for older PCs; simpler graphics.";
+        case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "How sharp the 3D view is; lower is faster.";
+        case kGfxFrameLimit: return vr ? "How many times per second the headset updates." : "Limit the frame rate, or follow the screen.";
+        case kGfxMsaa: return "Smooths jagged edges; higher costs more.";
+        case kGfxDistance: return "How much of the course is drawn in the distance.";
+        case kGfxFilter: return "Smooth old textures, or keep the PS1 sharpness.";
+        case kGfxReflections: return "Off, original look, or modern reflections.";
+        case kGfxHd: return "Use the higher-resolution media pack if installed.";
+        case kGfxGt4: return "Use GT4 car models if the extra pack is installed.";
+        case kGfxIntro: return "Play the original PlayStation intro on start.";
+        case kGfxProfiler: return "Show and record frame rate information.";
+        case kGfxMore: return "Display, scenery, texture and memory options.";
         default: return {};
         }
     }
     if (page == 8) {
         switch (selected) {
-        case kMoreVsync: return "FIFO presentation: tear-free, capped to the display.";
-        case kMorePresentation: return "Display rate interpolates; Original is 30 Hz.";
-        case kMoreScenery: return "Max keeps every scenery instance at full detail.";
-        case kMoreMapping: return "Perspective is correct; Affine PS1 warps.";
-        case kMoreMemory: return "Low frees the decoded cache; restart for full effect.";
-        case kMoreFoveation: return "Lower peripheral resolution in VR.";
+        case kMoreVsync: return "Prevents screen tearing; may cap the frame rate.";
+        case kMorePresentation: return "Follow the screen, or the original 30 fps.";
+        case kMoreScenery: return "Draw every scenery object, or the original set.";
+        case kMoreMapping: return "Textures on slopes: correct, or retro like PS1.";
+        case kMoreMemory: return "Uses less memory; restart to apply fully.";
+        case kMoreFoveation: return "Sharper centre, softer edges in VR.";
         default: return {};
         }
     }
@@ -1282,7 +1282,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
                     if (selected == kGfxPreset && direction) { graphics = CycleGraphicsPreset(graphics, direction); status = "Saved. Preset applies now."; }
-                    if (vr && selected == kGfxResolution) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
+                    if (vr && selected == kGfxResolution) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Saved. Restart the game to apply."; }
                     if (vr && selected == kGfxFrameLimit) {
                         const auto rates = window.RefreshRates();
                         if (!rates.empty()) {
@@ -1307,7 +1307,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == kGfxDistance) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
                     if (selected == kGfxFilter) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == kGfxProfiler) profiler = !profiler;
-                    if (selected == kGfxHd && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
+                    if (selected == kGfxHd && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. The media change applies when you resume."; }
                     if (selected == kGfxIntro && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
                     if (selected == kGfxReflections && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
@@ -1316,7 +1316,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == kGfxGt4 && direction) {
                         gt4ModelSet = !gt4ModelSet;
-                        status = gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views and menus." : "Pack not found. Using original GT2 cars.";
+                        status = gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views." : "Pack not found. Using the original cars.";
                     }
                     if (selected == kGfxMore && accept) { page = 8; selected = 0; }
                     if (selected == kGfxBack) { page = 0; selected = 0; }
@@ -1337,15 +1337,15 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == kMorePresentation && direction) graphics.frameRate = !graphics.frameRate;
                     if (selected == kMoreMemory && direction) {
                         graphics.lowMemory = !graphics.lowMemory;
-                        status = graphics.lowMemory ? "Saved. Low memory: decoded textures off, released on restart."
-                                                    : "Saved. Decoded textures back on.";
+                        status = graphics.lowMemory ? "Saved. Uses less memory; restart to apply fully."
+                                                    : "Saved. Texture detail is back.";
                     }
                     if (selected == kMoreScenery && direction) graphics.maxDetail = !graphics.maxDetail;
                     if (selected == kMoreMapping && direction) graphics.affine = !graphics.affine;
                     if (vr && selected == kMoreFoveation && direction) {
                         foveation = (foveation + direction + 4) % 4;
                         window.Renderer().SetFoveation(foveation);
-                        status = "Saved. Centre and HUD stay full resolution.";
+                        status = "Saved. Sharper centre, softer edges.";
                     }
                     if (selected == int(rows.size()) - 1) { page = 1; selected = kGfxMore; }
                     SetGraphicsFromOverlay(graphics);
