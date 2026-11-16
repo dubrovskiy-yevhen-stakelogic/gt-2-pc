@@ -1,4 +1,5 @@
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2view/vk_render_pass.h"
 #include "gt2view/shading_rate.h"
 #include "gt2view/surface_format.h"
 #include "gt2view/paint_environment.h"
@@ -1223,12 +1224,7 @@ void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const Pa
         views[count++] = target.colorView;
         if (resolve) views[count++] = options.resolveView;
         if (target.depthView) views[count++] = target.depthView;
-        uint32_t layers = target.layers;
-        if (target.viewMask) { // a view mask covers layers 0 .. highest set view
-            uint32_t mask = target.viewMask;
-            layers = 0;
-            while (mask) { layers++; mask >>= 1; }
-        }
+        uint32_t layers = FramebufferLayers(target.viewMask, target.layers);
         VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fci.renderPass = pass;
         fci.attachmentCount = count;
@@ -1240,22 +1236,16 @@ void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const Pa
         framebuffers_[fbKey] = framebuffer;
     }
     // One clear value per attachment, in attachment order: colour, resolve (ignored by its load op), depth.
-    VkClearValue clears[3]{};
-    uint32_t clearCount = 0;
-    if (options.transparentClear) clears[clearCount].color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    else clears[clearCount].color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    clearCount++;
-    if (resolve) clearCount++;
-    if (target.depthView) {
-        clears[clearCount].depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
-        clearCount++;
-    }
+    VkClearValue color{};
+    if (options.transparentClear) color.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    else color.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    const RenderPassClears clears = MakeRenderPassClears(color, resolve, target.depthView != VK_NULL_HANDLE);
     VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     begin.renderPass = pass;
     begin.framebuffer = framebuffer;
     begin.renderArea = {{0, 0}, target.extent};
-    begin.clearValueCount = clearCount;
-    begin.pClearValues = clears;
+    begin.clearValueCount = clears.count;
+    begin.pClearValues = clears.values;
     vkCmdBeginRenderPass(cmd_, &begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
