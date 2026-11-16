@@ -25,6 +25,7 @@
 #include <sstream>
 #include <map>
 #include <stdexcept>
+#include <tuple>
 
 namespace gt2game {
 namespace {
@@ -1015,6 +1016,8 @@ void ShowSettingsMenu(GameWindow& window) {
     bool first = true, done = false;
     std::printf("overlay: opened (%s) at field %d\n", vr ? "VR" : "desktop", window.Field());
     std::string status = "GAME PAUSED - settings save automatically.";
+    const std::string neutralStatus = status;
+    int lastPage = -1, lastSelected = -1, savedFrames = 0;
     while (!done && !window.Closed()) {
         auto graphics = CurrentGraphics();
         std::vector<std::string> rows;
@@ -1150,6 +1153,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 if ((wheelButtons & gt2::input::ps1::kRight) && window.PadPressed(gt2::input::ps1::kRight)) direction = 1;
             }
             if (direction || accept) {
+                const std::string statusBeforeInput = status;
                 if (page == 0 && accept) {
                     if (selected == 4) {
                         if (gameChangeAvailable) { page = 9; selected = 1; }
@@ -1197,7 +1201,8 @@ void ShowSettingsMenu(GameWindow& window) {
                 }
                 else if (page == 1 && (direction || selected == 12)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
-                    status = "Saved.";
+                    const std::string prior = status;
+                    const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
                     if (vr && selected == 0) { vrScale = std::clamp(vrScale + direction * 5, 50, 200); status = "Eye resolution saved. Restart to apply."; }
                     if (vr && selected == 1) {
                         const auto rates = window.RefreshRates();
@@ -1240,12 +1245,25 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(graphics));
                     window.Input().SetRumbleScale(rumble);
+                    const auto after = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
+                    if (before != after) {
+                        if (status == prior) status = "Saved.";
+                    } else if (status == prior) {
+                        status = neutralStatus; // a key press that changed nothing must not claim a save
+                    }
                 } else if (page == 8) {
+                    const std::string prior = status;
+                    const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
                     if (selected == 0) graphics.vsync = !graphics.vsync;
                     if (selected == 1) graphics.frameRate = !graphics.frameRate;
                     if (selected == 2) { page = 1; selected = 7; }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
-                    status = "Saved.";
+                    const auto after = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
+                    if (before != after) {
+                        if (status == prior) status = "Saved.";
+                    } else if (status == prior) {
+                        status = neutralStatus;
+                    }
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);
@@ -1337,9 +1355,18 @@ void ShowSettingsMenu(GameWindow& window) {
                     else { const int pages = int((catalogue.size() + 7) / 8); carPage = (carPage + direction + pages) % pages; selected = 0; }
                 }
                 try { Save(); } catch (const std::exception& e) { status = std::string("Settings not saved: ") + e.what(); }
+                if (status != statusBeforeInput && status.find("Saved") != std::string::npos) savedFrames = 120;
                 continue;
             }
         }
+        // A "Saved" confirmation flashes for about two seconds, then the line returns to its normal text.
+        const bool savedStatus = status.find("Saved") != std::string::npos;
+        if ((page != lastPage || selected != lastSelected) && savedFrames > 0) {
+            savedFrames = 0;
+            if (savedStatus) status = neutralStatus;
+        }
+        lastPage = page; lastSelected = selected;
+        if (savedFrames > 0 && --savedFrames == 0 && savedStatus) status = neutralStatus;
         first = false;
         window.Input().StopFeedback();
         Panel(window, title, rows, selected, (page == 9 || page == 11 || page == 12) ? "Unsaved progress will be lost. Save in the game first." : status,
