@@ -1379,7 +1379,7 @@ void AppendFrameProfiler(gt2view::SceneRenderer& renderer, std::vector<gt2view::
     canvas.Text(534, 64, gpu, 0x8ed8f8, 0.65f);
     char low[64];
     std::snprintf(low, sizeof(low), "1%% LOW %.0f / PEAK %.0f MS", stats.lowFps, stats.recentMaxMs);
-    canvas.Text(504, 83, low, stats.recentMaxMs > 22.3 ? 0xff9866 : 0xe2e8f0, 0.65f);
+    canvas.Text(534, 83, low, stats.recentMaxMs > 22.3 ? 0xff9866 : 0xe2e8f0, 0.65f);
     canvas.Append(renderer, items, gt2view::SceneRenderer::kProfilerVertexBase, 1, -1);
 }
 void AppendSkipHint(gt2view::SceneRenderer& renderer, std::vector<gt2view::DrawItem>& items) {

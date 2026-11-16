@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep the FPS profiler's 1% low line aligned with the FPS and GPU lines.
 - Keep a 40 ms SDL audio queue at the output device's sample rate, including 96/192 kHz, and stop cleanly on resampler errors.
 
 - Latch Simulation damage when entering an event so changes to preferences cannot alter its replay. Save the native damage option with the replay, retaining GT event-table selection; changes apply when entering the next event.
