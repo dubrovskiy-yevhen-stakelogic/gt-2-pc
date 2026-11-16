@@ -107,12 +107,12 @@ int main(int argc, char** argv) {
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
             "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
-        const RecommendedPreset preset = ApplyRecommendedPreset((saves / "settings.txt").string()); // before the overlay
-        if (preset.memoryTooLow) {
-            std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", preset.reason.c_str());
+        const RecommendedMemory memory = ApplyRecommendedMemory((saves / "settings.txt").string()); // before the overlay
+        if (memory.memoryTooLow) {
+            std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", memory.reason.c_str());
             return 1;
         }
-        if (preset.applied) std::printf("graphics: low spec preset applied (%s)\n", preset.reason.c_str());
+        if (memory.applied) std::printf("graphics: Memory Use set to Low (%s)\n", memory.reason.c_str());
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;

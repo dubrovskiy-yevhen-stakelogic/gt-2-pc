@@ -253,9 +253,9 @@ std::string VulkanDiagnosticReport() {
         text += " - forced by GT2_VK_RENDERPASS=1";
     text += "\n";
     if (caps.profile() != GraphicsProfile::Unsupported) {
-        text += std::string("  recommended settings preset: ") + (RecommendsLowSpecPreset(caps) ? "low spec" : "standard") + "\n";
+        text += std::string("  recommended settings: ") + (RecommendsLowMemory(caps) ? "Memory Use Low (decoded cache off)" : "standard") + "\n";
         if (GraphicsMemoryTooLow(caps))
-            text += "  warning: the game needs at least " + std::to_string(kLowSpecPresetFloor / (1024 * 1024)) +
+            text += "  warning: the game needs at least " + std::to_string(kGraphicsMemoryFloor / (1024 * 1024)) +
                     " MiB of available video memory; close other applications or use a stronger GPU.\n";
     }
     return text;

@@ -167,10 +167,6 @@ struct PcSettings {
     bool haveCareerOptions = false;
     GameOptions options;
     GraphicsSettings graphics;
-    // The graphics preset the user last had (settings.txt's graphics_preset=): "low_spec", "vanilla", "modern" or
-    // "custom". Empty when the file never recorded one (an older version, or only the defaults were saved), so the
-    // startup check may still apply the low spec preset on a machine that needs it.
-    std::string graphicsPreset;
     VrSettings vr;
     // The controller settings: the career's two pad blocks (+0x0A / +0x5C, 0x52 bytes each: the KEY CONFIGURATION tables,
     // the vibration byte, the ANALOG calibration) mirrored for races without a career, and ours: an analog pad's

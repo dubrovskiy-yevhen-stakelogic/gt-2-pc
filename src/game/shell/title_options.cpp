@@ -195,7 +195,6 @@ PcSettings PcSettings::Load(const std::string& path) {
         const std::string key = line.substr(0, eq);
         const int v = std::atoi(line.c_str() + eq + 1);
         if (key == "units") s.metric = line.substr(eq + 1) == "kmh";
-        else if (key == "graphics_preset") s.graphicsPreset = line.substr(eq + 1);
         else if (key == "music_volume") s.options.musicVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "sfx_volume") s.options.sfxVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "course_map") s.options.courseMap = v != 0;
@@ -237,15 +236,6 @@ void PcSettings::Save(const std::string& path) const {
     o << "trigger_pedals=" << int(triggerPedals) << "\n";
     o << "rumble_scale=" << rumbleScale << "\n";
     o << graphics.Serialize();
-    // A saved preset or custom tuning is a user choice the startup check must not override. The plain defaults
-    // record nothing, so a machine that later reports low memory can still be moved to the low spec preset.
-    if (graphics != GraphicsSettings{}) {
-        o << "graphics_preset="
-          << (graphics == GraphicsSettings::LowSpec() ? "low_spec"
-              : graphics == GraphicsSettings::Vanilla()    ? "vanilla"
-              : graphics == GraphicsSettings::Modern()     ? "modern" : "custom")
-          << "\n";
-    }
     o << vr.Serialize();
     if (havePadBlocks)
         for (size_t p = 0; p < padBlocks.size(); p++) {

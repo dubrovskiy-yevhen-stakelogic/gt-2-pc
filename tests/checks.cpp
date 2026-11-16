@@ -251,27 +251,6 @@ static void CheckPcChanges(const char* discPath) {
     stepping.graphics = shell::GraphicsSettings::LowSpec();
     Check(shell::StepPcRow(stepping, 1, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
 
-    // A saved preset is the user's choice: the startup memory check must not override it. Plain defaults record
-    // nothing, so a machine that reports low memory can still be moved to the low spec preset.
-    {
-        const auto path = std::filesystem::temp_directory_path() / "gt2-preset-marker-check.txt";
-        shell::PcSettings chosen;
-        chosen.graphics = shell::GraphicsSettings::LowSpec();
-        chosen.Save(path.string());
-        const shell::PcSettings loaded = shell::PcSettings::Load(path.string());
-        Check(loaded.graphicsPreset == "low_spec" && loaded.graphics == chosen.graphics,
-              "a saved low spec preset is recorded as the user's choice");
-        shell::PcSettings tuned;
-        tuned.graphics.msaa = 2;
-        tuned.Save(path.string());
-        Check(shell::PcSettings::Load(path.string()).graphicsPreset == "custom",
-              "custom tuning is recorded and not treated as a preset");
-        shell::PcSettings defaults;
-        defaults.Save(path.string());
-        Check(shell::PcSettings::Load(path.string()).graphicsPreset.empty(),
-              "plain defaults leave the preset open for the startup memory check");
-        std::filesystem::remove(path);
-    }
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

@@ -48,23 +48,23 @@ struct VulkanCapabilities {
     GraphicsProfile profile() const;
 };
 
-// The standard preset's measured peak is ~504 MiB (a race at 1080p) plus swapchain, render targets, driver overhead
-// and the desktop: below 2 GiB of *available* device-local memory the low spec preset is the safe default.
-inline constexpr uint64_t kStandardPresetMemory = 2ull * 1024 * 1024 * 1024;
-// The low spec preset's 137 MiB of fixed buffers plus swapchain, depth and scene targets (~45 MiB at 1080p, ~170 MiB
-// at 4K) and driver overhead. 512 MiB covers 1080p with headroom; 4K on such a card is the tight case.
-inline constexpr uint64_t kLowSpecPresetFloor = 512ull * 1024 * 1024;
+// The standard settings' measured peak is ~504 MiB (a race at 1080p, decoded cache and MSAA included) plus the
+// swapchain and driver overhead: below 2 GiB of *available* device-local memory the cache must stay off.
+inline constexpr uint64_t kStandardMemoryNeed = 2ull * 1024 * 1024 * 1024;
+// The 137 MiB of fixed buffers plus swapchain, depth and scene targets (~45 MiB at 1080p, ~170 MiB at 4K) and
+// driver overhead. 512 MiB covers 1080p with headroom; 4K on such a card is the tight case.
+inline constexpr uint64_t kGraphicsMemoryFloor = 512ull * 1024 * 1024;
 
 // What the GPU can actually hand out: the budget the driver reports, else the heaps' total (0 = unknown).
 inline uint64_t UsableMemory(const GpuCapability& gpu) {
     return gpu.availableBytes ? gpu.availableBytes : gpu.deviceLocalBytes;
 }
 
-// Whether the standard settings are safe. This is about memory only: a Vulkan 1.1/1.2 card with plenty of memory is
-// a powerful GPU and keeps the standard preset (the render-pass path is chosen separately, from the API version).
-inline bool RecommendsLowSpecPreset(const VulkanCapabilities& caps) {
+// Whether the decoded texture cache must stay off. This is about memory only: a Vulkan 1.1/1.2 card with plenty of
+// memory is a powerful GPU and keeps its preset (the render-pass path is chosen separately, from the API version).
+inline bool RecommendsLowMemory(const VulkanCapabilities& caps) {
     const GpuCapability* gpu = caps.best();
-    return gpu && UsableMemory(*gpu) && UsableMemory(*gpu) < kStandardPresetMemory;
+    return gpu && UsableMemory(*gpu) && UsableMemory(*gpu) < kStandardMemoryNeed;
 }
 
 // Hard floor: the low spec preset cannot be squeezed below this, so the game refuses to start rather than run
@@ -72,7 +72,7 @@ inline bool RecommendsLowSpecPreset(const VulkanCapabilities& caps) {
 inline bool GraphicsMemoryTooLow(const VulkanCapabilities& caps) {
     const GpuCapability* gpu = caps.best();
     return gpu && caps.profile() != GraphicsProfile::Unsupported && UsableMemory(*gpu) &&
-           UsableMemory(*gpu) < kLowSpecPresetFloor;
+           UsableMemory(*gpu) < kGraphicsMemoryFloor;
 }
 
 // Probes the Vulkan loader dynamically. Never throws and keeps working when the loader is absent.

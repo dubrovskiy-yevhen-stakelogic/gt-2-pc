@@ -29,16 +29,17 @@ void SetGraphicsFromPage(const gt2::shell::GraphicsSettings& settings);
 bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::GraphicsSettings& fileSettings);
 bool GraphicsPinned();
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings);
-// Applies the low spec preset when this machine needs it - usable video memory below what the standard settings
-// need - and never overrides a preset or custom tuning the user has saved. A machine below the preset's own floor
-// reports `memoryTooLow` instead, so the game can stop with a clear message rather than fail during a race.
-// Command-line flags still win. `reason` is one line for the support log.
-struct RecommendedPreset {
+// Applies the memory safety this machine needs: Memory Use Low (the decoded texture cache stays off) when the
+// available video memory is below what the standard settings need. It changes no other setting, so a chosen quality
+// preset is kept; the Low spec preset remains a manual choice. A machine below the game's own floor reports
+// `memoryTooLow` instead, so the game can stop with a clear message rather than fail during a race.
+// Command-line flags still win. `reason` is one line for the log.
+struct RecommendedMemory {
     bool applied = false;
     bool memoryTooLow = false;
     std::string reason;
 };
-RecommendedPreset ApplyRecommendedPreset(const std::string& settingsPath);
+RecommendedMemory ApplyRecommendedMemory(const std::string& settingsPath);
 
 // The renderer's side of the settings.
 gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& settings);
