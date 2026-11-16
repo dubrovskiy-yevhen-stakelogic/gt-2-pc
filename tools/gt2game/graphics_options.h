@@ -19,8 +19,11 @@ namespace gt2game {
 
 // The settings in effect (initially GraphicsSettings{} = the defaults).
 const gt2::shell::GraphicsSettings& CurrentGraphics();
-// From settings.txt / the PC SETTINGS page: ignored once the command line pinned the settings.
+// From settings.txt (the canonical store): ignored once the command line pinned the settings.
 void SetGraphicsFromSettings(const gt2::shell::GraphicsSettings& settings);
+// From the PC SETTINGS page: the page is authoritative for the session (it also overrides an overlay file loaded at
+// startup), still ignored when the command line pinned the settings.
+void SetGraphicsFromPage(const gt2::shell::GraphicsSettings& settings);
 // A graphics flag of the command line at argv[i] (advances i past its value); false when it is not one. The first flag
 // seen starts from `fileSettings` (settings.txt) and pins the session.
 bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::GraphicsSettings& fileSettings);

@@ -260,7 +260,9 @@ the probe selects the **Compatibility** settings preset (75% scene resolution,
 no MSAA, PS1 textures, original scenery detail, lower memory) for a Vulkan
 1.1/1.2 driver or a GPU under ~2 GB; `--compatibility` selects it explicitly and
 `--diagnose` prints the loader, GPUs, limits, the path and the recommended
-preset. `GT2_VK_RENDERPASS=1` forces the render-pass path.
+preset. PC SETTINGS shows the preset and every row it changes updates as you
+step it; its **Memory Use** row (Normal / Low) exposes the decoded texture cache
+and memory budget. `GT2_VK_RENDERPASS=1` forces the render-pass path.
 
 Browser play requires WebGL2, an 8192-pixel texture limit and at least 512 array
 texture layers. The complete BIN is held in memory. One disc is available per

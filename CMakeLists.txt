@@ -277,7 +277,7 @@ endif()
 
 if(BUILD_TESTING)
   add_executable(gt2checks tests/checks.cpp)
-  target_link_libraries(gt2checks PRIVATE gt2input gt2arcade gt2gamelib gt2audio gt2shell)
+  target_link_libraries(gt2checks PRIVATE gt2input gt2arcade gt2gamelib gt2audio gt2shell gt2screens)
   add_test(NAME regression_checks COMMAND gt2checks)
   add_executable(gt2disclaunchchecks tests/disc_launch_checks.cpp)
   add_test(NAME disc_launch_checks COMMAND gt2disclaunchchecks)

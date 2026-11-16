@@ -106,8 +106,9 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: + every chunk within N m;
                                            // -1: every chunk of the course
-    // The compatibility profile's memory regime, not a menu row: the decoded texture cache stays off (the first-run
-    // preset also defaults GT4 models off and the VR eye resolution to 100%). It applies at startup, after a restart.
+    // The memory regime: the decoded texture cache stays off and the compatibility profile sets it. The PC SETTINGS
+    // "Memory Use" row and the first-run preset set it; the preset also defaults GT4 models off and VR eye resolution
+    // to 100%. Low stops the cache at once; going back to Normal restores it on its next use.
     bool lowMemory = false;
     static GraphicsSettings Vanilla() {
         GraphicsSettings g;

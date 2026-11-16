@@ -29,6 +29,7 @@
 namespace gt2game {
 namespace {
 std::string settingsPath;
+std::string baseSettingsPath; // settings.txt: the canonical store of the graphics settings
 gt2::shell::VrSettings baseVrSettings;
 int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
 bool profiler = false;
@@ -155,7 +156,7 @@ void Save() {
     const std::string temp = settingsPath + ".tmp";
     {
         std::ofstream out(temp, std::ios::trunc);
-        out << "# Live overlay preferences; separate from earned progress.\n" << CurrentGraphics().Serialize();
+        out << "# Live overlay preferences; separate from earned progress.\n";
         out << "hd_assets=" << int(gt2::hd::Enabled()) << '\n';
         out << "vr_ps1_intro=" << int(playStationIntro) << '\n';
         out << "gt4_model_set=" << int(gt4ModelSet) << '\n';
@@ -197,6 +198,17 @@ void Save() {
     if(!gt2::shell::sharedVrSettingsPath.empty())
         gt2::shell::WritePreferences(gt2::shell::sharedVrSettingsPath,
             baseVrSettings.Serialize()+gt2::shell::VrPreferences(gt2::shell::ReadPreferences(settingsPath)));
+    // Graphics belong to the PC SETTINGS page's settings.txt (one canonical store): an overlay change applies to the
+    // running session and is persisted there, so the next start cannot be shadowed by an old overlay value.
+    if (!baseSettingsPath.empty() && !GraphicsPinned()) { // the command line pins are never written
+        try {
+            auto pc = gt2::shell::PcSettings::Load(baseSettingsPath);
+            pc.graphics = CurrentGraphics();
+            pc.Save(baseSettingsPath);
+        } catch (const std::exception&) {
+            // The overlay still saved its own keys; a read-only settings folder does not take the game down.
+        }
+    }
 }
 }
 
@@ -222,6 +234,9 @@ void LoadOverlaySettings(const std::string& basePath) {
     gt2::pc::simulationDamage = false;
     gt2::pc::skipRaceReplays = false;
     settingsPath = basePath + ".overlay";
+    baseSettingsPath = basePath;
+    // Graphics live in settings.txt; only an old install's .overlay graphics are still applied until the next save.
+    const bool baseHasGraphics = gt2::shell::ReadPreferences(basePath).find("msaa=") != std::string::npos;
     std::istringstream in(gt2::shell::ReadPreferences(settingsPath)+"\n"+
         gt2::shell::VrPreferences(gt2::shell::ReadPreferences(gt2::shell::sharedVrSettingsPath)));
     auto graphics = CurrentGraphics();
@@ -283,7 +298,7 @@ void LoadOverlaySettings(const std::string& basePath) {
             for (const auto& setting : hudSettings) if (key == setting.key) {
                 hudVisibility.*setting.member = value == "1"; hudKey = true; break;
             }
-            if (!hudKey) graphics.Parse(key, value);
+            if (!hudKey && !baseHasGraphics) graphics.Parse(key, value); // legacy overlay graphics
         }
     }
     if (raceView < 0 && legacyOpenView) raceView = 3;

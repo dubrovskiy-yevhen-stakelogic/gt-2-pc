@@ -28,7 +28,15 @@ std::vector<std::pair<std::string, std::string>> g_overrides;
 const gt2::shell::GraphicsSettings& CurrentGraphics() { return g_graphics; }
 
 void SetGraphicsFromSettings(const gt2::shell::GraphicsSettings& settings) {
-    if (!g_pinned && !g_overlay) {g_graphics = settings;gt2::modernCarReflections=settings.modernCarReflections;gt2::carReflections=settings.carReflections;}
+    // settings.txt is the canonical store: a (legacy) overlay read before it must not shadow it. The command line wins.
+    if (!g_pinned) { g_graphics = settings; gt2::modernCarReflections = settings.modernCarReflections; gt2::carReflections = settings.carReflections; }
+}
+void SetGraphicsFromPage(const gt2::shell::GraphicsSettings& settings) {
+    if (g_pinned) return;
+    g_graphics = settings;
+    g_overlay = true;
+    gt2::modernCarReflections = settings.modernCarReflections;
+    gt2::carReflections = settings.carReflections;
 }
 void SetGraphicsFromOverlay(const gt2::shell::GraphicsSettings& settings) {
     if (!g_pinned) { g_graphics = settings; g_overlay = true; gt2::modernCarReflections=settings.modernCarReflections;gt2::carReflections=settings.carReflections;}

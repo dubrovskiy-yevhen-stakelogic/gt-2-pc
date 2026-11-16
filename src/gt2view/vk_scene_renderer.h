@@ -88,6 +88,9 @@ public:
     void SetFoveation(int level);
     int Foveation() const { return rateImage_.image ? foveation_ : 0; }
     void EnableDecodedTextures(bool enabled) { decodedEnabled_ = enabled; }
+    // The compatibility profile's memory regime: low turns the decoded texture cache off (memory already allocated is
+    // kept until the next start; normal re-enables it and the cache allocates on its next use).
+    void SetLowMemory(bool low) { decodedEnabled_ = !low; }
     bool MenuCarMsaaTarget() const override { return true; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }

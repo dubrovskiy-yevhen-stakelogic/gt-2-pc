@@ -19,6 +19,8 @@ public:
     void UploadExternalTexture(uint32_t first, uint32_t count, const uint32_t* rgba) override;
     void Draw(const std::vector<DrawItem>& items, const std::string& shot = {}, size_t sceneItems = 0);
     void SetOptions(const RenderOptions& value) { options_ = value; }
+    // The compatibility profile's memory regime has no browser equivalent (the WebGL2 context manages its own cache).
+    void SetLowMemory(bool) {}
     const RenderOptions& Options() const { return options_; }
     Size Extent() const { return extent_; }
     Size StereoExtent() const { return {}; }

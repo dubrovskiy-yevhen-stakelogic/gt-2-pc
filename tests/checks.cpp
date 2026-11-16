@@ -11,6 +11,7 @@
 #include "game/arcade/arcade_menus.h"
 #include "game/menu/menu_runtime.h"
 #include "game/shell/title_attract.h"
+#include "game/shell/title_screens.h"
 #include "game/sim/ground.h"
 #include "game/sim/disc_data.h"
 #include "game/arcade/arcade_setup.h"
@@ -227,6 +228,17 @@ static void CheckPcChanges(const char* discPath) {
     std::istringstream compatibilitySettings(compatibility.Serialize());
     while (std::getline(compatibilitySettings, line)) { const auto at = line.find('='); if (at != std::string::npos) compatibilityRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
     Check(compatibilityRestored == compatibility, "compatibility preset survives the settings round trip");
+
+    // The PC SETTINGS page derives every row from the settings: stepping the preset updates the rows it changes.
+    shell::PcSettings preset;
+    Check(shell::PcRowOf(preset, 11).index == 2, "the default settings show the Custom preset");
+    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps to Vanilla");
+    Check(shell::PcRowOf(preset, 1).index == 0 && shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 6).index == 0,
+          "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
+    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Compatibility(), "the preset steps to Compatibility");
+    Check(shell::PcRowOf(preset, 4).index == 1 && shell::PcRowOf(preset, 10).index == 1,
+          "the Compatibility preset updates render scale and memory use immediately");
+    Check(shell::StepPcRow(preset, 10, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

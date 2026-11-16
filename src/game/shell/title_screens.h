@@ -39,6 +39,17 @@ void AddGradientQuad(MenuOtSlot& ot, int x, int y, int w, int h, uint32_t c0, ui
 
 // ---------------------------------------------------------------- options
 
+// The PC SETTINGS page's rows (ours): choice lists over PcSettings (speed units and the graphics settings). Each row
+// derives its value from the settings, so a preset that changes several of them shows up in every affected row at once.
+struct PcRow {
+    const char* label = "";
+    std::vector<std::string> values;
+    int index = 0;
+};
+constexpr int kPcRowCount = 12;
+PcRow PcRowOf(const PcSettings& pc, int row);
+bool StepPcRow(PcSettings& pc, int row, int step);
+
 class OptionsScreen {
 public:
     static constexpr uint32_t kSwitcher = 0x8004BFB8u, kPageTitles = 0x8004BFA4u;
