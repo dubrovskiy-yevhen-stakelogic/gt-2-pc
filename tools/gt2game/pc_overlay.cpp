@@ -1050,6 +1050,23 @@ enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainContr
 // The main page has no Import row any more: it lives on Content and media. Campaign and Quit are last.
 constexpr int kMainCampaignRow = kMainResume + 1, kMainQuitRow = kMainResume + 2;
 
+// The status line on the main page: what the selected row opens (the graphics pages have GraphicsHint below).
+std::string MainHint(int selected) {
+    switch (selected) {
+    case kMainGraphics: return "Resolution, quality and performance.";
+    case kMainOptions: return "Cheats, unlocks and race behaviour.";
+    case kMainHud: return "Which HUD elements are shown.";
+    case kMainContent: return "The current game, packs and intro.";
+    case kMainControls: return "Bindings, steering and vibration.";
+    case kMainPauseExit: return "The PS1 pause menu; exit the race from there.";
+    case kMainCockpit: return "Seat, wheel and mirror.";
+    case kMainResume: return "Back to the game where you left it.";
+    case kMainCampaignRow: return "Campaign saves and transfers.";
+    case kMainQuitRow: return "Close GT2 completely.";
+    default: return {};
+    }
+}
+
 // The hint line under the graphics pages: what the selected row changes (kept short for the panel's status line).
 std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
     if (selected == rowCount - 1) return page == 1 ? "Back to the menu." : "Back to the graphics page.";
@@ -1097,8 +1114,8 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Original game pause / exit", "Cockpit / driver view", "Resume game",
-                    "Campaign / saves...", "Quit game"};
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Original pause menu", "Cockpit / driver view", "Resume game",
+                    "Campaign / saves...", "Quit GT2"};
         }
         if (page == 11 || page == 12) {
             title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
@@ -1470,12 +1487,14 @@ void ShowSettingsMenu(GameWindow& window) {
             }
         }
         // The status line is the selected row's hint; "Saved. ..." flashes for about two seconds after a real change.
-        const std::string hint = (page == 1 || page == 8) ? GraphicsHint(page, selected, vr, int(rows.size())) : std::string();
+        const bool hintPage = page == 0 || page == 1 || page == 8;
+        const std::string hint = page == 0 ? MainHint(selected)
+                              : (page == 1 || page == 8) ? GraphicsHint(page, selected, vr, int(rows.size())) : std::string();
         const bool pageChanged = page != lastPage, rowChanged = selected != lastSelected;
         if (pageChanged) {
             savedFrames = 0;
-            status = (page == 1 || page == 8) ? hint : "GAME PAUSED - settings save automatically.";
-        } else if (rowChanged && (page == 1 || page == 8)) {
+            status = hintPage ? hint : "GAME PAUSED - settings save automatically.";
+        } else if (rowChanged && hintPage) {
             savedFrames = 0;
             status = hint;
         }
