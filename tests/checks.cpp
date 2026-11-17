@@ -223,6 +223,9 @@ static void CheckPcChanges(const char* discPath) {
     const shell::GraphicsSettings lowSpec = shell::GraphicsSettings::LowSpec();
     Check(lowSpec.lowMemory && lowSpec.msaa == 1 && lowSpec.outputHeight == 720 && !lowSpec.carReflections,
           "low spec preset renders at 720p, drops car reflections and enables the low-memory regime");
+    Check(shell::GraphicsSettings::Vanilla().renderScale == 100 && shell::GraphicsSettings::Modern().renderScale == 100 &&
+              shell::GraphicsSettings::LowSpec().renderScale == 100,
+          "every preset keeps the scene scale at 100%: Resolution is the output knob");
     Check(!shell::GraphicsSettings{}.lowMemory, "standard settings keep the decoded texture cache");
     shell::GraphicsSettings outputHeight;
     outputHeight.Parse("output_height", "900");

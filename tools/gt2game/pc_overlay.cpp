@@ -1043,8 +1043,8 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
 // The port menu's first graphics page, top to bottom: the preset first, so one row changes everything.
 enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
              kGfxHd, kGfxGt4, kGfxIntro, kGfxProfiler, kGfxMore, kGfxBack };
-// Its "More graphics" sub-page: presentation timing, world detail, memory (Foveation exists in VR only; Back is last).
-enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreMemory, kMoreFoveation };
+// Its "More graphics" sub-page: presentation timing, world detail, memory, then Scene scale (flat) or Foveation (VR).
+enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreMemory, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
 
 // The hint line under the graphics pages: what the selected row changes (kept short for the panel's status line).
 std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
@@ -1073,7 +1073,7 @@ std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
         case kMoreScenery: return "Draw every scenery object, or the original set.";
         case kMoreMapping: return "Textures on slopes: correct, or retro like PS1.";
         case kMoreMemory: return "Uses less memory; restart to apply fully.";
-        case kMoreFoveation: return "Sharper centre, softer edges in VR.";
+        case kMoreSceneScale: return vr ? "Sharper centre, softer edges in VR." : "3D detail inside the output; lower is softer and faster.";
         default: return {};
         }
     }
@@ -1148,6 +1148,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective"),
                     std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal")};
             if (vr) rows.push_back("Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"));
+            else rows.push_back("Scene scale: " + std::to_string(graphics.renderScale) + "%"); // advanced: the scene inside the output
             rows.push_back("Back");
         }
         if (page == 2) {
@@ -1343,6 +1344,10 @@ void ShowSettingsMenu(GameWindow& window) {
                         foveation = (foveation + direction + 4) % 4;
                         window.Renderer().SetFoveation(foveation);
                         status = "Saved. Sharper centre, softer edges.";
+                    }
+                    if (!vr && selected == kMoreSceneScale && direction) {
+                        static constexpr int scales[] = {50, 75, 100, 125, 150, 200};
+                        graphics.renderScale = Cycle(graphics.renderScale, scales, direction);
                     }
                     if (selected == int(rows.size()) - 1) { page = 1; selected = kGfxMore; }
                     SetGraphicsFromOverlay(graphics);
