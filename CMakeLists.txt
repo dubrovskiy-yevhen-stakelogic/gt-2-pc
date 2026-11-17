@@ -89,6 +89,7 @@ add_library(gt2formats STATIC
   src/gt2formats/car_json.cpp
   src/gt2formats/track_json.cpp
   src/gt2formats/png_reader.cpp
+  src/gt2formats/paint_delta.cpp
   src/gt2formats/gltf_reader.cpp
   src/gt2formats/license_data.cpp
   src/gt2formats/gtmode_tables.cpp
@@ -279,6 +280,9 @@ if(BUILD_TESTING)
   add_executable(gt2checks tests/checks.cpp)
   target_link_libraries(gt2checks PRIVATE gt2input gt2arcade gt2gamelib gt2audio gt2shell)
   add_test(NAME regression_checks COMMAND gt2checks)
+  add_executable(gt2paintdeltachecks tests/paint_delta_checks.cpp)
+  target_link_libraries(gt2paintdeltachecks PRIVATE gt2formats)
+  add_test(NAME paint_delta_checks COMMAND gt2paintdeltachecks)
   add_executable(gt2disclaunchchecks tests/disc_launch_checks.cpp)
   add_test(NAME disc_launch_checks COMMAND gt2disclaunchchecks)
   add_executable(gt2menushortcutchecks tests/menu_shortcut_checks.cpp)

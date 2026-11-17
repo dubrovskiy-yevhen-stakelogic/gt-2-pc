@@ -129,6 +129,14 @@ or clipping errors; the full catalogue has not been checked manually. Saved cars
 from the expansion require its catalogue and mandatory models to remain installed.
 The browser version does not load the native GT4 pack.
 
+The pack exports only the paint colours the matching GT2 car can select, and
+never more than 32. GT2 stores a car's paint count in five bits, so further GT4
+colours cannot be reached. Paint images are stored as small deltas against the
+base texture — a palette remap, a changed rectangle or a sparse pixel list — not
+as a full copy of every texture for every colour. Cars with one paint export one
+colour, not the full GT4 set, and the native loader applies the delta when that
+paint is selected.
+
 ## Build the native exporters
 
 ```powershell

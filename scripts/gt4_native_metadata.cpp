@@ -1,6 +1,8 @@
 // Export CAR4/MDLS draw metadata through gt4formats. Owned data only.
 #include "gt4formats/car4.h"
 #include "gt4_attachment_trace.h"
+#include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -33,7 +35,12 @@ int main(int argc,char** argv) {try {
     mats(ms);f<<"],\"paintMaterials\":[";
     // Pat0 patches both Tex1 and material rows. Texture-only deduplication must
     // not erase a native colour whose material changes instead of its CLUT.
-    const unsigned colours=pat?pat->colors:unsigned(ms.variations.size());
+    // GT2 stores a car's paint count in five bits (CarInfoRecord::PaintCount),
+    // so colours past 32 can never be selected. Do not export their textures.
+    // The importer passes the model's real GT2 paint count; default to the cap.
+    unsigned limit=32;
+    if(const char* value=std::getenv("GT4_MAX_PAINTS"))limit=std::clamp(unsigned(std::atoi(value)),1u,32u);
+    const unsigned colours=std::min(limit,unsigned(pat?pat->colors:ms.variations.size()));
     for(unsigned color=0;color<colours;++color) {
         if(color)f<<',';
         if(pat) {auto image=bytes;pat->apply(image,body,ms.size,int(color));mats(parseModelSet(image,body,false));}

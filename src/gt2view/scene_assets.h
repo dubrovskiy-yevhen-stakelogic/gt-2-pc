@@ -35,6 +35,7 @@
 #include "gt2formats/course_data.h"
 #include "gt2formats/gltf_reader.h"
 #include "gt2formats/model_set.h"
+#include "gt2formats/paint_delta.h"
 #include "gt2formats/sha1.h"
 #include "gt2formats/psx_vram.h"
 #include "gt2formats/sponsor_boards.h"
@@ -1629,7 +1630,7 @@ private:
         std::vector<std::pair<uint32_t,std::vector<uint32_t>>> uploads;
         for(const auto& texture:state.paintTextures) {
             PngImage image=texture.original;
-            if(const auto it=state.paints[selected].find(texture.name);it!=state.paints[selected].end()) image=ReadPngFile(it->second.string());
+            if(const auto it=state.paints[selected].find(texture.name);it!=state.paints[selected].end()) image=ReadPaintVariant(texture.original,it->second.string());
             if(image.width>texture.original.width || image.height>texture.original.height || image.width<=0 || image.height<=0 || image.rgba.size()!=size_t(image.width)*image.height*4)
                 throw std::runtime_error("GT4 paint texture size mismatch");
             const auto& original=texture.original;
@@ -1955,7 +1956,7 @@ private:
                     const auto found=palette.find(car.imageNames[1][image]);
                     if(found==palette.end())continue;
                     const auto path=found->second.string();auto cached=mirrorPaintNeutral.find(path);
-                    if(cached==mirrorPaintNeutral.end())cached=mirrorPaintNeutral.emplace(path,NeutralMirrorImage(ReadPngFile(path))).first;
+                    if(cached==mirrorPaintNeutral.end())cached=mirrorPaintNeutral.emplace(path,NeutralMirrorImage(ReadPaintVariant(mesh.images.at(image),path))).first;
                     if(!cached->second){patches.clear();break;}
                 }
                 return patches;
@@ -1980,7 +1981,7 @@ private:
                     if(tintLayer)std::fill(dark.begin(),dark.end(),1);
                     if(i<car.imageNames[1].size())for(const auto& palette:car.paints){
                         const auto found=palette.find(car.imageNames[1][i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(tint.begin(),tint.end(),0);std::fill(empty.begin(),empty.end(),0);std::fill(zero.begin(),zero.end(),0);std::fill(dark.begin(),dark.end(),0);break;}
                         for(size_t p=0;p<tint.size();++p){empty[p]&=variant.rgba[p*4+3]<128;zero[p]&=variant.rgba[p*4+3]==0;
                             // Paint variants can change the tint ramp while the
@@ -2044,7 +2045,7 @@ private:
                                 for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=NativeTextureAlphaDiscard(m,img.rgba[pixel*4+3]);
                                 if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                     const auto variant=palette.find(car.imageNames[1][image]);if(variant==palette.end())continue;
-                                    const auto png=ReadPngFile(variant->second.string());
+                                    const auto png=ReadPaintVariant(img,variant->second.string());
                                     if(png.width!=img.width || png.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                                     for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=uint8_t(mask[pixel]!=0 && NativeTextureAlphaDiscard(m,png.rgba[pixel*4+3]));
                                 }
@@ -2282,7 +2283,7 @@ private:
                             bool compatible=true;
                             if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                 const auto entry=palette.find(car.imageNames[1][image]);if(entry==palette.end())continue;
-                                const auto variant=ReadPngFile(entry->second.string());
+                                const auto variant=ReadPaintVariant(png,entry->second.string());
                                 if(variant.width!=png.width || variant.height!=png.height){compatible=false;break;}
                                 for(size_t i=0;i<support.size();++i)support[i]=uint8_t(support[i] || variant.rgba[i*4+3]!=0);
                             }
@@ -2341,7 +2342,7 @@ private:
                     const auto& names=car.imageNames[1];
                     if(i<names.size())for(const auto& palette:car.paints){
                         const auto found=palette.find(names[i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                         for(size_t p=0;p<mask.size();++p)for(size_t c=0;c<3;++c)mask[p]&=variant.rgba[p*4+c]==img.rgba[p*4+c];
                     }
@@ -2356,7 +2357,7 @@ private:
                     // Keep any texel that becomes non-glass in another authored paint.
                     if(i<car.imageNames[1].size())for(const auto& palette:car.paints){
                         const auto found=palette.find(car.imageNames[1][i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                         const bool bright=HasBrightNeutralWindowField(variant);
                         for(size_t pixel=0;pixel<mask.size();++pixel){const auto* q=&variant.rgba[pixel*4];
@@ -2400,7 +2401,7 @@ private:
                         auto mask=Gt4CapOpaquePixels(img,&material);
                         if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                             const auto variant=palette.find(car.imageNames[1][image]);if(variant==palette.end())continue;
-                            const auto png=ReadPngFile(variant->second.string());
+                            const auto png=ReadPaintVariant(img,variant->second.string());
                             IntersectGt4CapOpaquePixels(mask,img,png,&material);
                         }
                         found=capPixels.emplace(key,std::move(mask)).first;
@@ -2425,7 +2426,7 @@ private:
                             if(index<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                 const auto variant=palette.find(car.imageNames[1][index]);
                                 if(variant==palette.end())continue;
-                                const auto paint=ReadPngFile(variant->second.string());
+                                const auto paint=ReadPaintVariant(image,variant->second.string());
                                 if(!Gt4UnionRoofCoatPixels(entry->second,image,paint))throw std::runtime_error("incompatible roof coat palette");
                             }
                         }
@@ -2599,7 +2600,7 @@ private:
                         for(size_t i=0;i<fractional.size();++i)fractional[i]=img.rgba[i*4+3]>0 && img.rgba[i*4+3]<254;
                         if(size_t(image)<car.imageNames[1].size())for(const auto& palette:car.paints) {
                             const auto found=palette.find(car.imageNames[1][size_t(image)]);if(found==palette.end())continue;
-                            const auto variant=ReadPngFile(found->second.string());
+                            const auto variant=ReadPaintVariant(img,found->second.string());
                             if(variant.width!=img.width || variant.height!=img.height){std::fill(fractional.begin(),fractional.end(),0);break;}
                             for(size_t i=0;i<fractional.size();++i)fractional[i]=uint8_t(fractional[i] && variant.rgba[i*4+3]>0 && variant.rgba[i*4+3]<254);
                         }
@@ -2932,7 +2933,7 @@ private:
                                 for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=img.rgba[pixel*4+3]!=0;
                                 if(size_t(image)<car.imageNames[1].size())for(const auto& paint:car.paints){
                                     const auto entry=paint.find(car.imageNames[1][size_t(image)]);if(entry==paint.end())continue;
-                                    const auto other=ReadPngFile(entry->second.string());
+                                    const auto other=ReadPaintVariant(img,entry->second.string());
                                     if(other.width!=img.width || other.height!=img.height){std::fill(mask.begin(),mask.end(),uint8_t(0));break;}
                                     for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=uint8_t(mask[pixel] && other.rgba[pixel*4+3]!=0);
                                 }
