@@ -1046,7 +1046,9 @@ enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDista
 // Its "More graphics" sub-page: presentation timing, world detail, memory, then Scene scale (flat) or Foveation (VR).
 enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
 // The main menu rows: explicit indices, so adding a page does not shift the handlers.
-enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainControls, kMainChangeGame, kMainPauseExit, kMainCockpit, kMainResume };
+enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainControls, kMainPauseExit, kMainCockpit, kMainResume };
+// The main page has no Import row any more: it lives on Content and media. Campaign and Quit are last.
+constexpr int kMainCampaignRow = kMainResume + 1, kMainQuitRow = kMainResume + 2;
 
 // The hint line under the graphics pages: what the selected row changes (kept short for the panel's status line).
 std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
@@ -1095,10 +1097,8 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
-            if (discImportAvailable) rows.push_back("Import another game disc...");
-            rows.push_back("Campaign / saves...");
-            rows.push_back("Quit game");
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Original game pause / exit", "Cockpit / driver view", "Resume game",
+                    "Campaign / saves...", "Quit game"};
         }
         if (page == 11 || page == 12) {
             title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
@@ -1122,9 +1122,12 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 13) {
             title = "GT2 VR / CONTENT AND MEDIA";
-            rows = {std::string("HD textures and media: ") + (gt2::hd::Enabled() ? "ON" : "OFF"),
-                    std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"),
-                    std::string("PlayStation intro: ") + (playStationIntro ? "ON" : "OFF"), "Back"};
+            rows = {"Change game (Arcade / Simulation)"};
+            if (discImportAvailable) rows.push_back("Import another game disc...");
+            rows.push_back(std::string("HD textures and media: ") + (gt2::hd::Enabled() ? "ON" : "OFF"));
+            rows.push_back(std::string("GT4 car models: ") + (gt4ModelSet ? "ON" : "OFF"));
+            rows.push_back("PlayStation intro: " + std::string(playStationIntro ? "ON" : "OFF"));
+            rows.push_back("Back");
         }
         if (page == 1) {
             title = "GT2 VR / GRAPHICS";
@@ -1219,8 +1222,8 @@ void ShowSettingsMenu(GameWindow& window) {
             if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape) || (!vr && window.PadPressed(gt2::input::ps1::kCircle))) {
                 if (page == 0) break;
                 const int from = page;
-                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : 0;
-                selected = from == 13 ? kMainContent : 0;
+                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : (page == 9 || page == 11) ? 13 : 0;
+                selected = from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuitRow : 0;
                 continue;
             }
             const int count = int(rows.size());
@@ -1238,24 +1241,16 @@ void ShowSettingsMenu(GameWindow& window) {
             }
             if (direction || accept) {
                 if (page == 0 && accept) {
-                    const int importRow = kMainResume + 1;
-                    const int campaignRow = importRow + (discImportAvailable ? 1 : 0);
-                    const int quitRow = campaignRow + 1;
                     if (selected == kMainGraphics) { page = 1; selected = 0; }
                     else if (selected == kMainOptions) { page = 2; selected = 0; }
                     else if (selected == kMainHud) { page = 4; selected = 0; }
                     else if (selected == kMainContent) { page = 13; selected = 0; }
                     else if (selected == kMainControls) { page = 6; selected = 0; }
-                    else if (selected == kMainChangeGame) {
-                        if (gameChangeAvailable) { page = 9; selected = 1; }
-                        else status = "Launch from the disc picker with both discs installed.";
-                    }
                     else if (selected == kMainPauseExit) { window.RequestGamePause(); done = true; }
                     else if (selected == kMainCockpit) { page = 10; selected = 0; status = "Driver view settings."; }
                     else if (selected == kMainResume) done = true;
-                    else if (discImportAvailable && selected == importRow) { page = 11; selected = 1; }
-                    else if (selected == campaignRow) { done = ShowCampaignManager(window); }
-                    else if (selected == quitRow) { page = 12; selected = 1; }
+                    else if (selected == kMainCampaignRow) { done = ShowCampaignManager(window); }
+                    else if (selected == kMainQuitRow) { page = 12; selected = 1; }
                 }
                 else if (page == 10) {
                     if (selected == 0 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
@@ -1282,14 +1277,15 @@ void ShowSettingsMenu(GameWindow& window) {
                         gameChangeDirect = false;
                         std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
                         window.Close(); done = true;
-                    } else { selected = page == 11 ? kMainResume + 1 : int(discImportAvailable) + 10; page = 0; }
+                    } else if (page == 11) { page = 13; selected = 1; }
+                    else { page = 0; selected = kMainQuitRow; }
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {
                         std::puts("player: change game requested");
                         RequestGameChange();
                         window.Close(); done = true;
-                    } else { page = 0; selected = kMainChangeGame; }
+                    } else { page = 13; selected = 0; }
                 }
                 else if (page == 1 && (direction || selected == kGfxBack)) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
@@ -1397,13 +1393,20 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == 10 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 13) {
-                    if (selected == 0 && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
-                    if (selected == 1 && direction) {
+                    const int importRow = discImportAvailable ? 1 : -1;
+                    const int hdRow = discImportAvailable ? 2 : 1;
+                    if (selected == 0 && accept) {
+                        if (gameChangeAvailable) { page = 9; selected = 1; }
+                        else status = "Launch from the disc picker with both discs installed.";
+                    }
+                    else if (selected == importRow && accept) { page = 11; selected = 1; }
+                    else if (selected == hdRow && direction) { gt2::hd::SetEnabled(!gt2::hd::Enabled()); status = "Saved. Media changes apply on resume / next movie."; }
+                    else if (selected == hdRow + 1 && direction) {
                         gt4ModelSet = !gt4ModelSet;
                         status = gt2::Gt4ModelSetInstalled() ? "Saved. GT4 models apply in all views." : "Pack not found. Using the original cars.";
                     }
-                    if (selected == 2 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
-                    if (selected == 3) { page = 0; selected = kMainContent; }
+                    else if (selected == hdRow + 2 && direction) { playStationIntro = !playStationIntro; status = "Saved. Applies on next launch."; }
+                    else if (selected == hdRow + 3 && accept) { page = 0; selected = kMainContent; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
                     else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
