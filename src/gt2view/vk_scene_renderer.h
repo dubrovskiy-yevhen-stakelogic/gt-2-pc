@@ -199,13 +199,13 @@ private:
     void EndTargetRendering();
     void BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options);
     VkRenderPass GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
-                               VkAttachmentLoadOp colorLoad);
+                               VkAttachmentLoadOp colorLoad, VkImageView rateView = VK_NULL_HANDLE);
     void DestroyFramebuffers();
     bool useDynamicRendering_ = false;
     // Render passes are shared by every pipeline/framebuffer of the same attachment set; framebuffers are rebuilt
     // whenever an image view is destroyed.
-    std::map<std::array<uint64_t, 5>, VkRenderPass> renderPasses_;
-    std::map<std::array<uint64_t, 4>, VkFramebuffer> framebuffers_;
+    std::map<std::array<uint64_t, 6>, VkRenderPass> renderPasses_;
+    std::map<std::array<uint64_t, 5>, VkFramebuffer> framebuffers_;
     void DrawScenePass(const std::vector<DrawItem>& items, size_t sceneItems, uint32_t imageIndex);
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
@@ -228,6 +228,7 @@ private:
     PFN_vkCmdBeginRendering cmdBeginRendering_ = nullptr;
     PFN_vkCmdEndRendering cmdEndRendering_ = nullptr;
     PFN_vkCmdSetFragmentShadingRateKHR cmdSetShadingRate_ = nullptr;
+    PFN_vkCreateRenderPass2 createRenderPass2_ = nullptr; // foveation on the render-pass path (1.2 core / 1.1 extension)
     VkSampleCountFlags softParticleRateSamples_ = 0;
     uint32_t queueFamily_ = 0;
     VkQueue queue_ = VK_NULL_HANDLE;
@@ -322,6 +323,7 @@ private:
     VkExtent2D rateExtent_{}, rateTexel_{};
     int foveation_ = 0; bool rateUploaded_ = false;
     void CreateRateImage();
+    void FillRateMap();
     void UploadRateImage();
     VkImage externalStereoImage_ = VK_NULL_HANDLE;
     std::unordered_map<VkImage, Image> externalStereoViews_;

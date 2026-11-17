@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 namespace gt2view {
 
@@ -46,6 +47,23 @@ inline VkDeviceFeatures QueryDeviceFeatures(VkPhysicalDevice physical, uint32_t 
     out.multiview = f11.multiview == VK_TRUE;
     out.dynamicRendering = apiVersion >= VK_API_VERSION_1_3 && f13.dynamicRendering == VK_TRUE;
     return out;
+}
+
+// A device extension, by name. The XR session enables create_renderpass2 for the foveation render pass on a 1.1 GPU.
+inline bool HasDeviceExtension(VkPhysicalDevice physical, const char* name) {
+    uint32_t count = 0;
+    if (vkEnumerateDeviceExtensionProperties(physical, nullptr, &count, nullptr) != VK_SUCCESS) return false;
+    std::vector<VkExtensionProperties> extensions(count);
+    if (vkEnumerateDeviceExtensionProperties(physical, nullptr, &count, extensions.data()) != VK_SUCCESS) return false;
+    for (const auto& extension : extensions)
+        if (std::strcmp(extension.extensionName, name) == 0) return true;
+    return false;
+}
+
+// vkCreateRenderPass2 is core in 1.2 and VK_KHR_create_renderpass2 on 1.1: the foveation render pass needs it because
+// a fragment shading rate attachment can only be declared in VkSubpassDescription2.
+inline bool RenderPass2Available(uint32_t apiVersion, bool extension) {
+    return apiVersion >= VK_API_VERSION_1_2 || extension;
 }
 
 // Opt-in compatibility path: GT2_VK_RENDERPASS=1 uses render passes on a 1.3 device too (testing, or a driver that

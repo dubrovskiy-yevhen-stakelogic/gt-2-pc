@@ -179,6 +179,16 @@ int main() {
             std::fprintf(stderr, "FAIL: 3D scene did not change between MSAA 1x and 8x on the single target\n");
             return 3;
         }
+        // Foveation on the fallback path: the rate map is a render-pass attachment declared in a VkSubpassDescription2,
+        // so this needs VK_KHR_fragment_shading_rate on the GPU. GT2_VK_RENDERPASS=1 forces the render passes on a 1.3
+        // GPU, which is how this is testable without a 1.1 one; the frame must record without a pass/pipeline mismatch.
+        if (device->existing.shadingRate) {
+            renderer.SetFoveation(2);
+            if (renderer.Foveation() != 2) throw std::runtime_error("foveation did not create the shading-rate map");
+            Render(renderer, items, 2, extent, 4);
+            std::printf("msaa_2d_audit: foveated stereo frame rendered (%s)\n",
+                        context.DynamicRendering() ? "dynamic rendering" : "render passes");
+        }
         std::puts("PASS: MSAA affects the 3D scene and leaves the 2D HUD untouched");
         return 0;
     } catch (const std::exception& e) {
