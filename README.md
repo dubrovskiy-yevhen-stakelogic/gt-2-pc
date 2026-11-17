@@ -87,7 +87,7 @@ rendering are separate features and remain available. No release dates are promi
 - Native macOS support through SDL2 and Vulkan/MoltenVK, with disc import and optional HD media preparation.
 - Steam Deck / Linux support through SDL2 and Vulkan, with a graphical disc importer and Desktop Mode installer.
 - Browser play through WebAssembly/WebGL2, local BIN selection, keyboard/gamepad input, audio, persistent saves and save backup import/export.
-- Desktop render scale from 50% to 200% in 5% steps, plus fixed output resolutions.
+- Desktop **Resolution** (720p, 900p, 1080p or the display; the swapchain is scaled to the window) and an advanced Scene scale from 50% to 200%.
 - Automatic brake-to-reverse for keyboard and supported controller bindings: hold Down to stop and then reverse; Up brakes reverse motion before driving forward.
 
 ## GT4 cars
@@ -264,8 +264,10 @@ renders at 720p with no MSAA, PS1 textures and no reflections. Below 384 MiB at
 720p (512 MiB at 1080p/Display) it stops with a clear message instead of failing
 during a race. `--low-spec` selects the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
 the path and the recommended preset. PC SETTINGS shows the preset and every row
-it changes updates as you step it; its **Memory Use** row (Normal / Low) exposes
-the decoded texture cache and memory budget. `GT2_VK_RENDERPASS=1` forces the
+it changes updates as you step it; its **Resolution** row is the output/memory
+knob, its **Memory Use** row (Normal / Low) exposes the decoded texture cache and
+memory budget, and **Scene scale** on the More graphics page (default 100%) is
+the advanced 3D setting. `GT2_VK_RENDERPASS=1` forces the
 render-pass path. Every launch prints the Vulkan probe (including available memory), the
 renderer path, settings and any error into the launcher's `gt2game.log` -
 include it in a graphics bug report.
