@@ -76,7 +76,7 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
         r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
         break;
-    default: r = {"Memory Use", {"Normal", "Low"}, g.lowMemory ? 1 : 0}; break; // not a preset row: the decoded cache
+    default: break; // no more rows: the memory regime is automatic / part of the Low spec preset
     }
     return r;
 }
@@ -108,7 +108,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 8: g.affine = index == 1; break;
     case 9: g.maxDetail = index == 1; break;
     case 10: g.drawDistance = kPcDistances[index]; break;
-    default: g.lowMemory = index == 1; break;
+    default: break;
     }
     return !(before.metric == pc.metric && before.graphics == pc.graphics);
 }

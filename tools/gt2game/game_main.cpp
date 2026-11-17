@@ -208,7 +208,7 @@ int GameMain(int argc, char** argv) {
         SetGraphicsFromSettings(fileGraphics);
         const RecommendedMemory memory = ApplyRecommendedMemory(titleOptions.settingsPath);
         if (memory.memoryTooLow) throw std::runtime_error("not enough video memory: " + memory.reason);
-        if (memory.applied) std::printf("graphics: Memory Use set to Low (%s)\n", memory.reason.c_str());
+        if (memory.applied) std::printf("graphics: low-memory settings applied (%s)\n", memory.reason.c_str());
         gt2::SetGt4ModelSetRoot(argv[1], gt2::os::DataRoot());
         LoadOverlaySettings(titleOptions.settingsPath);
         std::string frameLogPath;  // --frame-log <csv> (race_view.h)

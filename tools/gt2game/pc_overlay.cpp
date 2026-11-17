@@ -1044,7 +1044,7 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
 enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
              kGfxHd, kGfxGt4, kGfxIntro, kGfxProfiler, kGfxMore, kGfxBack };
 // Its "More graphics" sub-page: presentation timing, world detail, memory, then Scene scale (flat) or Foveation (VR).
-enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreMemory, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
+enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
 
 // The hint line under the graphics pages: what the selected row changes (kept short for the panel's status line).
 std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
@@ -1072,7 +1072,6 @@ std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
         case kMorePresentation: return "Follow the screen, or the original 30 fps.";
         case kMoreScenery: return "Draw every scenery object, or the original set.";
         case kMoreMapping: return "Textures on slopes: correct, or retro like PS1.";
-        case kMoreMemory: return "Uses less memory; restart to apply fully.";
         case kMoreSceneScale: return vr ? "Sharper centre, softer edges in VR." : "3D detail inside the output; lower is softer and faster.";
         default: return {};
         }
@@ -1145,8 +1144,7 @@ void ShowSettingsMenu(GameWindow& window) {
             rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
                     std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"),
                     std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
-                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective"),
-                    std::string("Memory use: ") + (graphics.lowMemory ? "Low" : "Normal")};
+                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective")};
             if (vr) rows.push_back("Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"));
             else rows.push_back("Scene scale: " + std::to_string(graphics.renderScale) + "%"); // advanced: the scene inside the output
             rows.push_back("Back");
@@ -1333,11 +1331,6 @@ void ShowSettingsMenu(GameWindow& window) {
                     const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
                     if (selected == kMoreVsync && direction) graphics.vsync = !graphics.vsync;
                     if (selected == kMorePresentation && direction) graphics.frameRate = !graphics.frameRate;
-                    if (selected == kMoreMemory && direction) {
-                        graphics.lowMemory = !graphics.lowMemory;
-                        status = graphics.lowMemory ? "Saved. Uses less memory; restart to apply fully."
-                                                    : "Saved. Texture detail is back.";
-                    }
                     if (selected == kMoreScenery && direction) graphics.maxDetail = !graphics.maxDetail;
                     if (selected == kMoreMapping && direction) graphics.affine = !graphics.affine;
                     if (vr && selected == kMoreFoveation && direction) {

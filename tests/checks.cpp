@@ -244,12 +244,10 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::PcRowOf(preset, 2).index == 0 && shell::PcRowOf(preset, 6).index == 0 && shell::PcRowOf(preset, 7).index == 0,
           "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
     Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps to Low spec");
-    Check(shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 11).index == 1,
-          "the Low spec preset updates resolution and memory use immediately");
+    Check(shell::PcRowOf(preset, 5).index == 0, "the Low spec preset sets Resolution to 720p immediately");
     Check(shell::PcRowOf(preset, 5).values.size() == 4 && shell::PcRowOf(preset, 5).values[3] == "Display",
           "the Resolution row offers Display as the sharpest option");
     Check(shell::StepPcRow(preset, 5, 1) && preset.graphics.outputHeight == 900, "the Resolution row steps up to 900p");
-    Check(shell::StepPcRow(preset, 11, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
     // Every preset must be steppable both ways; Modern used to apply itself again when stepped left.
     shell::PcSettings stepping;
     stepping.graphics = shell::GraphicsSettings::Modern();

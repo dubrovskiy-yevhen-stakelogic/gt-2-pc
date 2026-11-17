@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", memory.reason.c_str());
             return 1;
         }
-        if (memory.applied) std::printf("graphics: Memory Use set to Low (%s)\n", memory.reason.c_str());
+        if (memory.applied) std::printf("graphics: low-memory settings applied (%s)\n", memory.reason.c_str());
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;

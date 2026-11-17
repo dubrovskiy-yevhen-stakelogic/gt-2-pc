@@ -76,8 +76,11 @@ int main() {
     if (gt2view::RecommendsLowMemory(plenty)) return 24;
     if (gt2view::GraphicsMemoryTooLow(plenty, 0)) return 25;
     gt2view::VulkanCapabilities weak = plenty;
-    weak.gpus[0].availableBytes = 1ull << 30;
+    weak.gpus[0].availableBytes = 900ull << 20;
     if (!gt2view::RecommendsLowMemory(weak)) return 26;
+    gt2view::VulkanCapabilities roomy = plenty;
+    roomy.gpus[0].availableBytes = 3ull << 29; // 1.5 GiB: the standard profile keeps the cache
+    if (gt2view::RecommendsLowMemory(roomy)) return 39;
     if (gt2view::GraphicsMemoryTooLow(weak, 1080)) return 27;
     gt2view::VulkanCapabilities tiny = weak;
     tiny.gpus[0].availableBytes = 400ull << 20;

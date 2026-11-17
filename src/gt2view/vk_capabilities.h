@@ -48,9 +48,9 @@ struct VulkanCapabilities {
     GraphicsProfile profile() const;
 };
 
-// The standard settings' measured peak is ~504 MiB (a race at 1080p, decoded cache and MSAA included) plus the
-// swapchain and driver overhead: below 2 GiB of *available* device-local memory the cache must stay off.
-inline constexpr uint64_t kStandardMemoryNeed = 2ull * 1024 * 1024 * 1024;
+// The standard settings' measured peak is ~470 MiB (a race at 720p, decoded cache included) plus the swapchain and
+// driver overhead, so ~700 MiB is the real need; below 1 GiB available the cache stays off with headroom to spare.
+inline constexpr uint64_t kStandardMemoryNeed = 1ull * 1024 * 1024 * 1024;
 // The 137 MiB of fixed buffers plus swapchain, depth and scene targets and driver overhead. A 1080p/display output
 // needs ~512 MiB; a 720p output (the low spec preset) needs ~384 MiB.
 inline constexpr uint64_t kGraphicsMemoryFloorDisplay = 512ull * 1024 * 1024;

@@ -256,18 +256,17 @@ No firmware, extracted models or generated HD asset packs are distributed.
 
 The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
 rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. The memory
-safety follows **available video memory, not the API version**: under 2 GiB the
-game turns **Memory Use** to Low (decoded texture cache off, no HD extras by
-default), leaves your preset alone and caps **Resolution** (720p/900p/1080p/
-Display; the swapchain is scaled to the display) to fit. The **Low spec** preset
+safety follows **available video memory, not the API version**: under 1 GiB the
+game turns the decoded texture cache off (no HD extras by default), leaves your
+preset alone and caps **Resolution** (720p/900p/1080p/Display; the swapchain is
+scaled to the display) to 1080p, then 720p under 512 MiB. The **Low spec** preset
 renders at 720p with no MSAA, PS1 textures and no reflections. Below 384 MiB at
 720p (512 MiB at 1080p/Display) it stops with a clear message instead of failing
 during a race. `--low-spec` selects the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
 the path and the recommended preset. PC SETTINGS shows the preset and every row
 it changes updates as you step it; its **Resolution** row is the output/memory
-knob, its **Memory Use** row (Normal / Low) exposes the decoded texture cache and
-memory budget, and **Scene scale** on the More graphics page (default 100%) is
-the advanced 3D setting. `GT2_VK_RENDERPASS=1` forces the
+knob, **Scene scale** on the More graphics page (default 100%) is the advanced 3D
+setting, and the memory regime is automatic (and part of the Low spec preset). `GT2_VK_RENDERPASS=1` forces the
 render-pass path. Every launch prints the Vulkan probe (including available memory), the
 renderer path, settings and any error into the launcher's `gt2game.log` -
 include it in a graphics bug report.

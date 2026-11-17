@@ -117,7 +117,7 @@ RecommendedMemory ApplyRecommendedMemory(const std::string& settingsPath) {
         // The session still runs without the cache; the next change writes the file.
     }
     result.applied = true;
-    result.reason = mib(usable) + " MiB of video memory available, Memory Use set to Low" +
+    result.reason = mib(usable) + " MiB of video memory available, texture cache off" +
                     (output ? ", output " + std::to_string(output) + "p" : "");
     return result;
 #endif
