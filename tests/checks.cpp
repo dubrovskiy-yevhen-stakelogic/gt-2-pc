@@ -226,6 +226,8 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::GraphicsSettings::Vanilla().renderScale == 100 && shell::GraphicsSettings::Modern().renderScale == 100 &&
               shell::GraphicsSettings::LowSpec().renderScale == 100,
           "every preset keeps the scene scale at 100%: Resolution is the output knob");
+    Check(shell::GraphicsSettings::Modern().modernCarReflections && shell::GraphicsSettings::Modern().carReflections,
+          "the Modern preset uses modern car reflections");
     Check(!shell::GraphicsSettings{}.lowMemory, "standard settings keep the decoded texture cache");
     shell::GraphicsSettings outputHeight;
     outputHeight.Parse("output_height", "900");

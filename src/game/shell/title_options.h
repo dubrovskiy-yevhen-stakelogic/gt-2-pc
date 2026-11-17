@@ -123,6 +123,8 @@ struct GraphicsSettings {
         GraphicsSettings g;
         g.msaa = 4;
         g.smoothTextures = true;
+        g.modernCarReflections = true;
+        g.carReflections = true;
         g.maxDetail = true;
         g.drawDistance = 1000;
         return g;
