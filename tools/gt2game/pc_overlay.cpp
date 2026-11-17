@@ -1046,9 +1046,9 @@ enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDista
 // Its "More graphics" sub-page: presentation timing, world detail, memory, then Scene scale (flat) or Foveation (VR).
 enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
 // The main menu rows: explicit indices, so adding a page does not shift the handlers.
-enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainControls, kMainPauseExit, kMainCockpit, kMainResume };
-// The main page has no Import row any more: it lives on Content and media. Campaign and Quit are last.
-constexpr int kMainCampaignRow = kMainResume + 1, kMainQuitRow = kMainResume + 2;
+// Navigation first, then Campaign, and Resume / Quit as the last two entries. Import and the original pause menu are
+// on Content and media / the game's own Start button respectively.
+enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainControls, kMainCockpit, kMainCampaign, kMainResume, kMainQuit };
 
 // The status line on the main page: what the selected row opens (the graphics pages have GraphicsHint below).
 std::string MainHint(int selected) {
@@ -1058,11 +1058,10 @@ std::string MainHint(int selected) {
     case kMainHud: return "Which HUD elements are shown.";
     case kMainContent: return "The current game, packs and intro.";
     case kMainControls: return "Bindings, steering and vibration.";
-    case kMainPauseExit: return "The PS1 pause menu; exit the race from there.";
     case kMainCockpit: return "Seat, wheel and mirror.";
-    case kMainResume: return "Back to the game where you left it.";
-    case kMainCampaignRow: return "Campaign saves and transfers.";
-    case kMainQuitRow: return "Close GT2 completely.";
+    case kMainCampaign: return "Campaign saves and transfers.";
+    case kMainResume: return "Back to the game; Start opens the PS1 pause.";
+    case kMainQuit: return "Close GT2 completely.";
     default: return {};
     }
 }
@@ -1114,8 +1113,7 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Original pause menu", "Cockpit / driver view", "Resume game",
-                    "Campaign / saves...", "Quit GT2"};
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Cockpit / driver view", "Campaign / saves...", "Resume game", "Quit GT2"};
         }
         if (page == 11 || page == 12) {
             title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
@@ -1240,7 +1238,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 if (page == 0) break;
                 const int from = page;
                 page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : (page == 9 || page == 11) ? 13 : 0;
-                selected = from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuitRow : 0;
+                selected = from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuit : 0;
                 continue;
             }
             const int count = int(rows.size());
@@ -1263,11 +1261,10 @@ void ShowSettingsMenu(GameWindow& window) {
                     else if (selected == kMainHud) { page = 4; selected = 0; }
                     else if (selected == kMainContent) { page = 13; selected = 0; }
                     else if (selected == kMainControls) { page = 6; selected = 0; }
-                    else if (selected == kMainPauseExit) { window.RequestGamePause(); done = true; }
                     else if (selected == kMainCockpit) { page = 10; selected = 0; status = "Driver view settings."; }
+                    else if (selected == kMainCampaign) { done = ShowCampaignManager(window); }
                     else if (selected == kMainResume) done = true;
-                    else if (selected == kMainCampaignRow) { done = ShowCampaignManager(window); }
-                    else if (selected == kMainQuitRow) { page = 12; selected = 1; }
+                    else if (selected == kMainQuit) { page = 12; selected = 1; }
                 }
                 else if (page == 10) {
                     if (selected == 0 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
@@ -1295,7 +1292,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
                         window.Close(); done = true;
                     } else if (page == 11) { page = 13; selected = 1; }
-                    else { page = 0; selected = kMainQuitRow; }
+                    else { page = 0; selected = kMainQuit; }
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {
