@@ -76,6 +76,10 @@ public:
         uint32_t queueFamily = 0;
         VkQueue queue = VK_NULL_HANDLE;
         bool shadingRate = false;
+        // What the device was created with (the XR runtime's device): 1.1/1.2 has no dynamic rendering, so the
+        // renderer uses render passes. Both default to the fallback that always works, never to an assumed feature.
+        bool dynamicRendering = false;
+        bool multiview = false;
     };
 
     // The window path (Windows): a Vulkan 1.1+ instance with the surface extensions, the surface of `window`

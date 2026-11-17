@@ -97,7 +97,8 @@ VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
 
 VkContext::VkContext(const Existing& existing)
     : instance_(existing.instance), physical_(existing.physical), device_(existing.device), queueFamily_(existing.queueFamily), queue_(existing.queue),
-      owns_(false), shadingRate_(existing.shadingRate), dynamicRendering_(!ForceRenderPassPath()), multiview_(true) {}
+      owns_(false), shadingRate_(existing.shadingRate), dynamicRendering_(existing.dynamicRendering && !ForceRenderPassPath()),
+      multiview_(existing.multiview) {}
 
 VkContext::~VkContext() {
     if (!owns_) return;

@@ -120,7 +120,7 @@ VkContext::VkContext(void*, void* window) : window_(window) {
 
 VkContext::VkContext(const Existing& e)
     : instance_(e.instance), physical_(e.physical), device_(e.device), queueFamily_(e.queueFamily), queue_(e.queue),
-      owns_(false), shadingRate_(e.shadingRate), dynamicRendering_(!ForceRenderPassPath()), multiview_(true) {}
+      owns_(false), shadingRate_(e.shadingRate), dynamicRendering_(e.dynamicRendering && !ForceRenderPassPath()), multiview_(e.multiview) {}
 VkContext::~VkContext() {
     if (!owns_) return;
     if (device_) vkDestroyDevice(device_, nullptr);
