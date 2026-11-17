@@ -1061,7 +1061,7 @@ std::string MainHint(int selected) {
     case kMainCockpit: return "Seat, wheel and mirror.";
     case kMainCampaign: return "Campaign saves and transfers.";
     case kMainResume: return "Back to the game; Start opens the PS1 pause.";
-    case kMainQuit: return "Close GT2 completely.";
+    case kMainQuit: return "Close the game completely.";
     default: return {};
     }
 }
@@ -1113,7 +1113,7 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Cockpit / driver view", "Campaign / saves...", "Resume game", "Quit GT2"};
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Content and media", "Controls", "Cockpit / driver view", "Campaign / saves...", "Resume game", "Quit game"};
         }
         if (page == 11 || page == 12) {
             title = page == 11 ? "GT2 / IMPORT DISC" : "GT2 / QUIT";
