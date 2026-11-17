@@ -110,7 +110,7 @@ int GameMain(int argc, char** argv) {
                   "               movies (Arcade disc, docs/formats/str_video.md): [--no-movies] [--movies] (boot intro also in scripted runs) [--movie N] (play one, 0..26)\n"
                   "               mods (docs/formats/car_json.md, track_json.md): [--mods <dir>] (<dir>\\cars\\<id>.json, <dir>\\tracks\\<name>.json) [--ai-cars id,id,...] [--mod-physics-check <steps>]\n"
                   "               graphics (settings.txt / PC SETTINGS; docs/formats/modern_graphics.md): [--vanilla] [--low-spec] [--modern] [--frame-rate original|display] [--frame-cap N]\n"
-                  "               [--vsync 0|1] [--render-scale 50..200] [--msaa 1|2|4|8] [--texture-filter nearest|smooth] [--texture-mapping perspective|affine]\n"
+                  "               [--vsync 0|1] [--output-height 720|900|1080|0] [--render-scale 50..200] [--msaa 1|2|4|8] [--texture-filter nearest|smooth] [--texture-mapping perspective|affine]\n"
                   "               [--draw-distance original|all|<m>] [--max-detail] [--frame-log <csv>] [--interp-alpha A]");
         return 2;
     }

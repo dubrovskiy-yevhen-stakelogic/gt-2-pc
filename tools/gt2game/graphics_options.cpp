@@ -70,7 +70,7 @@ bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::Graphics
         return true;
     }
     static const char* const kKeys[][2] = {{"--frame-rate", "frame_rate"},       {"--frame-cap", "frame_cap"},
-                                           {"--vsync", "vsync"},                 {"--render-scale", "render_scale"},
+                                           {"--vsync", "vsync"},                 {"--output-height", "output_height"},   {"--render-scale", "render_scale"},
                                            {"--msaa", "msaa"}, {"--render-height", "render_height"},                   {"--texture-filter", "texture_filter"},
                                            {"--texture-mapping", "texture_mapping"}, {"--draw-distance", "draw_distance"}};
     for (const auto& k : kKeys)
@@ -95,17 +95,20 @@ RecommendedMemory ApplyRecommendedMemory(const std::string& settingsPath) {
     const gt2view::GpuCapability* gpu = caps.best();
     const uint64_t usable = gpu ? gt2view::UsableMemory(*gpu) : 0;
     const auto mib = [](uint64_t bytes) { return std::to_string(bytes / (1024 * 1024)); };
-    if (gt2view::GraphicsMemoryTooLow(caps)) {
+    gt2::shell::PcSettings stored = gt2::shell::PcSettings::Load(settingsPath);
+    const uint32_t output = gt2view::RecommendedOutputHeight(usable, uint32_t(std::max(stored.graphics.outputHeight, 0)));
+    if (gt2view::GraphicsMemoryTooLow(caps, output)) {
         result.memoryTooLow = true;
-        result.reason = mib(usable) + " MiB of video memory available, at least " + mib(gt2view::kGraphicsMemoryFloor) + " MiB required";
+        result.reason = mib(usable) + " MiB of video memory available, at least " + mib(gt2view::GraphicsMemoryFloor(output)) + " MiB required";
         return result;
     }
     if (g_pinned || g_overlay) return result; // the command line wins
     if (!gt2view::RecommendsLowMemory(caps)) return result;
-    gt2::shell::PcSettings stored = gt2::shell::PcSettings::Load(settingsPath);
-    if (stored.graphics.lowMemory) return result; // already off; nothing to change
-    stored.graphics.lowMemory = true; // memory only: the quality preset and every other row stay as chosen
-    g_graphics = stored.graphics;     // this session runs it now, not only from the next launch
+    bool changed = false;
+    if (!stored.graphics.lowMemory) { stored.graphics.lowMemory = true; changed = true; }
+    if (output != uint32_t(std::max(stored.graphics.outputHeight, 0))) { stored.graphics.outputHeight = int(output); changed = true; }
+    if (!changed) return result; // already low enough
+    g_graphics = stored.graphics; // this session runs it now, not only from the next launch
     try {
         const std::filesystem::path path(settingsPath);
         if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
@@ -114,14 +117,15 @@ RecommendedMemory ApplyRecommendedMemory(const std::string& settingsPath) {
         // The session still runs without the cache; the next change writes the file.
     }
     result.applied = true;
-    result.reason = mib(usable) + " MiB of video memory available (standard settings need " +
-                    mib(gt2view::kStandardMemoryNeed) + " MiB), Memory Use set to Low";
+    result.reason = mib(usable) + " MiB of video memory available, Memory Use set to Low" +
+                    (output ? ", output " + std::to_string(output) + "p" : "");
     return result;
 #endif
 }
 
 gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& s) {
     gt2view::RenderOptions o;
+    o.outputHeight = uint32_t(std::clamp(s.outputHeight, 0, 4320));
     o.sceneScale = float(std::clamp(s.renderScale, 50, 200)) / 100.0f;
     if (s.renderHeight > 0) { o.sceneHeight = uint32_t(s.renderHeight); o.sceneWidth = o.sceneHeight * 16 / 9; }
     o.msaa = uint32_t(std::clamp(s.msaa, 1, 8));
@@ -138,9 +142,10 @@ std::string DescribeGraphics(const gt2::shell::GraphicsSettings& s) {
     if (s.drawDistance < 0) std::snprintf(distance, sizeof(distance), "all chunks");
     else if (s.drawDistance == 0) std::snprintf(distance, sizeof(distance), "original");
     else std::snprintf(distance, sizeof(distance), "+%d m", s.drawDistance);
+    const std::string output = s.outputHeight ? std::to_string(s.outputHeight) + "p" : "display";
     char line[320];
-    std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, render scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s%s%s%s",
-                  s.frameRate == gt2::shell::GraphicsSettings::kFrameRateOriginal ? "original 30" : "display", s.frameCap, s.vsync ? "on" : "off", s.renderScale,
+    std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, output %s, scene scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s%s%s%s",
+                  s.frameRate == gt2::shell::GraphicsSettings::kFrameRateOriginal ? "original 30" : "display", s.frameCap, s.vsync ? "on" : "off", output.c_str(), s.renderScale,
                   s.msaa, s.smoothTextures ? "smooth" : "PS1 nearest", s.affine ? "affine" : "perspective", s.maxDetail ? "max" : "original", distance,
                   s == gt2::shell::GraphicsSettings::LowSpec() ? " (low spec)"
                   : s == gt2::shell::GraphicsSettings::Vanilla() ? " (vanilla)" : "",

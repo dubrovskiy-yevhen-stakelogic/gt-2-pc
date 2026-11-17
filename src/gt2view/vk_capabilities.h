@@ -51,9 +51,13 @@ struct VulkanCapabilities {
 // The standard settings' measured peak is ~504 MiB (a race at 1080p, decoded cache and MSAA included) plus the
 // swapchain and driver overhead: below 2 GiB of *available* device-local memory the cache must stay off.
 inline constexpr uint64_t kStandardMemoryNeed = 2ull * 1024 * 1024 * 1024;
-// The 137 MiB of fixed buffers plus swapchain, depth and scene targets (~45 MiB at 1080p, ~170 MiB at 4K) and
-// driver overhead. 512 MiB covers 1080p with headroom; 4K on such a card is the tight case.
-inline constexpr uint64_t kGraphicsMemoryFloor = 512ull * 1024 * 1024;
+// The 137 MiB of fixed buffers plus swapchain, depth and scene targets and driver overhead. A 1080p/display output
+// needs ~512 MiB; a 720p output (the low spec preset) needs ~384 MiB.
+inline constexpr uint64_t kGraphicsMemoryFloorDisplay = 512ull * 1024 * 1024;
+inline constexpr uint64_t kGraphicsMemoryFloor720 = 384ull * 1024 * 1024;
+inline uint64_t GraphicsMemoryFloor(uint32_t outputHeight) {
+    return outputHeight && outputHeight <= 720 ? kGraphicsMemoryFloor720 : kGraphicsMemoryFloorDisplay;
+}
 
 // What the GPU can actually hand out: the budget the driver reports, else the heaps' total (0 = unknown).
 inline uint64_t UsableMemory(const GpuCapability& gpu) {
@@ -69,10 +73,18 @@ inline bool RecommendsLowMemory(const VulkanCapabilities& caps) {
 
 // Hard floor: the low spec preset cannot be squeezed below this, so the game refuses to start rather than run
 // out of memory during a race. Unknown memory (0) is not treated as low - some drivers simply do not report it.
-inline bool GraphicsMemoryTooLow(const VulkanCapabilities& caps) {
+inline bool GraphicsMemoryTooLow(const VulkanCapabilities& caps, uint32_t outputHeight) {
     const GpuCapability* gpu = caps.best();
     return gpu && caps.profile() != GraphicsProfile::Unsupported && UsableMemory(*gpu) &&
-           UsableMemory(*gpu) < kGraphicsMemoryFloor;
+           UsableMemory(*gpu) < GraphicsMemoryFloor(outputHeight);
+}
+
+// Largest output height that fits the memory: 720p under 512 MiB, 1080p under 1 GiB, otherwise keep the user's.
+inline uint32_t RecommendedOutputHeight(uint64_t available, uint32_t current) {
+    if (!available) return current; // the driver does not report a budget: do not guess
+    if (available < kGraphicsMemoryFloorDisplay) return 720;
+    if (available < 1ull * 1024 * 1024 * 1024) return current && current <= 1080 ? current : 1080;
+    return current;
 }
 
 // Probes the Vulkan loader dynamically. Never throws and keeps working when the loader is absent.

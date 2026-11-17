@@ -74,20 +74,30 @@ int main() {
     gt2view::VulkanCapabilities plenty;
     plenty.gpus.push_back(gpu);
     if (gt2view::RecommendsLowMemory(plenty)) return 24;
-    if (gt2view::GraphicsMemoryTooLow(plenty)) return 25;
+    if (gt2view::GraphicsMemoryTooLow(plenty, 0)) return 25;
     gt2view::VulkanCapabilities weak = plenty;
     weak.gpus[0].availableBytes = 1ull << 30;
     if (!gt2view::RecommendsLowMemory(weak)) return 26;
-    if (gt2view::GraphicsMemoryTooLow(weak)) return 27;
+    if (gt2view::GraphicsMemoryTooLow(weak, 1080)) return 27;
     gt2view::VulkanCapabilities tiny = weak;
     tiny.gpus[0].availableBytes = 400ull << 20;
-    if (!gt2view::GraphicsMemoryTooLow(tiny)) return 28;
+    // 400 MiB is below the 512 MiB floor for a display/1080p output, but a 720p output fits in 384 MiB.
+    if (!gt2view::GraphicsMemoryTooLow(tiny, 1080)) return 28;
+    if (gt2view::GraphicsMemoryTooLow(tiny, 720)) return 31;
+    gt2view::VulkanCapabilities critical = tiny;
+    critical.gpus[0].availableBytes = 300ull << 20;
+    if (!gt2view::GraphicsMemoryTooLow(critical, 720)) return 32;
+    if (gt2view::GraphicsMemoryFloor(720) != 384ull << 20 || gt2view::GraphicsMemoryFloor(0) != 512ull << 20) return 33;
+    if (gt2view::RecommendedOutputHeight(400ull << 20, 0) != 720) return 34;
+    if (gt2view::RecommendedOutputHeight(700ull << 20, 0) != 1080) return 35;
+    if (gt2view::RecommendedOutputHeight(1500ull << 20, 0) != 0) return 36;
+    if (gt2view::RecommendedOutputHeight(400ull << 20, 720) != 720) return 37;
     // Unknown memory (0) is not treated as low: some drivers do not report a budget, and old APIs are not old cards.
     gt2view::VulkanCapabilities unknown = plenty;
     unknown.gpus[0].availableBytes = 0;
     unknown.gpus[0].deviceLocalBytes = 0;
     if (gt2view::RecommendsLowMemory(unknown)) return 29;
-    if (gt2view::GraphicsMemoryTooLow(unknown)) return 30;
+    if (gt2view::GraphicsMemoryTooLow(unknown, 0)) return 30;
 
     std::puts("PASS: Vulkan 1.1/1.2 fallback profile, env switch, layers and clear values");
     return 0;

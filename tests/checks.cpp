@@ -221,9 +221,14 @@ static void CheckPcChanges(const char* discPath) {
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
     const shell::GraphicsSettings lowSpec = shell::GraphicsSettings::LowSpec();
-    Check(lowSpec.lowMemory && lowSpec.msaa == 1 && lowSpec.renderScale < 100 && !lowSpec.carReflections,
-          "low spec preset lowers the scene, drops car reflections and enables the low-memory regime");
+    Check(lowSpec.lowMemory && lowSpec.msaa == 1 && lowSpec.outputHeight == 720 && !lowSpec.carReflections,
+          "low spec preset renders at 720p, drops car reflections and enables the low-memory regime");
     Check(!shell::GraphicsSettings{}.lowMemory, "standard settings keep the decoded texture cache");
+    shell::GraphicsSettings outputHeight;
+    outputHeight.Parse("output_height", "900");
+    Check(outputHeight.outputHeight == 900, "the output height parses");
+    outputHeight.Parse("output_height", "99999");
+    Check(outputHeight.outputHeight == 0, "an invalid output height falls back to the display");
     shell::GraphicsSettings lowSpecRestored;
     std::istringstream lowSpecSettings(lowSpec.Serialize());
     while (std::getline(lowSpecSettings, line)) { const auto at = line.find('='); if (at != std::string::npos) lowSpecRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
@@ -236,8 +241,11 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::PcRowOf(preset, 2).index == 0 && shell::PcRowOf(preset, 6).index == 0 && shell::PcRowOf(preset, 7).index == 0,
           "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
     Check(shell::StepPcRow(preset, 1, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps to Low spec");
-    Check(shell::PcRowOf(preset, 5).index == 1 && shell::PcRowOf(preset, 11).index == 1,
-          "the Low spec preset updates render scale and memory use immediately");
+    Check(shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 11).index == 1,
+          "the Low spec preset updates resolution and memory use immediately");
+    Check(shell::PcRowOf(preset, 5).values.size() == 4 && shell::PcRowOf(preset, 5).values[3] == "Display",
+          "the Resolution row offers Display as the sharpest option");
+    Check(shell::StepPcRow(preset, 5, 1) && preset.graphics.outputHeight == 900, "the Resolution row steps up to 900p");
     Check(shell::StepPcRow(preset, 11, -1) && !preset.graphics.lowMemory, "the memory row turns the low-memory regime off");
     // Every preset must be steppable both ways; Modern used to apply itself again when stepped left.
     shell::PcSettings stepping;

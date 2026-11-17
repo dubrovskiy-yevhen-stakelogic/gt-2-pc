@@ -1052,7 +1052,7 @@ std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
     if (page == 1) {
         switch (selected) {
         case kGfxPreset: return "Uses less memory and runs faster; simpler graphics.";
-        case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "How sharp the 3D view is; lower is faster.";
+        case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "Renders the game softer to use less memory.";
         case kGfxFrameLimit: return vr ? "How many times per second the headset updates." : "Limit the frame rate, or follow the screen.";
         case kGfxMsaa: return "Smooths jagged edges; higher costs more.";
         case kGfxDistance: return "How much of the course is drawn in the distance.";
@@ -1126,7 +1126,7 @@ void ShowSettingsMenu(GameWindow& window) {
             title = "GT2 VR / GRAPHICS";
             rows.push_back(std::string("Preset: ") + GraphicsPresetName(graphics));
             rows.push_back(vr ? std::string("Eye resolution: ") + std::to_string(vrScale) + "% (restart)"
-                              : std::string("Resolution: ") + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%"));
+                              : std::string("Resolution: ") + (graphics.outputHeight ? std::to_string(graphics.outputHeight) + "p" : std::string("Display")));
             rows.push_back(vr ? std::string("Refresh rate: ") + std::to_string(vrRefresh) + " Hz"
                               : std::string("Frame limit: ") + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display")));
             rows.push_back("MSAA: " + std::to_string(graphics.msaa) + "x");
@@ -1293,11 +1293,8 @@ void ShowSettingsMenu(GameWindow& window) {
                         } else status = "Headset does not offer refresh-rate selection.";
                     }
                     if (!vr && selected == kGfxResolution) {
-                        const int resolutions[] = {50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,
-                            130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,-720,-1080,-1440,-2160};
-                        const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
-                        graphics.renderHeight = choice < 0 ? -choice : 0;
-                        if (choice > 0) graphics.renderScale = choice;
+                        const int outputs[] = {720, 900, 1080, 0}; // Display is the sharpest
+                        graphics.outputHeight = Cycle(graphics.outputHeight, outputs, direction);
                     }
                     if (!vr && selected == kGfxFrameLimit) {
                         const int caps[] = {0,30,60,72,80,90,120,144,165,240};

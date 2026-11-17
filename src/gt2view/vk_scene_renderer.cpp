@@ -323,10 +323,20 @@ void VkSceneRenderer::EnsureExternalCapacity(uint32_t texels) {
 void VkSceneRenderer::CreateSwapchain() {
     VkSurfaceCapabilitiesKHR caps;
     Check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_, surface_, &caps), "surface capabilities");
-    extent_ = caps.currentExtent;
-    extentFromWindow_ = extent_.width == 0xFFFFFFFFu;
-    if (extentFromWindow_) context_.WindowExtent(extent_);
-    if (extent_.width == 0 || extent_.height == 0) return; // minimized
+    surfaceExtent_ = caps.currentExtent;
+    extentFromWindow_ = surfaceExtent_.width == 0xFFFFFFFFu;
+    if (extentFromWindow_) context_.WindowExtent(surfaceExtent_);
+    if (surfaceExtent_.width == 0 || surfaceExtent_.height == 0) return; // minimized
+    // A fixed output renders the swapchain (and so the whole frame) below the window; Vulkan 1.1 scales it up in the
+    // presentation engine, like a TV compositor scaling a 720p buffer to the panel. No display-mode switch.
+    extent_ = surfaceExtent_;
+    if (options_.outputHeight && options_.outputHeight < surfaceExtent_.height) {
+        uint32_t height = std::clamp(options_.outputHeight, caps.minImageExtent.height, caps.maxImageExtent.height);
+        height = std::min(height, surfaceExtent_.height);
+        uint32_t width = uint32_t((uint64_t(surfaceExtent_.width) * height + surfaceExtent_.height / 2) / surfaceExtent_.height);
+        width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
+        extent_ = {width, height};
+    }
 
     uint32_t fn = 0;
     Check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, nullptr), "surface formats");
@@ -373,9 +383,18 @@ void VkSceneRenderer::CreateSwapchain() {
         blitLinear_ = (fp.optimalTilingFeatures & need) == need;
     }
     sci.clipped = VK_TRUE;
-    Check(vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_), "vkCreateSwapchainKHR");
-    std::printf("graphics: swapchain %ux%u, format %d, colorspace %d, present %d, requested images %u\n",
-        extent_.width, extent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
+    VkResult created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    if (created != VK_SUCCESS && (extent_.width != surfaceExtent_.width || extent_.height != surfaceExtent_.height)) {
+        // Some WSI implementations refuse an extent different from the surface: keep the game running at full size.
+        std::printf("graphics: the driver rejected a %ux%u output, using the surface %ux%u\n",
+                    extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height);
+        extent_ = surfaceExtent_;
+        sci.imageExtent = extent_;
+        created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    }
+    Check(created, "vkCreateSwapchainKHR");
+    std::printf("graphics: swapchain %ux%u (surface %ux%u), format %d, colorspace %d, present %d, requested images %u\n",
+        extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(device_, swapchain_, &n, nullptr);
@@ -561,9 +580,10 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
     if (options == options_) return;
     vkDeviceWaitIdle(device_);
     const bool presentChanged = options.vsync != options_.vsync && !offscreen_; // no presentation of our own in the XR path
+    const bool outputChanged = options.outputHeight != options_.outputHeight && !offscreen_;
     options_ = options;
-    if (presentChanged) {
-        DestroySwapchain(); // recreated with the new present mode by the next Draw
+    if (presentChanged || outputChanged) {
+        DestroySwapchain(); // recreated with the new present mode / output size by the next Draw
         return;
     }
     if (swapchain_ || offscreen_) CreateSceneTargets();
@@ -1002,7 +1022,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     // Wayland's WSI never reports OUT_OF_DATE/SUBOPTIMAL on resize, so compare the window ourselves.
     VkExtent2D drawable{};
     if (swapchain_ && extentFromWindow_ && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-        (drawable.width != extent_.width || drawable.height != extent_.height)) {
+        (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height)) {
         vkDeviceWaitIdle(device_);
         DestroySwapchain();
     }
@@ -1858,7 +1878,7 @@ void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screen
     VkResult pres = vkQueuePresentKHR(queue_, &pi);
     VkExtent2D drawable{};
     const bool resized = pres == VK_SUBOPTIMAL_KHR && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-                         (drawable.width != extent_.width || drawable.height != extent_.height);
+                         (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height);
     // SUBOPTIMAL is still a successful presentation. Cocoa can report it while
     // entering fullscreen without changing the drawable; avoid rebuilding every frame.
     if (pres == VK_ERROR_OUT_OF_DATE_KHR || resized) {

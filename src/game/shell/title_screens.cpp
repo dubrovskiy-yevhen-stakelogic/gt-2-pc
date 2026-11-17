@@ -28,7 +28,7 @@ uint32_t Grey(uint32_t v) { return v | v << 8 | v << 16; }
 
 // ---- the PC SETTINGS page (ours): its rows as choice lists over PcSettings (speed units, graphics).
 constexpr int kPcCaps[] = {0, 30, 60, 120, 144, 165, 240};
-constexpr int kPcScales[] = {50, 75, 100, 125, 150, 200};
+constexpr int kPcOutputs[] = {720, 900, 1080, 0}; // Display last: stepping right is sharper
 constexpr int kPcMsaa[] = {1, 2, 4, 8};
 constexpr int kPcDistances[] = {0, 500, 1000, 2000, -1};
 
@@ -62,8 +62,8 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         break;
     case 4: r = {"VSync", {"Off", "On"}, g.vsync ? 1 : 0}; break;
     case 5:
-        r = {"Render Scale", {"50%", "75%", "100%", "125%", "150%", "200%"}, 0};
-        r.index = IndexOf(kPcScales, g.renderScale, r.values, "%d%%");
+        r = {"Resolution", {"720p", "900p", "1080p", "Display"}, 0};
+        r.index = IndexOf(kPcOutputs, g.outputHeight, r.values, "%dp");
         break;
     case 6:
         r = {"Anti-Aliasing", {"Off", "MSAA 2x", "MSAA 4x", "MSAA 8x"}, 0};
@@ -84,7 +84,7 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
 // Steps row `row` by `step` (-1 / +1, no wrap); true when a setting changed.
 bool StepPcRow(PcSettings& pc, int row, int step) {
     const PcRow r = PcRowOf(pc, row);
-    const int count = std::min(int(r.values.size()), row == 3 ? int(std::size(kPcCaps)) : row == 5 ? int(std::size(kPcScales))
+    const int count = std::min(int(r.values.size()), row == 3 ? int(std::size(kPcCaps)) : row == 5 ? int(std::size(kPcOutputs))
                                                      : row == 6 ? int(std::size(kPcMsaa)) : row == 10 ? int(std::size(kPcDistances)) : int(r.values.size()));
     int index = r.index;
     if (row == 1) { // presets are Low spec / Vanilla / Modern; Custom is derived, never stepped onto
@@ -102,7 +102,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 2: g.frameRate = index == 0 ? GraphicsSettings::kFrameRateOriginal : GraphicsSettings::kFrameRateDisplay; break;
     case 3: g.frameCap = kPcCaps[index]; break;
     case 4: g.vsync = index == 1; break;
-    case 5: g.renderScale = kPcScales[index]; break;
+    case 5: g.outputHeight = kPcOutputs[index]; break;
     case 6: g.msaa = kPcMsaa[index]; break;
     case 7: g.smoothTextures = index == 1; break;
     case 8: g.affine = index == 1; break;

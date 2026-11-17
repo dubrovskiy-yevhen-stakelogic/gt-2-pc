@@ -7,7 +7,8 @@
 // nearest texels, perspective-correct mapping, the original's LOD and render lists), --low-spec (the small-VRAM
 // preset; the Vulkan 1.1/1.2 render-pass path is separate), --modern, --frame-rate
 // original|display, --frame-cap N, --vsync 0|1, --render-scale P (percent) , --msaa N, --texture-filter
-// nearest|smooth, --texture-mapping perspective|affine, --draw-distance original|all|<metres>, --max-detail.
+// nearest|smooth, --texture-mapping perspective|affine, --draw-distance original|all|<metres>, --max-detail,
+// --output-height 720|900|1080|0 (0 = the display; the swapchain is scaled up by the presentation engine).
 // Any of them pins the session's settings: the PC SETTINGS page still edits and saves settings.txt, but the running
 // session keeps the command line's values (automated runs stay reproducible).
 #include <string>

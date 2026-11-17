@@ -235,6 +235,7 @@ private:
     VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
     VkFormat colorFormat_ = VK_FORMAT_B8G8R8A8_UNORM;
     VkExtent2D extent_{};
+    VkExtent2D surfaceExtent_{}; // the window's size; extent_ may be smaller when a fixed output height is set
     bool extentFromWindow_ = false; // surface leaves the size to us (Wayland): track window resizes ourselves
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;

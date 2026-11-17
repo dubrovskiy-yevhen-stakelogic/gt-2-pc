@@ -258,10 +258,11 @@ The desktop game needs a Vulkan 1.1 or newer driver. Vulkan 1.3 GPUs use dynamic
 rendering; Vulkan 1.1/1.2 GPUs use an equivalent render-pass path. The memory
 safety follows **available video memory, not the API version**: under 2 GiB the
 game turns **Memory Use** to Low (decoded texture cache off, no HD extras by
-default) and leaves your preset alone; the **Low spec** preset (75% scene, no
-MSAA, PS1 textures, no reflections) stays available for weak GPUs. Below 512 MiB
-it stops with a clear message instead of failing during a race. `--low-spec`
-selects the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
+default), leaves your preset alone and caps **Resolution** (720p/900p/1080p/
+Display; the swapchain is scaled to the display) to fit. The **Low spec** preset
+renders at 720p with no MSAA, PS1 textures and no reflections. Below 384 MiB at
+720p (512 MiB at 1080p/Display) it stops with a clear message instead of failing
+during a race. `--low-spec` selects the preset explicitly and `--diagnose` prints the loader, GPUs, available memory,
 the path and the recommended preset. PC SETTINGS shows the preset and every row
 it changes updates as you step it; its **Memory Use** row (Normal / Low) exposes
 the decoded texture cache and memory budget. `GT2_VK_RENDERPASS=1` forces the
