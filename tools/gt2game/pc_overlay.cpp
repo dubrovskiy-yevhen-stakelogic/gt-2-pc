@@ -1020,9 +1020,10 @@ void ShowSettingsMenu(GameWindow& window) {
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
         if (page == 0) {
-            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Original game pause / exit", "Cockpit / driver view", "Resume game"};
+            rows = {"Graphics and performance", "Options and cheats", "HUD elements", "Controls", "Change game (Arcade / Simulation)", "Cockpit / driver view"};
             if (discImportAvailable) rows.push_back("Import another game disc...");
             rows.push_back("Campaign / saves...");
+            rows.push_back("Resume game");
             rows.push_back("Quit game");
         }
         if (page == 11 || page == 12) {
@@ -1151,15 +1152,24 @@ void ShowSettingsMenu(GameWindow& window) {
             }
             if (direction || accept) {
                 if (page == 0 && accept) {
-                    if (selected == 4) {
+                    // Rows: Graphics, Options, HUD, Controls, Change game, Cockpit, [Import], Campaign, Resume, Quit.
+                    const int importRow = 6;
+                    const int campaignRow = importRow + (discImportAvailable ? 1 : 0);
+                    const int resumeRow = campaignRow + 1;
+                    const int quitRow = resumeRow + 1;
+                    if (selected == 0) { page = 1; selected = 0; }
+                    else if (selected == 1) { page = 2; selected = 0; }
+                    else if (selected == 2) { page = 4; selected = 0; }
+                    else if (selected == 3) { page = 6; selected = 0; }
+                    else if (selected == 4) {
                         if (gameChangeAvailable) { page = 9; selected = 1; }
                         else status = "Launch from the disc picker with both discs installed.";
                     }
-                    else if (selected == 6) { page = 10; selected = 0; status = "Driver view settings."; }
-                    else if (selected == 8 + int(discImportAvailable)) { done = ShowCampaignManager(window); }
-                    else if (selected >= 8) { page = discImportAvailable && selected == 8 ? 11 : 12; selected = 1; }
-                    else if (selected >= 5) { if (selected == 5) window.RequestGamePause(); done = true; }
-                    else { page = selected == 3 ? 6 : selected == 2 ? 4 : selected + 1; selected = 0; }
+                    else if (selected == 5) { page = 10; selected = 0; status = "Driver view settings."; }
+                    else if (discImportAvailable && selected == importRow) { page = 11; selected = 1; }
+                    else if (selected == campaignRow) { done = ShowCampaignManager(window); }
+                    else if (selected == resumeRow) done = true;
+                    else if (selected == quitRow) { page = 12; selected = 1; }
                 }
                 else if (page == 10) {
                     if (selected == 0 && direction) cockpitSettings.seatHeightCm = std::clamp(cockpitSettings.seatHeightCm + direction * 2, CockpitSettings::kMinHeightCm, CockpitSettings::kMaxHeightCm);
@@ -1173,7 +1183,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         carSeatHeights[CarSeatKey(cockpitCar,gt4)]=std::clamp(OverlayCockpitSettings(cockpitCar,gt4).seatHeightCm+direction*2,CockpitSettings::kMinHeightCm,CockpitSettings::kMaxHeightCm);
                     }
                     if (selected == 8 && accept && !cockpitCar.empty()) carSeatHeights.erase(CarSeatKey(cockpitCar,CockpitCarGt4()));
-                    if (selected == 9 && accept) { page = 0; selected = 6; }
+                    if (selected == 9 && accept) { page = 0; selected = 5; }
                     if (selected == 6 && direction) cockpitSettings.sideMirrors = !cockpitSettings.sideMirrors;
                     status = "Saved. Applies to Driver camera when you resume.";
                     if (page == 10 && (selected == 3 || selected == 4) && cockpitSettings.mirror && !hudVisibility.mirror)
@@ -1186,7 +1196,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         gameChangeDirect = false;
                         std::puts(discImportRequested ? "player: disc import requested" : "player: quit requested");
                         window.Close(); done = true;
-                    } else { selected = page == 11 ? 8 : int(discImportAvailable) + 9; page = 0; }
+                    } else { selected = page == 11 ? 6 : int(discImportAvailable) + 8; page = 0; }
                 }
                 else if (page == 9 && accept) {
                     if (selected == 0) {
