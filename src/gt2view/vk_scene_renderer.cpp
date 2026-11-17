@@ -100,6 +100,10 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     }
     if (context_.ShadingRate()) {
         cmdSetShadingRate_ = reinterpret_cast<PFN_vkCmdSetFragmentShadingRateKHR>(vkGetDeviceProcAddr(device_, "vkCmdSetFragmentShadingRateKHR"));
+        // The render-pass path declares the rate map as an attachment, which needs VkSubpassDescription2. On a 1.1
+        // device that is the KHR entry point (the session enables the extension); on 1.2+ the core name.
+        createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2KHR"));
+        if (!createRenderPass2_) createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2"));
         const auto rates = reinterpret_cast<PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR>(vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
         if (rates) {
             uint32_t count = 0;
@@ -751,7 +755,7 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
         // Vulkan 1.1/1.2: the pipeline names the render pass whose attachments it was built for. MSAA pipelines
         // always draw into the multisampled attachment that is resolved at the end of the pass.
         gpi.renderPass = GetRenderPass(stereo ? stereoFormat_ : colorFormat_, samples, samples != VK_SAMPLE_COUNT_1_BIT, viewMask,
-                                       VK_ATTACHMENT_LOAD_OP_CLEAR);
+                                       VK_ATTACHMENT_LOAD_OP_CLEAR, stereo && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE);
     } else if (stereo && context_.ShadingRate()) {
         rendering.pNext = &rateState;
         gpi.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
@@ -1111,11 +1115,12 @@ void VkSceneRenderer::DestroyFramebuffers() {
 // already transitions every image to its attachment layout, so the pass uses the attachment layouts as both its
 // initial and final layout - the same state dynamic rendering leaves behind and the next transition expects.
 VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
-                                            VkAttachmentLoadOp colorLoad) {
-    const std::array<uint64_t, 5> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad)};
+                                            VkAttachmentLoadOp colorLoad, VkImageView rateView) {
+    const std::array<uint64_t, 6> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad), HandleBits(rateView)};
     const auto found = renderPasses_.find(key);
     if (found != renderPasses_.end()) return found->second;
-    VkAttachmentDescription attachments[3]{};
+    // Attachment order everywhere in the renderer: colour, resolve (if any), depth, shading-rate map (if any).
+    VkAttachmentDescription attachments[4]{};
     VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     uint32_t count = 0;
     attachments[count].format = colorFormat;
@@ -1148,43 +1153,106 @@ VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountF
     attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depthRef = {count, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
     count++;
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorRef;
-    subpass.pResolveAttachments = resolve ? &resolveRef : nullptr;
-    subpass.pDepthStencilAttachment = &depthRef;
-    uint32_t mask = viewMask;
-    VkRenderPassMultiviewCreateInfo multiview{VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO};
-    multiview.subpassCount = 1;
-    multiview.pViewMasks = &mask;
-    VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-    if (viewMask) {
-        if (!context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
-        rpci.pNext = &multiview;
+    VkAttachmentReference rateRef{};
+    if (rateView) {
+        attachments[count].format = kShadingRateFormat;
+        attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // uploaded once, then read as it is
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateRef = {count, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR};
+        count++;
     }
-    rpci.attachmentCount = count;
-    rpci.pAttachments = attachments;
-    rpci.subpassCount = 1;
-    rpci.pSubpasses = &subpass;
     VkRenderPass pass = VK_NULL_HANDLE;
-    Check(vkCreateRenderPass(device_, &rpci, nullptr, &pass), "vkCreateRenderPass");
+    if (!rateView) {
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef;
+        subpass.pResolveAttachments = resolve ? &resolveRef : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef;
+        uint32_t mask = viewMask;
+        VkRenderPassMultiviewCreateInfo multiview{VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO};
+        multiview.subpassCount = 1;
+        multiview.pViewMasks = &mask;
+        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        if (viewMask) {
+            if (!context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+            rpci.pNext = &multiview;
+        }
+        rpci.attachmentCount = count;
+        rpci.pAttachments = attachments;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(vkCreateRenderPass(device_, &rpci, nullptr, &pass), "vkCreateRenderPass");
+    } else {
+        // Foveation in VR: a fragment shading rate attachment can only be declared in VkSubpassDescription2, so this
+        // pass is built with vkCreateRenderPass2 and multiview moves from VkRenderPassMultiviewCreateInfo into viewMask.
+        if (!createRenderPass2_) throw std::runtime_error("Vulkan: vkCreateRenderPass2 (core in 1.2, VK_KHR_create_renderpass2 on 1.1) is needed for foveation without dynamic rendering");
+        if (viewMask && !context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+        VkAttachmentDescription2 descriptions[4]{};
+        for (uint32_t i = 0; i < count; ++i) {
+            descriptions[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+            descriptions[i].format = attachments[i].format;
+            descriptions[i].samples = attachments[i].samples;
+            descriptions[i].loadOp = attachments[i].loadOp;
+            descriptions[i].storeOp = attachments[i].storeOp;
+            descriptions[i].stencilLoadOp = attachments[i].stencilLoadOp;
+            descriptions[i].stencilStoreOp = attachments[i].stencilStoreOp;
+            descriptions[i].initialLayout = attachments[i].initialLayout;
+            descriptions[i].finalLayout = attachments[i].finalLayout;
+        }
+        VkAttachmentReference2 colorRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        colorRef2.attachment = colorRef.attachment;
+        colorRef2.layout = colorRef.layout;
+        VkAttachmentReference2 resolveRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        resolveRef2.attachment = resolveRef.attachment;
+        resolveRef2.layout = resolveRef.layout;
+        VkAttachmentReference2 depthRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        depthRef2.attachment = depthRef.attachment;
+        depthRef2.layout = depthRef.layout;
+        VkAttachmentReference2 rateRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        rateRef2.attachment = rateRef.attachment;
+        rateRef2.layout = rateRef.layout;
+        VkFragmentShadingRateAttachmentInfoKHR rateInfo{VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+        rateInfo.pFragmentShadingRateAttachment = &rateRef2;
+        rateInfo.shadingRateAttachmentTexelSize = rateTexel_;
+        VkSubpassDescription2 subpass{VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2};
+        subpass.pNext = &rateInfo; // the rate map is declared on the subpass, not as a member
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.viewMask = viewMask;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef2;
+        subpass.pResolveAttachments = resolve ? &resolveRef2 : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef2;
+        VkRenderPassCreateInfo2 rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2};
+        rpci.attachmentCount = count;
+        rpci.pAttachments = descriptions;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(createRenderPass2_(device_, &rpci, nullptr, &pass), "vkCreateRenderPass2");
+    }
     renderPasses_[key] = pass;
     return pass;
 }
 
 void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options) {
     const bool resolve = options.resolveView != VK_NULL_HANDLE;
-    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad);
-    const std::array<uint64_t, 4> fbKey{HandleBits(pass), HandleBits(target.colorView), HandleBits(target.depthView),
-                                        HandleBits(options.resolveView)};
+    // Foveation is an attachment here; the same 1-layer map is used by both eyes of a multiview pass.
+    const VkImageView rateView = options.shadingRate && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE;
+    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad, rateView);
+    const std::array<uint64_t, 5> fbKey{HandleBits(pass), HandleBits(target.colorView), HandleBits(target.depthView),
+                                        HandleBits(options.resolveView), HandleBits(rateView)};
     VkFramebuffer framebuffer = framebuffers_[fbKey];
     if (!framebuffer) {
-        VkImageView views[3];
+        VkImageView views[4];
         uint32_t count = 0;
         views[count++] = target.colorView;
         if (resolve) views[count++] = options.resolveView;
         if (target.depthView) views[count++] = target.depthView;
+        if (rateView) views[count++] = rateView;
         uint32_t layers = FramebufferLayers(target.viewMask, target.layers);
         VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fci.renderPass = pass;
@@ -1867,6 +1935,8 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     // The HUD/menu pass is always single-sample, so it needs its own depth target.
     stereoDepth2D_ = CreateImage(stereoExtent_, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                  VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 2);
+    // The shading-rate map before the pipelines: in the render-pass path it is an attachment of the pass they name.
+    CreateRateImage();
     DestroyPipelineSet(stereoPipelines_);
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
@@ -1882,7 +1952,6 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     CreatePipelineSet(stereoSamples_, cachedPipelines_, true, multiview ? 0x3u : 0u, true);
     CreatePipelineSet(stereoSamples_, cachedHudPipelines_, true, multiview ? 0x3u : 0u, true, true);
     stereoReady_ = true;
-    CreateRateImage();
 }
 
 void VkSceneRenderer::SetExternalStereoImage(VkImage image) {

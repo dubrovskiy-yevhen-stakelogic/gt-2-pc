@@ -473,11 +473,17 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     if (options_.mirrorWindow) deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
 #ifdef __ANDROID__
-    // Foveation is a shading-rate attachment, which only the dynamic-rendering path has: on 1.1/1.2 it would be
-    // enabled and then ignored.
-    info_.shadingRate = dynamicRendering && gt2view::ShadingRateFeatures(vkPhysical_, shadingRate);
+    // Foveation is a shading-rate attachment: the dynamic-rendering path takes it as a struct member, the render-pass
+    // path declares it on a 1.2+ device or with VK_KHR_create_renderpass2 on a 1.1 device.
+    info_.shadingRate = gt2view::ShadingRateFeatures(vkPhysical_, shadingRate);
+    if (info_.shadingRate && !gt2view::RenderPass2Available(deviceVersion, gt2view::HasDeviceExtension(vkPhysical_, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME))) {
+        info_.shadingRate = false;
+        std::printf("xr: foveation off: no vkCreateRenderPass2 on this Vulkan %u.%u device\n", VK_API_VERSION_MAJOR(deviceVersion),
+                    VK_API_VERSION_MINOR(deviceVersion));
+    }
 #endif
     if (info_.shadingRate) deviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+    if (info_.shadingRate && deviceVersion < VK_API_VERSION_1_2) deviceExtensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
     // VkPhysicalDeviceVulkan13Features may only be chained on a 1.3 instance and device; the shading-rate struct can
     // sit anywhere in the chain.
     if (dynamicRendering) {

@@ -47,10 +47,11 @@ int main() {
     // A view mask covers layers 0 .. highest set view: the gap in 0b101 needs three layers, not popcount two.
     if (FramebufferLayers(0, 1) != 1) return 14;
     if (FramebufferLayers(0, 2) != 2) return 15;
+    // Multiview: one framebuffer layer, whatever the view mask; the attachment views carry the array layers.
     if (FramebufferLayers(0b1, 1) != 1) return 16;
-    if (FramebufferLayers(0b11, 2) != 2) return 17;
-    if (FramebufferLayers(0b101, 3) != 3) return 18;
-    if (FramebufferLayers(0x80000001u, 32) != 32) return 19;
+    if (FramebufferLayers(0b11, 2) != 1) return 17;
+    if (FramebufferLayers(0b101, 3) != 1) return 18;
+    if (FramebufferLayers(0x80000001u, 32) != 1) return 19;
 
     // Clear values follow the attachment order; dropping the resolve slot put the depth clear on the wrong attachment.
     VkClearValue color{};
@@ -63,6 +64,13 @@ int main() {
     if (clears.count != 2 || clears.values[1].depthStencil.depth != 0.0f) return 22;
     clears = MakeRenderPassClears(color, true, true);
     if (clears.count != 3 || clears.values[2].depthStencil.depth != 0.0f) return 23;
+
+    // The foveation render pass needs vkCreateRenderPass2: core in 1.2, VK_KHR_create_renderpass2 on 1.1 (the session
+    // enables that extension for exactly this, and turns foveation off when the device has neither).
+    if (!gt2view::RenderPass2Available(VK_API_VERSION_1_1, true)) return 40;
+    if (gt2view::RenderPass2Available(VK_API_VERSION_1_1, false)) return 41;
+    if (!gt2view::RenderPass2Available(VK_API_VERSION_1_2, false)) return 42;
+    if (!gt2view::RenderPass2Available(VK_API_VERSION_1_3, false)) return 43;
 
     std::puts("PASS: Vulkan 1.1/1.2 fallback profile, env switch, layers and clear values");
     return 0;
