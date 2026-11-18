@@ -873,6 +873,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                                (phase != Phase::kRacing || race.CarAt(0).body.finishFlag != 0);
         if (autoEnter && phase == Phase::kPreRace && !overlayMenus) menuSelected = racedOnce ? int(preRaceItems().size()) - 1 : itemIndex("Start");
         const bool enter = window.Pressed(keys::kReturn) || autoEnter;
+        const auto& kb = OverlayKeyboardBindings(); // the keyboard's driving map (platform/input/keyboard_bindings.h)
         // ---- panels' input
         bool leave = false;
         // The race of the licence menu's Start when the selector named another test (the caller built it): no menu (0x8004E320).
@@ -1119,7 +1120,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     pauseMenu.Open();
                 }
             }
-            if (window.KeyPressed('C') || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) {
+            if (window.KeyPressed(kb[input::KeyboardAction::kCamera]) || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) {
                 cameraMode = (cameraMode + 1) % 3;
                 cameraPressed = true;
             }
@@ -1150,18 +1151,18 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 std::printf("replay: %d frames\n", recorded.Frames());
             }
             if (window.KeyPressed(keys::kBack) && !flow) resetRace();
-            if (window.KeyPressed('Q')) shiftRequest = 1;
-            if (window.KeyPressed('A')) shiftRequest = -1;
+            if (window.KeyPressed(kb[input::KeyboardAction::kShiftUp])) shiftRequest = 1;
+            if (window.KeyPressed(kb[input::KeyboardAction::kShiftDown])) shiftRequest = -1;
             if (enter) enterPressedForShell = 0x200; // X: the shell's results wait (0x8002A700)
         }
         if (leave) break;
 
         sim::PadRecord pad{}; // the keyboard: a digital record like the original's from the buttons
-        pad.throttle = (window.KeyHeld(keys::kUp) || (config.drive && !config.shotPath.empty())) ? 1 : 0;
-        pad.brake = window.KeyHeld(keys::kDown) ? 1 : 0;
-        pad.steer = int16_t((window.KeyHeld(keys::kLeft) ? 2 : 0) - (window.KeyHeld(keys::kRight) ? 2 : 0));
-        pad.handbrake = window.KeyHeld(keys::kSpace) ? 1 : 0;
-        pad.reverse = window.KeyHeld('R') ? 1 : 0;
+        pad.throttle = (window.KeyHeld(kb[input::KeyboardAction::kAccelerate]) || (config.drive && !config.shotPath.empty())) ? 1 : 0;
+        pad.brake = window.KeyHeld(kb[input::KeyboardAction::kBrake]) ? 1 : 0;
+        pad.steer = int16_t((window.KeyHeld(kb[input::KeyboardAction::kLeft]) ? 2 : 0) - (window.KeyHeld(kb[input::KeyboardAction::kRight]) ? 2 : 0));
+        pad.handbrake = window.KeyHeld(kb[input::KeyboardAction::kHandbrake]) ? 1 : 0;
+        pad.reverse = window.KeyHeld(kb[input::KeyboardAction::kReverse]) ? 1 : 0;
         pad.shift = int8_t(shiftRequest);
 
         // Simulation at the original's 30 Hz, decoupled from the render rate. Screenshot and scripted runs lock two
@@ -1183,24 +1184,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 break;
             }
         }
-        // The logical pad of player 1 (the recorder's input, 0x80013C90): the keyboard as the default key configuration.
-        const LogicalPad keyboardPad = [&] {
-            LogicalPad k;
-            if (window.KeyHeld(keys::kLeft)) k.buttons |= kPadLeft;
-            if (window.KeyHeld(keys::kRight)) k.buttons |= kPadRight;
-            if (pad.throttle) k.buttons |= kPadThrottle;
-            if (pad.brake) k.buttons |= kPadBrake;
-            if (pad.handbrake) k.buttons |= kPadHandbrake;
-            if (pad.reverse) k.buttons |= kPadReverse;
-            return k;
-        }();
-        replayDriver.pad = LogicalPad{};
-        if (window.KeyHeld(keys::kLeft)) replayDriver.pad.buttons |= kPadLeft;
-        if (window.KeyHeld(keys::kRight)) replayDriver.pad.buttons |= kPadRight;
-        if (pad.throttle) replayDriver.pad.buttons |= kPadThrottle;
-        if (pad.brake) replayDriver.pad.buttons |= kPadBrake;
-        if (pad.handbrake) replayDriver.pad.buttons |= kPadHandbrake;
-        if (pad.reverse) replayDriver.pad.buttons |= kPadReverse;
+        // The logical pad of player 1 (the recorder's input, 0x80013C90): the keyboard's driving map.
+        LogicalPad keyboardPad = input::KeyboardDrivingPad(kb, [&](int key) { return window.KeyHeld(key); });
+        if (pad.throttle) keyboardPad.buttons |= kPadThrottle;
+        replayDriver.pad = keyboardPad;
         if (raceAudio) {
             raceAudio->SetPaused(phase != Phase::kRacing || (replaying && replayOver()));
             raceAudio->SetDriving(phase == Phase::kRacing && !(replaying && replayOver()));
@@ -1352,7 +1339,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 }
                 cameraPad.replayPressed |= replayButtons;
                 replayButtons = 0;
-                if (config.lookBack || window.KeyHeld('V') || (padLogicalHeld & camera::kButtonLookBack) || (!replaying && window.Input().Wheel().Current().held[input::wheel::LookBack])) cameraPad.held |= camera::kButtonLookBack;
+                if (config.lookBack || window.KeyHeld(kb[input::KeyboardAction::kLookBack]) || (padLogicalHeld & camera::kButtonLookBack) || (!replaying && window.Input().Wheel().Current().held[input::wheel::LookBack])) cameraPad.held |= camera::kButtonLookBack;
                 raceCamera.Update(race, cameraPad);
                 cameraPressed = false;
                 // game mode 6 replays: the lap step the controls wrote (car + 0x21), read by 0x80013EF0 at the next tick

@@ -47,6 +47,7 @@ gt2view::HudVisibility hudVisibility = kDefaultHudVisibility;
 gt2::vr::DrivingSettings drivingSettings;
 gt2::vr::ControlBindings controlBindings;
 gt2::vr::ControlBindings desktopBindings = gt2::vr::DesktopBindings();
+gt2::input::KeyboardBindings keyboardBindings;
 bool desktopCustom = false;
 int introLowerCm = 200;
 CockpitSettings cockpitSettings;
@@ -179,6 +180,7 @@ void Save() {
         out << "pc_custom_bindings=" << int(desktopCustom) << "\npc_brake_reverse=" << int(desktopBindings.brakeReverse)
             << "\npc_steering_stick=" << desktopBindings.steeringStick << '\n';
         for (size_t i=0;i<desktopBindings.source.size();++i) out << "pc_binding_" << i << '=' << desktopBindings.source[i] << '\n';
+        for (size_t i=0;i<keyboardBindings.key.size();++i) out << "kb_binding_" << i << '=' << keyboardBindings.key[i] << '\n';
         out << "vr_brake_reverse=" << int(controlBindings.brakeReverse) << "\nvr_steering_stick=" << controlBindings.steeringStick << '\n';
         for (size_t i=0;i<controlBindings.source.size();++i) out << "vr_binding_" << i << '=' << controlBindings.source[i] << '\n';
         for (const auto& setting : hudSettings) out << setting.key << '=' << int(hudVisibility.*setting.member) << '\n';
@@ -225,6 +227,7 @@ void LoadOverlaySettings(const std::string& basePath) {
     carSeatHeights.clear();
     gt4ModelSet = gt2::Gt4ModelSetInstalled() && !CurrentGraphics().lowMemory; // the low spec preset defaults it off
     desktopBindings = gt2::vr::DesktopBindings(); desktopCustom = false;
+    keyboardBindings = {};
     metricUnits = -1;
     playStationIntro = true;
     const auto base=gt2::shell::PcSettings::Load(basePath);
@@ -271,6 +274,10 @@ void LoadOverlaySettings(const std::string& basePath) {
         else if (key == "pc_brake_reverse") desktopBindings.brakeReverse = value == "1";
         else if (key == "pc_steering_stick") desktopBindings.steeringStick = std::clamp(std::atoi(value.c_str()),0,1);
         else if (key.size()==12 && key.starts_with("pc_binding_") && key[11]>='0' && key[11]<='7') desktopBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,12);
+        else if (key.size()==12 && key.starts_with("kb_binding_") && key[11]>='0' && key[11]<='9') {
+            const int binding = std::atoi(value.c_str());
+            if (gt2::input::KeyboardKeyAllowed(binding)) keyboardBindings.key[size_t(key[11]-'0')] = binding;
+        }
         else if (key == "vr_brake_reverse") controlBindings.brakeReverse = value == "1";
         else if (key == "vr_steering_stick") controlBindings.steeringStick = std::clamp(std::atoi(value.c_str()),0,1);
         else if (key.size()==12 && key.substr(0,11)=="vr_binding_" && key[11]>='0' && key[11]<='7') controlBindings.source[size_t(key[11]-'0')] = std::clamp(std::atoi(value.c_str()),0,8);
@@ -308,6 +315,7 @@ void LoadOverlaySettings(const std::string& basePath) {
 }
 bool OverlayDesktopCustomBindings() { return desktopCustom; }
 const gt2::vr::ControlBindings& OverlayDesktopBindings() { return desktopBindings; }
+const gt2::input::KeyboardBindings& OverlayKeyboardBindings() { return keyboardBindings; }
 const gt2::vr::ControlBindings& OverlayControlBindings() { return controlBindings; }
 const gt2::vr::DrivingSettings& OverlayDrivingSettings() { return drivingSettings; }
 float OverlayIntroLowering() { return introLowerCm*.01f; }
@@ -383,6 +391,35 @@ struct NativeCanvas {
         items.push_back(layer);
     }
 };
+// A keyboard key (platform/os/keys.h) for the bindings page; unknown codes keep their number.
+std::string KeyLabel(int key) {
+    if (key == 0) return "Unbound";
+    if (key >= 'A' && key <= 'Z') return std::string(1, char(key));
+    if (key >= '0' && key <= '9') return std::string(1, char(key));
+    if (key >= gt2::keys::kF1 && key <= gt2::keys::kF12) return "F" + std::to_string(key - gt2::keys::kF1 + 1);
+    switch (key) {
+    case gt2::keys::kBack: return "Backspace";
+    case gt2::keys::kTab: return "Tab";
+    case gt2::keys::kReturn: return "Enter";
+    case gt2::keys::kShift: return "Shift";
+    case gt2::keys::kControl: return "Ctrl";
+    case gt2::keys::kAlt: return "Alt";
+    case gt2::keys::kEscape: return "Esc";
+    case gt2::keys::kSpace: return "Space";
+    case gt2::keys::kPageUp: return "Page Up";
+    case gt2::keys::kPageDown: return "Page Down";
+    case gt2::keys::kEnd: return "End";
+    case gt2::keys::kHome: return "Home";
+    case gt2::keys::kLeft: return "Left";
+    case gt2::keys::kUp: return "Up";
+    case gt2::keys::kRight: return "Right";
+    case gt2::keys::kDown: return "Down";
+    case gt2::keys::kInsert: return "Insert";
+    case gt2::keys::kDelete: return "Delete";
+    default: return "Key " + std::to_string(key);
+    }
+}
+
 void Panel(GameWindow& window, const std::string& title, const std::vector<std::string>& rows, int selected,
            const std::string& status, const std::string& footer) {
     NativeCanvas canvas;
@@ -1105,6 +1142,8 @@ void ShowSettingsMenu(GameWindow& window) {
     const bool vr = VrMode();
     if (vrScale < 0) vrScale = vr ? int(VrOptionsInUse().renderScale * 100 + 0.5f) : baseVrSettings.renderScale;
     int page = 0, selected = 0, carPage = 0, hudPage = 0, controlPage = 0;
+    int lastMainRow = -1, lastMainPage = -1; // the main page's status description
+    int kbCapture = -1; // the keyboard action waiting for a key, -1 when not capturing
     gt2::vr::MenuTriggers triggers;
     triggers.Begin(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
     bool first = true, done = false;
@@ -1113,6 +1152,8 @@ void ShowSettingsMenu(GameWindow& window) {
     const std::string neutralStatus = status;
     int lastPage = -1, lastSelected = -1, savedFrames = 0;
     while (!done && !window.Closed()) {
+        if (page == 0 && (selected != lastMainRow || page != lastMainPage)) status = MainHint(selected);
+        lastMainRow = selected; lastMainPage = page;
         auto graphics = CurrentGraphics();
         std::vector<std::string> rows;
         std::string title = "GT2 VR / MENU";
@@ -1190,21 +1231,26 @@ void ShowSettingsMenu(GameWindow& window) {
         }
         if (page == 6) {
             title = "GT2 VR / CONTROLS";
-            rows = {"Steering and wheel", "Button bindings", std::string("Brake to reverse (AT): ")+(controlBindings.brakeReverse ? "ON" : "OFF"),
-                std::string("Steering stick: ")+(controlBindings.steeringStick ? "Right" : "Left"), "Reset controls to defaults",
-                "Vibration: " + std::to_string(rumble) + "%", "Back"};
+            rows = {"Steering and wheel", "Controller buttons", std::string("Brake to reverse (AT): ")+(controlBindings.brakeReverse ? "ON" : "OFF"),
+                std::string("Steering stick: ")+(controlBindings.steeringStick ? "Right" : "Left"), "Reset controller and keyboard", "Vibration: " + std::to_string(rumble) + "%", "Back"};
         }
         if (page == 6 && !vr) {
-            rows = {std::string("Gamepad bindings: ") + (desktopCustom ? "Custom" : "Original game"), "Button bindings",
-                std::string("Brake to reverse (AT): ") + (desktopBindings.brakeReverse ? "ON" : "OFF"),
+            rows = {std::string("Controller layout: ") + (desktopCustom ? "Custom" : "Original game"), "Controller buttons",
                 std::string("Custom steering stick: ") + (desktopBindings.steeringStick ? "Right" : "Left"),
-                "Reset controls to defaults", "DualSense pedal resistance: " + std::to_string(adaptive) + "%",
-                "Vibration: " + std::to_string(rumble) + "%", "Back"};
+                "DualSense pedal resistance: " + std::to_string(adaptive) + "%", "Keyboard bindings",
+                std::string("Brake to reverse (AT): ") + (desktopBindings.brakeReverse ? "ON" : "OFF"),
+                "Reset controller and keyboard", "Vibration: " + std::to_string(rumble) + "%", "Back"};
         }
         if (page == 7) {
-            title = "GT2 VR / BINDINGS / PAGE " + std::to_string(controlPage+1);
+            title = "GT2 VR / CONTROLLER BUTTONS / PAGE " + std::to_string(controlPage+1);
             for (int i=controlPage*4;i<controlPage*4+4;++i) rows.push_back(std::string(gt2::vr::controlNames[i])+": "+(vr ? gt2::vr::controlSources[controlBindings.source[i]] : gt2::vr::desktopControlSources[desktopBindings.source[i]]));
             rows.push_back(controlPage ? "Previous bindings" : "More bindings"); rows.push_back("Back");
+        }
+        if (page == 14) {
+            title = "GT2 / KEYBOARD BINDINGS";
+            for (int i = 0; i < int(gt2::input::KeyboardAction::kCount); ++i)
+                rows.push_back(std::string(gt2::input::kKeyboardActionNames[i]) + ": " + KeyLabel(keyboardBindings.key[size_t(i)]));
+            rows.push_back("Reset keyboard defaults"); rows.push_back("Back");
         }
 #ifdef _WIN32
         if (page == 6) rows.insert(rows.end() - 1, "Racing wheel / pedals / shifter...");
@@ -1237,12 +1283,30 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 0) title += std::string(" / v") + gt2::kVersion;
         if (!first) {
             if (!window.BeginFrame()) break;
+            if (page == 14 && kbCapture >= 0) {
+                const int action = kbCapture;
+                const std::string waiting = std::string("Press a key for ") + gt2::input::kKeyboardActionNames[action] + "...";
+                if (window.KeyPressed(gt2::keys::kEscape)) { kbCapture = -1; status = "Assignment cancelled."; }
+                else for (int key = 1; key < 256; ++key) if (window.KeyPressed(key)) {
+                    if (!gt2::input::AssignKeyboardKey(keyboardBindings, gt2::input::KeyboardAction(action), key)) {
+                        status = "Reserved or unsupported key; choose another key.";
+                        break;
+                    }
+                    status = std::string("Saved: ") + gt2::input::kKeyboardActionNames[action] + " = " + KeyLabel(key) + ".";
+                    kbCapture = -1;
+                    try { Save(); } catch (const std::exception& e) { status = std::string("Not saved: ") + e.what(); }
+                    break;
+                }
+                if (kbCapture < 0) continue;
+                Panel(window, "GT2 / KEYBOARD BINDINGS", {waiting, "Escape cancels"}, -1, status, "Press one key");
+                continue;
+            }
             if (window.MenuPressed() || window.SettingsPressed() || window.Pressed(gt2::keys::kF10)) break;
             if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape) || (!vr && window.PadPressed(gt2::input::ps1::kCircle))) {
                 if (page == 0) break;
                 const int from = page;
-                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7) ? 6 : (page == 9 || page == 11) ? 13 : 0;
-                selected = from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuit : 0;
+                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7 || page == 14) ? 6 : (page == 9 || page == 11) ? 13 : 0;
+                selected = from == 14 ? 4 : from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuit : 0;
                 continue;
             }
             const int count = int(rows.size());
@@ -1433,26 +1497,27 @@ void ShowSettingsMenu(GameWindow& window) {
                     else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 7 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
                 }
 #ifdef _WIN32
-                else if (page == 6 && accept && selected == (vr ? 6 : 7)) {
+                else if (page == 6 && accept && selected == (vr ? 6 : 8)) {
                     ShowWheelSettings(window);
-                } else if (page == 6 && accept && selected == (vr ? 7 : 8)) { page = 0; selected = 0; }
+                } else if (page == 6 && accept && selected == (vr ? 7 : 9)) { page = 0; selected = 0; }
 #endif
                 else if (page == 6 && !vr) {
                     if (selected == 0 && direction) desktopCustom = !desktopCustom;
-                    else if (selected == 1 && accept) { page = 7; selected = controlPage = 0; }
-                    else if (selected == 2 && direction) desktopBindings.brakeReverse = !desktopBindings.brakeReverse;
-                    else if (selected == 3 && direction) desktopBindings.steeringStick = 1 - desktopBindings.steeringStick;
-                    else if (selected == 4 && accept) { desktopCustom = false; desktopBindings = gt2::vr::DesktopBindings(); }
-                    else if (selected == 5 && direction) adaptive = std::clamp(adaptive + direction * 10, 0, 100);
-                    else if (selected == 6 && direction) { rumble = std::clamp(rumble + direction * 5, 0, 100); window.Input().SetRumbleScale(rumble); status = "Saved. Vibration strength."; }
-                    else if (selected == 7 && accept) { page = 0; selected = 0; }
-                    if (selected != 6) status = "Saved. Original game bindings remain available.";
+                    else if (selected == 1 && accept) { page = 7; selected = controlPage = 0; status = "Driving controls only; menu buttons stay fixed."; continue; }
+                    else if (selected == 2 && direction) desktopBindings.steeringStick = 1 - desktopBindings.steeringStick;
+                    else if (selected == 3 && direction) adaptive = std::clamp(adaptive + direction * 10, 0, 100);
+                    else if (selected == 4 && accept) { page = 14; selected = 0; status = "Driving keys only; menu keys stay fixed."; continue; }
+                    else if (selected == 5 && direction) desktopBindings.brakeReverse = !desktopBindings.brakeReverse;
+                    else if (selected == 6 && accept) { desktopCustom = false; desktopBindings = gt2::vr::DesktopBindings(); keyboardBindings = {}; }
+                    else if (selected == 7 && direction) { rumble = std::clamp(rumble + direction * 5, 0, 100); window.Input().SetRumbleScale(rumble); }
+                    else if (selected == int(rows.size()) - 1 && accept) { page = 0; selected = 0; }
+                    status = "Saved. Original game bindings remain available.";
                 } else if (page == 6) {
                     if (selected==0 && accept) {page=5;selected=0;}
-                    else if (selected==1 && accept) {page=7;selected=controlPage=0;}
+                    else if (selected==1 && accept) {page=7;selected=controlPage=0;status="Driving controls only; menu buttons stay fixed.";continue;}
                     else if (selected==2 && direction) controlBindings.brakeReverse = !controlBindings.brakeReverse;
                     else if (selected==3 && direction) controlBindings.steeringStick = 1-controlBindings.steeringStick;
-                    else if (selected==4 && accept) {controlBindings={};drivingSettings={};status="Default controls restored.";}
+                    else if (selected==4 && accept) {controlBindings={};drivingSettings={};keyboardBindings={};status="Default controls restored.";}
                     else if (selected==5 && direction) {rumble = std::clamp(rumble + direction * 5, 0, 100); window.Input().SetRumbleScale(rumble); status="Saved. Vibration strength.";}
                     else if (selected==6 && accept) {page=0;selected=0;}
                 } else if (page == 7) {
@@ -1464,6 +1529,17 @@ void ShowSettingsMenu(GameWindow& window) {
                         status="Saved. Bindings affect driving; menu controls stay fixed.";
                     } else if (selected==4) {controlPage=1-controlPage;selected=0;}
                     else if (selected==5) {page=6;selected=0;}
+                } else if (page == 14) {
+                    if (selected < int(gt2::input::KeyboardAction::kCount) && accept) {
+                        kbCapture = selected;
+                        status = "Press a key. Escape cancels.";
+                        continue;
+                    }
+                    if (selected == int(rows.size()) - 2 && accept) {
+                        keyboardBindings = {};
+                        try { Save(); status = "Saved. Keyboard defaults restored."; }
+                        catch (const std::exception& e) { status = std::string("Not saved: ") + e.what(); }
+                    } else if (selected == int(rows.size()) - 1 && accept) { page = 6; selected = 4; }
                 } else if (page == 5) {
                     if (selected == 0 && direction) drivingSettings.mode = (drivingSettings.mode + direction + 3) % 3;
                     if (selected == 1 && direction) drivingSettings.motionHand = 1-drivingSettings.motionHand;

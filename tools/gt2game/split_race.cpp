@@ -606,6 +606,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
         }
         bool leave = false;
         const bool enter = window.Pressed(gt2::keys::kReturn) || window.Pad2Pressed(input::ps1::kCross);
+        const auto& kb = OverlayKeyboardBindings(); // the keyboard's driving map (platform/input/keyboard_bindings.h)
         const bool startPressed = window.PausePressed();
         if (replaying && splitPads.ended) { // the stream ran out (0x800A8D68): the replay is over
             if (!replayEndLogged) std::printf("2 player replay: end of a stream after %d steps\n", steps);
@@ -636,9 +637,9 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                     leave = true;
                 }
             }
-            if (window.KeyPressed('C') || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) cameraPressed[0] = true;
-            if (window.KeyPressed('Q')) shiftRequest = 1;
-            if (window.KeyPressed('A')) shiftRequest = -1;
+            if (window.KeyPressed(kb[input::KeyboardAction::kCamera]) || (!replaying && window.Input().Wheel().Pressed(input::wheel::Camera))) cameraPressed[0] = true;
+            if (window.KeyPressed(kb[input::KeyboardAction::kShiftUp])) shiftRequest = 1;
+            if (window.KeyPressed(kb[input::KeyboardAction::kShiftDown])) shiftRequest = -1;
             if (enter && !replaying) enterForShell = 0x200; // X: the shell's results wait (0x8002A700)
             if (replaying) { // the replay controls of camera 1 as keys (race_view.cpp): O onboard, I Replay Info, Up / Down, T = Triangle (the split)
                 if (window.Pressed('O')) replayButtons[0] |= 0x400;
@@ -671,13 +672,8 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 merged.throttle = pl.U16(input::pad_object::kValues + 4);
                 merged.brake = pl.U16(input::pad_object::kValues + 6);
                 if (p == 0) { // player 1's keyboard (the single race's keys) merged at the logical level
-                    LogicalPad k;
-                    if (window.KeyHeld(gt2::keys::kLeft)) k.buttons |= kPadLeft;
-                    if (window.KeyHeld(gt2::keys::kRight)) k.buttons |= kPadRight;
-                    if (window.KeyHeld(gt2::keys::kUp) || (config.drive && !config.shotPath.empty())) k.buttons |= kPadThrottle;
-                    if (window.KeyHeld(gt2::keys::kDown)) k.buttons |= kPadBrake;
-                    if (window.KeyHeld(gt2::keys::kSpace)) k.buttons |= kPadHandbrake;
-                    if (window.KeyHeld('R')) k.buttons |= kPadReverse;
+                    LogicalPad k = input::KeyboardDrivingPad(kb, [&](int key) { return window.KeyHeld(key); });
+                    if (config.drive && !config.shotPath.empty()) k.buttons |= kPadThrottle;
                     if (shiftRequest > 0) k.buttons |= kPadShiftUp;
                     if (shiftRequest < 0) k.buttons |= kPadShiftDown;
                     merged.buttons |= k.buttons;
@@ -730,7 +726,7 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 }
                 cameraPad.replayPressed |= replayButtons[p];
                 replayButtons[p] = 0;
-                if (!replaying && ((held[p] & camera::kButtonLookBack) || (p == 0 && (window.KeyHeld('V') || config.lookBack || window.Input().Wheel().Current().held[input::wheel::LookBack])))) cameraPad.held |= camera::kButtonLookBack;
+                if (!replaying && ((held[p] & camera::kButtonLookBack) || (p == 0 && (window.KeyHeld(kb[input::KeyboardAction::kLookBack]) || config.lookBack || window.Input().Wheel().Current().held[input::wheel::LookBack])))) cameraPad.held |= camera::kButtonLookBack;
                 cameras[p].Update(race, cameraPad);
                 cameraPressed[p] = false;
             }

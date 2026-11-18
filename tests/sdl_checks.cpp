@@ -2,6 +2,8 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include "platform/input/input_system.h"
+#include "platform/input/sdl_keys.h"
+#include "platform/input/keyboard_bindings.h"
 #include "game/audio/audio_device.h"
 #include <atomic>
 #include <cstdio>
@@ -19,6 +21,18 @@ struct AudioProbe final : gt2::audio::StreamSource {
 }
 int main() {
     try {
+        using namespace gt2::keys;
+        const std::pair<SDL_Scancode,int> cases[]={{SDL_SCANCODE_TAB,kTab},{SDL_SCANCODE_LCTRL,kControl},
+            {SDL_SCANCODE_RCTRL,kControl},{SDL_SCANCODE_LALT,kAlt},{SDL_SCANCODE_RALT,kAlt},
+            {SDL_SCANCODE_INSERT,kInsert},{SDL_SCANCODE_END,kEnd},{SDL_SCANCODE_W,'W'}};
+        for(const auto& [scan,key]:cases) Require(gt2::input::SdlKey(scan)==key,"portable keyboard mapping");
+        for(int i=0;i<12;++i) Require(gt2::input::SdlKey(SDL_Scancode(SDL_SCANCODE_F1+i))==kF1+i,"function key mapping");
+        Require(gt2::input::SdlKey(SDL_SCANCODE_UNKNOWN)==0,"unknown keys stay unmapped");
+        gt2::input::KeyboardBindings bindings;
+        Require(!gt2::input::AssignKeyboardKey(bindings,gt2::input::KeyboardAction::kAccelerate,
+            gt2::input::SdlKey(SDL_SCANCODE_F10)),"SDL settings key must not become accelerator");
+        Require(gt2::input::AssignKeyboardKey(bindings,gt2::input::KeyboardAction::kAccelerate,
+            gt2::input::SdlKey(SDL_SCANCODE_LCTRL)),"SDL control key is assignable");
         SDL_SetMainReady();
         SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");

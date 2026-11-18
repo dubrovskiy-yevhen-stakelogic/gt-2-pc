@@ -119,7 +119,10 @@ Driving buttons follow the original game's controller settings until you enable
 | Left stick click | Look back |
 
 You can change these in **Controls -> Button bindings**. They do not change menu
-navigation. Steam Input can map a rear button (for example L4) to **F10** as a
+navigation. Keyboard driving keys have their own map under **Controls ->
+Keyboard bindings** (arrows, Space, R, Q, A, C and V by default), so the
+keyboard and a controller can both drive without sharing bindings. Steam Input
+can map a rear button (for example L4) to **F10** as a
 single-button overlay shortcut. F10 and Shift+Q also work from a keyboard.
 Trackpads or the touchscreen operate the Desktop Mode file picker.
 

@@ -6,6 +6,8 @@
 
 - Move the content choices (the current game/disc, importing another disc, HD textures and media, GT4 car models, PlayStation intro) from the main and Graphics pages to a Content and media page, simplify the main menu (Resume and Quit at the end; the original pause menu row is gone - the game's own Start still opens it), and make the Modern preset use modern car reflections. ([#77](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/discussions/77), @lucianodato)
 
+- Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
+
 - Keep browser rumble on the selected controller, including identical pads and reconnects.
 - Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
 - Refresh cached menus after HD media, texture smoothing or raster settings change.
