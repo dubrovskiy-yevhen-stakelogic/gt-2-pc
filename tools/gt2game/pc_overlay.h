@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 
+#include "platform/input/keyboard_bindings.h"
 #include "platform/xr/vr_controls.h"
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ int OverlayFoveation();
 const gt2::vr::DrivingSettings& OverlayDrivingSettings();
 const gt2::vr::ControlBindings& OverlayControlBindings();
 const gt2::vr::ControlBindings& OverlayDesktopBindings();
+const gt2::input::KeyboardBindings& OverlayKeyboardBindings();
 bool OverlayDesktopCustomBindings();
 float OverlayIntroLowering();
 const CockpitSettings& OverlayCockpitSettings();

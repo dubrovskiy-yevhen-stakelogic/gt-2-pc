@@ -223,12 +223,13 @@ void GameWindow::BlockMenuInputUntilRelease() {
 }
 
 bool GameWindow::KeyHeld(int key) const {
+    if (key <= 0) return false; // zero is an unbound driving action, not an unknown SDL key
     if(menuRelease_.KeyBlocked(key))return false;
     if (std::find(scriptHeld_.begin(), scriptHeld_.end(), key) != scriptHeld_.end()) return true;
     return focused_ && backend_->KeyDown(key);
 }
 
-bool GameWindow::KeyPressed(int key) const { return std::find(keyPressedNow_.begin(), keyPressedNow_.end(), key) != keyPressedNow_.end(); }
+bool GameWindow::KeyPressed(int key) const { return key > 0 && std::find(keyPressedNow_.begin(), keyPressedNow_.end(), key) != keyPressedNow_.end(); }
 
 bool GameWindow::Held(int key) const {
     if (KeyHeld(key)) return true;

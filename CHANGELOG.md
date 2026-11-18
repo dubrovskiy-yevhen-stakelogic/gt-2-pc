@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Group content and media settings separately from graphics; keep vibration under Controls.
+- Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
+
 - Keep browser rumble on the selected controller, including identical pads and reconnects.
 - Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
 - Refresh cached menus after HD media, texture smoothing or raster settings change.
