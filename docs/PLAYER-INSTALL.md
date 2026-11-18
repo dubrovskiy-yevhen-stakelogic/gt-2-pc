@@ -39,6 +39,23 @@ monitor play, or the META, STEAMVR or VD launcher for your OpenXR runtime.
 See [PCVR setup](PCVR.md). The headset software must be installed separately.
 Settings open with F10; in the browser use Shift+Q.
 
+### Moving the data folder later
+
+The first-run choice is not permanent. To move an existing installation:
+
+1. Close the game.
+2. Move the whole data folder to the new drive. It is the folder containing
+   `gt2game.exe`, `arcade/`, `simulation/`, `saves/` and the `PLAY*.bat` files.
+   Do not move only `saves` or one disc folder; the launchers expect them together.
+3. Start **GT2** from the program folder (`GT2.bat`). If the recorded folder is
+   missing, the launcher opens the folder picker; select the moved folder. It
+   updates the executable there and keeps discs, saves and media.
+
+Alternatively, edit `install-location.txt` in the program folder to the new
+absolute path before starting. That file records the data folder for the MSI and
+portable ZIP launchers. If the drive letter changes later, update it or run the
+launcher again and reselect the folder.
+
 ## Quest
 
 Install `GT2-VR-<version>.apk`. The APK contains the game but not disc data:

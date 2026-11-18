@@ -390,7 +390,10 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float step = rows.size()>13 ? 26.f : rows.size()>11 ? 28.f : rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f;
+        // Fit long lists above the status line (y = 479): 13+ rows at the old 31 px pitch pushed the last row onto
+        // it. The highlight follows the pitch so it never covers the next row.
+        const float step = rows.size() > 12 ? std::min(28.f, 350.f / float(rows.size() - 1))
+                          : rows.size() > 10 ? 31.f : rows.size() > 9 ? 35.f : 40.f;
         const float y = 112 + float(i) * step;
         if (int(i) == selected) canvas.Quad(44, y - 5, 711, step < 31.f ? step - 2.f : 34.f, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
@@ -1107,6 +1110,7 @@ void ShowSettingsMenu(GameWindow& window) {
     bool first = true, done = false;
     std::printf("overlay: opened (%s) at field %d\n", vr ? "VR" : "desktop", window.Field());
     std::string status = "GAME PAUSED - settings save automatically.";
+    const std::string neutralStatus = status;
     int lastPage = -1, lastSelected = -1, savedFrames = 0;
     while (!done && !window.Closed()) {
         auto graphics = CurrentGraphics();
@@ -1255,6 +1259,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 if ((wheelButtons & gt2::input::ps1::kRight) && window.PadPressed(gt2::input::ps1::kRight)) direction = 1;
             }
             if (direction || accept) {
+                const std::string statusBeforeInput = status;
                 if (page == 0 && accept) {
                     if (selected == kMainGraphics) { page = 1; selected = 0; }
                     else if (selected == kMainOptions) { page = 2; selected = 0; }
@@ -1480,6 +1485,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     else { const int pages = int((catalogue.size() + 7) / 8); carPage = (carPage + direction + pages) % pages; selected = 0; }
                 }
                 try { Save(); } catch (const std::exception& e) { status = std::string("Settings not saved: ") + e.what(); }
+                if (status != statusBeforeInput && status.find("Saved") != std::string::npos) savedFrames = 120;
                 continue;
             }
         }
@@ -1490,13 +1496,13 @@ void ShowSettingsMenu(GameWindow& window) {
         const bool pageChanged = page != lastPage, rowChanged = selected != lastSelected;
         if (pageChanged) {
             savedFrames = 0;
-            status = hintPage ? hint : "GAME PAUSED - settings save automatically.";
+            status = hintPage ? hint : neutralStatus;
         } else if (rowChanged && hintPage) {
             savedFrames = 0;
             status = hint;
         }
         if (pageChanged || rowChanged) { lastPage = page; lastSelected = selected; }
-        if (savedFrames > 0 && --savedFrames == 0) status = hint;
+        if (savedFrames > 0 && --savedFrames == 0) status = hintPage ? hint : neutralStatus;
         first = false;
         window.Input().StopFeedback();
         Panel(window, title, rows, selected, (page == 9 || page == 11 || page == 12) ? "Unsaved progress will be lost. Save in the game first." : status,

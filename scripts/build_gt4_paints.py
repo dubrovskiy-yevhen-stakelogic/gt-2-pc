@@ -9,6 +9,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+# CarInfoRecord::PaintCount is five bits: colours above this are never selected.
+MAX_PAINTS = 32
+
 def u32(data, at): return struct.unpack_from('<I', data, at)[0]
 def sha(data): return hashlib.sha256(data).hexdigest()
 def patch(data, at, color, body, size):
@@ -51,7 +54,7 @@ def build(job, a):
     dest = a.output/parent; dest.mkdir(parents=True,exist_ok=True)
     temp = a.output/'_decode'/parent; temp.mkdir(parents=True,exist_ok=True)
     baseline = {}
-    for c in range(-1, colors):
+    for c in range(-1, min(colors, MAX_PAINTS)):
         patched = data if c < 0 else patch(data,pat,c,body,size)
         file = temp/'model'; file.write_bytes(patched)
         for setid in sorted({v[0] for v in images.values()}):
@@ -73,21 +76,22 @@ def build(job, a):
                     raise ValueError('Decoder RGB differs from original: '+parent+'/'+key)
             palettes = [{'sourceColor':-1,'images':{}}]; seen = {()}; changes = []
             continue
-        replacements = {}; signature = []; sample = []
+        signature = []; sample = []
         for key,(_,_,original) in images.items():
             changed = np.any(decoded[key][:,:,:3]!=baseline[key][:,:,:3],axis=2)
             if not np.any(changed): continue
             rgba = original.copy();rgba[changed,:3] = decoded[key][changed,:3]
-            digest = sha(rgba.tobytes()); name = digest+'.png'
-            if not (dest/name).exists(): Image.fromarray(rgba).save(dest/name)
-            replacements[key] = (Path(parent)/name).as_posix();signature.append((key,digest))
+            # Only the signature is consumed by build_gt4_native; the native
+            # pass writes the shipped images. A full PNG here was an unused
+            # duplicate and could fill the drive on multi-colour cars.
+            signature.append((key,sha(rgba.tobytes())))
             sample.extend(rgba[changed,:3][::max(1,np.count_nonzero(changed)//64)].tolist())
             changes.extend(original[changed,:3][::max(1,np.count_nonzero(changed)//64)].tolist())
         signature = tuple(sorted(signature))
         if signature in seen: continue
         seen.add(signature)
         rgb = np.median(sample,axis=0).astype(int) if sample else np.array([128]*3)
-        palettes.append({'sourceColor':c,'chip':int(rgb[0])|int(rgb[1])<<8|int(rgb[2])<<16,'images':replacements})
+        palettes.append({'sourceColor':c,'chip':int(rgb[0])|int(rgb[1])<<8|int(rgb[2])<<16,'images':{}})
     if not colors: palettes = [{'sourceColor':-1,'images':{}}];changes=[]
     rgb = np.median(changes,axis=0).astype(int) if changes else np.array([128]*3)
     palettes[0]['chip'] = int(rgb[0])|int(rgb[1])<<8|int(rgb[2])<<16
@@ -95,8 +99,7 @@ def build(job, a):
     (dest/'colors.json').write_text(json.dumps(result,separators=(',',':'))+'\n')
     shutil.rmtree(temp)  # temp is the verified output/_decode/parent directory
     return {'parent':parent,'ids':ids,'colors':len(palettes),'patchColors':colors,'rawSha256':sha(raw.read_bytes()),
-        'source':str(raw),'textureTexels':sum(x[2].shape[0]*x[2].shape[1] for x in images.values()),
-        'variantTexels':sum(Image.open(q).width*Image.open(q).height for q in dest.glob('*.png'))}
+        'source':str(raw),'textureTexels':sum(x[2].shape[0]*x[2].shape[1] for x in images.values())}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

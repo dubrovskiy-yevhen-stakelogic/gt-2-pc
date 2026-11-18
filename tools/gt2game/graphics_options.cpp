@@ -141,7 +141,7 @@ std::string DescribeGraphics(const gt2::shell::GraphicsSettings& s) {
     char distance[32];
     if (s.drawDistance < 0) std::snprintf(distance, sizeof(distance), "all chunks");
     else if (s.drawDistance == 0) std::snprintf(distance, sizeof(distance), "original");
-    else std::snprintf(distance, sizeof(distance), "+%d m", s.drawDistance);
+    else std::snprintf(distance, sizeof(distance), "%d m", s.drawDistance);
     const std::string output = s.outputHeight ? std::to_string(s.outputHeight) + "p" : "display";
     char line[320];
     std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, output %s, scene scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s%s%s%s",

@@ -37,6 +37,11 @@ inline bool ExtendedScenery(double distanceSquared, float extendedDistance, bool
     return maxDetail || extendedDistance < 0 ||
         (extendedDistance > 0 && distanceSquared <= double(extendedDistance) * extendedDistance);
 }
+// A positive graphics "Draw Distance" is a hard cap: nothing farther from the eye draws.
+// 0 = the original render list, < 0 = the entire course: neither is capped.
+inline bool BeyondDrawDistance(double distanceSquared, float extendedDistance) {
+    return extendedDistance > 0 && distanceSquared > double(extendedDistance) * extendedDistance;
+}
 inline int SceneryEntry(const gt2::Track& track, const gt2::TrackSceneryInstance& instance,
     uint32_t mask, uint32_t lodMeasure,
     double distanceSquared, float extendedDistance, bool maxDetail) {

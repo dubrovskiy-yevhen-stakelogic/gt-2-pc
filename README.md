@@ -205,7 +205,7 @@ are downloaded; choose your own when the installer prompts. Existing data and
 saves are preserved by the normal update path.
 
 - **Quiver Launcher:** find **Gran Turismo 2 PC, VR & Browser** in the [Quiver catalog](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser) and press **Get**. Quiver downloads the release file for your platform and keeps the game updated.
-- **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. Open settings with F10. See [PCVR setup](docs/PCVR.md).
+- **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. To move an existing data folder, see [player installation](docs/PLAYER-INSTALL.md#moving-the-data-folder-later). Open settings with F10. See [PCVR setup](docs/PCVR.md).
 - **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
 - **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
 - **Quest:** install `GT2-VR-<version>.apk`, then use the installer scripts to prepare your disc data over ADB; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.

@@ -35,6 +35,7 @@
 #include "gt2formats/course_data.h"
 #include "gt2formats/gltf_reader.h"
 #include "gt2formats/model_set.h"
+#include "gt2formats/paint_delta.h"
 #include "gt2formats/sha1.h"
 #include "gt2formats/psx_vram.h"
 #include "gt2formats/sponsor_boards.h"
@@ -273,10 +274,10 @@ public:
         bool fullDetail = true;
         int cameraChunk = -1;                // the chunk whose render list is used; -1 = the chunk nearest to the eye
         bool glows = true;                   // the chunks' glow records (night / highway courses; glow.h)
-        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = plus
-        // every chunk whose centre is within N m of the eye, plus scenery in that radius without PS1 masks/LOD cutoffs.
-        // The added chunks draw like render-list entries.
-        // < 0 = every chunk and authored near scenery entry, including empty distant-copy entries.
+        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = a hard
+        // cap at N m: only chunks whose centre and scenery instances whose origin are within N m draw (the camera's own
+        // chunk always does), with the in-range scenery at its most detailed LOD. < 0 = every chunk and authored near
+        // scenery entry, including empty distant-copy entries.
         float extendedDistance = 0;
     };
     struct TrackStats { int cameraChunk = -1; size_t chunks = 0, instances = 0, billboards = 0; uint32_t mask = 0; };
@@ -356,15 +357,18 @@ public:
             const uint32_t flags = uint32_t(e >> 14);
             if (index >= track.chunks.size()) continue;
             const TrackChunk& chunk = track.chunks[index];
+            const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
+            const float chunkDistance = distanceTo(centre);
             mask |= chunk.sceneryMask; // before the view test, for every entry (0x80020110)
+            // A positive Draw Distance is a hard cap; the camera's own chunk always draws (it holds the road under the car).
+            if (int(index) != camera && BeyondDrawDistance(double(chunkDistance) * chunkDistance, view.extendedDistance)) continue;
             if (view.glows) AppendChunkGlowSprites(boards[1], track, chunk, view.right.data(), down); // every drawn entry draws its glows (glow.h)
             if (view.extendedDistance >= 0 && !view.fullDetail && flags > 2) continue; // glow records only
             detailedDrawn[index]=true;
             stats_.chunks++;
-            const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
             const bool masked=view.extendedDistance!=0 && !authoredVisible[index] && !retainMaskedWalls &&
                 std::any_of(wallConflicts_[index].begin(),wallConflicts_[index].end(),[&](size_t other){return authoredVisible[other];});
-            addRanges(masked?extendedChunkRanges_[index]:chunkRanges_[index], vp, distanceTo(centre));
+            addRanges(masked?extendedChunkRanges_[index]:chunkRanges_[index], vp, chunkDistance);
             for (const TrackBillboard& b : chunk.billboards) {
                 const std::array<float, 3> base = TrackVertexToWorld(chunk, {int16_t(b.position[0]), int16_t(b.position[1]), int16_t(b.position[2])});
                 const auto boardRight = view.positionalBillboards ? BillboardRight(view.eye,base,{1,0,0}) : std::array<float,3>{rx,0,rz};
@@ -393,13 +397,16 @@ public:
             const auto& inst=track.sceneryInstances[instanceIndex];
             const std::array<double, 3> offset = {inst.position[0] / 65536.0 - view.eye[0], inst.position[1] / 65536.0 - view.eye[1],
                                                   inst.position[2] / 65536.0 - view.eye[2]};
+            const double distanceSquared = offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2];
+            // A positive Draw Distance caps scenery too; "Scenery Detail: Max" explicitly keeps every instance.
+            if (!view.maxDetail && BeyondDrawDistance(distanceSquared, view.extendedDistance)) continue;
             // Level of detail as the original picks it (0x8001F7F8 -> 0x8007AE38 / 0x8007AEF4, track.h): the camera-space
             // translation squared in quarter metres, scaled by k(h, lodDivisor), against the list's thresholds; beyond the
             // last threshold the instance is not drawn. gt2play --prims checks this rule against the original's own calls.
             const std::vector<TrackLodEntry>& lods = track.sceneryLods[inst.lodList];
             const int entry = SceneryEntry(track, inst, mask,
                 SceneryLodMeasure(SceneryCameraSpace(inst, eye, cameraAxes), SceneryLodK(projection, inst.lodDivisor)),
-                offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2], view.extendedDistance, view.maxDetail);
+                distanceSquared, view.extendedDistance, view.maxDetail);
             if (entry < 0) continue;
             const size_t modelIndex = lods[entry].model;
             const TrackSceneryModel& model = track.sceneryModels[modelIndex];
@@ -1629,7 +1636,7 @@ private:
         std::vector<std::pair<uint32_t,std::vector<uint32_t>>> uploads;
         for(const auto& texture:state.paintTextures) {
             PngImage image=texture.original;
-            if(const auto it=state.paints[selected].find(texture.name);it!=state.paints[selected].end()) image=ReadPngFile(it->second.string());
+            if(const auto it=state.paints[selected].find(texture.name);it!=state.paints[selected].end()) image=ReadPaintVariant(texture.original,it->second.string());
             if(image.width>texture.original.width || image.height>texture.original.height || image.width<=0 || image.height<=0 || image.rgba.size()!=size_t(image.width)*image.height*4)
                 throw std::runtime_error("GT4 paint texture size mismatch");
             const auto& original=texture.original;
@@ -1955,7 +1962,7 @@ private:
                     const auto found=palette.find(car.imageNames[1][image]);
                     if(found==palette.end())continue;
                     const auto path=found->second.string();auto cached=mirrorPaintNeutral.find(path);
-                    if(cached==mirrorPaintNeutral.end())cached=mirrorPaintNeutral.emplace(path,NeutralMirrorImage(ReadPngFile(path))).first;
+                    if(cached==mirrorPaintNeutral.end())cached=mirrorPaintNeutral.emplace(path,NeutralMirrorImage(ReadPaintVariant(mesh.images.at(image),path))).first;
                     if(!cached->second){patches.clear();break;}
                 }
                 return patches;
@@ -1980,7 +1987,7 @@ private:
                     if(tintLayer)std::fill(dark.begin(),dark.end(),1);
                     if(i<car.imageNames[1].size())for(const auto& palette:car.paints){
                         const auto found=palette.find(car.imageNames[1][i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(tint.begin(),tint.end(),0);std::fill(empty.begin(),empty.end(),0);std::fill(zero.begin(),zero.end(),0);std::fill(dark.begin(),dark.end(),0);break;}
                         for(size_t p=0;p<tint.size();++p){empty[p]&=variant.rgba[p*4+3]<128;zero[p]&=variant.rgba[p*4+3]==0;
                             // Paint variants can change the tint ramp while the
@@ -2044,7 +2051,7 @@ private:
                                 for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=NativeTextureAlphaDiscard(m,img.rgba[pixel*4+3]);
                                 if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                     const auto variant=palette.find(car.imageNames[1][image]);if(variant==palette.end())continue;
-                                    const auto png=ReadPngFile(variant->second.string());
+                                    const auto png=ReadPaintVariant(img,variant->second.string());
                                     if(png.width!=img.width || png.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                                     for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=uint8_t(mask[pixel]!=0 && NativeTextureAlphaDiscard(m,png.rgba[pixel*4+3]));
                                 }
@@ -2282,7 +2289,7 @@ private:
                             bool compatible=true;
                             if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                 const auto entry=palette.find(car.imageNames[1][image]);if(entry==palette.end())continue;
-                                const auto variant=ReadPngFile(entry->second.string());
+                                const auto variant=ReadPaintVariant(png,entry->second.string());
                                 if(variant.width!=png.width || variant.height!=png.height){compatible=false;break;}
                                 for(size_t i=0;i<support.size();++i)support[i]=uint8_t(support[i] || variant.rgba[i*4+3]!=0);
                             }
@@ -2341,7 +2348,7 @@ private:
                     const auto& names=car.imageNames[1];
                     if(i<names.size())for(const auto& palette:car.paints){
                         const auto found=palette.find(names[i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                         for(size_t p=0;p<mask.size();++p)for(size_t c=0;c<3;++c)mask[p]&=variant.rgba[p*4+c]==img.rgba[p*4+c];
                     }
@@ -2356,7 +2363,7 @@ private:
                     // Keep any texel that becomes non-glass in another authored paint.
                     if(i<car.imageNames[1].size())for(const auto& palette:car.paints){
                         const auto found=palette.find(car.imageNames[1][i]);if(found==palette.end())continue;
-                        const auto variant=ReadPngFile(found->second.string());
+                        const auto variant=ReadPaintVariant(img,found->second.string());
                         if(variant.width!=img.width || variant.height!=img.height){std::fill(mask.begin(),mask.end(),0);break;}
                         const bool bright=HasBrightNeutralWindowField(variant);
                         for(size_t pixel=0;pixel<mask.size();++pixel){const auto* q=&variant.rgba[pixel*4];
@@ -2400,7 +2407,7 @@ private:
                         auto mask=Gt4CapOpaquePixels(img,&material);
                         if(image<car.imageNames[1].size())for(const auto& palette:car.paints) {
                             const auto variant=palette.find(car.imageNames[1][image]);if(variant==palette.end())continue;
-                            const auto png=ReadPngFile(variant->second.string());
+                            const auto png=ReadPaintVariant(img,variant->second.string());
                             IntersectGt4CapOpaquePixels(mask,img,png,&material);
                         }
                         found=capPixels.emplace(key,std::move(mask)).first;
@@ -2425,7 +2432,7 @@ private:
                             if(index<car.imageNames[1].size())for(const auto& palette:car.paints) {
                                 const auto variant=palette.find(car.imageNames[1][index]);
                                 if(variant==palette.end())continue;
-                                const auto paint=ReadPngFile(variant->second.string());
+                                const auto paint=ReadPaintVariant(image,variant->second.string());
                                 if(!Gt4UnionRoofCoatPixels(entry->second,image,paint))throw std::runtime_error("incompatible roof coat palette");
                             }
                         }
@@ -2599,7 +2606,7 @@ private:
                         for(size_t i=0;i<fractional.size();++i)fractional[i]=img.rgba[i*4+3]>0 && img.rgba[i*4+3]<254;
                         if(size_t(image)<car.imageNames[1].size())for(const auto& palette:car.paints) {
                             const auto found=palette.find(car.imageNames[1][size_t(image)]);if(found==palette.end())continue;
-                            const auto variant=ReadPngFile(found->second.string());
+                            const auto variant=ReadPaintVariant(img,found->second.string());
                             if(variant.width!=img.width || variant.height!=img.height){std::fill(fractional.begin(),fractional.end(),0);break;}
                             for(size_t i=0;i<fractional.size();++i)fractional[i]=uint8_t(fractional[i] && variant.rgba[i*4+3]>0 && variant.rgba[i*4+3]<254);
                         }
@@ -2932,7 +2939,7 @@ private:
                                 for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=img.rgba[pixel*4+3]!=0;
                                 if(size_t(image)<car.imageNames[1].size())for(const auto& paint:car.paints){
                                     const auto entry=paint.find(car.imageNames[1][size_t(image)]);if(entry==paint.end())continue;
-                                    const auto other=ReadPngFile(entry->second.string());
+                                    const auto other=ReadPaintVariant(img,entry->second.string());
                                     if(other.width!=img.width || other.height!=img.height){std::fill(mask.begin(),mask.end(),uint8_t(0));break;}
                                     for(size_t pixel=0;pixel<mask.size();++pixel)mask[pixel]=uint8_t(mask[pixel] && other.rgba[pixel*4+3]!=0);
                                 }
