@@ -1,3 +1,4 @@
+#include "platform/input/keyboard_bindings.h"
 #include "platform/xr/vr_driving.h"
 #include "vr_input_merge_checks.h"
 #include "platform/xr/vr_controls.h"
@@ -198,6 +199,16 @@ int main(){try{
     desktop.steeringStick=1; raw.analog[0]=31; raw.buttons=0;
     ApplyDesktopControlBindings(mapped,held,raw,desktop);
     Check(mapped.throttle==0 && mapped.steerAxis==31,"desktop custom release and right steering stick");
+    gt2::input::KeyboardBindings keyboard;
+    Check(keyboard[gt2::input::KeyboardAction::kAccelerate]==gt2::keys::kUp &&
+          keyboard[gt2::input::KeyboardAction::kHandbrake]==gt2::keys::kSpace &&
+          keyboard[gt2::input::KeyboardAction::kCamera]=='C',"keyboard defaults keep the original driving keys");
+    auto down=[&](int key){return key==gt2::keys::kUp || key==gt2::keys::kSpace;};
+    auto keys=gt2::input::KeyboardDrivingPad(keyboard,down);
+    Check(keys.buttons==(gt2::kPadThrottle|gt2::kPadHandbrake),"keyboard driving map reads the bound keys");
+    gt2::input::AssignKeyboardKey(keyboard,gt2::input::KeyboardAction::kAccelerate,'R');
+    Check(keyboard[gt2::input::KeyboardAction::kAccelerate]=='R' && keyboard[gt2::input::KeyboardAction::kReverse]==0,
+          "a rebound keyboard key leaves its previous action unbound");
     BrakeReverse reverse;gt2::LogicalPad p;p.analog=12;p.brake=170;p.buttons=gt2::kPadBrake;
     reverse.Apply(p,8,true);Check(!(p.buttons & gt2::kPadReverse) && p.brake==170,"L2 brakes while moving forward");
     reverse.Apply(p,.1f,true);Check((p.buttons & gt2::kPadReverse) && !p.brake,"L2 selects reverse only after stopping");
