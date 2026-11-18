@@ -273,10 +273,10 @@ public:
         bool fullDetail = true;
         int cameraChunk = -1;                // the chunk whose render list is used; -1 = the chunk nearest to the eye
         bool glows = true;                   // the chunks' glow records (night / highway courses; glow.h)
-        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = plus
-        // every chunk whose centre is within N m of the eye, plus scenery in that radius without PS1 masks/LOD cutoffs.
-        // The added chunks draw like render-list entries.
-        // < 0 = every chunk and authored near scenery entry, including empty distant-copy entries.
+        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = a hard
+        // cap at N m: only chunks whose centre and scenery instances whose origin are within N m draw (the camera's own
+        // chunk always does), with the in-range scenery at its most detailed LOD. < 0 = every chunk and authored near
+        // scenery entry, including empty distant-copy entries.
         float extendedDistance = 0;
     };
     struct TrackStats { int cameraChunk = -1; size_t chunks = 0, instances = 0, billboards = 0; uint32_t mask = 0; };
@@ -356,15 +356,18 @@ public:
             const uint32_t flags = uint32_t(e >> 14);
             if (index >= track.chunks.size()) continue;
             const TrackChunk& chunk = track.chunks[index];
+            const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
+            const float chunkDistance = distanceTo(centre);
             mask |= chunk.sceneryMask; // before the view test, for every entry (0x80020110)
+            // A positive Draw Distance is a hard cap; the camera's own chunk always draws (it holds the road under the car).
+            if (int(index) != camera && BeyondDrawDistance(double(chunkDistance) * chunkDistance, view.extendedDistance)) continue;
             if (view.glows) AppendChunkGlowSprites(boards[1], track, chunk, view.right.data(), down); // every drawn entry draws its glows (glow.h)
             if (view.extendedDistance >= 0 && !view.fullDetail && flags > 2) continue; // glow records only
             detailedDrawn[index]=true;
             stats_.chunks++;
-            const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
             const bool masked=view.extendedDistance!=0 && !authoredVisible[index] && !retainMaskedWalls &&
                 std::any_of(wallConflicts_[index].begin(),wallConflicts_[index].end(),[&](size_t other){return authoredVisible[other];});
-            addRanges(masked?extendedChunkRanges_[index]:chunkRanges_[index], vp, distanceTo(centre));
+            addRanges(masked?extendedChunkRanges_[index]:chunkRanges_[index], vp, chunkDistance);
             for (const TrackBillboard& b : chunk.billboards) {
                 const std::array<float, 3> base = TrackVertexToWorld(chunk, {int16_t(b.position[0]), int16_t(b.position[1]), int16_t(b.position[2])});
                 const auto boardRight = view.positionalBillboards ? BillboardRight(view.eye,base,{1,0,0}) : std::array<float,3>{rx,0,rz};
@@ -393,13 +396,16 @@ public:
             const auto& inst=track.sceneryInstances[instanceIndex];
             const std::array<double, 3> offset = {inst.position[0] / 65536.0 - view.eye[0], inst.position[1] / 65536.0 - view.eye[1],
                                                   inst.position[2] / 65536.0 - view.eye[2]};
+            const double distanceSquared = offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2];
+            // A positive Draw Distance caps scenery too; "Scenery Detail: Max" explicitly keeps every instance.
+            if (!view.maxDetail && BeyondDrawDistance(distanceSquared, view.extendedDistance)) continue;
             // Level of detail as the original picks it (0x8001F7F8 -> 0x8007AE38 / 0x8007AEF4, track.h): the camera-space
             // translation squared in quarter metres, scaled by k(h, lodDivisor), against the list's thresholds; beyond the
             // last threshold the instance is not drawn. gt2play --prims checks this rule against the original's own calls.
             const std::vector<TrackLodEntry>& lods = track.sceneryLods[inst.lodList];
             const int entry = SceneryEntry(track, inst, mask,
                 SceneryLodMeasure(SceneryCameraSpace(inst, eye, cameraAxes), SceneryLodK(projection, inst.lodDivisor)),
-                offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2], view.extendedDistance, view.maxDetail);
+                distanceSquared, view.extendedDistance, view.maxDetail);
             if (entry < 0) continue;
             const size_t modelIndex = lods[entry].model;
             const TrackSceneryModel& model = track.sceneryModels[modelIndex];
