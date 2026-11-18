@@ -374,8 +374,12 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
     for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * (rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
-        if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
+        // Fit long lists above the status line (y = 479): 13+ rows at the old 31 px pitch pushed the last row onto
+        // it. The highlight follows the pitch so it never covers the next row.
+        const float step = rows.size() > 12 ? std::min(28.f, 350.f / float(rows.size() - 1))
+                          : rows.size() > 10 ? 31.f : rows.size() > 9 ? 35.f : 40.f;
+        const float y = 112 + float(i) * step;
+        if (int(i) == selected) canvas.Quad(44, y - 5, 711, step < 31.f ? step - 2.f : 34.f, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
     }
     canvas.Text(54, 479, status.substr(0, 57), 0xa8b7c8);
