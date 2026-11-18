@@ -240,6 +240,10 @@ void Fixtures() {
     Require(extended==retailEntries,"original range preserves original entry flags");
     gt2view::ExtendTrackEntries(extended,visibility,{0,0,0},-1);
     Require(extended==std::vector<uint16_t>({0,1,2}),"entire course promotes all geometry without duplicates");
+    Require(!gt2view::BeyondDrawDistance(400.0*400,500) && gt2view::BeyondDrawDistance(600.0*600,500),
+        "a positive draw distance caps chunks and scenery beyond it");
+    Require(!gt2view::BeyondDrawDistance(1e10,0) && !gt2view::BeyondDrawDistance(1e10,-1),
+        "original and entire-course distances are not capped");
 
 }
 
