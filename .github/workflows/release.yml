@@ -149,7 +149,9 @@ jobs:
 
       - uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
         with:
-          vulkan_version: latest
+          # 1.4.313.0 is the last SDK whose runtime components the action installs;
+          # newer versions expect a system vulkan-1.dll that the runner lacks.
+          vulkan_version: 1.4.313.0
           cache: true
           # msaa_2d_audit runs on this GPU-less runner: install the loader and
           # register SwiftShader so the test can create a Vulkan device.
