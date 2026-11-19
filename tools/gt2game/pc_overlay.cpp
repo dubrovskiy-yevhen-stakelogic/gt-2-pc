@@ -1130,12 +1130,8 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 1 && !vr) {
             rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
             rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
-            rows[6] = "Display timing...";
-        }
-        if (page == 8) {
-            title = "GT2 / DISPLAY TIMING";
-            rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
-                    std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"), "Back"};
+            rows[6] = std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF");
+            rows.insert(rows.begin() + 7, "Frame presentation: " + std::string(graphics.frameRate ? "Display rate" : "Original"));
         }
         if (page == 2) {
             title = "GT2 VR / OPTIONS AND CHEATS";
@@ -1224,7 +1220,7 @@ void ShowSettingsMenu(GameWindow& window) {
             if (window.Pressed(gt2::keys::kBack) || window.Pressed(gt2::keys::kEscape) || (!vr && window.PadPressed(gt2::input::ps1::kCircle))) {
                 if (page == 0) break;
                 const int from = page;
-                page = page == 3 ? 2 : page == 8 ? 1 : (page == 5 || page == 7 || page == 14) ? 6 : (page == 9 || page == 11) ? 13 : 0;
+                page = page == 3 ? 2 : (page == 5 || page == 7 || page == 14) ? 6 : (page == 9 || page == 11) ? 13 : 0;
                 selected = from == 14 ? 4 : from == 13 ? kMainContent : from == 9 ? 0 : from == 11 ? 1 : from == 12 ? kMainQuit : 0;
                 continue;
             }
@@ -1289,7 +1285,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         window.Close(); done = true;
                     } else { page = 13; selected = 0; }
                 }
-                else if (page == 1 && (direction || selected == 8 || (!vr && selected == 6 && accept))) {
+                else if (page == 1 && (direction || selected == (!vr ? 9 : 8))) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     const std::string prior = status;
                     const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
@@ -1319,9 +1315,10 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 4) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == 5) profiler = !profiler;
                     if (vr && selected == 6) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
-                    if (!vr && selected == 6 && accept) { page = 8; selected = 0; }
-                    else if (selected == 8) { page = 0; selected = 0; }
-                    if (page==1 && selected==7 && direction) {
+                    if (!vr && selected == 6) graphics.vsync = !graphics.vsync;
+                    if (!vr && selected == 7) graphics.frameRate = !graphics.frameRate;
+                    if (selected == (!vr ? 9 : 8)) { page = 0; selected = 0; }
+                    if (selected == (!vr ? 8 : 7) && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
                         else { graphics.carReflections = false; graphics.modernCarReflections = false; }
@@ -1333,19 +1330,6 @@ void ShowSettingsMenu(GameWindow& window) {
                         if (status == prior) status = "Saved.";
                     } else if (status == prior) {
                         status = neutralStatus; // a key press that changed nothing must not claim a save
-                    }
-                } else if (page == 8) {
-                    const std::string prior = status;
-                    const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
-                    if (selected == 0) graphics.vsync = !graphics.vsync;
-                    if (selected == 1) graphics.frameRate = !graphics.frameRate;
-                    if (selected == 2) { page = 1; selected = 6; }
-                    SetGraphicsFromOverlay(graphics); window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
-                    const auto after = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
-                    if (before != after) {
-                        if (status == prior) status = "Saved.";
-                    } else if (status == prior) {
-                        status = neutralStatus;
                     }
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
