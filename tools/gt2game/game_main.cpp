@@ -70,6 +70,7 @@
 #include "race_menu_check.h"
 #include "gt2formats/car_info.h"
 #include "gt2formats/exe_profile.h"
+#include "gt2formats/units.h"
 #include "gt2formats/license_data.h"
 #include "gt2formats/replay_card.h"
 #include "gt2formats/xa_audio.h"
@@ -420,6 +421,7 @@ int GameMain(int argc, char** argv) {
         }
         // The options of the title (PC settings file, shell::PcSettings) for the races: units, music / effects volumes.
         const shell::PcSettings pcSettings = shell::PcSettings::Load(titleOptions.settingsPath);
+        gt2::metricPower = pcSettings.powerMetric;
         if (pcSettings.metric) metricHud = true;
         // The race view's presentation options (race_view.h) for the standalone race and the races of the menus.
         RaceViewConfig view;

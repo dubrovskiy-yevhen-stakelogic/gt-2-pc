@@ -144,6 +144,7 @@ struct VrSettings {
 
 struct PcSettings {
     bool metric = true;          // km/h instead of mph
+    bool powerMetric = false;    // PS instead of the US build's hp (GT2+ metric-horsepower behaviour)
     bool haveCareerOptions = false;
     GameOptions options;
     GraphicsSettings graphics;

@@ -23,6 +23,11 @@
 
 - Make a positive Draw Distance a real cap: road chunks, scenery, billboards and glows beyond it are no longer drawn, so a shorter setting costs fewer polygons instead of adding the in-range chunks on top of the original render list. The camera's own chunk still draws.
 
+### GT2+ gameplay options
+
+- Fix the pre-race Change Parts Turbo section for cars whose only turbo kit is the stock one (GT2+ `w8_settings_menu_fix`).
+- Add a **Power Units** setting (hp / PS) with GT2+ metric-horsepower behaviour. Values are display-only; simulation and saves stay in PS.
+
 ## 0.9.2 - Installation, car lights and HUD fixes
 
 ### Game fixes

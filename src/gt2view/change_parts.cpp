@@ -1,5 +1,6 @@
 // The race overlay's CHANGE PARTS page. See change_parts.h.
 #include "gt2view/change_parts.h"
+#include "gt2formats/units.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -214,9 +215,7 @@ ChangePartsView::ChangePartsView(const RaceMenuAssets& a, const ChangePartsConte
     page_.previousColour = page_.colour = 0; // +0x34 = 0 before 0x800534B4
     SelectGroup(0);
     SelectPart(0);
-    page_.groupCount = 7; // 0x80052D40: 8 with a turbo kit (0x8005F7C8), else 7
-    for (int s = 1; s < 5; s++)
-        if (SheetSlotRow(*c_.sheet, career::kTuneTurbo, s) >= 0) page_.groupCount = 8;
+    page_.groupCount = career::HasTurboKit(*c_.sheet) ? 8 : 7; // 0x80052D40 (0x8005F7C8)
     page_.band = shell::Band::Read(o, kPageBand);
     page_.band.anim = -1; // page + 0x2C
     list_ = MenuListWidget::Read(o, kListWidget);
@@ -236,9 +235,9 @@ std::string ChangePartsView::Title() const { return a_.Text(a_.ovl0.Get<uint32_t
 uint32_t ChangePartsView::Colour() const { return a_.ovl0.Get<uint32_t>(kView + 0x0C); }
 
 uint32_t ChangePartsView::GroupRecord(int group) const { // 0x80052CB4
-    bool turbo = false, na = false;
-    for (int s = 1; s < 5; s++) turbo = turbo || SheetSlotRow(*c_.sheet, career::kTuneTurbo, s) >= 0; // 0x8005F7C8
-    for (int s = 1; s < 4; s++) na = na || SheetSlotRow(*c_.sheet, career::kTuneNaTune, s) >= 0;       // 0x8005F790
+    const bool turbo = career::HasTurboKit(*c_.sheet);                                           // 0x8005F7C8
+    bool na = false;
+    for (int s = 1; s < 4; s++) na = na || SheetSlotRow(*c_.sheet, career::kTuneNaTune, s) >= 0; // 0x8005F790
     const uint32_t table = !turbo ? kGroupTables[2] : !na ? kGroupTables[1] : kGroupTables[0];
     return a_.ovl0.Get<uint32_t>(table + uint32_t(group) * 4);
 }
@@ -650,7 +649,7 @@ void ChangePartsView::Draw(MenuOt& ot) const { // 0x80053CA8(page, ot + 4 entrie
     } else if (page_.state == 2) {
         if (c_.powerLimit > 0) {
             std::vector<HudFontSprite> g;
-            a_.FontAt(kFontMedium).NumberRight(Format(a_.Text(kStrRestricted), (c_.powerLimit * 1000) / 0x3F6), 0x140, 0xCA, 1, -3, 0, g);
+            a_.FontAt(kFontMedium).NumberRight(Format(a_.Text(kStrRestricted), DisplayPower(c_.powerLimit)), 0x140, 0xCA, 1, -3, 0, g);
             AddGlyphs(s4, g, Lerp(o, kColourBase, kColourRestricted, bandAlpha, 0x80));
         }
         selected = page_.part;

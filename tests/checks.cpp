@@ -24,7 +24,10 @@
 #include "game/audio/music_player.h"
 #include "game/audio/menu_music.h"
 #include "game/shell/title_menu.h"
+#include "game/career/tuning.h"
 #include "game/shell/title_options.h"
+#include "gt2formats/units.h"
+#include "gt2formats/arcade_menu_data.h"
 #include "game/shell/title_screens.h"
 #include "gt2view/scene_types.h"
 #include <chrono>
@@ -532,6 +535,23 @@ int main(int argc, char** argv) {
         try { gt2::DiscImage bad(path.string()); } catch (const std::exception&) { rejected = true; }
         Check(rejected, "truncated disc must be rejected");
         Check(std::filesystem::remove(path), "failed disc constructor must release the file");
+
+        { // GT2+'s turbo-section fix: the stock kit (stage 0) counts, the NA dummy (row 0) does not.
+            gt2::career::TuneSheet sheet{};
+            Check(!gt2::career::HasTurboKit(sheet), "NA sheet has no Turbo section");
+            sheet.turboKitRow[0] = 7;
+            Check(gt2::career::HasTurboKit(sheet), "stock turbo still shows the Turbo section");
+            sheet.turboKitRow[0] = 0;
+            sheet.turboKitRow[3] = 12;
+            Check(gt2::career::HasTurboKit(sheet), "an upgraded turbo kit shows the Turbo section");
+        }
+        { // ps vs hp display (GT2+ metric-horsepower patch)
+            gt2::metricPower = false;
+            Check(gt2::DisplayPower(300) == 295, "hp conversion");
+            gt2::metricPower = true;
+            Check(gt2::DisplayPower(300) == 300, "PS value shown unchanged");
+            gt2::metricPower = false;
+        }
         std::cout << checks << " regression checks passed\n";
         return 0;
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }

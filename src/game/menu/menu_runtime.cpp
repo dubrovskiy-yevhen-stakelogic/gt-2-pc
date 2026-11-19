@@ -10,6 +10,7 @@
 #include "game/career/tuning.h"
 #include "gt2formats/car_info.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/units.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
 #include "gt2vfs/inflate.h"
@@ -1178,13 +1179,13 @@ bool MenuRuntime::DrawDynamic(const MenuAssets& assets, const MenuItem& it, std:
         return true;
     }
     case 0x48: // power before the part (0x801C309C), "%dhp" (0x8001FFCC) right-aligned, colour 0x145A78
-        text.Right(W(Format(global(kGlobalHp), (transaction_.powerBefore * 1000) / 0x3F6)), false, second, it.x1, it.y1, kPowerColour);
+        text.Right(W(Format(global(kGlobalHp), DisplayPower(transaction_.powerBefore))), false, second, it.x1, it.y1, kPowerColour);
         return true;
     case 0x49: // power after (0x801C30A0): "----" left when there is no such part
         if (transaction_.powerAfter < 0) text.Left(W(ReadAscii(o4, kFormatNone)), true, second, it.x0, it.y1, kPowerColour);
-        else text.Right(W(Format(global(kGlobalHp), (transaction_.powerAfter * 1000) / 0x3F6)), false, second, it.x1, it.y1, kPowerColour);
+        else text.Right(W(Format(global(kGlobalHp), DisplayPower(transaction_.powerAfter))), false, second, it.x1, it.y1, kPowerColour);
         return true;
-    case 0x4A: left8(Format(global(kGlobalHp), (car_.power * 1000) / 0x3F6)); return true;
+    case 0x4A: left8(Format(global(kGlobalHp), DisplayPower(car_.power))); return true;
     case 0x4C: left8(Format(global(kGlobalLb), (car_.weight * 0x561E) / 10000)); return true;
     case 0x4E: {
         const Transaction& t = transaction_;
@@ -1256,8 +1257,8 @@ bool MenuRuntime::DrawDynamic(const MenuAssets& assets, const MenuItem& it, std:
     }
     case 0xB9:
         if (car_.power < 1) left8(ReadAscii(o4, kFormatNone));
-        else if (car_.powerRpm < 1) left8(Format(assets.String(kTxdHp), (car_.power * 1000) / 0x3F6, car_.powerRpm));
-        else left8(Format(assets.String(kTxdPowerRpm), (car_.power * 1000) / 0x3F6, car_.powerRpm));
+        else if (car_.powerRpm < 1) left8(Format(assets.String(kTxdHp), DisplayPower(car_.power), car_.powerRpm));
+        else left8(Format(assets.String(kTxdPowerRpm), DisplayPower(car_.power), car_.powerRpm));
         return true;
     case 0xB8: { // engine texts (0x8001B2B8 / 0x8001B338): view +0x1C, then +0x24 12 px after it; "" without a car
         const std::u16string a = car_.shown ? data_.String(uint16_t(car_.engineText[0])) : std::u16string();

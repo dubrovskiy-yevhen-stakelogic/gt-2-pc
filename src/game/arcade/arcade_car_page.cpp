@@ -8,6 +8,7 @@
 #include "game/career/garage.h"
 #include "game/sim/car_setup.h"
 #include "gt2formats/car_info.h"
+#include "gt2formats/units.h"
 #include "gt2vfs/gtfs.h"
 
 namespace gt2::arcade {
@@ -407,7 +408,7 @@ void ArcSpecBox::Fill(const ArcadeMenuAssets& a, const std::array<int16_t, 5>& f
     text[1].Open(-1);
     text[2].text = a.data.Text(kMaxPower);
     text[2].Open(-1);
-    const int hp = (f[0] * 1000) / 0x3F6;
+    const int hp = DisplayPower(f[0]);
     text[3].text = f[1] == 0 ? Format(a.data.Text(kFmtPower), {D(hp)}) : Format(a.data.Text(kFmtPowerRpm), {D(hp), D(f[1])});
     text[3].Open(-1);
     text[4].text = a.data.Text(kMaxTorque);
@@ -497,7 +498,7 @@ void ArcCarSpecs::Init(const ArcadeMenuAssets& a) { // 0x80019048
 void ArcCarSpecs::Fill(const ArcadeMenuAssets& a, const ArcCarFigures& f, uint8_t language, TextCtx& c) { // 0x800194FC
     Copy& k = copy_[size_t(current_)];
     const GuestImage& o = a.data.ovl2;
-    k.power.text = Decimal((f.figures[0] * 1000) / 0x3F6) + a.data.Text(kHp);
+    k.power.text = Decimal(DisplayPower(f.figures[0])) + a.data.Text(kHp);
     k.power.Open(-1);
     k.badge.sprite = ReadSprite(o, o.Get<uint32_t>(kBadgeSprites + uint32_t(language) * 4) + uint32_t(f.badge) * 12);
     k.badge.anim = 0; // 0x8001C194
@@ -512,14 +513,14 @@ void ArcCarSpecs::Fill(const ArcadeMenuAssets& a, const ArcCarFigures& f, uint8_
         const std::span<const uint8_t> pc(f.powerCurve);
         const int count = U16(pc, 0x0A);
         g.maxRpm = S16(pc, 0x0C + size_t(std::max(0, count - 1)) * 2);
-        g.maxHp = int16_t((f.figures[0] * 1000) / 0x3F6);
+        g.maxHp = int16_t(DisplayPower(f.figures[0]));
         g.maxTorque = int16_t((f.figures[2] * 0x11A89) / 10000);
         g.Open();
         std::vector<int> rpm(size_t(count) + 2, -1), pw(size_t(count) + 2, -1), tq(size_t(count) + 2, -1);
         const int maxPower = U16(pc, 0), maxTorque = U16(pc, 4);
         for (int i = 1; i <= count; i++) {
             rpm[size_t(i)] = S16(pc, 0x0C + size_t(i - 1) * 2);
-            pw[size_t(i)] = (((S16(pc, 0x2C + size_t(i - 1) * 2) * f.figures[0]) / maxPower) * 1000) / 0x3F6;
+            pw[size_t(i)] = DisplayPower(int((S16(pc, 0x2C + size_t(i - 1) * 2) * f.figures[0]) / maxPower));
             tq[size_t(i)] = (((S16(pc, 0x4C + size_t(i - 1) * 2) * f.figures[2]) / maxTorque) * 0x11A89) / 10000;
         }
         int seg = 1, r = 0, n = 0;
@@ -1140,7 +1141,7 @@ int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidge
     const uint32_t model = U32(car, 0x8C);
     const int32_t info = cars_.IndexOf(model);
     const CarInfoRecord& r = cars_.At(info < 0 ? 0 : size_t(info));
-    const std::string hp = Format(a_.data.Text(kFmtHp), {D((e.power * 1000) / 0x3F6)});
+    const std::string hp = Format(a_.data.Text(kFmtHp), {D(DisplayPower(e.power))});
     const int hw = NumberWidth(c, hp, 1, 0);
     const auto name=a_.CarName(info<0?U32(car,0):model);
     DrawText(c, FitText(*c.font,name,200-hw-7), x - 100, y + 8, 1);
