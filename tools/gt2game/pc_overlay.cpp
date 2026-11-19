@@ -373,10 +373,21 @@ void Panel(GameWindow& window, const std::string& title, const std::vector<std::
     canvas.Quad(28, 24, 744, 552, 0x101c2a); canvas.Quad(28, 24, 744, 5, 0x42b6f5);
     canvas.stretched = canvas.vertices.size();
     canvas.Text(54, 48, title, 0xffffff);
-    for (size_t i = 0; i < rows.size(); ++i) {
-        const float y = 112 + float(i) * (rows.size()>10 ? 31.f : rows.size()>9 ? 35.f : 40.f);
-        if (int(i) == selected) canvas.Quad(44, y - 5, 711, 34, 0x234b68);
+    // One row pitch on every page; pages past the first show the next block of rows (112 + 10 * 32 still clears the status line).
+    constexpr size_t kRowsPerPage = 11;
+    constexpr float kRowPitch = 32;
+    static_assert(112 + (kRowsPerPage - 1) * kRowPitch + 24 < 479, "a full page must clear the status line");
+    const size_t pageCount = std::max<size_t>(1, (rows.size() + kRowsPerPage - 1) / kRowsPerPage);
+    const size_t page = selected < 0 ? 0 : std::min<size_t>(size_t(selected) / kRowsPerPage, pageCount - 1);
+    const size_t first = page * kRowsPerPage;
+    for (size_t i = first; i < std::min(rows.size(), first + kRowsPerPage); ++i) {
+        const float y = 112 + float(i - first) * kRowPitch;
+        if (int(i) == selected) canvas.Quad(44, y - 4, 711, 30, 0x234b68);
         canvas.Text(56, y, rows[i].substr(0, 57), int(i) == selected ? 0x8ed8f8 : 0xe2e8f0);
+    }
+    if (pageCount > 1) {
+        const std::string indicator = std::to_string(page + 1) + " / " + std::to_string(pageCount);
+        canvas.Text(736.f - float(indicator.size()) * 12.f, 48, indicator, 0x8ed8f8);
     }
     canvas.Text(54, 479, status.substr(0, 57), 0xa8b7c8);
     canvas.Text(54, 520, footer, 0xffffff);
@@ -483,7 +494,7 @@ void ShowWheelAdvanced(GameWindow& window) {
     using namespace gt2::input::wheel;
     auto& rig = window.Input().Wheel();
     auto& config = Config();
-    int page = 0, selected = 0, axis = 0, buttonPage = 0, devicePage = 0;
+    int page = 0, selected = 0, axis = 0;
     int capture = -1;
     std::vector<DeviceState> baseline;
     std::string message;
@@ -559,22 +570,18 @@ void ShowWheelAdvanced(GameWindow& window) {
             if (d && a.axis >= 0) message = DeviceName(*d) + " / " + rawAxisLabels[a.axis] + ": " + std::to_string(d->axes[a.axis]) + " -> " + std::to_string(int(a.Map(d->axes[a.axis], axis == Steering) * 100)) + "%";
             else message = "No assigned device connected";
         } else if (page == 3) {
-            title = "GT2 / WHEEL BUTTONS / " + std::to_string(buttonPage + 1);
-            for (int i = buttonPage * 7; i < std::min((buttonPage + 1) * 7, int(ButtonCount)); ++i) {
+            title = "GT2 / WHEEL BUTTONS";
+            for (int i = 0; i < ButtonCount; ++i) {
                 const auto& b = config.buttons[i];
                 rows.push_back(std::string(buttonLabels[i]) + ": " + (b.button < 0 ? "Unassigned" : "Button " + std::to_string(b.button + 1)));
             }
-            rows.push_back(buttonPage ? "Previous page" : "Next page"); rows.push_back("Back");
+            rows.push_back("Back");
             message = "Enter: assign. Delete: clear selected binding.";
         } else if (page == 4) {
             title = "GT2 / CONNECTED DEVICES";
-            const int pages = std::max(1, (int(devices.size()) + 5) / 6);
-            devicePage = std::min(devicePage, pages - 1);
-            for (int i = devicePage * 6; i < std::min((devicePage + 1) * 6, int(devices.size())); ++i) {
-                const auto& d = devices[i]; rows.push_back(DeviceName(d) + (FitsDeviceRole(d, DeviceRole::Any) ? "" : " [extended]")
-                    + (d.online ? " [OK]" : " [unavailable]") + (d.forceCapable ? " FFB" : ""));
-            }
-            rows.push_back("Rescan devices"); rows.push_back("Next page"); rows.push_back("Back");
+            for (const auto& d : devices) rows.push_back(DeviceName(d) + (FitsDeviceRole(d, DeviceRole::Any) ? "" : " [extended]")
+                + (d.online ? " [OK]" : " [unavailable]") + (d.forceCapable ? " FFB" : ""));
+            rows.push_back("Rescan devices"); rows.push_back("Back");
             message = "Use the manufacturer's Windows PC driver / mode.";
         }
         selected = std::clamp(selected, 0, int(rows.size()) - 1);
@@ -588,7 +595,7 @@ void ShowWheelAdvanced(GameWindow& window) {
             const int trigger = wheelTriggers.Update(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
             if (trigger) direction = trigger;
         }
-        if (page == 3 && window.KeyPressed(0x2e) && selected < 7) { config.buttons[buttonPage * 7 + selected] = {}; save(); }
+        if (page == 3 && window.KeyPressed(0x2e) && selected < ButtonCount) { config.buttons[selected] = {}; save(); }
         if (direction) {
             if (page == 0) {
                 if (selected == 0) config.enabled = !config.enabled;
@@ -622,13 +629,11 @@ void ShowWheelAdvanced(GameWindow& window) {
                 if (selected == 9 && accept) { page = 1; selected = axis; continue; }
                 save();
             } else if (page == 3 && accept) {
-                if (selected < 7) { capture = buttonPage * 7 + selected; baseline = devices; continue; }
-                if (selected == 7) buttonPage = 1 - buttonPage;
+                if (selected < ButtonCount) { capture = selected; baseline = devices; continue; }
                 else { page = 0; selected = 2; }
                 continue;
             } else if (page == 4 && accept) {
-                if (selected == int(rows.size()) - 3) { rig.Rescan(); message = "Rescanning..."; }
-                if (selected == int(rows.size()) - 2) devicePage = (devicePage + 1) % std::max(1, (int(devices.size()) + 5) / 6);
+                if (selected == int(rows.size()) - 2) { rig.Rescan(); message = "Rescanning..."; }
                 if (selected == int(rows.size()) - 1) { page = 0; selected = 8; continue; }
             }
         }
@@ -674,7 +679,7 @@ bool PickWheelDevice(GameWindow& w, const std::string& title, std::string& resul
     using namespace gt2::input::wheel;
     const auto role = automatic == "auto" ? DeviceRole::Wheel : automatic == "base" ? DeviceRole::Pedals
         : automatic == "none" ? DeviceRole::Shifter : DeviceRole::Any;
-    int selected = 0, page = 0;
+    int selected = 0;
     while (!w.Closed() && w.BeginFrame()) {
         w.Input().Wheel().Stop();
         std::vector<std::string> ids, names;
@@ -688,20 +693,16 @@ bool PickWheelDevice(GameWindow& w, const std::string& title, std::string& resul
             if (duplicates > 1) name += " [" + d.id.substr(0, 8) + "]";
             ids.push_back(d.id); names.push_back(name);
         }
-        const int pages = std::max(1, (int(names.size()) + 5) / 6); page = std::min(page, pages - 1);
-        std::vector<std::string> rows;
-        for (int i = page * 6; i < std::min(int(names.size()), page * 6 + 6); ++i) rows.push_back(names[i]);
+        std::vector<std::string> rows = names;
         const int count = int(rows.size());
-        if (pages > 1) rows.push_back("Next page");
         rows.push_back("Back");
         selected = std::clamp(selected, 0, int(rows.size()) - 1);
         if (WheelBack(w)) return false;
         if (w.Pressed(gt2::keys::kUp)) selected = (selected + int(rows.size()) - 1) % int(rows.size());
         if (w.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(rows.size());
         if (w.Pressed(gt2::keys::kReturn)) {
-            if (selected < count) { result = ids[page * 6 + selected]; if (result == "auto") result.clear(); return true; }
-            if (selected == count && pages > 1) { page = (page + 1) % pages; selected = 0; }
-            else return false;
+            if (selected < count) { result = ids[size_t(selected)]; if (result == "auto") result.clear(); return true; }
+            return false;
         }
         Panel(w, title, rows, selected, names.empty() ? "Connect the device to continue" : "Unlisted devices: use Guided setup", "D-pad: choose   Confirm: select   Back: cancel");
     }
@@ -804,7 +805,7 @@ void WheelMenuButtons(GameWindow& w) {
     using namespace gt2::input::wheel;
     const int bits[] = {14,12,4,6,7,5,3,10,11,13,15,0,1,2,8,9};
     const char* labels[] = {"Confirm", "Back", "Up", "Down", "Left", "Right", "Open settings", "Previous tab", "Next tab", "Circle", "Square", "Select", "Left stick click", "Right stick click", "L2", "R2"};
-    int selected = 0, page = 0, capture = -1;
+    int selected = 0, capture = -1;
     std::vector<DeviceState> baseline;
     std::string message;
     while (!w.Closed() && w.BeginFrame()) {
@@ -832,13 +833,12 @@ void WheelMenuButtons(GameWindow& w) {
         }
         if (WheelBack(w)) return;
         std::vector<std::string> rows;
-        for (int i = page * 8; i < page * 8 + 8; ++i) rows.push_back(std::string(labels[i]) + (Config().navigation[bits[i]].button >= 0 ? "   [set]" : "   [not set]"));
-        rows.push_back(page ? "Previous page" : "More buttons"); rows.push_back("Back");
-        if (w.Pressed(gt2::keys::kUp)) selected = (selected + 9) % 10;
-        if (w.Pressed(gt2::keys::kDown)) selected = (selected + 1) % 10;
+        for (int i = 0; i < int(std::size(labels)); ++i) rows.push_back(std::string(labels[i]) + (Config().navigation[bits[i]].button >= 0 ? "   [set]" : "   [not set]"));
+        rows.push_back("Back");
+        if (w.Pressed(gt2::keys::kUp)) selected = (selected + int(rows.size()) - 1) % int(rows.size());
+        if (w.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(rows.size());
         if (w.Pressed(gt2::keys::kReturn)) {
-            if (selected < 8) { capture = page * 8 + selected; baseline = w.Input().Wheel().Devices(); }
-            else if (selected == 8) { page = 1 - page; selected = 0; }
+            if (selected < int(std::size(labels))) { capture = selected; baseline = w.Input().Wheel().Devices(); }
             else return;
         }
         Panel(w, "WHEEL / MENU BUTTONS", rows, selected, message, "D-pad: choose   Confirm: learn   Back: return");
@@ -981,18 +981,18 @@ void ShowWheelSettings(GameWindow& w) {
         c.Text(54, 45, "YOUR RACING WHEEL", 0xffffff);
         c.Text(54, 79, s.profile.empty() ? "Connect your wheel; known devices set up automatically" : s.profile.substr(0, 70), 0x8ed8f8, .8f);
         for (int i = 0; i < int(rows.size()); ++i) {
-            const float y = 116.f + float(i) * 28.f;
-            if (i == selected) c.Quad(44, y - 4, 711, 26, 0x234b68);
+            const float y = 104.f + float(i) * 32.f;
+            if (i == selected) c.Quad(44, y - 4, 711, 30, 0x234b68);
             c.Text(56, y, rows[i], i == selected ? 0x8ed8f8 : 0xe2e8f0);
         }
         for (int i = 0; i < 3; ++i) {
             const auto& a = s.axes[i]; const auto* d = WheelDevice(w, a.device);
             const float value = d && a.Valid(i == Steering) && d->available[a.axis] ? a.Map(d->axes[a.axis], i == Steering) : 0;
             const float x = 56.f + float(i) * 234.f;
-            c.Text(x, 410, std::string(axisLabels[i]) + " " + std::to_string(int(value * 100)) + "%", 0xb8c9d8, .7f);
-            c.Quad(x, 437, 204, 13, 0x283d50);
-            if (i == Steering) { c.Quad(x + 102, 433, 2, 21, 0x728ca0); c.Quad(x + 100 + value * 100, 436, 5, 15, 0x42b6f5); }
-            else c.Quad(x, 437, value * 204, 13, 0x42b6f5);
+            c.Text(x, 424, std::string(axisLabels[i]) + " " + std::to_string(int(value * 100)) + "%", 0xb8c9d8, .7f);
+            c.Quad(x, 451, 204, 13, 0x283d50);
+            if (i == Steering) { c.Quad(x + 102, 447, 2, 21, 0x728ca0); c.Quad(x + 100 + value * 100, 450, 5, 15, 0x42b6f5); }
+            else c.Quad(x, 451, value * 204, 13, 0x42b6f5);
         }
         c.Text(54, 479, (message.starts_with("Not saved") ? message : rig.Status()).substr(0, 57), 0xa8b7c8);
         c.Text(54, 520, VrMode() ? "Up/down: row  Triggers: value  Confirm  Back" : "Up/down: row  Left/right: value  Confirm  Back", 0xffffff);
@@ -1009,7 +1009,7 @@ void ShowSettingsMenu(GameWindow& window) {
     PrepareNativeUi(window.Renderer()); window.Input().StopFeedback();
     const bool vr = VrMode();
     if (vrScale < 0) vrScale = vr ? int(VrOptionsInUse().renderScale * 100 + 0.5f) : baseVrSettings.renderScale;
-    int page = 0, selected = 0, carPage = 0, hudPage = 0, controlPage = 0;
+    int page = 0, selected = 0, carPage = 0;
     gt2::vr::MenuTriggers triggers;
     triggers.Begin(window.Pad().pressureL2 / 255.f, window.Pad().pressureR2 / 255.f);
     bool first = true, done = false;
@@ -1096,9 +1096,9 @@ void ShowSettingsMenu(GameWindow& window) {
                 "Reset controls to defaults", "DualSense pedal resistance: " + std::to_string(adaptive) + "%", "Back"};
         }
         if (page == 7) {
-            title = "GT2 VR / BINDINGS / PAGE " + std::to_string(controlPage+1);
-            for (int i=controlPage*4;i<controlPage*4+4;++i) rows.push_back(std::string(gt2::vr::controlNames[i])+": "+(vr ? gt2::vr::controlSources[controlBindings.source[i]] : gt2::vr::desktopControlSources[desktopBindings.source[i]]));
-            rows.push_back(controlPage ? "Previous bindings" : "More bindings"); rows.push_back("Back");
+            title = "GT2 VR / BINDINGS";
+            for (int i = 0; i < int(std::size(gt2::vr::controlNames)); ++i) rows.push_back(std::string(gt2::vr::controlNames[i])+": "+(vr ? gt2::vr::controlSources[controlBindings.source[i]] : gt2::vr::desktopControlSources[desktopBindings.source[i]]));
+            rows.push_back("Back");
         }
 #ifdef _WIN32
         if (page == 6) rows.insert(rows.end() - 1, "Racing wheel / pedals / shifter...");
@@ -1117,14 +1117,10 @@ void ShowSettingsMenu(GameWindow& window) {
                 std::string("Wheel grip: ") + (drivingSettings.toggleGrip ? "Toggle" : "Hold"), "Back"};
         }
         if (page == 4) {
-            title = "GT2 VR / HUD / PAGE " + std::to_string(hudPage + 1);
+            title = "GT2 VR / HUD";
             rows.push_back(std::string("Speed units: ") + (OverlayMetricUnits(baseMetricUnits) ? "km/h" : "mph"));
-            const size_t start = size_t(hudPage) * 7;
-            for (size_t i = start; i < std::min(start + 7, std::size(hudSettings)); ++i) {
-                const auto& setting = hudSettings[i];
+            for (const auto& setting : hudSettings)
                 rows.push_back(std::string(setting.label) + ": " + (hudVisibility.*setting.member ? "ON" : "OFF"));
-            }
-            rows.push_back(hudPage == 0 ? "More HUD settings" : "Previous HUD settings");
             rows.push_back("Back");
         }
         if (!vr && title.starts_with("GT2 VR")) title.replace(0, 6, "GT2");
@@ -1282,9 +1278,8 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (selected == 10 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
-                    else if (selected == count - 2) { hudPage = 1 - hudPage; selected = 0; }
                     else if (selected == 0 && direction) { metricUnits = !OverlayMetricUnits(baseMetricUnits); status = "Saved. Speed units apply on resume."; }
-                    else if (direction) { hudVisibility.*hudSettings[size_t(hudPage) * 7 + size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
+                    else if (direction) { hudVisibility.*hudSettings[size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
                 }
 #ifdef _WIN32
                 else if (page == 6 && accept && selected == (vr ? 5 : 6)) {
@@ -1293,7 +1288,7 @@ void ShowSettingsMenu(GameWindow& window) {
 #endif
                 else if (page == 6 && !vr) {
                     if (selected == 0 && direction) desktopCustom = !desktopCustom;
-                    else if (selected == 1 && accept) { page = 7; selected = controlPage = 0; }
+                    else if (selected == 1 && accept) { page = 7; selected = 0; }
                     else if (selected == 2 && direction) desktopBindings.brakeReverse = !desktopBindings.brakeReverse;
                     else if (selected == 3 && direction) desktopBindings.steeringStick = 1 - desktopBindings.steeringStick;
                     else if (selected == 4 && accept) { desktopCustom = false; desktopBindings = gt2::vr::DesktopBindings(); }
@@ -1302,20 +1297,19 @@ void ShowSettingsMenu(GameWindow& window) {
                     status = "Saved. Original game bindings remain available.";
                 } else if (page == 6) {
                     if (selected==0 && accept) {page=5;selected=0;}
-                    else if (selected==1 && accept) {page=7;selected=controlPage=0;}
+                    else if (selected==1 && accept) {page=7;selected=0;}
                     else if (selected==2 && direction) controlBindings.brakeReverse = !controlBindings.brakeReverse;
                     else if (selected==3 && direction) controlBindings.steeringStick = 1-controlBindings.steeringStick;
                     else if (selected==4 && accept) {controlBindings={};drivingSettings={};status="Default controls restored.";}
                     else if (selected==5 && accept) {page=0;selected=0;}
                 } else if (page == 7) {
-                    if (selected<4 && direction) {
-                        auto& binding=(vr ? controlBindings : desktopBindings).source[size_t(controlPage*4+selected)];
+                    if (selected < int(std::size(gt2::vr::controlNames)) && direction) {
+                        auto& binding=(vr ? controlBindings : desktopBindings).source[size_t(selected)];
                         const int sources = vr ? int(std::size(gt2::vr::controlSources)) : int(std::size(gt2::vr::desktopControlSources));
                         binding=(binding+direction+sources)%sources;
                         if (!vr) desktopCustom = true;
                         status="Saved. Bindings affect driving; menu controls stay fixed.";
-                    } else if (selected==4) {controlPage=1-controlPage;selected=0;}
-                    else if (selected==5) {page=6;selected=0;}
+                    } else if (selected == int(std::size(gt2::vr::controlNames))) {page=6;selected=0;}
                 } else if (page == 5) {
                     if (selected == 0 && direction) drivingSettings.mode = (drivingSettings.mode + direction + 3) % 3;
                     if (selected == 1 && direction) drivingSettings.motionHand = 1-drivingSettings.motionHand;
