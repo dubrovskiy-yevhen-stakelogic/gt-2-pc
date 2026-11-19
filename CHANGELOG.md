@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Group content and media settings separately from graphics; keep vibration under Controls.
+- Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
+
 - Keep browser rumble on the selected controller, including identical pads and reconnects.
 - Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
 - Refresh cached menus after HD media, texture smoothing or raster settings change.
@@ -17,6 +20,8 @@
 - Keep input HUD wheels, arrows and pedal frames on original nearest texels even when HD UI assets are available.
 
 - Reuse existing Windows game data when moving from an older ZIP installation to MSI. Detect the legacy default folder and attach an existing selected folder without reimporting discs or rebuilding HD media; retain saves.
+
+- Make a positive Draw Distance a real cap: road chunks, scenery, billboards and glows beyond it are no longer drawn, so a shorter setting costs fewer polygons instead of adding the in-range chunks on top of the original render list. The camera's own chunk still draws.
 
 ## 0.9.2 - Installation, car lights and HUD fixes
 

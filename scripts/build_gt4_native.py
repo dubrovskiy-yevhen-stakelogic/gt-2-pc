@@ -3,12 +3,63 @@
 Generated assets and source extracts stay under work. The baseline pack and
 the GT4 parser checkout are read-only inputs.
 """
-import argparse, concurrent.futures, gzip, hashlib, json, re, struct, subprocess
+import argparse, concurrent.futures, gzip, hashlib, json, os, re, struct, subprocess
 from pathlib import Path
 from PIL import Image
 import numpy as np
 from gt4_native_instances import resolve_draws
 from gt4_native_cabins import merge_cabin,split_exterior_glazing
+
+# CarInfoRecord::PaintCount is five bits, so the GT2 UI can only select 32.
+# Extra GT4 colours are unreachable data and multiply the pack by their count.
+MAX_PAINTS=32
+
+def car_paint_counts(directories):
+    counts={}
+    for directory in directories:
+        for path in Path(directory).glob('*.json'):
+            try: doc=json.loads(path.read_text(encoding='utf-8-sig'))
+            except (OSError,ValueError): continue
+            car=doc.get('carId',path.stem)
+            counts[car]=max(counts.get(car,1),len(doc.get('paints',[])))
+    return counts
+
+def model_paint_limit(ids, manifest, counts):
+    if not counts:return MAX_PAINTS
+    # An added GT4 car has one colour; a replacement GT2 car with no exported
+    # catalogue falls back to the safe maximum instead of dropping its paints.
+    def count(car):return counts[car] if car in counts else (1 if manifest[car].get('required') else MAX_PAINTS)
+    return max(1,min(MAX_PAINTS,max(count(car) for car in ids)))
+
+def paint_delta(base, target):
+    b=np.asarray(base,dtype=np.uint8);t=np.asarray(target,dtype=np.uint8)
+    if b.shape!=t.shape or b.ndim!=3 or b.shape[2]!=4:raise ValueError('Paint image dimensions differ from its base')
+    changed=np.any(b!=t,axis=2)
+    if not changed.any():return None
+    b32=np.ascontiguousarray(b).view('<u4').reshape(-1);t32=np.ascontiguousarray(t).view('<u4').reshape(-1)
+    flat=changed.reshape(-1);idx=np.flatnonzero(flat);old=b32[idx];new=t32[idx]
+    def smaller(payload):
+        packed=gzip.compress(payload,compresslevel=9,mtime=0)
+        return packed if len(packed)<len(payload) else payload
+    best=None
+    # A palette remap is tiny; only valid when each old colour has one new
+    # colour and no unchanged pixel would be caught by the mapping.
+    pairs=np.unique(np.stack((old,new),axis=1),axis=0)
+    if len(np.unique(pairs[:,0]))==len(pairs) and not np.isin(np.unique(b32[~flat]),pairs[:,0]).any():
+        pairs=pairs[np.argsort(pairs[:,0],kind='stable')]
+        payload=struct.pack('<4sII',b'GT4P',1,0)+struct.pack('<I',len(pairs))+pairs.astype('<u4').tobytes()
+        best=smaller(payload)
+    ys,xs=np.nonzero(changed);x0,x1=int(xs.min()),int(xs.max())+1;y0,y1=int(ys.min()),int(ys.max())+1
+    bbox=struct.pack('<4sII',b'GT4P',1,1)+struct.pack('<IIII',x0,y0,x1-x0,y1-y0)+np.ascontiguousarray(t[y0:y1,x0:x1]).tobytes()
+    pixels=struct.pack('<4sII',b'GT4P',1,2)+struct.pack('<I',len(idx))+np.column_stack((idx.astype('<u4'),new.astype('<u4'))).tobytes()
+    other=smaller(bbox if len(bbox)<=len(pixels) else pixels)
+    return other if best is None or len(other)<len(best) else best
+
+def paint_indices(paint_materials, old_palette, limit=MAX_PAINTS):
+    limit=max(1,min(MAX_PAINTS,limit))
+    indices=[-1]+list(range(min(limit,paint_materials)))
+    if len(indices)==1:indices=[r['sourceColor'] for r in old_palette if r['sourceColor']<limit]
+    return indices
 
 def write_bytes(p,data):
     p.parent.mkdir(parents=True,exist_ok=True)
@@ -28,7 +79,10 @@ def visible_material(values,kind):
     return []
 
 def build(job,a):
-    parent,e,ids,dump=job;raw=dump.with_name(dump.name.removesuffix('_dump'))
+    parent,e,ids,dump,limit=job;raw=dump.with_name(dump.name.removesuffix('_dump'))
+    # The metadata tool writes one raw RGBA per paint colour; stop it at the
+    # colours this model's GT2 cars can actually show.
+    env=dict(os.environ,GT4_MAX_PAINTS=str(limit))
     cabin=getattr(a,'cabin_sources',{}).get(e.get('gt4Model',''))
     if cabin:
         if cabin['directory'] not in ('open','lod','menu'):raise ValueError('Invalid cabin source directory')
@@ -43,14 +97,15 @@ def build(job,a):
     if not external.is_file():external=a.vol/'car'/raw.parent.name/(raw.name+'.pat')
     cached=native/'draws.json'
     inputs={'tool':a.tool_sha256,'source':hashlib.sha256(raw.read_bytes()).hexdigest(),
-            'pat':hashlib.sha256(external.read_bytes()).hexdigest() if external.is_file() else None}
+            'pat':hashlib.sha256(external.read_bytes()).hexdigest() if external.is_file() else None,
+            'paintLimit':limit}
     stamp=native/'inputs.json'
     try:previous_inputs=json.loads(stamp.read_text())
     except (OSError,ValueError):previous_inputs=None
     try:version=json.loads(cached.read_text()).get('version')
     except (OSError,ValueError):version=0
     if version!=8 or previous_inputs!=inputs:
-        r=subprocess.run([str(a.tool),str(raw),str(native),str(external)],capture_output=True,text=True)
+        r=subprocess.run([str(a.tool),str(raw),str(native),str(external)],capture_output=True,text=True,env=env)
         if r.returncode:raise RuntimeError(parent+': '+r.stderr)
         write(stamp,inputs)
 
@@ -68,7 +123,7 @@ def build(job,a):
         try:menu_version=json.loads(menu_cache.read_text()).get('version')
         except (OSError,ValueError):menu_version=0
         if menu_version!=8:
-            r=subprocess.run([str(a.tool),str(menu),str(menu_native)],capture_output=True,text=True)
+            r=subprocess.run([str(a.tool),str(menu),str(menu_native)],capture_output=True,text=True,env=env)
             if r.returncode:raise RuntimeError(parent+': '+r.stderr)
         menu_meta=json.loads(menu_cache.read_text())
         menu_triangles=sum(len(d['vertices'])//3 for state in menu_meta['states'] for d in state)
@@ -79,7 +134,9 @@ def build(job,a):
         donor=cabin['donor'];donor_raw=a.vol/'car'/donor['directory']/e['gt4Model']
         if hashlib.sha256(donor_raw.read_bytes()).hexdigest()!=donor['sourceSha256']:raise ValueError('Cabin donor source changed')
         donor_native=a.output/'decode'/(parent+'-cabin');donor_native.mkdir(parents=True,exist_ok=True)
-        r=subprocess.run([str(a.tool),str(donor_raw),str(donor_native)],capture_output=True,text=True)
+        # Only the cabin's materials and textures are merged; its paints are unused.
+        r=subprocess.run([str(a.tool),str(donor_raw),str(donor_native)],capture_output=True,text=True,
+            env=dict(os.environ,GT4_MAX_PAINTS='1'))
         if r.returncode:raise RuntimeError(parent+': '+r.stderr)
         donor_meta=json.loads((donor_native/'draws.json').read_text())
         def copy_texture(old,new):write_bytes(native/f'{new[0]}.{new[1]}.rgba',(donor_native/f'{old[0]}.{old[1]}.rgba').read_bytes())
@@ -102,7 +159,7 @@ def build(job,a):
         'scenes':[{'nodes':[0]}],'nodes':[{'mesh':0}],'meshes':[{'primitives':[]}],
         'materials':[],'images':[],'textures':[],'samplers':[{'wrapS':33071,'wrapT':33071}],
         'buffers':[],'bufferViews':[],'accessors':[]}
-    binary=bytearray();textures={};material_sources=[];addressing={}
+    binary=bytearray();textures={};base_images={};base_hashes={};material_sources=[];addressing={}
     def decode(file,address,tcc):
         data=file.read_bytes();w,h=struct.unpack("<II",data[:8]);im=np.frombuffer(data[8:],dtype=np.uint8).reshape(h,w,4).copy()
         im[:,:,3]=np.minimum(im[:,:,3].astype(np.uint16)*2,255).astype(np.uint8) if tcc else 255
@@ -133,7 +190,8 @@ def build(job,a):
             tkey=d['texset'],d['texture']
             if tkey not in textures:
                 address=d['address'];tcc=d['textureAlpha'];addressing[tkey]=(address,tcc)
-                im=decode(native/f'{tkey[0]}.{tkey[1]}.rgba',address,tcc)
+                im=decode(native/f'{tkey[0]}.{tkey[1]}.rgba',address,tcc);base_images[tkey]=np.asarray(im)
+                base_hashes[tkey]=hashlib.sha256(np.ascontiguousarray(base_images[tkey]).tobytes()).hexdigest()
                 name=f'textures/{tkey[0]}.{tkey[1]}.png';(dest/'textures').mkdir(exist_ok=True)
                 base=a.pack/parent/name
                 original=Image.open(base).convert('RGBA') if base.is_file() else None
@@ -175,8 +233,7 @@ def build(job,a):
     # Pat0 colours must be accessible even if the older RGB export deduplicated them.
     old_palette=json.loads((a.paints/parent/'colors.json').read_text())['colors']
     palettes=[];seen=set()
-    source_colors=[-1]+list(range(len(meta['paintMaterials'])))
-    if len(source_colors)==1:source_colors=[r['sourceColor'] for r in old_palette]
+    source_colors=paint_indices(len(meta['paintMaterials']), old_palette, limit)
     for source_color in source_colors:
         row=next((r for r in old_palette if r['sourceColor']==source_color),None)
         material_set=mats if source_color<0 or not meta['paintMaterials'] else meta['paintMaterials'][source_color]
@@ -185,14 +242,14 @@ def build(job,a):
         if source_color>=0 and meta['paintImages']:
             for name,file in meta['paintImages'][source_color].items():
                 tkey=tuple(map(int,name.split('.')));address,tcc=addressing[tkey]
-                im=decode(native/file,address,tcc);digest=hashlib.sha256(im.tobytes()).hexdigest()
-                directory=dest/'paints';directory.mkdir(exist_ok=True);target=directory/(digest+'.png')
-                # Equal RGBA byte streams can have different image dimensions
-                # (e.g. uniform 32x128 vs 64x64). Never reuse that PNG layout.
-                if target.is_file() and Image.open(target).size!=im.size:
-                    digest=hashlib.sha256(struct.pack('<II',*im.size)+im.tobytes()).hexdigest()
-                    target=directory/(digest+'.png')
-                if not target.is_file():im.save(target)
+                image=decode(native/file,address,tcc)
+                delta=paint_delta(base_images[tkey],np.asarray(image))
+                if delta is None:continue
+                # A delta is only valid against the base it was built from:
+                # remaps and pixel indices can mean something else elsewhere.
+                digest=hashlib.sha256(base_hashes[tkey].encode('ascii')+delta).hexdigest()
+                directory=dest/'paints';directory.mkdir(exist_ok=True);target=directory/(digest+'.delta.gz')
+                write_bytes(target,delta)
                 images['textures/'+name+'.png']=parent+'/paints/'+target.name
 
         signature=json.dumps([images,[visible_material(v,material['extras']['gt2pc']['nativeGt4']['type']) for v,material in zip(values,gltf['materials'])]],sort_keys=True,separators=(',',':'))
@@ -214,10 +271,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('pack','paints','output','tool','alignment','vol'):p.add_argument('--'+name,type=Path,required=True)
     p.add_argument('--cars',nargs='+');p.add_argument('--workers',type=int,default=4)
+    p.add_argument('--gt2-catalog',nargs='+',type=Path,default=[],help='export-cars directories whose paint lists limit each model')
     p.add_argument('--cabin-sources',type=Path,default=Path(__file__).resolve().parents[1]/'db/gt4-native-interiors.json',help='Hash-bound reviewed source decisions keyed by GT4 code')
     a=p.parse_args()
     a.cabin_sources=json.loads(a.cabin_sources.read_text())['cars'] if a.cabin_sources else {}
     for name in ('pack','paints','output','tool','alignment','vol'):setattr(a,name,getattr(a,name).resolve())
+    a.gt2_catalog=[path.resolve() for path in a.gt2_catalog]
     a.tool_sha256=hashlib.sha256(a.tool.read_bytes()).hexdigest()
     if not a.output.is_relative_to(Path('work').resolve()):p.error('Output must be under work')
     manifest=json.loads((a.pack/'manifest.json').read_text())['cars']
@@ -225,6 +284,7 @@ def main():
     # supports a release pack whose earlier OBJ intermediate was archived.
     alignment=json.loads(a.alignment.read_text())
     dumps={m['parent']:Path(m['source']+'_dump') for m in alignment};jobs={}
+    paint_counts=car_paint_counts(a.gt2_catalog)
     for id,e in manifest.items():
         if a.cars and id not in a.cars:continue
         code=e.get('gt4Model','')
@@ -233,6 +293,7 @@ def main():
         if code in a.cabin_sources and not all(k in a.cabin_sources[code] for k in ('eye','mirror','openTop')):
             raise ValueError('Incomplete reviewed cabin profile: '+code)
         parent=Path(e['mesh']).parent.as_posix();jobs.setdefault(parent,[parent,e,[],dumps[parent]])[2].append(id)
+    for job in jobs.values():job.append(model_paint_limit(job[2],manifest,paint_counts))
     report=[];index={'format':'gt4-native-overlay','version':1,'cars':{}}
     with concurrent.futures.ThreadPoolExecutor(a.workers) as pool:
         for r in pool.map(lambda j:build(j,a),jobs.values()):

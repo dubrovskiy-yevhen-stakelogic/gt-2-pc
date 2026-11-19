@@ -62,7 +62,8 @@ rendering are separate features and remain available. No release dates are promi
 ## Features
 
 - A fitted cockpit for live single-player Driver view, with moving steering wheel and hands, speed/RPM needles, seat adjustments and a central rear-view mirror. Replays and split-screen retain their existing views. See [cockpit controls](docs/COCKPIT.md).
-- Native PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, DualSense pedals and both Arcade/Simulation cheats.
+- Native PC/Quest startup and a saved disc preference. Arcade and Simulation share graphics, HUD and control preferences while keeping separate memory cards. Desktop settings include HD media, intro visibility, all HUD switches, a profiler, gamepad bindings, keyboard bindings, DualSense pedals and both Arcade/Simulation cheats.
+  Keyboard bindings keep Escape, Enter, Backspace, F5, F8, F10 and G reserved for existing menu/save/reset/ghost commands; rejected assignments leave the previous binding intact.
 - Windows PCVR through OpenXR, with theatre menus/movies, stereo races, tracked head movement and Touch controls. See [PCVR setup](docs/PCVR.md).
 - USB save transfer in both directions between PC and Quest, with card validation, backups and verified copying. Desktop and PCVR share PC saves. See [save transfer](docs/SAVE-TRANSFER.md).
 - Arcade and Simulation discs, with a startup disc picker on PC and Quest, shared preferences and separate saves for each mode. Silent's combined disc installs once and appears as both modes in the picker; the browser's mode selection works with it too.
@@ -205,7 +206,7 @@ are downloaded; choose your own when the installer prompts. Existing data and
 saves are preserved by the normal update path.
 
 - **Quiver Launcher:** find **Gran Turismo 2 PC, VR & Browser** in the [Quiver catalog](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser) and press **Get**. Quiver downloads the release file for your platform and keeps the game updated.
-- **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. Open settings with F10. See [PCVR setup](docs/PCVR.md).
+- **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. To move an existing data folder, see [player installation](docs/PLAYER-INSTALL.md#moving-the-data-folder-later). Open settings with F10. See [PCVR setup](docs/PCVR.md).
 - **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
 - **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
 - **Quest:** install `GT2-VR-<version>.apk`, then use the installer scripts to prepare your disc data over ADB; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.

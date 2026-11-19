@@ -290,9 +290,12 @@ def main():
     write(stage/'alignment.json',alignment)
     script('build_gt4_paints.py',['--pack',pack,'--output',stage/'paints','--vol',stage/'vol',
                                 '--tool',tools['gt4assettool'],'--workers',args.workers],logs/'paints.log')
-    script('build_gt4_native.py',['--pack',pack,'--paints',stage/'paints','--output',stage/'native',
+    native_args=['--pack',pack,'--paints',stage/'paints','--output',stage/'native',
         '--tool',tools['gt4nativemetadata'],'--alignment',stage/'alignment.json','--vol',stage/'vol',
-        '--workers',args.workers],logs/'native.log')
+        '--workers',args.workers]
+    catalogs=[stage/'gt2-catalog'/mode for mode in ('simulation','arcade') if (stage/'gt2-catalog'/mode).is_dir()]
+    if catalogs:native_args+=['--gt2-catalog',*catalogs]
+    script('build_gt4_native.py',native_args,logs/'native.log')
     command([tools['gt4specdbexport'],specdb,stage/'specdb-json'],logs/'specdb-json.log')
     script('build_gt4_showroom.py',['--tool',tools['gt4showroomexport'],'--core',stage/'vol/CORE.elf',
         '--specdb',specdb,'--specdb-json',stage/'specdb-json','--alignment',stage/'native/report.json',

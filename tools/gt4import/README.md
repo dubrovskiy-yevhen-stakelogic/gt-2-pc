@@ -17,6 +17,8 @@ cmake --build build_gt4_import --config Release
   images with the original palette and PS2 texture layout.
 - `gt4nativemetadata <CAR4-file> <output-directory> [external-Pat0-file]` exports
   original draw state, complete instance transforms, materials and textures.
+  `GT4_MAX_PAINTS` (1–32) limits exported paint colours; the importer sets it to
+  the matching GT2 car's real paint count.
 - `gt4materialmetadata <CAR4-file> <output-directory>` exports material and lamp
   state used to align the imported model.
 - `gt4specdbexport <raw-SpecDB-directory> <new-output-directory>` decodes table

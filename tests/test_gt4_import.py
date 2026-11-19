@@ -1,4 +1,5 @@
 """Synthetic importer checks: no proprietary assets or rendering required."""
+import gzip
 import importlib.util
 import json
 from pathlib import Path
@@ -7,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from gt4_mesh import convert, number, shape_commands
@@ -15,9 +17,77 @@ import import_gt4_models as importer
 import io
 import zlib
 from build_gt4_expansion import write_catalogue_version
+from build_gt4_native import MAX_PAINTS, car_paint_counts, model_paint_limit, paint_delta, paint_indices
 
 
 class ImportChecks(unittest.TestCase):
+    @staticmethod
+    def apply_paint_delta(base, blob):
+        data = blob if blob[:4] == b'GT4P' else gzip.decompress(blob)
+        assert data[:4] == b'GT4P'
+        version, kind = struct.unpack_from('<II', data, 4)
+        assert version == 1
+        out = base.copy()
+        at = 12
+        if kind == 0:
+            count, = struct.unpack_from('<I', data, at); at += 4
+            flat = out.reshape(-1, 4)
+            for _ in range(count):
+                old, new = struct.unpack_from('<II', data, at); at += 8
+                flat[flat.view('<u4').reshape(-1) == old] = np.frombuffer(struct.pack('<I', new), dtype=np.uint8)
+        elif kind == 1:
+            x, y, w, h = struct.unpack_from('<IIII', data, at); at += 16
+            out[y:y+h, x:x+w] = np.frombuffer(data[at:at+w*h*4], dtype=np.uint8).reshape(h, w, 4)
+        elif kind == 2:
+            count, = struct.unpack_from('<I', data, at); at += 4
+            flat = out.reshape(-1, 4)
+            for _ in range(count):
+                index, value = struct.unpack_from('<II', data, at); at += 8
+                flat[index] = np.frombuffer(struct.pack('<I', value), dtype=np.uint8)
+        else:
+            raise AssertionError(kind)
+        return out
+
+    def test_paint_delta_uses_remap_rectangle_and_pixels(self):
+        base = np.zeros((10, 10, 4), dtype=np.uint8); base[..., 3] = 255
+        # Palette remap: one base colour changes to one new colour.
+        target = base.copy(); target[base[..., 0] == 0] = [10, 20, 30, 255]
+        remap = paint_delta(base, target)
+        remap_raw = remap if remap[:4] == b'GT4P' else gzip.decompress(remap)
+        self.assertEqual(struct.unpack_from('<I', remap_raw, 8)[0], 0)
+        np.testing.assert_array_equal(self.apply_paint_delta(base, remap), target)
+        # Sparse changes: two different new colours from one old colour are not
+        # a remap; the pixel list beats the bounding rectangle.
+        sparse = base.copy(); sparse[0, 0] = [1, 2, 3, 255]; sparse[9, 9] = [4, 5, 6, 255]
+        pixels = paint_delta(base, sparse)
+        pixels_raw = pixels if pixels[:4] == b'GT4P' else gzip.decompress(pixels)
+        self.assertEqual(struct.unpack_from('<I', pixels_raw, 8)[0], 2)
+        np.testing.assert_array_equal(self.apply_paint_delta(base, pixels), sparse)
+        # A compact block uses a rectangle.
+        block = base.copy(); block[2:6, 3:7] = [40, 50, 60, 255]
+        rectangle = paint_delta(base, block)
+        rectangle_raw = rectangle if rectangle[:4] == b'GT4P' else gzip.decompress(rectangle)
+        self.assertEqual(struct.unpack_from('<I', rectangle_raw, 8)[0], 1)
+        np.testing.assert_array_equal(self.apply_paint_delta(base, rectangle), block)
+
+    def test_native_paint_export_stops_at_the_gt2_limit(self):
+        self.assertEqual(MAX_PAINTS,32)
+        self.assertEqual(paint_indices(40,[]),[-1]+list(range(32)))
+        self.assertEqual(paint_indices(4,[]),[-1,0,1,2,3])
+        self.assertEqual(paint_indices(40,[],5),[-1,0,1,2,3,4])
+        self.assertEqual(paint_indices(0,[{'sourceColor':-1},{'sourceColor':0},{'sourceColor':5},{'sourceColor':255}],5),[-1,0])
+
+    def test_paint_limit_uses_each_gt2_cars_real_count(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'aaaaa.json').write_text(json.dumps({'carId':'aaaaa','paints':[{'id':0}]*4}))
+            (root/'bbbbb.json').write_text(json.dumps({'carId':'bbbbb','paints':[{'id':0}]*11}))
+            counts=car_paint_counts([root])
+            self.assertEqual(counts,{'aaaaa':4,'bbbbb':11})
+            self.assertEqual(model_paint_limit(['aaaaa','bbbbb'],{},counts),11)
+            self.assertEqual(model_paint_limit(['x'],{'x':{'required':True}},counts),1)
+            self.assertEqual(model_paint_limit(['x'],{'x':{}},counts),MAX_PAINTS)
+            self.assertEqual(model_paint_limit(['x'],{'x':{}},{}),MAX_PAINTS)
+
     def test_catalogue_version_has_platform_independent_bytes(self):
         with tempfile.TemporaryDirectory() as folder:
             write_catalogue_version(folder)

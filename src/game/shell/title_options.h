@@ -104,7 +104,7 @@ struct GraphicsSettings {
     bool modernCarReflections = false; // opt-in cube reflections for original GT2 bodies
     bool carReflections = true;        // false: no car reflections at all (Off); true: Original or Modern
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
-    int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: + every chunk within N m;
+    int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: nothing beyond N m draws;
                                            // -1: every chunk of the course
     static GraphicsSettings Vanilla() {
         GraphicsSettings g;
