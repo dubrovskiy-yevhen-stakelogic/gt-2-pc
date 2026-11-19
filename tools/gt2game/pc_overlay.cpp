@@ -582,7 +582,7 @@ void ShowWheelAdvanced(GameWindow& window) {
             }
             Panel(window, "GT2 / ASSIGN CONTROL", {capture == ButtonCount ? "Move ONLY the selected axis" : "Press the desired device button",
                 "For steering: start centred, then turn LEFT", "For pedals: start released, then press fully", "Escape cancels the assignment"}, -1,
-                capture < 0 ? "Assigned. Calibrate endpoints on the next page." : "Keep other controls still. Waiting for input...", "Keyboard Escape: cancel");
+                capture < 0 ? "Assigned. Calibrate the endpoints." : "Keep other controls still. Waiting for input...", "Keyboard Escape: cancel");
             continue;
         }
         std::string title = "GT2 / RACING WHEEL";
@@ -1048,14 +1048,14 @@ enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainContr
 // The status line on the main page: what the selected row opens.
 std::string MainHint(int selected) {
     switch (selected) {
-    case kMainGraphics: return "Resolution, quality and performance.";
-    case kMainOptions: return "Cheats, unlocks and race behaviour.";
+    case kMainGraphics: return "Resolution - quality and performance.";
+    case kMainOptions: return "Cheats - unlocks and race behaviour.";
     case kMainHud: return "Which HUD elements are shown.";
-    case kMainContent: return "The current game, packs and intro.";
-    case kMainControls: return "Bindings, steering and vibration.";
-    case kMainCockpit: return "Seat, wheel and mirror.";
-    case kMainCampaign: return "Campaign saves and transfers.";
-    case kMainResume: return "Back to the game; Start opens the PS1 pause.";
+    case kMainContent: return "The current game - packs and intro.";
+    case kMainControls: return "Bindings - steering and vibration.";
+    case kMainCockpit: return "Seat - wheel and mirror.";
+    case kMainCampaign: return "Campaign saves and backups.";
+    case kMainResume: return "Back to the game - Start opens the PS1 pause.";
     case kMainQuit: return "Close the game completely.";
     default: return {};
     }
@@ -1348,7 +1348,7 @@ void ShowSettingsMenu(GameWindow& window) {
                                 } catch (const std::exception& e) {catalogue.clear();status=e.what();}
                                 if (catalogue.empty()) status="No matching GT4 pack installed.";
                             }
-                            if (!catalogue.empty()) { page = 3; selected = carPage = 0; status = "A: add free car. Triggers: pages. X/Y: row. B: back."; }
+                            if (!catalogue.empty()) { page = 3; selected = carPage = 0; status = "Choose a car to add to the garage."; }
                         }
                     }
                     if (selected == 5 && page == 2 && direction) gt2::pc::unlockSimulationEvents = !gt2::pc::unlockSimulationEvents;
