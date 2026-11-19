@@ -68,29 +68,32 @@ NSString* DiscPath(NSURL* selection) {
     return [path.stringByDeletingLastPathComponent stringByAppendingPathComponent:name];
 }
 bool HasDisc(const std::filesystem::path& root) {
-    for (const char* mode : {"arcade", "simulation", "combined"})
-        if (std::filesystem::is_regular_file(root / mode / "disc.raw2352") && std::filesystem::is_directory(root / mode / "assets")) return true;
+    std::error_code error;
+    for (const auto& entry : std::filesystem::directory_iterator(root, error))
+        if (std::filesystem::is_regular_file(entry.path() / "disc.raw2352") &&
+            std::filesystem::is_directory(entry.path() / "assets")) return true;
     return false;
 }
 bool Import(NSString* helper, const std::filesystem::path& root) {
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     panel.title = @"Import your Gran Turismo 2 discs";
-    panel.message = @"Select your Arcade, Simulation and/or Combined BIN/CUE images (raw 2352-byte sectors). Game data is not included. Existing saves are kept.";
+    panel.message = @"Select your Arcade, Simulation, Combined or modified BIN/CUE images (raw 2352-byte sectors). Game data is not included. Existing saves are kept.";
     panel.canChooseDirectories = NO; panel.allowsMultipleSelection = YES;
     if ([panel runModal] != NSModalResponseOK) return false;
     NSMutableArray<NSDictionary*>* inputs = [NSMutableArray array];
-    NSMutableSet<NSString*>* modes = [NSMutableSet set];
+    NSMutableSet<NSString*>* folders = [NSMutableSet set];
     // Inspect every input before changing any installed data.
     for (NSURL* url in panel.URLs) {
         NSString* image = DiscPath(url);
         NSString* result = Run(helper, @[@"inspect", image]);
         NSDictionary* info = [NSJSONSerialization JSONObjectWithData:[result dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nullptr];
         NSString* mode = [info isKindOfClass:NSDictionary.class] ? info[@"mode"] : nil;
-        const bool combined = [info isKindOfClass:NSDictionary.class] && [info[@"combined"] boolValue];
-        if (combined) mode = @"combined";
+        NSString* folder = [info isKindOfClass:NSDictionary.class] ? info[@"folder"] : nil;
+        if (![folder isKindOfClass:NSString.class] || folder.length == 0) folder = mode;
         if (![mode isEqualToString:@"arcade"] && ![mode isEqualToString:@"simulation"] && ![mode isEqualToString:@"combined"]) Fail(@"Unrecognized game disc.");
-        if ([modes containsObject:mode]) Fail(@"Select only one disc for each mode.");
-        [modes addObject:mode]; [inputs addObject:@{@"image": image, @"mode": mode}];
+        if (folder.length == 0) Fail(@"Unrecognized game disc.");
+        if ([folders containsObject:folder]) Fail(@"That disc is already installed. Select a different image or version.");
+        [folders addObject:folder]; [inputs addObject:@{@"image": image, @"folder": folder}];
     }
     const auto stage = root / (".import-" + Text(NSUUID.UUID.UUIDString));
     std::filesystem::create_directory(stage);
@@ -107,18 +110,18 @@ bool Import(NSString* helper, const std::filesystem::path& root) {
     const auto backup = root / "backups" / ("discs-" + Text(NSUUID.UUID.UUIDString));
     try {
         for (NSDictionary* input in inputs) {
-            const auto out = stage / Text(input[@"mode"]);
+            const auto out = stage / Text(input[@"folder"]);
             Run(helper, @[@"extract", input[@"image"], [NSString stringWithUTF8String:out.c_str()]]);
         }
         std::filesystem::create_directories(backup);
         for (NSDictionary* input in inputs) {
-            const auto mode = std::filesystem::path(Text(input[@"mode"]));
-            const auto target = root / mode;
+            const auto folder = std::filesystem::path(Text(input[@"folder"]));
+            const auto target = root / folder;
             if (std::filesystem::is_symlink(target)) Fail(@"Refusing to replace a linked game-data directory.");
             if (std::filesystem::exists(target)) {
-                std::filesystem::rename(target, backup / mode); backedUp.push_back(mode);
+                std::filesystem::rename(target, backup / folder); backedUp.push_back(folder);
             }
-            std::filesystem::rename(stage / mode, target); installed.push_back(mode);
+            std::filesystem::rename(stage / folder, target); installed.push_back(folder);
         }
         std::filesystem::remove(stage); // empty directory only; never delete user payloads
         if (backedUp.empty()) std::filesystem::remove(backup);

@@ -122,16 +122,17 @@ foreach ($inputPath in $DiscImage) {
 }
 
 $prepared = @()
-$modes = @{}
+$folders = @{}
 foreach ($source in ($sources | Select-Object -Unique)) {
     $json = & $tool inspect $source
     if ($LASTEXITCODE -ne 0) { throw "Unsupported or damaged image: $source" }
     $info = $json | ConvertFrom-Json
     $mode = if ($info.combined) { 'combined' } else { $info.mode }
-    if ($modes.ContainsKey($mode)) { throw "Select only one $mode disc." }
-    $modes[$mode] = $true
+    $folder = if ($info.folder) { [string]$info.folder } else { $mode }
+    if ($folders.ContainsKey($folder)) { throw "Select only one $folder disc." }
+    $folders[$folder] = $true
     $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
-    $data = Join-Path $job $mode
+    $data = Join-Path $job $folder
     & $tool extract $source $data
     if ($LASTEXITCODE -ne 0) { throw "Extraction failed. Diagnostics and partial files remain in $job" }
     if ((Get-FileHash -LiteralPath (Join-Path $data 'disc.raw2352') -Algorithm SHA256).Hash -ne $hash) { throw 'Disc copy hash mismatch.' }
@@ -145,15 +146,15 @@ foreach ($source in ($sources | Select-Object -Unique)) {
     })
     [ordered]@{ format = 1; mode = $mode; combined = [bool]$info.combined; exeSha1 = $info.exeSha1; discSha256 = $hash; assets = $assetHashes } |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $data 'install-manifest.json') -Encoding UTF8
-    $prepared += [pscustomobject]@{ Mode = $mode; Data = $data }
+    $prepared += [pscustomobject]@{ Folder = $folder; Data = $data }
 }
 
 # Publish only validated data. Keep old data and executables for rollback, and retain all saves.
 $backup = Join-Path $InstallDir ('backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,6))
 New-Item -ItemType Directory -Path $backup | Out-Null
 foreach ($item in $prepared) {
-    $destination = Join-Path $InstallDir $item.Mode
-    if (Test-Path $destination) { Move-Item -LiteralPath $destination -Destination (Join-Path $backup $item.Mode) }
+    $destination = Join-Path $InstallDir $item.Folder
+    if (Test-Path $destination) { Move-Item -LiteralPath $destination -Destination (Join-Path $backup $item.Folder) }
     Move-Item -LiteralPath $item.Data -Destination $destination
 }
 foreach ($name in @('gt2game.exe','gt2install.exe') + @(if (Test-Path (Join-Path $build 'openxr_loader.dll')) { 'openxr_loader.dll' })) {

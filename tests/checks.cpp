@@ -29,6 +29,7 @@
 #include "gt2formats/save_data.h"
 #include "game/shell/title_options.h"
 #include "gt2formats/save_ids.h"
+#include "gt2formats/dataset.h"
 #include "gt2formats/arcade_menu_data.h"
 #include "game/shell/title_screens.h"
 #include "gt2view/scene_types.h"
@@ -538,6 +539,17 @@ int main(int argc, char** argv) {
         Check(rejected, "truncated disc must be rejected");
         Check(std::filesystem::remove(path), "failed disc constructor must release the file");
 
+        { // a dataset fingerprint names the save folder; an unregistered version still gets its own suffix
+            Check(gt2::DatasetSuffix("be0dc795dbc8aca62d812ab5443edd8c82a2d979").empty(), "retail tables keep the original folder");
+            Check(gt2::DatasetSuffix("03092e33fd4a2990bb6fd9b0c33f775227f8692b") == "aspec", "A-Spec tables use the aspec suffix");
+            Check(gt2::DatasetSuffix("3e100467293cb53e574ed83a134b2d15ee8ce830") == "plus", "GT2+ tables use the plus suffix");
+            Check(gt2::DatasetSuffix("a2526857eb6c9940c443a74683541d661e45abcc").empty() &&
+                  gt2::DatasetSuffix("4c916e3b65bf66ecf3d6e1f1e42d2e682007f20a").empty(),
+                  "retail arcade tables keep the arcade folder");
+            Check(gt2::DatasetSuffix("0123456789abcdef") == "01234567", "unknown tables get their own suffix");
+            Check(gt2::InstallFolder("simulation", "") == "simulation" && gt2::InstallFolder("combined", "aspec") == "combined-aspec",
+                  "install folders carry the suffix");
+        }
         { // card file names come from the disc's executable (GT2+ appends 7C so both games coexist)
             gt2::GuestImage exe;
             exe.base = 0x80010000;

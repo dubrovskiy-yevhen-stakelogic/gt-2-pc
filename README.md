@@ -67,7 +67,7 @@ rendering are separate features and remain available. No release dates are promi
   Keyboard bindings keep Escape, Enter, Backspace, F5, F8, F10 and G reserved for existing menu/save/reset/ghost commands; rejected assignments leave the previous binding intact.
 - Windows PCVR through OpenXR, with theatre menus/movies, stereo races, tracked head movement and Touch controls. See [PCVR setup](docs/PCVR.md).
 - USB save transfer in both directions between PC and Quest, with card validation, backups and verified copying. Desktop and PCVR share PC saves. See [save transfer](docs/SAVE-TRANSFER.md).
-- Arcade and Simulation discs, with a startup disc picker on PC and Quest, shared preferences and separate saves for each mode. Silent's combined disc installs once and appears as both modes in the picker; the browser's mode selection works with it too.
+- Arcade and Simulation discs, with a startup disc picker on PC and Quest, shared preferences and separate saves for each mode. Silent's combined disc installs once and appears as both modes in the picker; the browser's mode selection works with it too. Modified disc images install beside the original and keep their own memory card, so A-Spec, GT2+ and retail careers do not overwrite each other ([modified disc images](docs/MOD-SUPPORT.md)).
 - Arcade races, rally/time trials, opponent AI, ghost/replay sessions; Simulation career, licences, dealerships, garage, tuning and events.
 - Original fixed-step vehicle simulation, animated steering/suspension/wheels, car reflections, track scenery, particles and night lighting.
 - Native audio: engine, tyres, road effects, music and movies. Race pause stops timers and the entire race audio mixer. VR/system suspension does not advance the race.

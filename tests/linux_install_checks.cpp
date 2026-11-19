@@ -31,6 +31,13 @@ int main() {
         Check(fs::exists(stage), "duplicate import consumed source");
         gt2linux::PublishDisc(root, "simulation", stage);
         Check(gt2linux::HasDisc(root, "arcade") && gt2linux::HasDisc(root, "simulation"), "adding second disc removed first");
+        fs::create_directories(stage / "assets");
+        std::ofstream(stage / "disc.raw2352") << "modified dataset";
+        Reject([&] { gt2linux::PublishDisc(root, "simulation-", stage); });
+        Reject([&] { gt2linux::PublishDisc(root, "Simulation", stage); });
+        gt2linux::PublishDisc(root, "simulation-aspec", stage);
+        Check(gt2linux::HasDisc(root, "simulation-aspec") && gt2linux::HasDisc(root, "simulation"),
+              "a modified dataset installs beside the original");
         std::string save;
         std::getline(std::ifstream(root / "saves/card1.mcd"), save);
         Check(save == "saved career", "import changed saved game");

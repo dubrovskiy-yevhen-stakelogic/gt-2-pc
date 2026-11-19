@@ -14,13 +14,27 @@ int main() { try {
     namespace fs = std::filesystem;
     for (const std::string mode : {"arcade", "simulation"}) {
         const auto standalone = InstalledDiscArguments("gt2game", "data", "saves", mode);
-        const auto combined = InstalledDiscArguments("gt2game", "data", "saves", "combined-" + mode);
+        const auto combined = InstalledDiscArguments("gt2game", "data", "saves", "combined:" + mode);
         Check(fs::path(combined[1]) == fs::path("data") / "combined", "Quest combined rows must open the installed combined image");
         Check(fs::path(standalone[1]) == fs::path("data") / mode, "standalone disc paths are unchanged");
         Check(Value(combined, "--card") == Value(standalone, "--card"), "combined mode shares the standalone card");
         Check(Value(combined, "--settings") == Value(standalone, "--settings"), "combined mode shares standalone settings");
         Check((std::count(combined.begin(), combined.end(), "--combined-arcade") == 1) == (mode == "arcade"), "only combined Arcade requests the Arcade flow");
     }
+    // A modified dataset has its own install folder and its own card, but the mode's settings stay shared.
+    const auto aspec = InstalledDiscArguments("gt2game", "data", "saves", "simulation-aspec");
+    Check(fs::path(aspec[1]) == fs::path("data") / "simulation-aspec", "modified dataset opens its own folder");
+    Check(fs::path(Value(aspec, "--card")) == fs::path("saves/simulation-aspec/card1.mcd"), "modified dataset uses its own card folder");
+    Check(fs::path(Value(aspec, "--settings")) == fs::path("saves/simulation/settings.txt"), "modified dataset shares the mode settings");
+    const auto aspecCombined = InstalledDiscArguments("gt2game", "data", "saves", "combined-aspec:simulation");
+    Check(fs::path(aspecCombined[1]) == fs::path("data") / "combined-aspec", "modified combined disc uses its own folder");
+    Check(fs::path(Value(aspecCombined, "--card")) == fs::path("saves/simulation-aspec/card1.mcd"), "combined and standalone of one dataset share a card");
+    const auto aspecArcade = InstalledDiscArguments("gt2game", "data", "saves", "combined-aspec:arcade");
+    Check(fs::path(Value(aspecArcade, "--card")) == fs::path("saves/arcade-aspec/card1.mcd"), "combined Arcade uses the arcade dataset card");
+    Check(ValidDiscSelection("combined-arcade") && ValidDiscSelection("combined:simulation"), "legacy combined keys still load");
+    Check(!ValidDiscSelection("combined") && !ValidDiscSelection("simulation:arcade") && !ValidDiscSelection("nonsense"),
+          "incomplete or unknown keys are rejected");
+
     std::vector<std::string> args{"gt2game", "/data/disc.bin", "--windowed", "--card", "/saves/simulation/card1.mcd",
         "--settings", "/saves/simulation/settings.txt", "--card2", "/saves/simulation/card2.mcd"};
     for (int round = 0; round < 3; ++round) {
@@ -41,5 +55,12 @@ int main() { try {
     args = {"gt2game", "disc.bin"};
     SwitchCombinedDiscArguments(args, "combined-simulation", "saves");
     Check(fs::path(Value(args, "--card")) == fs::path("saves/simulation/card1.mcd"), "positional launch supplies a mode-specific default card");
-    std::cout << "Combined disc paths, save slots and repeated mode transitions passed\n";
+
+    // A modified combined install keeps its suffix across the title <-> Arcade flow switch.
+    args = {"gt2game", "/data/combined-aspec", "--card", "/saves/simulation-aspec/card1.mcd",
+        "--settings", "/saves/simulation/settings.txt"};
+    Check(SwitchCombinedDiscArguments(args, "combined-arcade", "/saves"), "modified combined disc switches to Arcade");
+    Check(fs::path(Value(args, "--card")) == fs::path("/saves/arcade-aspec/card1.mcd"), "the dataset suffix survives the switch");
+    Check(fs::path(Value(args, "--settings")) == fs::path("/saves/arcade/settings.txt"), "settings follow the flow only");
+    std::cout << "Combined disc paths, dataset suffixes and repeated mode transitions passed\n";
 } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; } }
