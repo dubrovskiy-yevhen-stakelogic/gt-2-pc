@@ -66,12 +66,15 @@ struct ArcadeMenuData {
     std::array<ArcadeClassCars, kClassListCount> classes;
     std::array<int8_t, 10> classSUnlock{};                 // 0x800519E4
     std::array<int8_t, 24> bonusUnlock{};                  // 0x80051D64
-    std::vector<uint8_t> text;                             // the language block of data-arcade.txd (RAM 0x800F81E0)
+    std::vector<uint8_t> text;                             // the language block of data-arcade.txd
+    uint32_t textBase = kTextBase;                         // its RAM address (US Arcade v1.1: 0x800F8290)
 
     // `language` = career + 0 (1 = USA).
     static ArcadeMenuData Load(const DiscImage& disc, uint8_t language = 1);
     // The NUL-terminated string at a RAM address of the text block ("" outside it).
     std::string Text(uint32_t address) const;
+    // Text() for an address of the reference build's text block (the port's hard-coded arcade strings).
+    std::string LegacyText(uint32_t address) const;
     // A NUL-terminated string of the member-2 image.
     std::string ImageString(uint32_t address) const;
 };

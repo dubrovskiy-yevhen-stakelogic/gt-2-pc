@@ -22,6 +22,7 @@
 #include "gt2formats/gltf_reader.h"
 #include "gt2formats/gtmode_tables.h"
 #include "gt2formats/save_data.h"
+#include "gt2formats/save_ids.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/exe_map.h"
 #include <cctype>
@@ -997,7 +998,7 @@ int CmdMenuData(const GtfsVolume& vol) {
     size_t paints = 0;
     for (size_t i = 0; i < cars.Count(); i++) {
         for (uint16_t n : colours.NameIndices(i, cars.At(i).PaintCount()))
-            if (n >= colours.NameCount()) throw std::runtime_error("carcolor: name index out of range");
+            if (n != 0xFFFF && n >= colours.NameCount()) throw std::runtime_error("carcolor: name index out of range");
         paints += cars.At(i).PaintCount();
     }
     std::printf("carcolor: %zu cars (carinfo %zu), %zu paints, %zu colour names\n", colours.CarCount(), cars.Count(), paints, colours.NameCount());
@@ -1055,9 +1056,9 @@ int CmdSaveInfo(const GtfsVolume& vol, const std::string& path) {
         std::optional<MemoryCardFile> file;
         for (MemoryCardFile& f : ReadMemoryCardFiles(bytes)) {
             std::printf("card file %-20s %6u bytes, first block %d\n", f.name.c_str(), f.size, f.firstBlock);
-            if (f.name == kSaveGameFileName) file = std::move(f);
+            if (f.name == ActiveSaveFileIds().game) file = std::move(f);
         }
-        if (!file) throw std::runtime_error(std::string("no ") + kSaveGameFileName + " on the card");
+        if (!file) throw std::runtime_error("no " + ActiveSaveFileIds().game + " on the card");
         save = ParseGameSave(file->bytes);
         std::printf("save: header '%c%c' icon flags 0x%02X blocks %u, CRC stored %08X computed %08X -> %s\n", save.header[0], save.header[1],
                     save.header[2], save.header[3], save.storedCrc, save.computedCrc, save.CrcOk() ? "ok" : "MISMATCH");
@@ -1355,6 +1356,7 @@ int main(int argc, char** argv) {
         if (cmd == "replay-list") return CmdReplayList(argc, argv);
         DiscImage disc(argv[2]);
         GtfsVolume vol(disc);
+        try { SetActiveSaveFileIds(ReadSaveFileIds(LoadExeImage(disc))); } catch (...) {} // a tool may read a partial disc
         if (cmd == "ls") return CmdLs(vol, argc > 3 ? argv[3] : "");
         if (cmd == "vol-index") return CmdVolIndex(vol, argc, argv);
         if (cmd == "param-scan") return CmdParamScan(vol, argc, argv);

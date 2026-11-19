@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Load A-Spec (Simulation and Combined) and GT2+ Complete (NTSC-U Simulation and Arcade) disc images directly. Modified executables whose address layout matches a stock build are registered by SHA-1; a rebuilt GT2.VOL with its last file at the final offset loads completely.
+- Support the US Arcade v1.1 disc the GT2+ Arcade patch is built on: its own generated address profile, the shifted menu text block and font descriptors, and the v1.1 Arcade menu view table.
+- Read the memory-card save and replay file names from the disc's executable, so GT2+ saves (`…7C`) coexist with the retail save on one card.
+- Tolerate A-Spec's sparse car-colour entries and unsorted solo data instead of rejecting the GT-mode menus.
+
 - Group content and media settings separately from graphics; keep vibration under Controls.
 - Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
 

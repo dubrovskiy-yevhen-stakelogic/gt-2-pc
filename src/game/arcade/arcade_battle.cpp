@@ -143,11 +143,11 @@ void ArcadeBattlePage::Enter(const Context& ctx, bool reenter, const uint8_t* se
             const size_t k = size_t(p);
             ClearModel(p);
             labels_[k].Init(a_, kLabelTemplate);
-            labels_[k].text = a_.data.Text(kLabelTexts[p]);
+            labels_[k].text = a_.data.LegacyText(kLabelTexts[p]);
             if (p == 1) labels_[k].flags = uint16_t(labels_[k].flags | 0x100);
             bands_[k].Read(o, kBandTemplates[p]);
             classLabels_[k].Init(a_, kClassLabelTemplate);
-            classLabels_[k].text = a_.data.Text(kClassLabelInitial);
+            classLabels_[k].text = a_.data.LegacyText(kClassLabelInitial);
             // the class lists: Rally 3 rows, else 5 / 6 (with S); the garage rows disabled while the garage is empty
             const bool rally = ctx.listKind == 4;
             const uint32_t items = rally ? kItemsRally[p] : ctx.classSOpen ? kItemsWithS[p] : kItemsNoS[p];

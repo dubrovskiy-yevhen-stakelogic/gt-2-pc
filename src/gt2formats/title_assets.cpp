@@ -41,8 +41,8 @@ void UploadTitleBackground(MenuVram& vram, const std::vector<uint8_t>& tim) {
 // US Arcade v1.1 member 1 (SHA-1 20bb63ff66247bafc19cf1e9d939c90aa0871e2d; our disassembly, db/arcade_us11_symbols.yaml):
 // 0x800161B4 inflates the gzip at 0x80020D88 and copies block language * 0xDAE (0xDAE bytes) to 0x801B9330; 0x8001D674 the
 // gzip at 0x8002247C, block language * 0x76F (0x76F bytes) to 0x801EF0E0.
-constexpr uint32_t kArcadeTitleTxdGzip = 0x80020D88u, kArcadeTitleText = 0x801B9330u, kArcadeTitleStride = 0xDAE;
-constexpr uint32_t kArcadeGlobalTxdGzip = 0x8002247Cu, kArcadeGlobalText = 0x801EF0E0u, kArcadeGlobalStride = 0x76F;
+constexpr uint32_t kArcadeTitleTxdGzip = 0x80020D88u, kArcadeTitleStride = 0xDAE;
+constexpr uint32_t kArcadeGlobalTxdGzip = 0x8002247Cu, kArcadeGlobalStride = 0x76F;
 
 // A build image copied to the Simulation addresses [simBase, simEnd) of `scope` (the ranges applied from the lowest priority to
 // the highest, as ExeProfile::TryData orders them). `source[s - simBase]` = the build address of each copied byte (0 = none).
@@ -185,11 +185,11 @@ TitleAssets TitleAssets::LoadArcade(const DiscImage& disc, const GtfsVolume& vol
     a.textProfile = a.ovl1.profile;
     a.titleText = LanguageBlock(InflateEmbeddedGzipNamed(a.ovl1, "data-title.txd"), kArcadeTitleStride, language);
     a.globalText = LanguageBlock(InflateEmbeddedGzipNamed(a.ovl1, "data-global.txd"), kArcadeGlobalStride, language);
-    a.titleTextAt = kArcadeTitleText;
-    a.globalTextAt = kArcadeGlobalText;
-    // The profile places the Simulation blocks' starts at these addresses (reference runs -0x300 / -0x5D0).
-    if (a.textProfile->TryData(kTitleTextBase, -1) != kArcadeTitleText || a.textProfile->TryData(kGlobalTextBase, -1) != kArcadeGlobalText)
-        throw std::runtime_error("title assets: the build profile does not place the text blocks where member 1 copies them");
+    // Member 1 copies the blocks to the build's own addresses (the old US Arcade: -0x300 / -0x5D0; Rev 1: -0x250).
+    const auto titleTextAt = a.textProfile->TryData(kTitleTextBase, -1), globalTextAt = a.textProfile->TryData(kGlobalTextBase, -1);
+    if (!titleTextAt || !globalTextAt) throw std::runtime_error("title assets: the build profile does not map the text blocks");
+    a.titleTextAt = *titleTextAt;
+    a.globalTextAt = *globalTextAt;
     if (language != 1) throw std::runtime_error("title assets: only the US language block (1) is mapped to files");
     a.vram.UploadTimToPage(vol.Read("arcade/arc_key_config.tim"), 0x1D);
     a.vram.UploadTimToPage(vol.Read("arcade/arc_font.tim"), 0x1E);

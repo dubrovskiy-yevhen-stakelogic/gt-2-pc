@@ -3339,6 +3339,77 @@ ace_demo) and at 0x80169584 / 0x8016E584 of work\re\arcade_race.
   status: mapped
   evidence: "gt2tool exe-map: 85 words compared with the SCUS_944.88 function; 7 relocated call(s), 1 relocated data half(s), 1 other difference(s) - instruction differs (A 2404000B / B 24040009)"
 
+- address: 0x80052040
+  name: view_mode
+  sim_address: 0x80052214
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the mode view (Sim 0x80052214); the port's kView constants."
+- address: 0x80052094
+  name: view_game
+  sim_address: 0x80052268
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the game view (Sim 0x80052268); the port's kView constants."
+- address: 0x800520E8
+  name: view_game2p
+  sim_address: 0x800522BC
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the game2p view (Sim 0x800522BC); the port's kView constants."
+- address: 0x8005213C
+  name: view_level
+  sim_address: 0x80052310
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the level view (Sim 0x80052310); the port's kView constants."
+- address: 0x80052190
+  name: view_class
+  sim_address: 0x80052364
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the class view (Sim 0x80052364); the port's kView constants."
+- address: 0x80052238
+  name: view_car
+  sim_address: 0x8005240C
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the car view (Sim 0x8005240C); the port's kView constants."
+- address: 0x8005228C
+  name: view_garage
+  sim_address: 0x80052460
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the garage view (Sim 0x80052460); the port's kView constants."
+- address: 0x80052334
+  name: view_course
+  sim_address: 0x80052508
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the course view (Sim 0x80052508); the port's kView constants."
+- address: 0x800525C8
+  name: view_bonus
+  sim_address: 0x8005279C
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the bonus view (Sim 0x8005279C); the port's kView constants."
+- address: 0x800523DC
+  name: view_guestload
+  sim_address: 0x800525B0
+  size: 0x54
+  kind: data
+  status: mapped
+  evidence: "The init/update/draw callbacks and the title pointer of the guestload view (Sim 0x800525B0); the port's kView constants."
+
 # ---- address profile ranges (the block below is GENERATED; replace it wholesale, never edit by hand):
 #   build\gt2tool.exe exe-map "<Sim v1.2 disc>" "<this build's disc>" --ranges-yaml <file>
 # kind data-range = a run of lui-built data references of aligned code of both builds (SCUS_944.88 -> SCUS_944.55) with one delta,

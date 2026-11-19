@@ -6,6 +6,7 @@
 
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/save_data.h"
+#include "gt2formats/save_ids.h"
 
 namespace gt2 {
 
@@ -411,7 +412,7 @@ ReplayFile LoadReplayEntry(const ReplayCardFile& file, int index) {
 ReplayFile LoadReplay(std::span<const uint8_t> bytes, int index) {
     if (bytes.size() == 128 * 1024 && bytes[0] == 'M' && bytes[1] == 'C') {
         const std::vector<uint8_t> file = ReadReplayCardFile(bytes);
-        if (file.empty()) throw std::runtime_error(std::string("no ") + kReplayCardFileName + " on the memory card");
+        if (file.empty()) throw std::runtime_error("no " + ActiveSaveFileIds().replay + " on the memory card");
         return LoadReplayEntry(ReplayCardFile::FromBytes(file), index);
     }
     if (bytes.size() >= kReplayDataStart && bytes[0] == 'S' && bytes[1] == 'C') {
@@ -435,7 +436,7 @@ uint8_t FrameChecksum(const uint8_t* f) {
 
 std::vector<uint8_t> ReadReplayCardFile(std::span<const uint8_t> card) {
     for (const MemoryCardFile& f : ReadMemoryCardFiles(card))
-        if (f.name == kReplayCardFileName) return f.bytes;
+        if (f.name == ActiveSaveFileIds().replay) return f.bytes;
     return {};
 }
 
@@ -448,10 +449,11 @@ int CardImageFreeBlocks(std::span<const uint8_t> card) {
 void StoreReplayCardFile(std::vector<uint8_t>& card, std::span<const uint8_t> file) {
     if (card.size() != kCardImageSize || card[0] != 'M' || card[1] != 'C') throw std::runtime_error("not a PS1 memory card image");
     const size_t blocks = (file.size() + kReplayCardBlock - 1) / kReplayCardBlock;
+    const std::string& replayName = ActiveSaveFileIds().replay;
     std::vector<size_t> chain;
     for (size_t i = 1; i <= kCardBlocks; i++) { // the existing file's chain
         const uint8_t* f = card.data() + i * kFrame;
-        if (Le32(f) != 0x51 || std::strncmp(reinterpret_cast<const char*>(f + 10), kReplayCardFileName, 20) != 0) continue;
+        if (Le32(f) != 0x51 || std::strncmp(reinterpret_cast<const char*>(f + 10), replayName.c_str(), 20) != 0) continue;
         size_t b = i;
         for (size_t guard = 0; guard < kCardBlocks; guard++) {
             chain.push_back(b);
@@ -481,7 +483,7 @@ void StoreReplayCardFile(std::vector<uint8_t>& card, std::span<const uint8_t> fi
             PutLe32(f + 4, k == 0 ? uint32_t(blocks * kReplayCardBlock) : 0);
             const uint16_t next = k + 1 == chain.size() ? 0xFFFF : uint16_t(chain[k + 1] - 1);
             f[8] = uint8_t(next), f[9] = uint8_t(next >> 8);
-            if (k == 0) std::memcpy(f + 10, kReplayCardFileName, std::strlen(kReplayCardFileName));
+            if (k == 0) std::memcpy(f + 10, replayName.data(), replayName.size());
             f[kFrame - 1] = FrameChecksum(f);
         }
     }

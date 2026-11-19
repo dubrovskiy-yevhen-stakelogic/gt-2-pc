@@ -24,7 +24,12 @@
 #include "game/audio/music_player.h"
 #include "game/audio/menu_music.h"
 #include "game/shell/title_menu.h"
+#include "game/career/tuning.h"
+#include "game/career/career_state.h"
+#include "gt2formats/save_data.h"
 #include "game/shell/title_options.h"
+#include "gt2formats/save_ids.h"
+#include "gt2formats/arcade_menu_data.h"
 #include "game/shell/title_screens.h"
 #include "gt2view/scene_types.h"
 #include <chrono>
@@ -532,6 +537,49 @@ int main(int argc, char** argv) {
         try { gt2::DiscImage bad(path.string()); } catch (const std::exception&) { rejected = true; }
         Check(rejected, "truncated disc must be rejected");
         Check(std::filesystem::remove(path), "failed disc constructor must release the file");
+
+        { // card file names come from the disc's executable (GT2+ appends 7C so both games coexist)
+            gt2::GuestImage exe;
+            exe.base = 0x80010000;
+            exe.bytes.resize(0x92000);
+            exe.profile = &gt2::SimProfile();
+            std::memcpy(exe.bytes.data() + (0x80091C94u - exe.base), "BASCUS-94455GAME7C", 18);
+            std::memcpy(exe.bytes.data() + (0x80091AB8u - exe.base), "BASCUS-94455REPL7C", 18);
+            const gt2::SaveFileIds ids = gt2::ReadSaveFileIds(exe);
+            Check(ids.game == "BASCUS-94455GAME7C" && ids.replay == "BASCUS-94455REPL7C", "card names come from the executable");
+        }
+        { // a GT2+ save lands beside an existing vanilla save without changing it
+            auto find = [](const std::vector<gt2::MemoryCardFile>& files, const std::string& name) -> const gt2::MemoryCardFile* {
+                for (const auto& f : files) if (f.name == name) return &f;
+                return nullptr;
+            };
+            gt2::SetActiveSaveFileIds({});
+            std::vector<uint8_t> card = gt2::career::FormatMemoryCard();
+            gt2::career::CareerSave save;
+            save.header.assign(0x200, 0);
+            save.header[0] = 'S'; save.header[1] = 'C'; save.header[3] = 4;
+            gt2::career::StoreCareerOnCard(card, save);
+            const auto before = gt2::ReadMemoryCardFiles(card);
+            const gt2::MemoryCardFile* vanilla = find(before, "BASCUS-94455GAME");
+            Check(vanilla != nullptr, "vanilla save is on the card");
+            const std::vector<uint8_t> vanillaBytes = vanilla->bytes;
+            gt2::SetActiveSaveFileIds({"BASCUS-94455GAME7C", "BASCUS-94455REPL7C"});
+            gt2::career::StoreCareerOnCard(card, save);
+            const auto files = gt2::ReadMemoryCardFiles(card);
+            const gt2::MemoryCardFile* stillVanilla = find(files, "BASCUS-94455GAME");
+            Check(stillVanilla != nullptr && find(files, "BASCUS-94455GAME7C") != nullptr, "both saves coexist");
+            Check(stillVanilla->bytes == vanillaBytes, "GT2+ save leaves the vanilla save byte-identical");
+            Check(gt2::career::LoadCareerFromCard(card).CrcOk(), "the active GT2+ save loads");
+            gt2::SetActiveSaveFileIds({});
+        }
+        { // US Arcade v1.1 moved the menu text block and its strings; reference constants map to the new offsets.
+            gt2::ArcadeMenuData menu;
+            menu.textBase = 0x800F8290u;
+            menu.text.assign(0x330, 0);
+            std::memcpy(menu.text.data() + 0x162, "Max Speed", 10); // v1.1 address of the reference 0x800F8334
+            Check(menu.LegacyText(0x800F8334u) == "Max Speed", "v1.1 arcade text map");
+            Check(menu.Text(0x800F83F2u) == "Max Speed", "v1.1 arcade text base");
+        }
         std::cout << checks << " regression checks passed\n";
         return 0;
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }

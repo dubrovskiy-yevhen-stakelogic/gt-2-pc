@@ -71,6 +71,16 @@ std::span<const ExeProfile> KnownProfiles();
 const ExeProfile& SimProfile();
 std::span<const ProfileRange> ArcadeEuUiRanges();
 const ExeProfile* FindProfile(std::string_view exeSha1);
+
+// A known modified executable that keeps a stock build's address layout (GT2+ patches a menu check and the save
+// names only). Its data tables stay where the base build has them, so the base profile applies unchanged.
+struct KnownMod {
+    const char* exeSha1 = "";  // lower-case hex
+    const char* name = "";
+    const ExeProfile* base = nullptr;
+};
+std::span<const KnownMod> KnownMods();
+const KnownMod* FindMod(std::string_view exeSha1);
 // The profile of an executable image (GuestImage::fileSha1, set by LoadExeImage); throws for an unknown build.
 const ExeProfile& ProfileOf(const GuestImage& exe);
 // The profile of a disc (its executable's SHA-1); throws for an unknown build.

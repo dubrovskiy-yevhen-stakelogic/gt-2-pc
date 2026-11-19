@@ -94,6 +94,7 @@ GuestImage ArcadeLayout(const GuestImage& image, const ExeProfile& arcade) {
     out.module = image.module;
     out.fileName = image.fileName;
     out.fileSha1 = image.fileSha1;
+    out.modName = image.modName;
     out.profile = &arcade;
     uint32_t end = image.base;
     for (const ProfileRange& r : arcade.ranges) {
@@ -160,6 +161,7 @@ GuestImage UiLayout(GuestImage image, bool arcade) {
     out.module = image.module;
     out.fileName = image.fileName;
     out.fileSha1 = image.fileSha1;
+    out.modName = image.modName;
     out.profile = arcade ? &KnownProfiles()[1] : &SimProfile();
     out.bytes.resize(end - image.base);
     std::vector<uint32_t> source(out.bytes.size()), inverse(image.bytes.size());
@@ -223,15 +225,68 @@ GuestImage LoadExeImage(const DiscImage &disc) {
     image.fileName = name;
     image.fileSha1 = Sha1Hex(raw);
     image.profile = FindProfile(image.fileSha1);
+    if (!image.profile)
+        if (const KnownMod* mod = FindMod(image.fileSha1)) {
+            image.profile = mod->base;
+            image.modName = mod->name;
+        }
     if (!image.profile && IsCombinedDisc(disc)) {
         // The combined script patches only a few words of the Simulation executable, so its SHA-1 matches no profile.
         // Every address still belongs to the Simulation layout: play it as that build.
         for (const ExeProfile& p : KnownProfiles())
-            if (!p.arcade && image.fileName == p.exeName) image.profile = &p;
+            if (!p.arcade && image.fileName == p.exeName) {
+                image.profile = &p;
+                image.modName = "combined disc";
+            }
     }
     image.unknownBuild = image.profile == nullptr;
     image.module = -1;
     return image;
+}
+
+GuestImage RelocateImage(const GuestImage& image, const ExeProfile& target) {
+    const ExeProfile* source = image.profile;
+    if (!source) throw std::runtime_error("relocate: the image has no build profile");
+    GuestImage out;
+    out.base = image.base;
+    out.module = image.module;
+    out.fileName = image.fileName;
+    out.fileSha1 = image.fileSha1;
+    out.modName = image.modName;
+    out.profile = &target;
+    std::vector<uint8_t> bytes;
+    std::vector<uint32_t> simAt;       // target offset -> Simulation address (0 = not relocated)
+    std::vector<uint32_t> simFromSource; // source offset -> Simulation address (0 = not relocated)
+    auto ensure = [&](size_t size) {
+        if (bytes.size() < size) {
+            bytes.resize(size);
+            simAt.resize(size);
+        }
+    };
+    for (const ProfileRange& r : target.ranges) {
+        if (r.scope != image.module) continue;
+        for (uint32_t sim = r.simStart; sim < r.simEnd; ++sim) {
+            const auto to = target.TryData(sim, image.module);
+            if (!to) continue;
+            const auto from = source->TryData(sim, image.module);
+            if (!from || !image.Contains(*from, 1)) continue;
+            if (*to < out.base) continue;
+            const size_t at = size_t(*to - out.base);
+            ensure(at + 1);
+            bytes[at] = image.bytes[*from - image.base];
+            simAt[at] = sim;
+            if (simFromSource.size() <= size_t(*from - image.base)) simFromSource.resize(size_t(*from - image.base) + 1);
+            simFromSource[*from - image.base] = sim;
+        }
+    }
+    for (size_t at = 0; at + 4 <= bytes.size(); at += 4) {
+        uint32_t word;
+        std::memcpy(&word, bytes.data() + at, 4);
+        if (word < image.base || size_t(word - image.base) + 4 > simFromSource.size() || simFromSource[word - image.base] == 0) continue;
+        if (const auto to = target.TryData(simFromSource[word - image.base], image.module)) std::memcpy(bytes.data() + at, &*to, 4);
+    }
+    out.bytes = std::move(bytes);
+    return out;
 }
 
 GuestImage LoadOverlayImage(const DiscImage& disc, uint32_t index) {
@@ -251,6 +306,7 @@ GuestImage LoadOverlayImage(const DiscImage& disc, uint32_t index) {
     image.fileName = exe.fileName;
     image.fileSha1 = exe.fileSha1;
     image.profile = exe.profile;
+    image.modName = exe.modName;
     image.unknownBuild = exe.unknownBuild;
     image.module = int(index);
     return image;
