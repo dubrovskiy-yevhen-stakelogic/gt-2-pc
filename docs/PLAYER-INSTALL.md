@@ -1,8 +1,9 @@
 # Player installation
 
 Download the file for your platform from the latest release. The packaged builds
-need no compiler, SDK or dependency installation. Game data and firmware are not
-bundled or downloaded; supply your own supported BIN/CUE images.
+need no compiler or SDK; the Linux binary ZIP uses your distribution's SDL2,
+GTK 3 and Vulkan loader. Game data and firmware are not bundled or downloaded;
+supply your own supported BIN/CUE images.
 
 | Platform | Release file | Installer / entry point |
 |---|---|---|
@@ -11,12 +12,15 @@ bundled or downloaded; supply your own supported BIN/CUE images.
 | Quest standalone | `GT2-VR-<version>.apk` | Headset installer or ADB |
 | macOS | `GT2-<version>-macos-<arch>.dmg` | Drag GT2 to Applications |
 | Linux desktop / Steam Deck | `GT2-<version>-linux-x86_64.flatpak` | `flatpak install --user <file>` |
+| Linux binary (x86_64 / arm64) | `GT2-<version>-linux-<arch>.zip` | `bin/gt2launcher` |
 | Browser | `GT2-Web-<version>.zip` | Serve the contents over HTTP(S) |
 
 The same x86_64 Flatpak runs on Steam Deck and other Flatpak-enabled Linux
 desktops; `INSTALL-STEAMDECK.sh` adds the Deck desktop shortcut and preset. The
-tagged source archive remains available for building any platform. No old
-release is needed for a different platform.
+Linux ZIP extracts without an install step and stores discs and saves under
+`~/.local/share/GT2`; its `README.txt` lists the SDL2, GTK 3 and Vulkan packages
+for common distributions. The tagged source archive remains available for
+building any platform. No old release is needed for a different platform.
 
 Supply your supported complete BIN/CUE images. See [disc support](EUROPEAN-DISCS.md).
 A 2048-byte ISO lacks required audio/video sectors. Game data and firmware are not
