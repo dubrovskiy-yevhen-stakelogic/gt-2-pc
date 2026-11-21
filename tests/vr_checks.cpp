@@ -164,6 +164,29 @@ int main() {
         textures.Begin(); textures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
         Check(textures.pixels[2 * gt2view::DecodedTextureCache::kTexels] == 0, "direct-colour zero texels retain transparent coverage");
         {
+            gt2view::DecodedTextureCache soft;
+            std::vector<uint32_t> pageVram(1024 * 512);
+            // 8-bit palette page: the soften bit (30) must not leak into the depth field.
+            pageVram[size_t(64) * 1024] = 0x0101; // indices 1,1 for the first two texels of row 0
+            pageVram[1] = 0x001f;                 // palette index 1 = red, index 0 stays transparent
+            soft.Begin(); soft.Prepare(64u << 16, 1u << 28, pageVram.data(), 512, false, true);
+            Check(soft.pixels[0] == 0xff0000ff, "softened page keeps its palette depth");
+            // A sharp and a softened request for the same page/palette are separate layers.
+            gt2view::DecodedTextureCache lines;
+            const uint32_t page = 256u << 16, clut = 2u << 28;
+            for (int y = 0; y < 3; ++y) for (int x = 10; x < 13; ++x) pageVram[size_t(256 + y) * 1024 + x] = 0x7c00;
+            pageVram[size_t(257) * 1024 + 11] = 0x001f;
+            lines.Begin();
+            lines.Prepare(page, clut, pageVram.data(), 512);
+            const uint32_t sharp = lines.pixels[267];
+            lines.Prepare(page, clut, pageVram.data(), 512, false, true);
+            Check(sharp == 0xff0000ff && lines.pixels[267] == sharp,
+                  "sharp decode survives a later softened request for the same page");
+            Check(lines.uploads.size() == 2 &&
+                  lines.pixels[2 * gt2view::DecodedTextureCache::kTexels + 267] == 0xffe2001c,
+                  "softened page decodes into its own layer and prefilters painted texels");
+        }
+        {
             gt2view::DecodedTextureCache pressure;
             auto lookup = [&](uint32_t page, uint32_t clut) {
                 uint32_t bucket=gt2view::DecodedTextureCache::Bucket(page,clut);

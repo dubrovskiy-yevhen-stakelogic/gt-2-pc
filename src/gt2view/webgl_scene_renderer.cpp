@@ -140,7 +140,7 @@ void WebGlSceneRenderer::PrepareMaterials(const std::vector<DrawItem>& items) {
                 for (uint32_t i=0;i<item.vertexCount;i+=3) {
                     const auto& v=shadow_[item.firstVertex+i];
                     if (!(v.flags&kTextured) || (v.flags&(kOverlay|kExternalTexture|kHandTexture|kHdUi|kSmoothUi))) continue;
-                    const auto key=uint64_t(v.page)|(uint64_t(v.clut|(((v.flags>>8)&3u)<<28)|((v.flags&kCarPaint)?1u<<30:0u))<<32);
+                    const auto key=uint64_t(v.page)|(uint64_t(v.clut|(((v.flags>>8)&3u)<<28)|((v.flags&kCarPaint)?1u<<30:0u)|((v.flags&kCourseSoft)?1u<<29:0u))<<32);
                     if (seen.insert(key).second) it->second.push_back(v);
                 }
             }
@@ -148,8 +148,9 @@ void WebGlSceneRenderer::PrepareMaterials(const std::vector<DrawItem>& items) {
                 auto clut=v.clut;
                 if (v.flags&kCarPaint) { clut+=item.paint<<16; if ((clut&65535)==224 && item.brakeLit) clut+=16; }
                 const auto clutDepth=clut|(((v.flags>>8)&3)<<28);
-                if (pass == 0) decoded_.Protect(v.page,clutDepth);
-                else decoded_.Prepare(v.page,clutDepth,vramShadow_.data(),kVramRows);
+                const bool soften=(v.flags&kCourseSoft)!=0;
+                if (pass == 0) decoded_.Protect(v.page,clutDepth,false,soften);
+                else decoded_.Prepare(v.page,clutDepth,vramShadow_.data(),kVramRows,false,soften);
             }
     }
     }

@@ -25,6 +25,9 @@ void main() {
     vec4 screen=pc.mvp*vec4(inPos,1);
     gl_Position=screen;
     gl_Position.z*=1.0+float((inFlags>>12)&3u)*2e-5;
+    // Flat course decals (kCourseDecal, model-only bit 31) get a fixed extra offset over the asphalt. External
+    // textures reuse that bit for their mirror mask, so they keep their normal depth.
+    if((inFlags&2147483648u)!=0u&&(inFlags&16u)==0u)gl_Position.z*=1.0005;
     outTexel=inTexel;outColor=inColor;outPage=inPage;outClut=inClut;outFlags=inFlags;
     outTexelAffine=inTexel;outColorAffine=inColor;outRect=inRect;
     outScreen=vec3(screen.xy,screen.w);outCache=inCode;outPaintView=vec3(0,0,-1);

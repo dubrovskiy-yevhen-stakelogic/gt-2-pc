@@ -73,6 +73,8 @@ uint cachedPage() {
         if ((clut & 65535u) == 224u && pc.brakeLit != 0u) clut += 16u;
     }
     uint key = clut | (((inFlags >> 8) & 3u) << 28);
+    // kCourseSoft: painted-road texels are decoded into their own softened layer.
+    if ((inFlags & 1073741824u) != 0u) key |= 1073741824u;
     // Must match DecodedTextureCache::Bucket, including the high CLUT row bits.
     uint at = (inPage * 73856093u) ^ (key * 19349663u);
     at ^= at >> 16;
@@ -94,8 +96,9 @@ void main() {
     // Ordering-table tier (flags bits 12-13, 0 = none): reversed Z, so a larger clip z is nearer. 2e-5 of the
     // distance per tier (0.6 mm at 30 m) keeps coplanar decals above their surface and nothing else.
     gl_Position.z *= 1.0 + float((inFlags >> 12) & 3u) * 2e-5;
-    // Flat course decals get a fixed extra offset over the asphalt they are painted on.
-    if ((inFlags & 536870912u) != 0u) gl_Position.z *= 1.0005;
+    // Flat course decals (kCourseDecal, model-only bit 31) get a fixed extra offset over the asphalt. External
+    // textures reuse that bit for their mirror mask, so they keep their normal depth.
+    if ((inFlags & 2147483648u) != 0u && (inFlags & 16u) == 0u) gl_Position.z *= 1.0005;
     outTexel = inTexel;
     outColor = inColor;
     outPaintView=vec3(0,0,-1);

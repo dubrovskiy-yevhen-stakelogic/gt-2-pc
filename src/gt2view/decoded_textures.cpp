@@ -151,25 +151,29 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                     if (v.flags & (kOverlay | kExternalTexture | kHdUi)) { materials.push_back(~uint64_t(0)); continue; }
                     if (!(v.flags & kTextured)) continue;
                     const uint32_t clutDepth = v.clut | (((v.flags >> 8) & 3u) << 28);
-                    const uint64_t key = uint64_t(v.page) | (uint64_t(clutDepth) << 32) | ((v.flags & kCarPaint) ? uint64_t(1) << 63 : 0);
+                    // Bit 62 is the cache's soften bit (bit 30 of clutDepth): softened and sharp requests for the
+                    // same page must not share one decoded layer.
+                    const uint64_t key = uint64_t(v.page) | (uint64_t(clutDepth) << 32) |
+                        ((v.flags & kCarPaint) ? uint64_t(1) << 63 : 0) |
+                        ((v.flags & kCourseSoft) ? uint64_t(1) << 62 : 0);
                     materials.push_back(key);
                 }
                 std::sort(materials.begin(), materials.end());
                 materials.erase(std::unique(materials.begin(), materials.end()), materials.end());
             }
             bool supported = true;
-            const bool soften = item.space == kSpaceWorld && item.vertexCount && (vertices[item.firstVertex].flags & kCourseSoft);
             const uint32_t misses = decoded_.misses;
             for (uint64_t key : it->second) {
                 if (key == ~uint64_t(0)) { supported = false; continue; }
                 uint32_t clutDepth = uint32_t(key >> 32) & 0x7fffffffu;
+                const bool soften = (key & (uint64_t(1) << 62)) != 0;
                 if (key >> 63) {
                     clutDepth += item.paint << 16;
                     if ((clutDepth & 65535) == 224 && item.brakeLit) clutDepth += 16;
                 }
                 // Decode from the CPU copy: repeated palette reads from the mapped
                 // GPU upload allocation can stall for seconds on discrete GPUs.
-                if (pass == 0) decoded_.Protect(uint32_t(key), clutDepth, item.softParticle != 0);
+                if (pass == 0) decoded_.Protect(uint32_t(key), clutDepth, item.softParticle != 0, soften);
                 else decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows, item.softParticle != 0, soften);
             }
             cachedDraws_[draw] = supported && decoded_.misses == misses;

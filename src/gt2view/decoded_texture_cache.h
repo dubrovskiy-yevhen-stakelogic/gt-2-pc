@@ -32,8 +32,8 @@ public:
     }
     // Reserve every material of this submission before decoding any of them.
     // Slots used by earlier menus or courses may then be reused safely.
-    void Protect(uint32_t page, uint32_t clutDepth, bool priority = false) {
-        const auto key = Key(page, clutDepth);
+    void Protect(uint32_t page, uint32_t clutDepth, bool priority = false, bool softenLines = false) {
+        const auto key = Key(page, Soften(clutDepth, softenLines));
         protected_.insert(key);
         if (priority) priority_.insert(key);
     }
@@ -49,6 +49,7 @@ public:
     template<class Word>
     void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false, bool softenLines = false) {
         if (pixels.empty()) pixels.resize(size_t(kLayers) * kTexels);
+        clutDepth = Soften(clutDepth, softenLines);
         const uint64_t key = Key(page, clutDepth);
         protected_.insert(key);
         auto it = entries_.find(key);
@@ -84,7 +85,7 @@ public:
             if (entry.dirty) {
                 uint32_t classes = 0;
                 const uint32_t px = page & 65535, py = page >> 16;
-                const uint32_t cx = clutDepth & 65535, cy = (clutDepth & 0x0fffffffu) >> 16, depth = clutDepth >> 28;
+                const uint32_t cx = clutDepth & 65535, cy = (clutDepth & 0x0fffffffu) >> 16, depth = (clutDepth >> 28) & 3u;
                 const auto word = [&](uint32_t x, uint32_t y) { const uint64_t at = uint64_t(y) * 1024 + x; return at < uint64_t(rows) * 1024 ? vram[at] : 0u; };
                 for (uint32_t y = 0; y < 256; ++y) for (uint32_t x = 0; x < 256; ++x) {
                     uint32_t texel;
@@ -144,6 +145,12 @@ public:
         ++misses;
     }
 private:
+    // Bit 30 of the cache key: the same page/palette must be decoded twice when one draw wants the painted-texel
+    // prefilter and another wants it sharp. Bit 30 is unused by clut (Y stops at bit 24) and by the depth field.
+    static constexpr uint32_t kSoftenKey = 1u << 30;
+    static uint32_t Soften(uint32_t clutDepth, bool softenLines) {
+        return softenLines ? clutDepth | kSoftenKey : clutDepth;
+    }
     static uint32_t Expand(uint32_t v) { return (v << 3) | (v >> 2); }
     static uint64_t Key(uint32_t page, uint32_t clutDepth) { return (uint64_t(page) << 32) | clutDepth; }
     std::unordered_map<uint64_t, Entry> entries_;

@@ -69,10 +69,14 @@ constexpr uint32_t kHdUi = 1u << 17; // Offline enlarged indices; the palette st
 constexpr uint32_t kSemiTransparent = 1u << 10, kCullBack = 1u << 11, kNearTierShift = 12;
 // A flat road decal (start/finish line, kerb, painted strip) lying on the asphalt. It gets a fixed extra depth
 // offset so a subpixel camera step cannot flip it against the road it is painted on.
-constexpr uint32_t kCourseDecal = 1u << 29;
+// Every flags bit already has an owner, so course draws use the two model-only bits (kModelMirrorMask,
+// kModelAlphaNonzero): those are read only inside the native-model and external-texture branches, which course
+// geometry never reaches. The shaders test bit 31 only when bit 4 (kExternalTexture) is clear, so native glass
+// keeps its normal depth. Bit 29 (kCabinSolid) must not be used here - the untextured path tints it as cabin trim.
+constexpr uint32_t kCourseDecal = 1u << 31;
 // Course road texels: a one-texel prefilter of saturated/pale painted texels (baked lines), so a moving camera
 // fades the line edge instead of crawling. Asphalt stays sharp.
-constexpr uint32_t kCourseSoft = 1u << 19;
+constexpr uint32_t kCourseSoft = 1u << 30;
 // kIntegerModulate: textured 2D (menus) - the colour modulation in the GPU's integer form, (5-bit texel * 8-bit
 // colour) >> 7, so that the frame equals the console's (gt2view/menu_view.h).
 constexpr uint32_t kIntegerModulate = 1u << 14;
