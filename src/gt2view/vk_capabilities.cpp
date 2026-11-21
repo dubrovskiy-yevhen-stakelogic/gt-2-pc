@@ -187,9 +187,9 @@ VulkanCapabilities ProbeVulkan() {
         if (enumerateDeviceExtensions) {
             uint32_t count = 0;
             enumerateDeviceExtensions(device, nullptr, &count, nullptr);
-            std::vector<VkExtensionProperties> extensions(count);
-            if (count) enumerateDeviceExtensions(device, nullptr, &count, extensions.data());
-            gpu.swapchain = HasExtension(extensions.data(), count, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            std::vector<VkExtensionProperties> deviceExtensions(count);
+            if (count) enumerateDeviceExtensions(device, nullptr, &count, deviceExtensions.data());
+            gpu.swapchain = HasExtension(deviceExtensions.data(), count, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         }
         gpu.profile = ChooseGraphicsProfile(gpu.apiVersion, gpu.dynamicRendering);
         out.gpus.push_back(std::move(gpu));

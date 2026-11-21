@@ -169,6 +169,9 @@ int main() {
         // so this needs VK_KHR_fragment_shading_rate on the GPU. GT2_VK_RENDERPASS=1 forces the render passes on a 1.3
         // GPU, which is how this is testable without a 1.1 one; the frame must record without a pass/pipeline mismatch.
         if (device->existing.shadingRate) {
+            // Set the intended 4x configuration first: the preceding render left the renderer at 8x, where some GPUs
+            // do not support the 2x2 rate tile, and SetFoveation creates the map against the current sample count.
+            Render(renderer, items, 2, extent, 4);
             renderer.SetFoveation(2);
             if (renderer.Foveation() != 2) throw std::runtime_error("foveation did not create the shading-rate map");
             Render(renderer, items, 2, extent, 4);

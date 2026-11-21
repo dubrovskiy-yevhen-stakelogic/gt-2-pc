@@ -397,11 +397,16 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     appInfo.pEngineName = "gt2pc";
     // The runtime names the Vulkan versions it accepts: take the newest that it and the loader both offer. 1.3 gives
     // the renderer dynamic rendering, 1.1/1.2 the render-pass fallback (multiview is core in 1.1, so stereo works).
-    if (requirements.maxApiVersionSupported < VK_API_VERSION_1_1)
-        throw std::runtime_error("OpenXR: the runtime accepts no Vulkan newer than " + std::to_string(VK_API_VERSION_MAJOR(requirements.maxApiVersionSupported)) + "." +
-                                 std::to_string(VK_API_VERSION_MINOR(requirements.maxApiVersionSupported)) + ", but the renderer needs 1.1 or newer");
-    const uint32_t minVersion = std::max(uint32_t(requirements.minApiVersionSupported), uint32_t(VK_API_VERSION_1_1));
-    const uint32_t vulkanVersion = std::min(std::max(gt2view::RequestedInstanceApiVersion(), minVersion), uint32_t(requirements.maxApiVersionSupported));
+    // XrVersion and VkVersion encode differently (major<<48 vs major<<22), so convert before comparing.
+    const auto vulkanVersionOf = [](XrVersion version) {
+        return VK_MAKE_API_VERSION(0, XR_VERSION_MAJOR(version), XR_VERSION_MINOR(version), 0);
+    };
+    const uint32_t maxApiVersion = vulkanVersionOf(requirements.maxApiVersionSupported);
+    if (maxApiVersion < VK_API_VERSION_1_1)
+        throw std::runtime_error("OpenXR: the runtime accepts no Vulkan newer than " + std::to_string(VK_API_VERSION_MAJOR(maxApiVersion)) + "." +
+                                 std::to_string(VK_API_VERSION_MINOR(maxApiVersion)) + ", but the renderer needs 1.1 or newer");
+    const uint32_t minVersion = std::max(vulkanVersionOf(requirements.minApiVersionSupported), uint32_t(VK_API_VERSION_1_1));
+    const uint32_t vulkanVersion = std::min(std::max(gt2view::RequestedInstanceApiVersion(), minVersion), maxApiVersion);
     appInfo.apiVersion = vulkanVersion;
     VkInstanceCreateInfo vici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     vici.pApplicationInfo = &appInfo;
