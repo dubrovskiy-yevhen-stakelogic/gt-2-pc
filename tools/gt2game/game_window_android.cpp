@@ -276,8 +276,10 @@ AndroidWindow::AndroidWindow(const std::string& title, bool deterministic) : det
     if (!rates.empty()) std::printf("xr: refresh rates offered: %s\n", rates.c_str());
     std::printf("xr: cinema quad %dx%d (%s)\n", kCinemaWidth, kCinemaHeight, title.c_str());
 
-    const gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
-                                                session_->Queue(), session_->Info().shadingRate};
+    gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
+                                          session_->Queue(), session_->Info().shadingRate};
+    existing.dynamicRendering = info.dynamicRendering;
+    existing.multiview = info.multiview;
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(session_->PhysicalDevice(), &props);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Run on Vulkan 1.1/1.2 GPUs with a render-pass fallback (Vulkan 1.3 keeps dynamic rendering), report the loader, GPUs, available memory and chosen path with `gt2game --diagnose`, and start with a clear error on a machine without `vulkan-1.dll` instead of failing inside the loader. VR follows the same rule: a runtime that offers only Vulkan 1.1 or 1.2 gets multiview render passes, and foveation uses the extension's shading-rate attachment on that path. `GT2_VK_RENDERPASS=1` forces the fallback for testing.
+- Renderer memory follows the content: the vertex arena and native-model storage grow on demand instead of reserving 137 MiB, so scenes and menus allocate only the geometry they upload. Allocation peaks are logged, and a new vertex-arena audit covers sparse indices, growth, holes and relocation.
 - Install all prepared retail and mod datasets on Quest, including Combined discs, without replacing existing saves.
 - Keep the selected Combined dataset and its memory cards when switching between Arcade and Simulation.
 

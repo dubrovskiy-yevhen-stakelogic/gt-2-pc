@@ -28,7 +28,7 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
     uint space;   // DrawItem::space
     uint eye;     // the two-pass path's array layer
-    uvec2 reserved;
+    int vertexBias; uint reserved;
     vec4 hudClip;
     vec4 nativeModelRotation;
 } pc;
@@ -108,7 +108,7 @@ void main() {
 #ifndef GT2_CACHED
     outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
     if((inFlags & 64u)!=0u) {
-        vec3 sourceNormal=nativeVertices.entries[gl_VertexIndex-1228800].xyz;
+        vec3 sourceNormal=nativeVertices.entries[gl_VertexIndex + pc.vertexBias - 1228800].xyz;
         if(pc.space==0u) {
             mat3 basis=nativeProjectedBasis(views.worldVP[v]);
             vec3 ray=transpose(basis)*nativeProjectedRay(p.xyz,views.worldVP[v]);

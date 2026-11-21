@@ -36,13 +36,13 @@ VkContext::VkContext(void*, void* window) : window_(window) {
         if (portability) extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
         app.pApplicationName = "GT2";
-        app.apiVersion = VK_API_VERSION_1_3;
+        app.apiVersion = RequestedInstanceApiVersion();
         VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
         ici.pApplicationInfo = &app;
         ici.flags = portability ? VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR : 0;
         ici.enabledExtensionCount = uint32_t(extensions.size());
         ici.ppEnabledExtensionNames = extensions.data();
-        Check(vkCreateInstance(&ici, nullptr, &instance_), "vkCreateInstance (Vulkan 1.3 / MoltenVK 1.3 or newer required)");
+        Check(vkCreateInstance(&ici, nullptr, &instance_), "vkCreateInstance (Vulkan 1.1 or newer required)");
         if (!SDL_Vulkan_CreateSurface(sdlWindow, instance_, &surface_)) throw std::runtime_error(SDL_GetError());
 
         uint32_t count = 0;
@@ -51,15 +51,12 @@ VkContext::VkContext(void*, void* window) : window_(window) {
         Check(vkEnumeratePhysicalDevices(instance_, &count, devices.data()), "enumerate GPUs");
         int bestScore = -1;
         bool enableSubset = false;
+        VkDeviceFeatures chosen{};
         for (auto pd : devices) {
             VkPhysicalDeviceProperties properties{};
             vkGetPhysicalDeviceProperties(pd, &properties);
-            if (properties.apiVersion < VK_API_VERSION_1_3) continue;
-            VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-            VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-            features.pNext = &f13;
-            vkGetPhysicalDeviceFeatures2(pd, &features);
-            if (!f13.dynamicRendering) continue;
+            if (properties.apiVersion < VK_API_VERSION_1_1) continue;
+            const VkDeviceFeatures features = QueryDeviceFeatures(pd, properties.apiVersion);
             uint32_t n = 0;
             Check(vkEnumerateDeviceExtensionProperties(pd, nullptr, &n, nullptr), "device extensions");
             std::vector<VkExtensionProperties> devExtensions(n);
@@ -77,23 +74,32 @@ VkContext::VkContext(void*, void* window) : window_(window) {
                     bestScore = score;
                     physical_ = pd;
                     queueFamily_ = q;
+                    chosen = features;
                     // Use the extension name without requiring provisional Vulkan beta structs.
                     enableSubset = Has(devExtensions, "VK_KHR_portability_subset");
                 }
                 break;
             }
         }
-        if (!physical_) throw std::runtime_error("No presenting Vulkan 1.3 GPU with dynamic rendering. Update the graphics driver/runtime (MoltenVK on macOS).");
+        if (!physical_) throw std::runtime_error("No presenting Vulkan 1.1 GPU. Update the graphics driver/runtime (MoltenVK on macOS).");
+        dynamicRendering_ = chosen.dynamicRendering && !ForceRenderPassPath();
+        multiview_ = chosen.multiview;
         const float priority = 1.0f;
         VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
         qci.queueFamilyIndex = queueFamily_;
         qci.queueCount = 1;
         qci.pQueuePriorities = &priority;
+        VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        f11.multiview = multiview_ ? VK_TRUE : VK_FALSE;
         VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         f13.dynamicRendering = VK_TRUE;
+        VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        features.pNext = &f11;
+        // VkPhysicalDeviceVulkan13Features may only be chained when the device itself is 1.3.
+        if (chosen.dynamicRendering) f11.pNext = &f13;
         const char* devExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"};
         VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-        dci.pNext = &f13;
+        dci.pNext = &features;
         dci.queueCreateInfoCount = 1;
         dci.pQueueCreateInfos = &qci;
         dci.enabledExtensionCount = enableSubset ? 2 : 1;
@@ -102,7 +108,8 @@ VkContext::VkContext(void*, void* window) : window_(window) {
         vkGetDeviceQueue(device_, queueFamily_, 0, &queue_);
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(physical_, &properties);
-        std::printf("graphics: SDL Vulkan, %s%s\n", properties.deviceName, enableSubset ? " (portability / Metal)" : "");
+        std::printf("graphics: SDL Vulkan, %s%s, %s\n", properties.deviceName, enableSubset ? " (portability / Metal)" : "",
+                    dynamicRendering_ ? "dynamic rendering" : "render passes (Vulkan 1.1/1.2)");
     } catch (...) {
         if (device_) vkDestroyDevice(device_, nullptr);
         if (surface_) vkDestroySurfaceKHR(instance_, surface_, nullptr);
@@ -113,7 +120,7 @@ VkContext::VkContext(void*, void* window) : window_(window) {
 
 VkContext::VkContext(const Existing& e)
     : instance_(e.instance), physical_(e.physical), device_(e.device), queueFamily_(e.queueFamily), queue_(e.queue),
-      owns_(false), shadingRate_(e.shadingRate) {}
+      owns_(false), shadingRate_(e.shadingRate), dynamicRendering_(e.dynamicRendering && !ForceRenderPassPath()), multiview_(e.multiview) {}
 VkContext::~VkContext() {
     if (!owns_) return;
     if (device_) vkDestroyDevice(device_, nullptr);

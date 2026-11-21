@@ -1,4 +1,5 @@
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2view/vk_render_pass.h"
 #include "gt2view/foveation.h"
 #include <algorithm>
 #include <cstdio>
@@ -8,11 +9,23 @@ void VkSceneRenderer::SetFoveation(int level) {
     level = std::clamp(level, 0, 3);
     if (level == foveation_) return;
     WaitFrame(); foveation_ = level;
-    if (stereoReady_) CreateRateImage();
+    if (!stereoReady_) return;
+    if (rateImage_.image) FillRateMap(); // contents only: the map is an attachment, so its handles must stay
+    else CreateRateImage();
+}
+// The map exists for the whole stereo target, even at level 0 (all 1x1): in the render-pass path it is an attachment,
+// and swapping the image would change the render pass and invalidate the pipelines built for it.
+void VkSceneRenderer::FillRateMap() {
+    auto* bytes = static_cast<uint8_t*>(rateUpload_.mapped);
+    for (uint32_t y = 0; y < rateExtent_.height; ++y) for (uint32_t x = 0; x < rateExtent_.width; ++x)
+        bytes[y * rateExtent_.width + x] = FoveationRate(x, y, rateExtent_.width, rateExtent_.height, foveation_);
+    rateUploaded_ = false;
 }
 void VkSceneRenderer::CreateRateImage() {
     DestroyImage(rateImage_); DestroyBuffer(rateUpload_); rateUploaded_ = false;
-    if (!foveation_ || !context_.ShadingRate()) return;
+    if (!context_.ShadingRate()) return;
+    // Without dynamic rendering the rate map is an attachment in a render pass, which needs vkCreateRenderPass2.
+    if (!context_.DynamicRendering() && !createRenderPass2_) { std::printf("vulkan: foveation needs vkCreateRenderPass2 or VK_KHR_create_renderpass2; off\n"); return; }
     auto getRates = reinterpret_cast<PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR>(vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
     uint32_t count = 0;
     if (!getRates || getRates(physical_, &count, nullptr) != VK_SUCCESS) return;
@@ -27,15 +40,13 @@ void VkSceneRenderer::CreateRateImage() {
     rateTexel_ = rateProperties.maxFragmentShadingRateAttachmentTexelSize;
     rateExtent_ = {(stereoExtent_.width + rateTexel_.width - 1) / rateTexel_.width,
                    (stereoExtent_.height + rateTexel_.height - 1) / rateTexel_.height};
-    rateImage_ = CreateImage(rateExtent_, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    rateImage_ = CreateImage(rateExtent_, kShadingRateFormat, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
     const size_t layerBytes = size_t(rateExtent_.width) * rateExtent_.height;
     rateUpload_ = CreateBuffer(layerBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    auto* bytes = static_cast<uint8_t*>(rateUpload_.mapped);
-    for (uint32_t y = 0; y < rateExtent_.height; ++y) for (uint32_t x = 0; x < rateExtent_.width; ++x)
-        bytes[y * rateExtent_.width + x] = FoveationRate(x, y, rateExtent_.width, rateExtent_.height, foveation_);
-    std::printf("vulkan: foveation %d, full-resolution centre / 2x2 periphery, map %ux%u, tile %ux%u; HUD full rate\n",
-        foveation_, rateExtent_.width, rateExtent_.height, rateTexel_.width, rateTexel_.height);
+    FillRateMap();
+    std::printf("vulkan: shading-rate map %ux%u, tile %ux%u, foveation level %d; HUD full rate\n",
+        rateExtent_.width, rateExtent_.height, rateTexel_.width, rateTexel_.height, foveation_);
 }
 void VkSceneRenderer::UploadRateImage() {
     if (!rateImage_.image || rateUploaded_) return;

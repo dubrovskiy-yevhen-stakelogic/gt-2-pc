@@ -1,6 +1,8 @@
 #pragma once
 #include "gt2view/model_texture_atlas.h"
+#include <array>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -16,7 +18,8 @@ namespace gt2view {
 // must put zNear into the clip z row (see ReversedZ in the callers); 2D layers use z = 1 (always in front, later
 // quads over earlier ones).
 //
-// Minimal Vulkan 1.3 (dynamic rendering) renderer: one vertex buffer, one PS1-VRAM buffer, N draws.
+// Minimal Vulkan renderer: dynamic rendering on 1.3, the same passes through render passes on 1.1/1.2; one packed
+// vertex arena (see vertexRuns_), one PS1-VRAM buffer, N draws.
 // One frame in flight.
 //
 // The instance / surface / device belong to the VkContext handed in (gt2view/vk_context.h): this class owns the
@@ -88,6 +91,8 @@ public:
     bool MenuCarMsaaTarget() const override { return true; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }
+    // Device memory this renderer has allocated so far (buffers and images), for the log and the memory audits.
+    uint64_t AllocatedBytes() const { return uint64_t(allocatedBytes_); }
     double EnvironmentGpuMilliseconds() const {return environmentGpuMs_;}
     double GpuMilliseconds() const { return gpuMs_; } // -1 when queue timestamps are unavailable
     // Corpus tools replace all model slots between cars. Give each independent
@@ -134,13 +139,16 @@ private:
         VkDeviceSize size = 0;
     };
 
-    struct PendingWrite { Buffer* buffer = nullptr; size_t offset = 0; std::vector<uint8_t> bytes; };
+    struct PendingWrite { Buffer* buffer = nullptr; size_t offset = 0; std::vector<uint8_t> bytes;
+                          size_t elementSize = 0; uint32_t first = 0, count = 0; }; // elementSize: a vertex range
     std::vector<PendingWrite> pendingWrites_;
     size_t pendingWriteCount_ = 0;
     bool deferUploads_ = false;
     std::vector<float> rectScratch_;
     std::vector<bool> vramKnown_;
     void WriteBuffer(Buffer& buffer, size_t offset, const void* data, size_t bytes);
+    // Writes `count` vertices of `elementSize` bytes at the virtual index `first` (see vertexRuns_).
+    void WriteVertices(Buffer& buffer, uint32_t first, uint32_t count, size_t elementSize, const void* data);
     void FlushFrameUploads(); // caller has waited for the frame fence
     void CreateSwapchain();
     void CreateOffscreen(VkExtent2D extent, VkFormat format); // the XR path's single target, instead of a swapchain
@@ -156,6 +164,7 @@ private:
         VkImageView layer[6] = {};           // individual stereo eyes or environment cube faces
         uint32_t layers = 1, mipLevels = 1;
         bool ownsImage = true;
+        VkDeviceSize allocated = 0;
     };
     Image CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples, VkImageAspectFlags aspect,
                       uint32_t layers = 1, uint32_t mipLevels = 1,bool cube = false);
@@ -175,13 +184,59 @@ private:
     void RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[9], size_t sceneItems);
     // The swapchain image `imageIndex` with the window's depth buffer, as a target for BeginTargetRendering.
     RenderTarget WindowTarget(uint32_t imageIndex) const;
-    // Begins dynamic rendering into `target` (colour loaded or cleared, depth cleared and not stored).
-    void BeginTargetRendering(const RenderTarget& target, VkAttachmentLoadOp colorLoad);
+    // ---- vertex arena ----
+    // The vertex index space is virtual and sparse: SceneRendererState assigns stable ranges (k*VertexBase), and
+    // SceneAssets and DrawItem::firstVertex speak those numbers. Only the ranges that are written are stored,
+    // packed into vertexBuffer_ / rectBuffer_ / environmentCodes_; a draw starts at its range's physical index and
+    // FrameParams::vertexBias maps gl_VertexIndex back to the virtual index (the shaders' native-model lookup).
+    // GPU memory then follows the content instead of the reserved layout (95 + 34 + 9 MiB fixed before).
+    struct VertexRun { uint32_t first, end, physical, capacity; }; // capacity: vertices reserved from `physical`
+    std::map<uint32_t, VertexRun> vertexRuns_;
+    // shortcut: freed blocks are reused but never compacted, so fragmentation is bounded by the largest range a
+    // scene rewrites at a new size; if that ever fills the arena, add compaction or per-range sizing.
+    std::map<uint32_t, uint32_t> vertexFree_; // physical start -> free vertices; reused before the high-water
+    uint32_t vertexUsed_ = 0, vertexCapacity_ = 0;
+    // Physical index of virtual `first`, allocating (and relocating overlapping runs) when the range is new.
+    // Callers must have waited for the frame fence when it can grow the buffers.
+    uint32_t ResolveVertex(uint32_t first, uint32_t count);
+    void GrowVertexArena(uint32_t vertices);
+    // The physical first vertex and the bias back to the virtual index (gl_VertexIndex + bias) for a draw of
+    // [first, first+count). False when the range was never uploaded or is not physically contiguous.
+    bool VertexRange(uint32_t first, uint32_t count, uint32_t& physicalFirst, int32_t& bias) const;
+    const SceneVertex* VertexAt(uint32_t index) const; // nullptr when the index was never uploaded
+    std::unordered_set<uint64_t> missingVertexRanges_; // warned once each, not every frame
+    // What a recorded pass needs beyond the target: resolve attachment, a colour-only MSAA pass, clear value,
+    // stereo foveation. The 1.3 path maps this to VkRenderingAttachmentInfo, the fallback to a render pass.
+    struct PassOptions {
+        VkAttachmentLoadOp colorLoad = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        VkImageView resolveView = VK_NULL_HANDLE;
+        bool discardColor = false;    // the MSAA colour is only the resolve source
+        bool transparentClear = false;
+        bool shadingRate = false;     // stereo: per-eye foveation attachment
+    };
+    // Begins dynamic rendering or, on Vulkan 1.1/1.2, an equivalent render pass into `target`.
+    void BeginTargetRendering(const RenderTarget& target, const PassOptions& options);
+    void EndTargetRendering();
+    void BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options);
+    VkRenderPass GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
+                               VkAttachmentLoadOp colorLoad, VkImageView rateView = VK_NULL_HANDLE);
+    void DestroyFramebuffers();
+    bool useDynamicRendering_ = false;
+    // Render passes are shared by every pipeline/framebuffer of the same attachment set; framebuffers are rebuilt
+    // whenever an image view is destroyed.
+    std::map<std::array<uint64_t, 6>, VkRenderPass> renderPasses_;
+    std::map<std::array<uint64_t, 5>, VkFramebuffer> framebuffers_;
     void DrawScenePass(const std::vector<DrawItem>& items, size_t sceneItems, uint32_t imageIndex);
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
     void DestroyBuffer(Buffer& b);
     uint32_t FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags flags) const;
+    // The native-model storage grows to the slots the content uses: a PS1-only install never pays its 12 + 1.5 MiB.
+    void EnsureNativeCapacity(Buffer& buffer, uint32_t& capacity, uint32_t need, uint32_t limit, size_t elementSize,
+                              uint32_t chunk, uint32_t binding);
+    uint32_t nativeVertexCapacity_ = 1, nativeMaterialCapacity_ = 1;
+    void ReportAllocation();
+    VkDeviceSize allocatedBytes_ = 0, reportedBytes_ = 0;
     void SaveScreenshot(const std::string& path);
     void SaveReadback(const std::string& path, VkExtent2D extent, VkFormat format);
 
@@ -193,6 +248,7 @@ private:
     PFN_vkCmdBeginRendering cmdBeginRendering_ = nullptr;
     PFN_vkCmdEndRendering cmdEndRendering_ = nullptr;
     PFN_vkCmdSetFragmentShadingRateKHR cmdSetShadingRate_ = nullptr;
+    PFN_vkCreateRenderPass2 createRenderPass2_ = nullptr; // foveation on the render-pass path (1.2 core / 1.1 extension)
     VkSampleCountFlags softParticleRateSamples_ = 0;
     uint32_t queueFamily_ = 0;
     VkQueue queue_ = VK_NULL_HANDLE;
@@ -286,6 +342,7 @@ private:
     VkExtent2D rateExtent_{}, rateTexel_{};
     int foveation_ = 0; bool rateUploaded_ = false;
     void CreateRateImage();
+    void FillRateMap();
     void UploadRateImage();
     VkImage externalStereoImage_ = VK_NULL_HANDLE;
     std::unordered_map<VkImage, Image> externalStereoViews_;
