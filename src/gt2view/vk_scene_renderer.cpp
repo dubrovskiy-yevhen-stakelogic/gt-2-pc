@@ -153,10 +153,14 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     Check(vkCreateSemaphore(device_, &sci, nullptr, &acquired_), "vkCreateSemaphore");
     Check(vkCreateSemaphore(device_, &sci, nullptr, &rendered_), "vkCreateSemaphore");
 
-    vertexBuffer_ = CreateBuffer(sizeof(SceneVertex) * kMaxVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    environmentCodes_=CreateBuffer(sizeof(uint32_t)*kMaxVertices,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    rectBuffer_ = CreateBuffer(sizeof(float) * 4 * kMaxVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    // The vertex arena starts small and follows the content (ResolveVertex walks vertexUsed_ up, never the
+    // reserved virtual layout).
+    vertexCapacity_ = 32768;
+    vertexBuffer_ = CreateBuffer(sizeof(SceneVertex) * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    rectBuffer_ = CreateBuffer(sizeof(float) * 4 * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     std::memset(rectBuffer_.mapped, 0, static_cast<size_t>(rectBuffer_.size));
+    environmentCodes_ = CreateBuffer(sizeof(uint32_t) * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    std::memset(environmentCodes_.mapped, 0, static_cast<size_t>(environmentCodes_.size));
     textureBuffer_ = CreateBuffer(sizeof(uint32_t) * kVramWidth * kVramRows, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(textureBuffer_.mapped, 0, static_cast<size_t>(textureBuffer_.size));
     vramShadow_.resize(size_t(kVramRows) * kVramWidth);
@@ -180,10 +184,10 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     std::memset(externalBuffer_.mapped, 0, static_cast<size_t>(externalBuffer_.size));
     viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes
     std::memset(viewBuffer_.mapped, 0, static_cast<size_t>(viewBuffer_.size));
-    nativeVertexBuffer_=CreateBuffer(size_t(8)*kModelSetVertexStride*sizeof(NativeModelVertex),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    nativeMaterialBuffer_=CreateBuffer(size_t(8)*kNativeMaterialsPerSlot*sizeof(NativeModelMaterial),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    std::memset(nativeVertexBuffer_.mapped,0,size_t(nativeVertexBuffer_.size));
-    std::memset(nativeMaterialBuffer_.mapped,0,size_t(nativeMaterialBuffer_.size));
+    nativeVertexBuffer_=CreateBuffer(sizeof(NativeModelVertex),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    nativeMaterialBuffer_=CreateBuffer(sizeof(NativeModelMaterial),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    *static_cast<NativeModelVertex*>(nativeVertexBuffer_.mapped)=NativeModelVertex{};
+    *static_cast<NativeModelMaterial*>(nativeMaterialBuffer_.mapped)=NativeModelMaterial{};
 
     if (offscreen_) CreateOffscreen(offscreenExtent, offscreenFormat);
     else CreateSwapchain();
@@ -278,13 +282,22 @@ VkSceneRenderer::Buffer VkSceneRenderer::CreateBuffer(VkDeviceSize size, VkBuffe
     Check(vkAllocateMemory(device_, &mai, nullptr, &b.memory), "vkAllocateMemory");
     Check(vkBindBufferMemory(device_, b.buffer, b.memory, 0), "vkBindBufferMemory");
     Check(vkMapMemory(device_, b.memory, 0, VK_WHOLE_SIZE, 0, &b.mapped), "vkMapMemory");
+    allocatedBytes_ += b.size;
+    ReportAllocation();
     return b;
 }
 
 void VkSceneRenderer::DestroyBuffer(Buffer& b) {
     if (b.buffer) vkDestroyBuffer(device_, b.buffer, nullptr);
-    if (b.memory) vkFreeMemory(device_, b.memory, nullptr);
+    if (b.memory) { allocatedBytes_ -= b.size; vkFreeMemory(device_, b.memory, nullptr); }
     b = {};
+}
+
+void VkSceneRenderer::ReportAllocation() {
+    constexpr VkDeviceSize step = 64ull << 20;
+    if (allocatedBytes_ / step <= reportedBytes_ / step) return;
+    reportedBytes_ = allocatedBytes_;
+    std::printf("graphics: %llu MiB GPU memory allocated\n", static_cast<unsigned long long>(allocatedBytes_ / (1024 * 1024)));
 }
 
 void VkSceneRenderer::CreateSwapchain() {
@@ -457,6 +470,9 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
     }
     Check(vkAllocateMemory(device_, &mai, nullptr, &img.memory), "vkAllocateMemory(scene)");
     Check(vkBindImageMemory(device_, img.image, img.memory, 0), "vkBindImageMemory(scene)");
+    img.allocated = req.size;
+    allocatedBytes_ += req.size;
+    ReportAllocation();
     VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     vci.image = img.image;
     vci.viewType = cube?VK_IMAGE_VIEW_TYPE_CUBE:layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
@@ -478,7 +494,7 @@ void VkSceneRenderer::DestroyImage(Image& img) {
         if (v) vkDestroyImageView(device_, v, nullptr);
     if (img.view) vkDestroyImageView(device_, img.view, nullptr);
     if (img.image && img.ownsImage) vkDestroyImage(device_, img.image, nullptr);
-    if (img.memory) vkFreeMemory(device_, img.memory, nullptr);
+    if (img.memory) { allocatedBytes_ -= img.allocated; vkFreeMemory(device_, img.memory, nullptr); }
     img = {};
 }
 
@@ -846,11 +862,177 @@ void VkSceneRenderer::WriteBuffer(Buffer& buffer, size_t offset, const void* dat
         std::memcpy(static_cast<uint8_t*>(buffer.mapped) + offset, data, bytes);
     }
 }
+void VkSceneRenderer::WriteVertices(Buffer& buffer, uint32_t first, uint32_t count, size_t elementSize, const void* data) {
+    if (!count) return;
+    const size_t bytes = size_t(count) * elementSize;
+    if (deferUploads_) {
+        if (pendingWriteCount_ == pendingWrites_.size()) pendingWrites_.emplace_back();
+        auto& write = pendingWrites_[pendingWriteCount_++];
+        write.buffer = &buffer; write.offset = 0; write.elementSize = elementSize;
+        write.first = first; write.count = count;
+        write.bytes.resize(bytes);
+        std::memcpy(write.bytes.data(), data, bytes);
+    } else {
+        WaitFrame();
+        const size_t offset = size_t(ResolveVertex(first, count)) * elementSize;
+        std::memcpy(static_cast<uint8_t*>(buffer.mapped) + offset, data, bytes);
+    }
+}
+
+uint32_t VkSceneRenderer::ResolveVertex(uint32_t first, uint32_t count) {
+    const uint32_t end = first + count;
+    constexpr uint32_t granularity = 512; // a run's block is rounded up, so small growth stays in place
+    auto next = vertexRuns_.upper_bound(first);
+    if (next != vertexRuns_.begin()) {
+        auto run = std::prev(next);
+        if (first < run->second.end && end <= run->second.end) return run->second.physical + (first - run->second.first);
+        // This write continues the run (inside it or right after it) and no other run starts inside the range.
+        const bool free = first >= run->second.first && first <= run->second.end &&
+                          (next == vertexRuns_.end() || next->second.first >= end);
+        if (free) {
+            const uint32_t need = end - run->second.first;
+            if (need <= run->second.capacity) {
+                run->second.end = end;
+                return run->second.physical + (first - run->second.first);
+            }
+            // The newest block can grow where it is, so chunked uploads stay O(1) instead of copying the run.
+            if (run->second.physical + run->second.capacity == vertexUsed_) {
+                uint32_t capacity = (std::max(need, run->second.capacity * 2) + granularity - 1) / granularity * granularity;
+                if (vertexUsed_ - run->second.capacity + capacity > vertexCapacity_)
+                    GrowVertexArena(vertexUsed_ - run->second.capacity + capacity);
+                vertexUsed_ += capacity - run->second.capacity;
+                run->second.capacity = capacity;
+                run->second.end = end;
+                return run->second.physical + (first - run->second.first);
+            }
+        }
+    }
+    // A new range, or one that grows a run which cannot grow in place: rebuild the touched runs into one run.
+    uint32_t lo = first, hi = end;
+    auto scan = vertexRuns_.lower_bound(first);
+    if (scan != vertexRuns_.begin() && std::prev(scan)->second.end >= lo) scan = std::prev(scan);
+    std::vector<VertexRun> moved;
+    while (scan != vertexRuns_.end() && scan->second.first <= hi) {
+        lo = std::min(lo, scan->second.first);
+        hi = std::max(hi, scan->second.end);
+        moved.push_back(scan->second);
+        scan = vertexRuns_.erase(scan);
+    }
+    uint32_t length = (hi - lo + granularity - 1) / granularity * granularity;
+    uint32_t physical = ~0u;
+    for (auto hole = vertexFree_.begin(); hole != vertexFree_.end(); ++hole) {
+        if (hole->second < length) continue;
+        physical = hole->first;
+        const uint32_t left = hole->second - length;
+        vertexFree_.erase(hole);
+        if (left) vertexFree_.emplace(physical + length, left);
+        break;
+    }
+    if (physical == ~0u) {
+        physical = vertexUsed_;
+        vertexUsed_ += length;
+        if (vertexUsed_ > vertexCapacity_) GrowVertexArena(vertexUsed_);
+        // Fragmentation can only make the packed content larger than the virtual span; the old buffer refused
+        // content past kMaxVertices the same way.
+        if (vertexUsed_ > vertexCapacity_) throw std::runtime_error("SetVertices: vertex buffer is full");
+    }
+    auto* vertexBytes = static_cast<uint8_t*>(vertexBuffer_.mapped);
+    auto* rectBytes = static_cast<uint8_t*>(rectBuffer_.mapped);
+    auto* codeBytes = static_cast<uint8_t*>(environmentCodes_.mapped);
+    auto freeBlock = [&](uint32_t start, uint32_t size) {
+        auto next = vertexFree_.upper_bound(start);
+        if (next != vertexFree_.begin()) {
+            auto before = std::prev(next);
+            if (uint64_t(before->first) + before->second == start) {
+                start = before->first;
+                size += before->second;
+                vertexFree_.erase(before);
+            }
+        }
+        if (next != vertexFree_.end() && uint64_t(start) + size == next->first) {
+            size += next->second;
+            vertexFree_.erase(next);
+        }
+        vertexFree_.emplace(start, size);
+    };
+    for (const auto& run : moved) {
+        const uint32_t target = physical + (run.first - lo);
+        const size_t vertices = run.end - run.first;
+        if (size_t(run.physical) + vertices > vertexCapacity_ || size_t(target) + vertices > vertexCapacity_)
+            throw std::runtime_error("vertex arena: run outside the buffer");
+        // The target is a hole or above the high-water, so it never aliases the run being moved (memmove anyway).
+        std::memmove(vertexBytes + size_t(target) * sizeof(SceneVertex),
+                     vertexBytes + size_t(run.physical) * sizeof(SceneVertex), vertices * sizeof(SceneVertex));
+        std::memmove(rectBytes + size_t(target) * 4 * sizeof(float),
+                     rectBytes + size_t(run.physical) * 4 * sizeof(float), vertices * 4 * sizeof(float));
+        std::memmove(codeBytes + size_t(target) * sizeof(uint32_t),
+                     codeBytes + size_t(run.physical) * sizeof(uint32_t), vertices * sizeof(uint32_t));
+        freeBlock(run.physical, run.capacity);
+    }
+    vertexRuns_.emplace(lo, VertexRun{lo, hi, physical, length});
+    return physical + (first - lo);
+}
+
+void VkSceneRenderer::GrowVertexArena(uint32_t vertices) {
+    if (vertices <= vertexCapacity_) return;
+    const uint32_t capacity = std::min(std::max(vertices, 32768u), kMaxVertices); // content, not slack
+    vkDeviceWaitIdle(device_);
+    Buffer grownVertex = CreateBuffer(size_t(capacity) * sizeof(SceneVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    Buffer grownRect = CreateBuffer(size_t(capacity) * 4 * sizeof(float), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    Buffer grownCodes = CreateBuffer(size_t(capacity) * sizeof(uint32_t), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    // vertexUsed_ may already count the range that caused this growth: only the old capacity's bytes exist.
+    const size_t used = std::min(vertexUsed_, vertexCapacity_);
+    if (used) {
+        std::memcpy(grownVertex.mapped, vertexBuffer_.mapped, used * sizeof(SceneVertex));
+        std::memcpy(grownRect.mapped, rectBuffer_.mapped, used * 4 * sizeof(float));
+        std::memcpy(grownCodes.mapped, environmentCodes_.mapped, used * sizeof(uint32_t));
+    }
+    DestroyBuffer(vertexBuffer_); vertexBuffer_ = grownVertex;
+    DestroyBuffer(rectBuffer_); rectBuffer_ = grownRect;
+    DestroyBuffer(environmentCodes_); environmentCodes_ = grownCodes;
+    vertexCapacity_ = capacity;
+    std::printf("graphics: vertex arena %.1f MiB (%u vertices, %u used)\n",
+                double(capacity) * (sizeof(SceneVertex) + 4 * sizeof(float) + sizeof(uint32_t)) / (1024 * 1024),
+                capacity, vertexUsed_);
+}
+
+bool VkSceneRenderer::VertexRange(uint32_t first, uint32_t count, uint32_t& physicalFirst, int32_t& bias) const {
+    const uint32_t end = first + count;
+    auto next = vertexRuns_.upper_bound(first);
+    if (next == vertexRuns_.begin()) return false;
+    auto run = std::prev(next);
+    if (first < run->second.first) return false;
+    uint32_t covered = run->second.end;
+    uint32_t physicalEnd = run->second.physical + (covered - run->second.first);
+    while (covered < end) {
+        // A gap is a range that was never written (it drew the zeros of the reserved buffer before); a run that
+        // is not adjacent in physical memory cannot be one contiguous draw.
+        ++run;
+        if (run == vertexRuns_.end() || run->second.first != covered || run->second.physical != physicalEnd) return false;
+        covered = run->second.end;
+        physicalEnd = run->second.physical + (covered - run->second.first);
+    }
+    physicalFirst = run->second.physical + (first - run->second.first);
+    bias = int32_t(int64_t(first) - int64_t(physicalFirst));
+    return true;
+}
+
+const SceneVertex* VkSceneRenderer::VertexAt(uint32_t index) const {
+    auto next = vertexRuns_.upper_bound(index);
+    if (next == vertexRuns_.begin()) return nullptr;
+    const auto& run = std::prev(next)->second;
+    if (index >= run.end) return nullptr;
+    return static_cast<const SceneVertex*>(vertexBuffer_.mapped) + run.physical + (index - run.first);
+}
+
 void VkSceneRenderer::FlushFrameUploads() {
-    // Preserve call order, including overlapping dynamic ranges and VRAM rows.
+    // Preserve call order, including overlapping dynamic ranges and VRAM rows. Vertex ranges resolve here, after
+    // the fence, so a run that had to move in this batch is copied before the writes that follow it.
     for (size_t i = 0; i < pendingWriteCount_; ++i) {
         const auto& write = pendingWrites_[i];
-        std::memcpy(static_cast<uint8_t*>(write.buffer->mapped) + write.offset, write.bytes.data(), write.bytes.size());
+        const size_t offset = write.elementSize ? size_t(ResolveVertex(write.first, write.count)) * write.elementSize
+                                                : write.offset;
+        std::memcpy(static_cast<uint8_t*>(write.buffer->mapped) + offset, write.bytes.data(), write.bytes.size());
     }
     pendingWriteCount_ = 0;
     deferUploads_ = false;
@@ -866,15 +1048,47 @@ void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>
 }
 std::vector<SceneVertex> VkSceneRenderer::VerticesForAudit(const DrawItem& item) const {
     if(uint64_t(item.firstVertex)+item.vertexCount>kMaxVertices)throw std::runtime_error("audit vertex range");
-    const auto* first=static_cast<const SceneVertex*>(vertexBuffer_.mapped)+item.firstVertex;
-    return {first,first+item.vertexCount};
+    std::vector<SceneVertex> out;
+    out.reserve(item.vertexCount);
+    for (uint32_t i = 0; i < item.vertexCount; ++i) {
+        const SceneVertex* vertex = VertexAt(item.firstVertex + i);
+        if (!vertex) throw std::runtime_error("audit vertex range was never uploaded");
+        out.push_back(*vertex);
+    }
+    return out;
 }
+void VkSceneRenderer::EnsureNativeCapacity(Buffer& buffer, uint32_t& capacity, uint32_t need, uint32_t limit,
+                                           size_t elementSize, uint32_t chunk, uint32_t binding) {
+    if (need <= capacity) return;
+    const uint32_t grown = std::min((need + chunk - 1) / chunk * chunk, limit);
+    vkDeviceWaitIdle(device_);
+    Buffer next = CreateBuffer(size_t(grown) * elementSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    std::memset(next.mapped, 0, size_t(next.size)); // the shader may read an entry before it is written
+    if (buffer.mapped) std::memcpy(next.mapped, buffer.mapped, std::min<size_t>(buffer.size, next.size));
+    DestroyBuffer(buffer);
+    buffer = next;
+    capacity = grown;
+    const VkDescriptorBufferInfo info{buffer.buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstBinding = binding; write.descriptorCount = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.pBufferInfo = &info;
+    for (VkDescriptorSet set : {descSet_, mirrorSourceSet_}) {
+        if (!set) continue;
+        write.dstSet = set;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+}
+
 void VkSceneRenderer::SetNativeModelVertices(uint32_t first,const std::vector<NativeModelVertex>& vertices) {
     if(uint64_t(first)+vertices.size()>uint64_t(8)*kModelSetVertexStride)throw std::runtime_error("native vertex range");
+    EnsureNativeCapacity(nativeVertexBuffer_, nativeVertexCapacity_, first + uint32_t(vertices.size()),
+                         8 * kModelSetVertexStride, sizeof(NativeModelVertex), 16384, 10);
     WriteBuffer(nativeVertexBuffer_,size_t(first)*sizeof(NativeModelVertex),vertices.data(),vertices.size()*sizeof(NativeModelVertex));
 }
 void VkSceneRenderer::SetNativeModelMaterials(uint32_t first,const std::vector<NativeModelMaterial>& materials) {
     if(uint64_t(first)+materials.size()>uint64_t(8)*kNativeMaterialsPerSlot)throw std::runtime_error("native material range");
+    EnsureNativeCapacity(nativeMaterialBuffer_, nativeMaterialCapacity_, first + uint32_t(materials.size()),
+                         8 * kNativeMaterialsPerSlot, sizeof(NativeModelMaterial), 2048, 11);
     WriteBuffer(nativeMaterialBuffer_,size_t(first)*sizeof(NativeModelMaterial),materials.data(),materials.size()*sizeof(NativeModelMaterial));
 }
 void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVertex>& vertices) {
@@ -900,7 +1114,7 @@ void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVert
         if (uint64_t(first) < uint64_t(start) + count && uint64_t(start) < uint64_t(first) + vertices.size()) it = materialRanges_.erase(it);
         else ++it;
     }
-    WriteBuffer(vertexBuffer_, size_t(first) * sizeof(SceneVertex), vertices.data(), vertices.size() * sizeof(SceneVertex));
+    WriteVertices(vertexBuffer_, first, uint32_t(vertices.size()), sizeof(SceneVertex), vertices.data());
     // Every caller writes triangle lists starting at `first`: the UV rectangle of each triangle for the smooth filter.
     rectScratch_.resize(vertices.size() * 4);
     float* rect = rectScratch_.data();
@@ -915,7 +1129,7 @@ void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVert
         }
         for (size_t k = 0; k < n; k++) std::memcpy(rect + (t + k) * 4, r, sizeof(r));
     }
-    WriteBuffer(rectBuffer_, size_t(first) * 4 * sizeof(float), rect, rectScratch_.size() * sizeof(float));
+    WriteVertices(rectBuffer_, first, uint32_t(vertices.size()), 4 * sizeof(float), rect);
 }
 
 void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uint16_t* words) {
@@ -1306,6 +1520,17 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         } else if (menuCarItem ? menuCarActive_ : (menuCarTexture && (!menuCarActive_ || compositeDrawn))) continue;
         if (menuCarTexture) compositeDrawn = true;
         if (item.vertexCount == 0) continue;
+        // The arena stores the uploaded ranges packed; this draw's physical first vertex and the bias back to the
+        // virtual index the shader's native-model lookup needs.
+        uint32_t physicalFirst = 0;
+        int32_t vertexBias = 0;
+        if (!VertexRange(item.firstVertex, item.vertexCount, physicalFirst, vertexBias)) {
+            const uint64_t range = (uint64_t(item.firstVertex) << 32) | item.vertexCount;
+            if (missingVertexRanges_.insert(range).second)
+                std::printf("graphics: draw of %u vertices at %u was never uploaded, skipped\n",
+                            item.vertexCount, item.firstVertex);
+            continue;
+        }
         // Reversed Z: disjoint ranges preserve depth within each layer and
         // guarantee that grass/curbs cannot overwrite occupied interior pixels.
         const int depthLayer=DepthBand(item,recordStereo_);
@@ -1349,11 +1574,11 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (recordStereo_ && item.space == kSpaceWorld && !item.clearDepth &&
             uint64_t(item.firstVertex) + item.vertexCount <= kMaxVertices) {
             ++culling_.tested;
-            const auto& bounds = boundsCache_.Get(static_cast<const SceneVertex*>(vertexBuffer_.mapped), item.firstVertex, item.vertexCount);
+            const auto& bounds = boundsCache_.Get(VertexAt(item.firstVertex), item.firstVertex, item.vertexCount);
             if (!BoundsInStereo(bounds, stereoViews_.worldVP, item.mvp)) { ++culling_.culled; continue; }
         }
         if(recordNativeEnvironment_ && !item.clearDepth && uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices) {
-            const auto& bounds=boundsCache_.Get(static_cast<const SceneVertex*>(vertexBuffer_.mapped),item.firstVertex,item.vertexCount);
+            const auto& bounds=boundsCache_.Get(VertexAt(item.firstVertex),item.firstVertex,item.vertexCount);
             const float identity[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
             if(!BoundsInView(bounds,identity,item.mvp))continue;
         }
@@ -1398,7 +1623,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         // general shader; the complete cached material path is shared with VR.
         const bool cachedMenu = cachedMenuShader_ && !recordStereo_ && !recordMirror_ && i >= sceneItems &&
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
-            (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
+            (VertexAt(item.firstVertex)->flags & kCarPaint);
         bool modelOnly=false;
         if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
@@ -1446,7 +1671,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             }
         }
         const bool modelPaint = item.firstVertex < kMaxVertices &&
-            (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kModelReflection);
+            (VertexAt(item.firstVertex)->flags & kModelReflection);
         // Imported clearcoat reuses the exact opaque surface. The PS1 decal
         // bias can reveal hidden panels through the body, and its slope term
         // grows without bound on nearly edge-on triangles. Keep the native
@@ -1459,6 +1684,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         FrameParams params;
         std::memcpy(params.mvp, item.mvp, sizeof(params.mvp));
         params.nativeModelRotation=item.nativeModelRotation;
+        params.vertexBias = vertexBias;
         params.paint = item.paint;
         params.brakeLit = item.brakeLit & 0x3fffffffu;
         params.stpPass = item.stpPass;
@@ -1471,7 +1697,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
         vkCmdPushConstants(cmd_, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(FrameParams), &params);
-        vkCmdDraw(cmd_, item.vertexCount, 1, item.firstVertex, 0);
+        vkCmdDraw(cmd_, item.vertexCount, 1, physicalFirst, 0);
     }
 }
 
@@ -1731,12 +1957,16 @@ void VkSceneRenderer::RecordNativeEnvironment() {
             const auto& items=nativeEnvironmentFaces_[f];
             cachedDraws_=nativeEnvironmentCached_[f];
             if(std::getenv("GT2_DEBUG_NATIVE_ENV")) {
-                size_t inside=0,count=0;const auto* vertices=static_cast<const SceneVertex*>(vertexBuffer_.mapped);
-                for(const auto& item:items)for(uint32_t j=0;j<item.vertexCount;++j) {
-                    const auto& v=vertices[item.firstVertex+j];float p[4]{};
-                    for(int k=0;k<4;++k)p[k]=item.mvp[k]*v.pos[0]+item.mvp[4+k]*v.pos[1]+item.mvp[8+k]*v.pos[2]+item.mvp[12+k];
-                    if(p[3]>0 && p[2]>=0 && p[2]<=p[3] && std::abs(p[0])<=p[3] && std::abs(p[1])<=p[3])++inside;
-                    ++count;
+                size_t inside=0,count=0;
+                for(const auto& item:items) {
+                    const auto* vertices=VertexAt(item.firstVertex);
+                    if(!vertices)continue;
+                    for(uint32_t j=0;j<item.vertexCount;++j) {
+                        const auto& v=vertices[j];float p[4]{};
+                        for(int k=0;k<4;++k)p[k]=item.mvp[k]*v.pos[0]+item.mvp[4+k]*v.pos[1]+item.mvp[8+k]*v.pos[2]+item.mvp[12+k];
+                        if(p[3]>0 && p[2]>=0 && p[2]<=p[3] && std::abs(p[0])<=p[3] && std::abs(p[1])<=p[3])++inside;
+                        ++count;
+                    }
                 }
                 std::printf("Env face %zu: %zu items %zu inside/%zu vertices\n",f,items.size(),inside,count);
             }

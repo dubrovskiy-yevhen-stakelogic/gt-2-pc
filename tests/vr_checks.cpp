@@ -32,7 +32,8 @@ int main() {
         Projection({-0.7f, 0.7f, 0.7f, -0.7f}, 0.05f, eyesVP[0]);
         std::copy(eyesVP[0], eyesVP[0] + 16, eyesVP[1]);
         Check(gt2view::BoundsInStereo(box, eyesVP, identity), "culling keeps visible bounds");
-        const auto side = boundsCache.Get(vertices, 2, 2);
+        // Get reads from the pointer it is given (the arena passes the draw's first vertex).
+        const auto side = boundsCache.Get(vertices + 2, 2, 2);
         Check(!gt2view::BoundsInStereo(side, eyesVP, identity), "culling rejects offscreen bounds");
         float translate[16]; std::copy(identity, identity + 16, translate); translate[12] = -10; translate[13] = -10;
         Check(gt2view::BoundsInStereo(side, eyesVP, translate), "culling uses object transform");
