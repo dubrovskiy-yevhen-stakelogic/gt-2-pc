@@ -242,7 +242,7 @@ ArcadeMenuAssets ArcadeMenuAssets::Load(const DiscImage& disc, const GtfsVolume&
             if (ProfileOf(disc).build == ExeBuild::kArcadeEu) a.globalText = EuropeanArcadeText(global, true);
         }
     }
-    a.exeFont = LoadHudFont(a.exe, UiAddress(a.exe, kExeSmallFont, true));
+    a.exeFont = LoadHudFont(a.exe, a.exe.Sim(0x80093124u)); // the EXE small-font descriptor (Simulation address)
     a.carLogos = vol.Read("arcade/arc_carlogo");
     const auto carNames=CarInfoDirectory::Load(vol);
     for(size_t i=0;i<carNames.Count();++i) {
@@ -290,6 +290,11 @@ const HudFont& ArcadeMenuAssets::FontAt(uint32_t descriptor) const {
     case 0x801294E0u: return fonts[1];
     case 0x801234D0u: return fonts[2];
     case 0x80129500u: return fonts[3];
+    // US Arcade v1.1 places the same four descriptors 0x100 higher (the menu templates carry these).
+    case 0x801295F0u: return fonts[0];
+    case 0x801295E0u: return fonts[1];
+    case 0x801235D0u: return fonts[2];
+    case 0x80129600u: return fonts[3];
     case kExeSmallFont: return exeFont;
     default: throw std::logic_error("arcade menus: font descriptor " + std::to_string(descriptor) + " is not mapped");
     }

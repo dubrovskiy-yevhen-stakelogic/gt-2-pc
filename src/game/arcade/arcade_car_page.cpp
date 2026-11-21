@@ -392,7 +392,7 @@ void ArcSpecBox::Init(const ArcadeMenuAssets& a) { // 0x80018930
         ArcText& l = text[size_t(k) * 2];
         l.Init(a, kSpecLabelTemplate);
         l.c0 = kLabelColours[k];
-        l.text = a.data.Text(kLabels[k]);
+        l.text = a.data.LegacyText(kLabels[k]);
         ArcText& v = text[size_t(k) * 2 + 1];
         v.Init(a, kSpecValueTemplate);
         v.text = l.text;
@@ -401,16 +401,16 @@ void ArcSpecBox::Init(const ArcadeMenuAssets& a) { // 0x80018930
 }
 
 void ArcSpecBox::Fill(const ArcadeMenuAssets& a, const std::array<int16_t, 5>& f, TextCtx& c) { // 0x80018A3C
-    text[0].text = a.data.Text(kWeight);
+    text[0].text = a.data.LegacyText(kWeight);
     text[0].Open(-1);
-    text[1].text = Format(a.data.Text(kFmtWeight), {D((f[4] * 0x561E) / 10000)});
+    text[1].text = Format(a.data.LegacyText(kFmtWeight), {D((f[4] * 0x561E) / 10000)});
     text[1].Open(-1);
-    text[2].text = a.data.Text(kMaxPower);
+    text[2].text = a.data.LegacyText(kMaxPower);
     text[2].Open(-1);
     const int hp = (f[0] * 1000) / 0x3F6;
-    text[3].text = f[1] == 0 ? Format(a.data.Text(kFmtPower), {D(hp)}) : Format(a.data.Text(kFmtPowerRpm), {D(hp), D(f[1])});
+    text[3].text = f[1] == 0 ? Format(a.data.LegacyText(kFmtPower), {D(hp)}) : Format(a.data.LegacyText(kFmtPowerRpm), {D(hp), D(f[1])});
     text[3].Open(-1);
-    text[4].text = a.data.Text(kMaxTorque);
+    text[4].text = a.data.LegacyText(kMaxTorque);
     text[4].Open(-1);
     const int t = f[2];
     if (t == 0) {
@@ -418,9 +418,9 @@ void ArcSpecBox::Fill(const ArcadeMenuAssets& a, const std::array<int16_t, 5>& f
     } else {
         const int v = (t * 0x11A89) / 10000 - t / 0x73FB;
         const int rpm = f[3];
-        if (rpm < 0) text[5].text = Format(a.data.Text(kFmtTorqueAbout), {D((v - v % 10) / 10), D(v % 10), D(-rpm)});
-        else if (rpm != 0) text[5].text = Format(a.data.Text(kFmtTorqueRpm), {D((v - v % 10) / 10), D(v % 10), D(rpm)});
-        else text[5].text = Format(a.data.ImageString(kFmtTorque), {D(v / 10), D(v % 10), S(a.data.Text(kLbFt))});
+        if (rpm < 0) text[5].text = Format(a.data.LegacyText(kFmtTorqueAbout), {D((v - v % 10) / 10), D(v % 10), D(-rpm)});
+        else if (rpm != 0) text[5].text = Format(a.data.LegacyText(kFmtTorqueRpm), {D((v - v % 10) / 10), D(v % 10), D(rpm)});
+        else text[5].text = Format(a.data.ImageString(kFmtTorque), {D(v / 10), D(v % 10), S(a.data.LegacyText(kLbFt))});
     }
     text[5].Open(-1);
     labelWidth = int16_t(std::max({text[0].Width(c), text[2].Width(c), text[4].Width(c)}));
@@ -476,16 +476,16 @@ void ArcCarSpecs::Init(const ArcadeMenuAssets& a) { // 0x80019048
         b.anim = -1;
         b.sprite = ReadSprite(o, kBadgeInitialSprite);
         k.graph.Init(a, kGraphTemplate);
-        k.graph.unitPower = a.data.Text(kHp);
-        k.graph.unitTorque = a.data.Text(kLbFt);
-        k.graph.unitRpm = a.data.Text(kRpm1000);
+        k.graph.unitPower = a.data.LegacyText(kHp);
+        k.graph.unitTorque = a.data.LegacyText(kLbFt);
+        k.graph.unitRpm = a.data.LegacyText(kRpm1000);
         for (int i = 0; i < 3; i++) {
             ArcBar& bar = k.bars[size_t(i)];
             bar.anim = -1;
             bar.label.Init(a, kBarTemplate);
-            bar.label.text = a.data.Text(kBarLabels[i]);
+            bar.label.text = a.data.LegacyText(kBarLabels[i]);
             bar.unknownFont = &a;
-            bar.unknownText = a.data.Text(kUnknown);
+            bar.unknownText = a.data.LegacyText(kUnknown);
         }
         k.chips.anim = -1;
         k.chips.selected = 0;
@@ -497,7 +497,7 @@ void ArcCarSpecs::Init(const ArcadeMenuAssets& a) { // 0x80019048
 void ArcCarSpecs::Fill(const ArcadeMenuAssets& a, const ArcCarFigures& f, uint8_t language, TextCtx& c) { // 0x800194FC
     Copy& k = copy_[size_t(current_)];
     const GuestImage& o = a.data.ovl2;
-    k.power.text = Decimal((f.figures[0] * 1000) / 0x3F6) + a.data.Text(kHp);
+    k.power.text = Decimal((f.figures[0] * 1000) / 0x3F6) + a.data.LegacyText(kHp);
     k.power.Open(-1);
     k.badge.sprite = ReadSprite(o, o.Get<uint32_t>(kBadgeSprites + uint32_t(language) * 4) + uint32_t(f.badge) * 12);
     k.badge.anim = 0; // 0x8001C194
@@ -1140,7 +1140,7 @@ int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidge
     const uint32_t model = U32(car, 0x8C);
     const int32_t info = cars_.IndexOf(model);
     const CarInfoRecord& r = cars_.At(info < 0 ? 0 : size_t(info));
-    const std::string hp = Format(a_.data.Text(kFmtHp), {D((e.power * 1000) / 0x3F6)});
+    const std::string hp = Format(a_.data.LegacyText(kFmtHp), {D((e.power * 1000) / 0x3F6)});
     const int hw = NumberWidth(c, hp, 1, 0);
     const auto name=a_.CarName(info<0?U32(car,0):model);
     DrawText(c, FitText(*c.font,name,200-hw-7), x - 100, y + 8, 1);

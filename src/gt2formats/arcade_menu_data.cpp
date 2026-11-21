@@ -38,6 +38,21 @@ void TranslateSimulationTextPointers(GuestImage& image) {
     }
 }
 
+// The port's arcade strings are addressed by the reference build's offsets. US Arcade v1.1 moved the same strings
+// inside its larger text block; map the reference addresses to v1.1 for Text().
+struct LegacyText {
+    uint32_t reference, v11;
+};
+constexpr LegacyText kLegacyV11Text[] = {
+    {0x800F81E0u, 0x800F8290u}, {0x800F8295u, 0x800F8351u}, {0x800F829Au, 0x800F8353u}, {0x800F829Du, 0x800F835Au},
+    {0x800F82A3u, 0x800F8361u}, {0x800F82FAu, 0x800F83B8u}, {0x800F8323u, 0x800F83E1u}, {0x800F8334u, 0x800F83F2u},
+    {0x800F8347u, 0x800F8405u}, {0x800F8352u, 0x800F8410u}, {0x800F8361u, 0x800F841Fu}, {0x800F836Du, 0x800F842Bu},
+    {0x800F8375u, 0x800F8433u}, {0x800F837Au, 0x800F8439u}, {0x800F838Au, 0x800F8447u}, {0x800F839Au, 0x800F8351u},
+    {0x800F839Fu, 0x800F845Du}, {0x800F83B1u, 0x800F846Fu}, {0x800F83C4u, 0x800F8482u}, {0x800F83D8u, 0x800F8496u},
+    {0x800F83E4u, 0x800F84A2u}, {0x800F841Fu, 0x800F84DDu}, {0x800F842Eu, 0x800F84F3u}, {0x800F8445u, 0x800F850Eu},
+    {0x800F845Fu, 0x800F853Bu}, {0x800F8469u, 0x800F854Bu}, {0x800F8475u, 0x800F8565u}, {0x800F8490u, 0x800F8580u},
+};
+
 constexpr uint32_t kEventNames = 0x8002729Cu, kLevelBytes = 0x800272DCu, kGameModes = 0x8004F8ECu, kTransmissions = 0x8004FBD0u;
 constexpr uint32_t kCourseLists[ArcadeMenuData::kCourseListCount] = {0x80050730u, 0x800509F0u, 0x80050CB0u, 0x80050FB0u,
                                                                       0x800512B0u, 0x800513F0u, 0x800516B0u};
@@ -58,10 +73,20 @@ std::string ArcadeMenuData::ImageString(uint32_t address) const {
     return s;
 }
 
+std::string ArcadeMenuData::LegacyText(uint32_t address) const {
+    if (textBase != kTextBase)
+        for (const auto& t : kLegacyV11Text)
+            if (t.reference == address) {
+                address = t.v11;
+                break;
+            }
+    return Text(address);
+}
+
 std::string ArcadeMenuData::Text(uint32_t address) const {
-    if (address < kTextBase || address - kTextBase >= text.size()) return {};
+    if (address < textBase || address - textBase >= text.size()) return {};
     std::string s;
-    for (size_t at = address - kTextBase; at < text.size() && text[at] != 0; at++) s.push_back(char(text[at]));
+    for (size_t at = address - textBase; at < text.size() && text[at] != 0; at++) s.push_back(char(text[at]));
     return s;
 }
 
@@ -70,6 +95,9 @@ ArcadeMenuData ArcadeMenuData::Load(const DiscImage& disc, uint8_t language) {
     if (!ArcadeFlow()) throw std::runtime_error("arcade menu data: the disc is not playing the Arcade flow");
     const auto original=LoadOverlayImage(disc,2);
     m.ovl2 = UiLayout(original,true);
+    // The menu constants below are addresses of the reference US Arcade build (KnownProfiles()[1]). Another Arcade
+    // revision (the GT2+ "Rev 1" base) is relocated to that layout first.
+    if (m.ovl2.profile != &KnownProfiles()[1]) m.ovl2 = RelocateImage(m.ovl2, KnownProfiles()[1]);
     if (!ProfileOf(disc).arcade) TranslateSimulationTextPointers(m.ovl2);
     const GuestImage& o = m.ovl2;
     for (uint32_t level = 0; level < 4; level++)
@@ -132,9 +160,16 @@ ArcadeMenuData ArcadeMenuData::Load(const DiscImage& disc, uint8_t language) {
             }
         if (txd.empty()) throw std::runtime_error("arcade menu data: data-arcade.txd not found");
     }
-    // The Simulation disc's arcade overlay stores the seven regional blocks (the European layout); the Arcade disc's
-    // copy keeps only the reference layout. Convert either to the reference block the menus address.
-    if (txd.size() >= 7 * 0x314) {
+    // The Arcade disc's copy is seven blocks of the same size. The reference US Arcade uses 0x2E0; the v1.1
+    // revision (the GT2+ base) uses 0x330 but keeps the same RAM base and the same string pointers (the strings sit
+    // at the same offsets inside the block). The Simulation disc's arcade overlay carries the seven regional blocks
+    // of the European layout instead.
+    constexpr size_t kRev1TextStride = 0x330;
+    if (txd.size() == 7 * kRev1TextStride) {
+        const size_t at = size_t(language) * kRev1TextStride;
+        m.text.assign(txd.begin() + std::ptrdiff_t(at), txd.begin() + std::ptrdiff_t(at + kRev1TextStride));
+        m.textBase = 0x800F8290u; // the v1.1 menu RAM block sits 0xB0 higher
+    } else if (txd.size() >= 7 * 0x314) {
         m.text = EuropeanArcadeText(txd, false); // the reference block of language 1, grown for the patched strings
     } else {
         const size_t at = size_t(language) * kTextStride;

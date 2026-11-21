@@ -11,6 +11,7 @@
 #include "game/career/career_state.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/replay_card.h"
+#include "gt2formats/save_ids.h"
 
 namespace gt2 {
 
@@ -27,7 +28,7 @@ std::vector<uint8_t> ReplayFileBytes(const GtfsVolume* vol, const std::string& p
     }
     if (bytes.size() == 128 * 1024 && bytes[0] == 'M' && bytes[1] == 'C') {
         std::vector<uint8_t> file = ReadReplayCardFile(bytes);
-        if (file.empty()) throw std::runtime_error(path + ": no " + kReplayCardFileName + " on the card");
+        if (file.empty()) throw std::runtime_error(path + ": no " + ActiveSaveFileIds().replay + " on the card");
         return file;
     }
     return bytes;
@@ -52,6 +53,7 @@ int CmdReplayList(int argc, char** argv) {
     if (argc > 3) {
         disc = std::make_unique<DiscImage>(argv[3]);
         vol = std::make_unique<GtfsVolume>(*disc);
+        try { SetActiveSaveFileIds(ReadSaveFileIds(LoadExeImage(*disc))); } catch (...) {} // a card of a known modified disc
     }
     const ReplayCardFile file = ReplayCardFile::FromBytes(ReplayFileBytes(vol.get(), argv[2]));
     std::printf("%s: %d block(s), %d replay(s), %d of %d sectors free, directory %s\n", argv[2], file.Blocks(), file.Count(), file.FreeSectors(), file.Total(),

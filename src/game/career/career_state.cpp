@@ -6,6 +6,7 @@
 
 #include "gt2formats/course_data.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/save_ids.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
 
@@ -133,9 +134,10 @@ CareerSave LoadCareerSaveFile(std::span<const uint8_t> file) {
 }
 
 CareerSave LoadCareerFromCard(std::span<const uint8_t> card) {
+    const std::string& name = ActiveSaveFileIds().game;
     for (const MemoryCardFile& f : ReadMemoryCardFiles(card))
-        if (f.name == kSaveGameFileName) return LoadCareerSaveFile(f.bytes);
-    throw std::runtime_error(std::string("no ") + kSaveGameFileName + " on the memory card");
+        if (f.name == name) return LoadCareerSaveFile(f.bytes);
+    throw std::runtime_error("no " + name + " on the memory card");
 }
 
 CareerSave LoadCareer(const std::string& path) {
@@ -196,12 +198,13 @@ void StoreCareerOnCard(std::vector<uint8_t>& card, const CareerSave& save) {
     if (card.size() != kCardSize || card[0] != 'M' || card[1] != 'C') throw std::runtime_error("not a PS1 memory card image");
     const std::vector<uint8_t> file = BuildCareerSaveFile(save);
     const size_t blocks = (file.size() + kBlock - 1) / kBlock; // 4 (0x8006A000)
+    const std::string& saveName = ActiveSaveFileIds().game;
     std::vector<size_t> chain;
     for (size_t i = 1; i <= kDirFrames && chain.empty(); i++) {
         const uint8_t* f = card.data() + i * kFrame;
         if (Le32(f) != 0x51) continue;
         const char* name = reinterpret_cast<const char*>(f + 10);
-        if (std::string(name, strnlen(name, 20)) != kSaveGameFileName) continue;
+        if (std::string(name, strnlen(name, 20)) != saveName) continue;
         size_t block = i;
         for (size_t guard = 0; guard < kDirFrames; guard++) {
             chain.push_back(block);
@@ -222,7 +225,7 @@ void StoreCareerOnCard(std::vector<uint8_t>& card, const CareerSave& save) {
             PutLe32(f, k == 0 ? 0x51 : (k + 1 == chain.size() ? 0x53 : 0x52));
             PutLe32(f + 4, k == 0 ? uint32_t(blocks * kBlock) : 0);
             PutLe16(f + 8, k + 1 == chain.size() ? 0xFFFF : uint16_t(chain[k + 1] - 1));
-            if (k == 0) std::memcpy(f + 10, kSaveGameFileName, std::strlen(kSaveGameFileName));
+            if (k == 0) std::memcpy(f + 10, saveName.data(), saveName.size());
             f[kFrame - 1] = FrameChecksum(f);
         }
     }

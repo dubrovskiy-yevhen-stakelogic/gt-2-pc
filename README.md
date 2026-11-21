@@ -40,6 +40,7 @@ platform-specific VR, controller and graphics features; the browser runs in
 flat-screen mode.
 
 Supply your own supported disc images. Game data, BIOS and saves are not included.
+A-Spec and GT2+ disc images load directly; see [modified disc images](docs/MOD-SUPPORT.md).
 The screenshots illustrate gameplay. Release history is in
 [CHANGELOG.md](CHANGELOG.md); the feature list below describes the current project.
 

@@ -355,7 +355,7 @@ void ArcadeCoursePage::Draw(ViewOt& ot, TextCtx& c) const { // 0x800231AC
         c.ot = &s0;
         c.mode = 1;
         c.colour = LerpColour(a_.data.ovl2.Get<uint32_t>(kBoxText0), a_.data.ovl2.Get<uint32_t>(kBoxText1), fade, 0x80);
-        DrawText(c, a_.data.Text(text), x, y, 1);
+        DrawText(c, a_.data.LegacyText(text), x, y, 1);
     };
     if (const int f = boxes_[0].Fade(); f > 0) {
         labels(f, kTotalLength, 0x1C, 0xAA);
@@ -370,7 +370,7 @@ void ArcadeCoursePage::Draw(ViewOt& ot, TextCtx& c) const { // 0x800231AC
         c.mode = 1;
         c.font = &a_.FontAt(kCellFive);
         c.colour = LerpColour(a_.data.ovl2.Get<uint32_t>(kFadeFrom), a_.data.ovl2.Get<uint32_t>(kLengthTo), (t << 7) / 12, 0x80);
-        const std::string fmt = a_.data.Text(kFeet);
+        const std::string fmt = a_.data.LegacyText(kFeet);
         for (int k = 0; k < 2; k++) {
             const std::string s = FormatD(fmt, a_.data.ovl2.Get<int16_t>(mapInfo_ + uint32_t(k) * 4));
             DrawNumber(c, s, 0x82 - NumberWidth(c, s, 1, 0), 0xBE + k * 0x30, 1, -2, 0); // 0x8006B094
@@ -402,7 +402,7 @@ void ArcadeCoursePage::Draw(ViewOt& ot, TextCtx& c) const { // 0x800231AC
         const uint32_t nameColour = LerpColour(from, o.Get<uint32_t>(kNameTo), t, 0x80);
         c.colour = nameColour;
         if (Rd32(rec, 0) == -1) {
-            const std::string s = a_.data.Text(kNoRecords);
+            const std::string s = a_.data.LegacyText(kNoRecords);
             DrawText(c, s, x - TextWidth(c, s, 1), y + 0x18, 1); // 0x8006AD38
         } else { // the record's car (0x800609F8 of +0x14) and the career's name string (+0x18), each with a mark
             const int32_t car = Rd32(rec, 0x14);

@@ -258,7 +258,7 @@ void ArcadeBonusPage::Draw(ViewOt& ot, TextCtx& c) const { // 0x80023EB8
     SpriteAt(o, ot.slot[0], kLegend + 12, 250, 102, Grey(alpha));
     c.ot = &ot.slot[0];
     c.colour = LerpColour(o.Get<uint32_t>(kBlack), o.Get<uint32_t>(kMessageColour), alpha, 128);
-    const std::string message = a_.data.Text(kBonusMessage);
+    const std::string message = a_.data.LegacyText(kBonusMessage);
     DrawText(c, message, 176 - (TextWidth(c, message, 1) >> 1), 138, 1); // 0x8006ACC4
 }
 

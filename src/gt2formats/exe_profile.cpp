@@ -28,10 +28,23 @@ const ExeProfile kProfiles[] = {
       std::span<const ProfileRange>(kSimEuRanges.data(), kSimEuRanges.size()), true, true, false },
     { "Europe Arcade", "SCES_023.80", "2b59ad844a4dbb934fc1d8ef955c63038f54e932", ExeBuild::kArcadeEu, false,
       std::span<const ProfileRange>(kArcadeEuRanges.data(), kArcadeEuRanges.size()), true, true, true },
+    {
+        // The US Arcade v1.1 disc the GT2+ Arcade xdelta is made for. Its code/data sit at different addresses
+        // from the older profile above, so it has its own ranges (db/arcade_us11_rev1_symbols.yaml).
+        "US Arcade v1.1 (GT2+ base)", "SCUS_944.55", "23803938bf67de78dd836839e690fd66c7f10d7e", ExeBuild::kArcadeUs11, false,
+        std::span<const ProfileRange>(kArcadeUs11Rev1Ranges.data(), kArcadeUs11Rev1Ranges.size()), false, false, true,
+    },
 };
 
 const ExeProfile* g_active = &kProfiles[0];
 bool g_combinedArcade = false;
+
+const KnownMod kKnownMods[] = {
+    // GT2+ Complete NTSC-U v1.2 beta 7 (xdelta applied to the clean US Simulation v1.2 disc): the executable differs
+    // from SCUS_944.88 in the turbo-section check and the two save-ID strings only.
+    {"9d733c40f91b7ff5c6b4e4141ce3ebf8f4f5bde1", "GT2+ Complete (NTSC-U Simulation v1.2)", &kProfiles[0]},
+    {"85aa2586fb8692a0e9830a1cd63ba6017a6f85d2", "GT2+ Complete (NTSC-U Arcade v1.1)", &kProfiles[4]},
+};
 
 std::string Hex(uint32_t v) {
     char text[16];
@@ -72,6 +85,13 @@ uint32_t ExeProfile::Code(uint32_t simAddress) const {
 std::span<const ExeProfile> KnownProfiles() { return kProfiles; }
 const ExeProfile& SimProfile() { return kProfiles[0]; }
 std::span<const ProfileRange> ArcadeEuUiRanges() { return kArcadeEuUiRanges; }
+std::span<const KnownMod> KnownMods() { return kKnownMods; }
+
+const KnownMod* FindMod(std::string_view exeSha1) {
+    for (const KnownMod& m : kKnownMods)
+        if (exeSha1 == m.exeSha1) return &m;
+    return nullptr;
+}
 
 const ExeProfile* FindProfile(std::string_view exeSha1) {
     for (const ExeProfile& p : kProfiles)
@@ -82,7 +102,8 @@ const ExeProfile* FindProfile(std::string_view exeSha1) {
 const ExeProfile& ProfileOf(const GuestImage& exe) {
     if (exe.profile) return *exe.profile;
     throw std::runtime_error("executable " + exe.fileName + " (SHA-1 " + exe.fileSha1 +
-                             ") is not a known build: supported are US Simulation v1.2 (SCUS_944.88), US Arcade v1.1 (SCUS_944.55), Europe Simulation (SCES_123.80) and Europe Arcade (SCES_023.80)");
+                             ") is not a known build: supported are US Simulation v1.2 (SCUS_944.88), US Arcade v1.1 (SCUS_944.55), Europe Simulation (SCES_123.80) and Europe Arcade (SCES_023.80), "
+                             "plus modified executables registered in KnownMods (GT2+; see docs/MOD-SUPPORT.md)");
 }
 
 const ExeProfile& ProfileOf(const DiscImage& disc) { return ProfileOf(LoadExeImage(disc)); }

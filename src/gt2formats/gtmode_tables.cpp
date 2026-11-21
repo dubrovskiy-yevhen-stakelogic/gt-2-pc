@@ -477,14 +477,17 @@ CarColorNames CarColorNames::Load(const GtfsVolume& vol, bool latin) {
 std::vector<uint16_t> CarColorNames::NameIndices(size_t carInfoIndex, size_t paintCount) const {
     const size_t at = carOffsets_.at(carInfoIndex);
     const size_t end = carInfoIndex + 1 < carOffsets_.size() ? carOffsets_[carInfoIndex + 1] : carcolor_.size();
-    if (at + 2 * paintCount > end) throw std::runtime_error("carcolor: entry shorter than the paint count");
-    std::vector<uint16_t> out;
-    for (size_t i = 0; i < paintCount; i++) out.push_back(U16(carcolor_, at + 2 * i));
+    // Some modded catalogues (A-Spec) list paints for a car whose .carcolor entry is empty. The original would read
+    // the next entry; keep the names that exist and leave the rest unnamed.
+    std::vector<uint16_t> out(paintCount, 0xFFFF);
+    const size_t available = at < end ? std::min(paintCount, (end - at) / 2) : 0;
+    for (size_t i = 0; i < available; i++) out[i] = U16(carcolor_, at + 2 * i);
     return out;
 }
 
 std::string CarColorNames::Name(uint16_t index) const {
-    const size_t at = nameOffsets_.at(index);
+    if (index >= nameOffsets_.size()) return {};
+    const size_t at = nameOffsets_[index];
     size_t e = at;
     while (e < names_.size() && names_[e] != 0) e++;
     return std::string(reinterpret_cast<const char*>(names_.data() + at), e - at);
@@ -519,8 +522,8 @@ SoloData ParseSoloData(std::span<const uint8_t> d) {
     at += 4;
     if (at + 8 * m != d.size()) throw std::runtime_error("solodata: size mismatch");
     for (size_t i = 0; i < m; i++) s.cars.emplace_back(U32(d, at + 8 * i), U32(d, at + 8 * i + 4));
-    for (size_t i = 1; i < m; i++)
-        if (s.cars[i].first <= s.cars[i - 1].first) throw std::runtime_error("solodata: car ids not sorted");
+    // 0x80020F54 is a binary search, so the rows must ascend. A-Spec reorders them; sort so the lookup stays correct.
+    std::stable_sort(s.cars.begin(), s.cars.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
     return s;
 }
 
