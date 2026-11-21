@@ -193,6 +193,7 @@ PcSettings PcSettings::Load(const std::string& path) {
         const std::string key = line.substr(0, eq);
         const int v = std::atoi(line.c_str() + eq + 1);
         if (key == "units") s.metric = line.substr(eq + 1) == "kmh";
+        else if (key == "power_units") s.powerMetric = line.substr(eq + 1) == "ps";
         else if (key == "music_volume") s.options.musicVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "sfx_volume") s.options.sfxVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "course_map") s.options.courseMap = v != 0;
@@ -223,6 +224,7 @@ void PcSettings::Save(const std::string& path) const {
     std::ostringstream o;
     o << "# gt2game settings (written by the title's options; the career save keeps the original options too)\n";
     o << "units=" << (metric ? "kmh" : "mph") << "\n";
+    o << "power_units=" << (powerMetric ? "ps" : "hp") << "\n";
     o << "music_volume=" << int(options.musicVolume) << "\n";
     o << "sfx_volume=" << int(options.sfxVolume) << "\n";
     o << "course_map=" << int(options.courseMap) << "\n";

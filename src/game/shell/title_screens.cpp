@@ -28,7 +28,7 @@ MenuPrim Tile(int x, int y, int w, int h, uint32_t colour) {
 uint32_t Grey(uint32_t v) { return v | v << 8 | v << 16; }
 
 // ---- the PC SETTINGS page (ours): its rows as choice lists over PcSettings (speed units, graphics).
-constexpr int kPcRowCount = 11;
+constexpr int kPcRowCount = 12;
 constexpr int kPcCaps[] = {0, 30, 60, 120, 144, 165, 240};
 constexpr int kPcScales[] = {50, 75, 100, 125, 150, 200};
 constexpr int kPcMsaa[] = {1, 2, 4, 8};
@@ -76,6 +76,7 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
         r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
         break;
+    case 10: r = {"Power Units", {"hp", "PS"}, pc.powerMetric ? 1 : 0}; break;
     default: {
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
         r = {"Preset", {"Vanilla", "Custom", "Modern"}, vanilla ? 0 : modern ? 2 : 1};
@@ -93,7 +94,7 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     int index = r.index;
     if (index >= count) index = step > 0 ? count - 1 : 0; // a custom value: the first step lands on the table
     else index = std::clamp(index + step, 0, count - 1);
-    if (row == 10) index = step < 0 ? 0 : 2; // Preset: left = Vanilla, right = Modern
+    if (row == 11) index = step < 0 ? 0 : 2; // Preset: left = Vanilla, right = Modern
     GraphicsSettings& g = pc.graphics;
     const PcSettings before = pc;
     switch (row) {
@@ -107,9 +108,10 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 7: g.affine = index == 1; break;
     case 8: g.maxDetail = index == 1; break;
     case 9: g.drawDistance = kPcDistances[index]; break;
+    case 10: pc.powerMetric = index == 1; break;
     default: g = index == 0 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break;
     }
-    return !(before.metric == pc.metric && before.graphics == pc.graphics);
+    return !(before.metric == pc.metric && before.powerMetric == pc.powerMetric && before.graphics == pc.graphics);
 }
 
 // 0x8006C5DC / 0x8006CD04 in the settled state: the text object of the button bars. Per character: a space or a digit

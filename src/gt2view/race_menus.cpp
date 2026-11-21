@@ -1,4 +1,5 @@
 #include "gt2view/race_menus.h"
+#include "gt2formats/units.h"
 #include "gt2view/race_menu_views.h"
 #include "gt2view/race_record_screens.h"
 #include "gt2view/race_result_screens.h"
@@ -633,7 +634,7 @@ void LicenceMenuView::Draw(MenuOt& ot) const { // 0x8004F474
         const uint32_t colour = Lerp(o, kColourBase, kColourCarInfo, infoAlpha, 0x80);
         text(0, small, info.carName, x + 10, 0xC0, colour, 1);
         glyphs.clear();
-        small.Number(Format(a.Text(kStrPowerFormat), int(info.carPower) * 1000 / 0x3F6), x + 100, 0xD6, 1, -3, 0, glyphs);
+        small.Number(Format(DisplayPowerText(a.Text(kStrPowerFormat)), DisplayPower(info.carPower)), x + 100, 0xD6, 1, -3, 0, glyphs);
         AddSprites(ot[0], glyphs, colour, 1);
         uint32_t drive = kStrDriveFf;
         switch (info.carDrive) {

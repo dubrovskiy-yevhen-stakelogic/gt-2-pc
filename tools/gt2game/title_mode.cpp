@@ -36,6 +36,7 @@
 #include "gt2formats/png_reader.h"
 #include "gt2formats/replay_card.h"
 #include "gt2formats/save_ids.h"
+#include "gt2formats/units.h"
 #include "gt2formats/title_assets.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
@@ -296,8 +297,10 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     save.header = career::BuildSaveHeader(assets.exe);
     std::array<shell::CardSlot, 2> slots{shell::CardSlot{options.card1Path}, shell::CardSlot{options.card2Path}};
     shell::PcSettings settings = shell::PcSettings::Load(options.settingsPath);
+    gt2::metricPower = settings.powerMetric;
     auto storeSettings = [&] {
-            gt2game::SetGraphicsFromSettings(settings.graphics); // the PC SETTINGS page's graphics for the next race (unless the command line pinned them)
+        gt2::metricPower = settings.powerMetric;
+        gt2game::SetGraphicsFromSettings(settings.graphics); // the PC SETTINGS page's graphics for the next race (unless the command line pinned them)
         if (options.settingsPath.empty()) return;
         settings.options = shell::ReadGameOptions(save.state);
         settings.haveCareerOptions = true;

@@ -30,6 +30,7 @@
 #include "game/shell/title_options.h"
 #include "gt2formats/save_ids.h"
 #include "gt2formats/dataset.h"
+#include "gt2formats/units.h"
 #include "gt2formats/arcade_menu_data.h"
 #include "game/shell/title_screens.h"
 #include "gt2view/scene_types.h"
@@ -584,13 +585,34 @@ int main(int argc, char** argv) {
             Check(gt2::career::LoadCareerFromCard(card).CrcOk(), "the active GT2+ save loads");
             gt2::SetActiveSaveFileIds({});
         }
-        { // US Arcade v1.1 moved the menu text block and its strings; reference constants map to the new offsets.
-            gt2::ArcadeMenuData menu;
-            menu.textBase = 0x800F8290u;
-            menu.text.assign(0x330, 0);
-            std::memcpy(menu.text.data() + 0x162, "Max Speed", 10); // v1.1 address of the reference 0x800F8334
-            Check(menu.LegacyText(0x800F8334u) == "Max Speed", "v1.1 arcade text map");
-            Check(menu.Text(0x800F83F2u) == "Max Speed", "v1.1 arcade text base");
+        { // US Arcade v1.1 moved the revisionMenu text block and its strings; reference constants map to the new offsets.
+            gt2::ArcadeMenuData revisionMenu;
+            revisionMenu.textBase = 0x800F8290u;
+            revisionMenu.text.assign(0x330, 0);
+            std::memcpy(revisionMenu.text.data() + 0x162, "Max Speed", 10); // v1.1 address of the reference 0x800F8334
+            Check(revisionMenu.LegacyText(0x800F8334u) == "Max Speed", "v1.1 arcade text map");
+            Check(revisionMenu.Text(0x800F83F2u) == "Max Speed", "v1.1 arcade text base");
+        }
+        { // GT2+'s turbo-section fix: the stock kit (stage 0) counts, the NA dummy (row 0) does not.
+            gt2::career::TuneSheet sheet{};
+            Check(!gt2::career::HasTurboKit(sheet), "NA sheet has no Turbo section");
+            sheet.turboKitRow[0] = 7;
+            Check(gt2::career::HasTurboKit(sheet), "stock turbo still shows the Turbo section");
+            sheet.turboKitRow[0] = 0;
+            sheet.turboKitRow[3] = 12;
+            Check(gt2::career::HasTurboKit(sheet), "an upgraded turbo kit shows the Turbo section");
+        }
+        { // ps vs hp display (GT2+ metric-horsepower patch)
+            gt2::metricPower = false;
+            Check(gt2::DisplayPower(300) == 295, "hp conversion");
+            Check(gt2::DisplayPowerText("%dhp / %drpm") == "%dhp / %drpm", "hp label and format preserved");
+            gt2::metricPower = true;
+            Check(gt2::DisplayPower(300) == 300, "PS value shown unchanged");
+            Check(gt2::DisplayPowerText("%dhp / %drpm") == "%dPS / %drpm", "PS label preserves rpm formatting");
+            Check(gt2::DisplayPowerText("~%dHP") == "~%dPS", "PS event restriction label");
+            Check(gt2::DisplayPowerText(" hp") == " PS", "PS graph label");
+            Check(gt2::DisplayPowerText("PS") == "PS", "metric disc label unchanged");
+            gt2::metricPower = false;
         }
         std::cout << checks << " regression checks passed\n";
         return 0;

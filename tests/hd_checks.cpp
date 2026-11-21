@@ -102,7 +102,7 @@ int main() {
         Reject([&]{gt2::hd::Movie bad((dir/"truncated.gtm").string());});
         {
             std::fstream corrupt(path,std::ios::in|std::ios::out|std::ios::binary);
-            corrupt.seekp(8); const char huge[4]={-1,-1,-1,127};corrupt.write(huge,4);
+            corrupt.seekp(8); const unsigned char huge[4]={0xff,0xff,0xff,0x7f};corrupt.write(reinterpret_cast<const char*>(huge),4);
         }
         Reject([&]{gt2::hd::Movie bad(path);});
         fs::create_directory(dir/"hd"); std::ofstream(dir/"hd/profile.txt")<<"profile-a";

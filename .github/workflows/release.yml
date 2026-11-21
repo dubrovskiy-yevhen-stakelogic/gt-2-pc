@@ -149,14 +149,23 @@ jobs:
 
       - uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
         with:
-          vulkan_version: latest
+          # 1.4.313.0 is the last SDK whose runtime components the action installs;
+          # newer versions expect a system vulkan-1.dll that the runner lacks.
+          vulkan_version: 1.4.313.0
           cache: true
+          # msaa_2d_audit runs on this GPU-less runner: install the loader and
+          # register SwiftShader so the test can create a Vulkan device.
+          install_runtime: true
+          install_swiftshader: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and test
         shell: cmd
         run: |
           call build.cmd build_ci
           if errorlevel 1 exit /b 1
+          rem The Vulkan runtime sits next to the SDK; msaa_2d_audit loads vulkan-1.dll.
+          set "PATH=%VULKAN_SDK%\runtime\x64;%PATH%"
           ctest --test-dir build_ci --output-on-failure
           if errorlevel 1 exit /b 1
 
@@ -252,8 +261,19 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   linux:
-    name: Linux x86_64 tarball
-    runs-on: ubuntu-24.04
+    name: Linux ${{ matrix.arch }} zip
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      # Linux arm64 is a free GitHub-hosted runner only in public repositories.
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
     steps:
       - name: Check out workflow tools
         uses: actions/checkout@v7
@@ -274,34 +294,48 @@ jobs:
       - name: Install build dependencies
         run: |
           bash "$RUNNER_TEMP/gt2-apt-install.sh" \
-            cmake ninja-build g++ pkg-config python3 \
+            cmake ninja-build g++ pkg-config python3 zip \
             libsdl2-dev libgtk-3-dev libvulkan-dev glslc
 
       - name: Build and test
         run: bash scripts/build-linux.sh
 
-      - name: Collect assets
+      - name: Package ZIP
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           version="$(sed -n 's/^project(gt2pc VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
-          stage="dist/GT2-${version}-linux-x86_64"
+          stage="dist/GT2-${version}-linux-${ARCH}"
           cmake --install build_linux --prefix "$stage"
-          if ldd "$stage/bin/gt2game" | grep -q 'not found'; then
-            echo "Unresolved runtime library in gt2game"; ldd "$stage/bin/gt2game"; exit 1
-          fi
-          tar -C dist -czf "dist/GT2-${version}-linux-x86_64.tar.gz" "GT2-${version}-linux-x86_64"
+          for binary in "$stage"/bin/*; do
+            if ldd "$binary" 2>/dev/null | grep -q 'not found'; then
+              echo "Unresolved runtime library in $binary"; ldd "$binary"; exit 1
+            fi
+          done
+          (cd dist && zip -q -r "GT2-${version}-linux-${ARCH}.zip" "GT2-${version}-linux-${ARCH}")
           mkdir -p release-assets
-          cp "dist/GT2-${version}-linux-x86_64.tar.gz" release-assets/
-          (cd release-assets && sha256sum *.tar.gz > "SHA256SUMS-linux-x86_64-tarball.txt")
+          cp "dist/GT2-${version}-linux-${ARCH}.zip" release-assets/
+          (cd release-assets && sha256sum *.zip > "SHA256SUMS-linux-${ARCH}-zip.txt")
 
       - uses: actions/upload-artifact@v7
         with:
-          # A workflow artifact for non-Flatpak systems. The release's Linux
-          # download is the Flatpak, so launchers never pick this build tree.
-          name: linux-x86_64-tarball
+          name: release-linux-${{ matrix.arch }}
           path: release-assets/
           if-no-files-found: error
           compression-level: 0
+
+      - name: Upload assets to the release
+        if: github.event_name == 'release' || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          [ -n "$TAG" ] || { echo "No release tag provided"; exit 1; }
+          gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" release-assets/* --clobber
 
   android:
     name: Android arm64 (Quest)
