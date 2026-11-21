@@ -33,7 +33,7 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
     uint space;
     uint eye;
-    uvec2 reserved;
+    int vertexBias; uint reserved;
     vec4 hudClip;
     vec4 nativeModelRotation;
 #ifdef GT2_WEBGL
@@ -105,7 +105,7 @@ void main() {
 #ifndef GT2_WEBGL
     outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
     if((inFlags & 64u)!=0u) {
-        vec3 n=nativeVertices.entries[gl_VertexIndex-1228800].xyz;
+        vec3 n=nativeVertices.entries[gl_VertexIndex + pc.vertexBias - 1228800].xyz;
         vec3 ray=nativeProjectedRay(inPos,pc.mvp);
         nativeVertex(nativeProjectedNormal(n,pc.mvp),-ray,ray,mat3(1),nativeModelBasis()*transpose(nativeProjectedBasis(pc.mvp)));
     } else

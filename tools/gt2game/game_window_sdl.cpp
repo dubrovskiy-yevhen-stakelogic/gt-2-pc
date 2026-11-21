@@ -1,4 +1,5 @@
 #include "game_window.h"
+#include "graphics_options.h"
 #include "platform/input/sdl_keys.h"
 #include "gt2view/vk_context.h"
 #define SDL_MAIN_HANDLED

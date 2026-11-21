@@ -4,6 +4,7 @@
 
 #include <windows.h>
 
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@ void Check(VkResult r, const char* what) {
 VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     app.pApplicationName = "gt2view";
-    app.apiVersion = VK_API_VERSION_1_3;
+    app.apiVersion = RequestedInstanceApiVersion();
     const char* instExt[] = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -38,10 +39,12 @@ VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
     std::vector<VkPhysicalDevice> devices(count);
     vkEnumeratePhysicalDevices(instance_, &count, devices.data());
     int bestScore = -1;
+    VkDeviceFeatures chosen{};
     for (VkPhysicalDevice pd : devices) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(pd, &props);
-        if (props.apiVersion < VK_API_VERSION_1_3) continue;
+        if (props.apiVersion < VK_API_VERSION_1_1) continue;
+        const VkDeviceFeatures features = QueryDeviceFeatures(pd, props.apiVersion);
         uint32_t qn = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(pd, &qn, nullptr);
         std::vector<VkQueueFamilyProperties> qs(qn);
@@ -55,33 +58,47 @@ VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
                 bestScore = score;
                 physical_ = pd;
                 queueFamily_ = q;
+                chosen = features;
             }
             break;
         }
     }
-    if (!physical_) throw std::runtime_error("no Vulkan 1.3 GPU with graphics+present queue found");
+    if (!physical_) throw std::runtime_error("no Vulkan 1.1 GPU with graphics+present queue found");
+    dynamicRendering_ = chosen.dynamicRendering && !ForceRenderPassPath();
+    multiview_ = chosen.multiview;
 
     float priority = 1.0f;
     VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
     qci.queueFamilyIndex = queueFamily_;
     qci.queueCount = 1;
     qci.pQueuePriorities = &priority;
+    VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    f11.multiview = multiview_ ? VK_TRUE : VK_FALSE;
     VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     f13.dynamicRendering = VK_TRUE;
+    VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    features.pNext = &f11;
+    // VkPhysicalDeviceVulkan13Features may only be chained when the device itself is 1.3.
+    if (chosen.dynamicRendering) f11.pNext = &f13;
     const char* devExt[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-    dci.pNext = &f13;
+    dci.pNext = &features;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount = 1;
     dci.ppEnabledExtensionNames = devExt;
     Check(vkCreateDevice(physical_, &dci, nullptr, &device_), "vkCreateDevice");
     vkGetDeviceQueue(device_, queueFamily_, 0, &queue_);
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physical_, &properties);
+    std::printf("graphics: Vulkan, %s, %s\n", properties.deviceName,
+                dynamicRendering_ ? "dynamic rendering" : "render passes (Vulkan 1.1/1.2)");
 }
 
 VkContext::VkContext(const Existing& existing)
     : instance_(existing.instance), physical_(existing.physical), device_(existing.device), queueFamily_(existing.queueFamily), queue_(existing.queue),
-      owns_(false), shadingRate_(existing.shadingRate) {}
+      owns_(false), shadingRate_(existing.shadingRate), dynamicRendering_(existing.dynamicRendering && !ForceRenderPassPath()),
+      multiview_(existing.multiview) {}
 
 VkContext::~VkContext() {
     if (!owns_) return;

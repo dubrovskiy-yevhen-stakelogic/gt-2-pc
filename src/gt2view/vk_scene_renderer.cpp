@@ -1,4 +1,5 @@
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2view/vk_render_pass.h"
 #include "gt2view/shading_rate.h"
 #include "gt2view/surface_format.h"
 #include "gt2view/paint_environment.h"
@@ -79,6 +80,9 @@ void Transition(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, V
     vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
 
+uint64_t HandleBits(VkImageView view) { return uint64_t(reinterpret_cast<uintptr_t>(view)); }
+uint64_t HandleBits(VkRenderPass pass) { return uint64_t(reinterpret_cast<uintptr_t>(pass)); }
+
 } // namespace
 
 VkSceneRenderer::VkSceneRenderer(VkContext& context) : VkSceneRenderer(context, VkExtent2D{0, 0}, VK_FORMAT_UNDEFINED) {}
@@ -86,13 +90,20 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context) : VkSceneRenderer(context, 
 VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent, VkFormat offscreenFormat)
     : context_(context), surface_(context.Surface()), physical_(context.PhysicalDevice()), device_(context.Device()), queueFamily_(context.QueueFamily()),
       queue_(context.Queue()) {
-    cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRendering"));
-    cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRendering"));
-    if (!cmdBeginRendering_) cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRenderingKHR"));
-    if (!cmdEndRendering_) cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRenderingKHR"));
-    if (!cmdBeginRendering_ || !cmdEndRendering_) throw std::runtime_error("Vulkan dynamic rendering entry points unavailable");
+    useDynamicRendering_ = context_.DynamicRendering();
+    if (useDynamicRendering_) {
+        cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRendering"));
+        cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRendering"));
+        if (!cmdBeginRendering_) cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRenderingKHR"));
+        if (!cmdEndRendering_) cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRenderingKHR"));
+        if (!cmdBeginRendering_ || !cmdEndRendering_) throw std::runtime_error("Vulkan dynamic rendering entry points unavailable");
+    }
     if (context_.ShadingRate()) {
         cmdSetShadingRate_ = reinterpret_cast<PFN_vkCmdSetFragmentShadingRateKHR>(vkGetDeviceProcAddr(device_, "vkCmdSetFragmentShadingRateKHR"));
+        // The render-pass path declares the rate map as an attachment, which needs VkSubpassDescription2. On a 1.1
+        // device that is the KHR entry point (the session enables the extension); on 1.2+ the core name.
+        createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2KHR"));
+        if (!createRenderPass2_) createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2"));
         const auto rates = reinterpret_cast<PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR>(vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
         if (rates) {
             uint32_t count = 0;
@@ -121,6 +132,18 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     Check(vkCreateFence(device_, &fci, nullptr, &fence_), "vkCreateFence");
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physical_, &properties);
+    // The budget query is only valid when the driver has the extension; without it the log keeps the renderer's own
+    // peak and says nothing about the device.
+    uint32_t extensionCount = 0;
+    if (vkEnumerateDeviceExtensionProperties(physical_, nullptr, &extensionCount, nullptr) == VK_SUCCESS && extensionCount) {
+        std::vector<VkExtensionProperties> extensions(extensionCount);
+        if (vkEnumerateDeviceExtensionProperties(physical_, nullptr, &extensionCount, extensions.data()) == VK_SUCCESS) {
+            memoryBudget_ = std::any_of(extensions.begin(), extensions.end(), [](const VkExtensionProperties& e) {
+                return std::strcmp(e.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0; });
+        }
+    }
+    getMemoryProperties2_ = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2>(
+        vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceMemoryProperties2"));
     cacheMenuTextures_ = properties.vendorID == 0x106bu; // Apple: avoid dependent VRAM-buffer reads in menu fragments.
     if (const char* cache = std::getenv("GT2_CACHE_MENU_TEXTURES")) cacheMenuTextures_ = std::strcmp(cache, "1") == 0;
     if (cacheMenuTextures_) std::printf("graphics: hardware palette textures enabled for menus\n");
@@ -142,10 +165,14 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     Check(vkCreateSemaphore(device_, &sci, nullptr, &acquired_), "vkCreateSemaphore");
     Check(vkCreateSemaphore(device_, &sci, nullptr, &rendered_), "vkCreateSemaphore");
 
-    vertexBuffer_ = CreateBuffer(sizeof(SceneVertex) * kMaxVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    environmentCodes_=CreateBuffer(sizeof(uint32_t)*kMaxVertices,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    rectBuffer_ = CreateBuffer(sizeof(float) * 4 * kMaxVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    // The vertex arena starts small and follows the content (ResolveVertex walks vertexUsed_ up, never the
+    // reserved virtual layout).
+    vertexCapacity_ = 32768;
+    vertexBuffer_ = CreateBuffer(sizeof(SceneVertex) * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    rectBuffer_ = CreateBuffer(sizeof(float) * 4 * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     std::memset(rectBuffer_.mapped, 0, static_cast<size_t>(rectBuffer_.size));
+    environmentCodes_ = CreateBuffer(sizeof(uint32_t) * vertexCapacity_, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    std::memset(environmentCodes_.mapped, 0, static_cast<size_t>(environmentCodes_.size));
     textureBuffer_ = CreateBuffer(sizeof(uint32_t) * kVramWidth * kVramRows, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     std::memset(textureBuffer_.mapped, 0, static_cast<size_t>(textureBuffer_.size));
     vramShadow_.resize(size_t(kVramRows) * kVramWidth);
@@ -165,14 +192,15 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     modelUpload_=CreateBuffer(4,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     *static_cast<uint32_t*>(modelUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(handUpload_.mapped) = 0xffffffffu; handPending_ = true;
-    externalBuffer_ = CreateBuffer(sizeof(uint32_t) * kExternalTexels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    externalBuffer_ = CreateBuffer(sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT); // grows to the used texels
+    externalCapacity_ = 1;
     std::memset(externalBuffer_.mapped, 0, static_cast<size_t>(externalBuffer_.size));
     viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes
     std::memset(viewBuffer_.mapped, 0, static_cast<size_t>(viewBuffer_.size));
-    nativeVertexBuffer_=CreateBuffer(size_t(8)*kModelSetVertexStride*sizeof(NativeModelVertex),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    nativeMaterialBuffer_=CreateBuffer(size_t(8)*kNativeMaterialsPerSlot*sizeof(NativeModelMaterial),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    std::memset(nativeVertexBuffer_.mapped,0,size_t(nativeVertexBuffer_.size));
-    std::memset(nativeMaterialBuffer_.mapped,0,size_t(nativeMaterialBuffer_.size));
+    nativeVertexBuffer_=CreateBuffer(sizeof(NativeModelVertex),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    nativeMaterialBuffer_=CreateBuffer(sizeof(NativeModelMaterial),VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    *static_cast<NativeModelVertex*>(nativeVertexBuffer_.mapped)=NativeModelVertex{};
+    *static_cast<NativeModelMaterial*>(nativeMaterialBuffer_.mapped)=NativeModelMaterial{};
 
     if (offscreen_) CreateOffscreen(offscreenExtent, offscreenFormat);
     else CreateSwapchain();
@@ -195,6 +223,13 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
 
 VkSceneRenderer::~VkSceneRenderer() {
     if (!device_) return;
+    // What the frames this renderer drew really needed: our buffers and images, and the device-local usage the
+    // driver reports (swapchain, driver internals and the compositor included). Low-memory reports get both.
+    SampleDeviceMemory();
+    std::printf("graphics: memory peak: %.1f MiB renderer buffers, %.1f MiB device-local used",
+                double(peakAllocatedBytes_) / (1024 * 1024), double(peakDeviceBytes_) / (1024 * 1024));
+    if (deviceBudgetBytes_) std::printf(" (budget %.0f MiB)", double(deviceBudgetBytes_) / (1024 * 1024));
+    std::printf("\n");
     vkDeviceWaitIdle(device_);
     DestroyPipelineSet(pipelines_);
     DestroyPipelineSet(modelPipelines_);
@@ -233,6 +268,9 @@ VkSceneRenderer::~VkSceneRenderer() {
     DestroyBuffer(viewBuffer_);
     DestroyBuffer(nativeVertexBuffer_);DestroyBuffer(nativeMaterialBuffer_);
     DestroyBuffer(readback_);
+    DestroyFramebuffers();
+    for (auto& entry : renderPasses_) vkDestroyRenderPass(device_, entry.second, nullptr);
+    renderPasses_.clear();
     vkDestroySemaphore(device_, acquired_, nullptr);
     vkDestroySemaphore(device_, rendered_, nullptr);
     if (gpuQueries_) vkDestroyQueryPool(device_, gpuQueries_, nullptr);
@@ -264,22 +302,119 @@ VkSceneRenderer::Buffer VkSceneRenderer::CreateBuffer(VkDeviceSize size, VkBuffe
     Check(vkAllocateMemory(device_, &mai, nullptr, &b.memory), "vkAllocateMemory");
     Check(vkBindBufferMemory(device_, b.buffer, b.memory, 0), "vkBindBufferMemory");
     Check(vkMapMemory(device_, b.memory, 0, VK_WHOLE_SIZE, 0, &b.mapped), "vkMapMemory");
+    allocatedBytes_ += b.size;
+    ReportAllocation();
     return b;
 }
 
 void VkSceneRenderer::DestroyBuffer(Buffer& b) {
     if (b.buffer) vkDestroyBuffer(device_, b.buffer, nullptr);
-    if (b.memory) vkFreeMemory(device_, b.memory, nullptr);
+    if (b.memory) { allocatedBytes_ -= b.size; vkFreeMemory(device_, b.memory, nullptr); }
     b = {};
+}
+
+void VkSceneRenderer::ReportAllocation() {
+    peakAllocatedBytes_ = std::max<uint64_t>(peakAllocatedBytes_, uint64_t(allocatedBytes_));
+    constexpr VkDeviceSize step = 64ull << 20;
+    if (allocatedBytes_ / step <= reportedBytes_ / step) return;
+    reportedBytes_ = allocatedBytes_;
+    std::printf("graphics: %llu MiB GPU memory allocated\n", static_cast<unsigned long long>(allocatedBytes_ / (1024 * 1024)));
+}
+
+bool VkSceneRenderer::DeviceMemory(uint64_t& used, uint64_t& budget) const {
+    // The same dev/support switch as the probe (GT2_FAKE_VIDEO_MIB): pretend an empty device with that much free, so
+    // the adaptive cache can be tried on a big machine.
+    if (const char* fake = std::getenv("GT2_FAKE_VIDEO_MIB")) {
+        used = 0;
+        budget = std::strtoull(fake, nullptr, 10) << 20;
+        return budget != 0;
+    }
+    if (!memoryBudget_ || !getMemoryProperties2_) return false;
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT heap{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT};
+    VkPhysicalDeviceMemoryProperties2 memory{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2};
+    memory.pNext = &heap;
+    getMemoryProperties2_(physical_, &memory);
+    used = budget = 0;
+    for (uint32_t i = 0; i < memory.memoryProperties.memoryHeapCount; ++i)
+        if (memory.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+            used += heap.heapUsage[i];
+            budget += heap.heapBudget[i];
+        }
+    return true;
+}
+
+uint32_t VkSceneRenderer::AdaptiveDecodedLayers() const {
+    // Dev/support override, like GT2_VK_RENDERPASS: try a smaller cache (MiB) on real hardware without changing the
+    // settings; 0 keeps the cache off.
+    if (const char* forced = std::getenv("GT2_DECODED_CACHE_MIB")) {
+        const int mib = std::max(0, std::atoi(forced));
+        return std::min<uint32_t>(uint32_t(mib) * 8 / 5, DecodedTextureCache::kLayers); // 0.625 MiB per layer
+    }
+    uint64_t used = 0, budget = 0;
+    if (!DeviceMemory(used, budget) || !budget) return DecodedTextureCache::kLayers; // no budget: keep the full cache
+    const uint64_t available = budget > used ? budget - used : 0;
+    return gt2view::RecommendedDecodedCacheLayers(available, extent_.height);
+}
+
+void VkSceneRenderer::SampleDeviceMemory() {
+    uint64_t used = 0, budget = 0;
+    if (!DeviceMemory(used, budget)) return;
+    peakDeviceBytes_ = std::max(peakDeviceBytes_, used);
+    deviceBudgetBytes_ = budget ? budget : deviceBudgetBytes_;
+    // A device can start above the floor and still be pushed past its budget by MSAA, resolution, HD media or GT4
+    // models. Say so in the log before the allocation fails, with the settings that move the number.
+    if (deviceBudgetBytes_ && !memoryPressure_ && peakDeviceBytes_ * 4 > deviceBudgetBytes_ * 3) {
+        memoryPressure_ = true;
+        std::printf("graphics: memory pressure: %.0f MiB of %.0f MiB budget used at peak; lower MSAA, Resolution, "
+                    "HD media or GT4 models if it stutters or fails\n",
+                    double(peakDeviceBytes_) / (1024 * 1024), double(deviceBudgetBytes_) / (1024 * 1024));
+    }
+}
+
+// Grows the external RGBA8 store to cover `texels`. The store's addresses are absolute, so the first GT4/native model
+// upload reaches its range's base and the buffer grows to there; a PS1-only install never allocates the full size.
+void VkSceneRenderer::EnsureExternalCapacity(uint32_t texels) {
+    if (texels <= externalCapacity_) return;
+    constexpr uint32_t chunk = 1u << 20; // 1 M texels = 4 MiB
+    uint32_t capacity = (texels + chunk - 1) & ~(chunk - 1);
+    if (capacity > kExternalTexels) capacity = kExternalTexels;
+    vkDeviceWaitIdle(device_);
+    Buffer grown = CreateBuffer(size_t(capacity) * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    if (externalBuffer_.mapped && externalBuffer_.size)
+        std::memcpy(grown.mapped, externalBuffer_.mapped, static_cast<size_t>(externalBuffer_.size));
+    const VkDescriptorBufferInfo info{grown.buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstBinding = 1;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.pBufferInfo = &info;
+    for (VkDescriptorSet set : {descSet_, mirrorSourceSet_}) {
+        write.dstSet = set;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+    DestroyBuffer(externalBuffer_);
+    externalBuffer_ = grown;
+    externalCapacity_ = capacity;
+    std::printf("graphics: external texture store %u MiB\n", capacity * 4 / (1024 * 1024));
 }
 
 void VkSceneRenderer::CreateSwapchain() {
     VkSurfaceCapabilitiesKHR caps;
     Check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_, surface_, &caps), "surface capabilities");
-    extent_ = caps.currentExtent;
-    extentFromWindow_ = extent_.width == 0xFFFFFFFFu;
-    if (extentFromWindow_) context_.WindowExtent(extent_);
-    if (extent_.width == 0 || extent_.height == 0) return; // minimized
+    surfaceExtent_ = caps.currentExtent;
+    extentFromWindow_ = surfaceExtent_.width == 0xFFFFFFFFu;
+    if (extentFromWindow_) context_.WindowExtent(surfaceExtent_);
+    if (surfaceExtent_.width == 0 || surfaceExtent_.height == 0) return; // minimized
+    // A fixed output renders the swapchain (and so the whole frame) below the window; Vulkan 1.1 scales it up in the
+    // presentation engine, like a TV compositor scaling a 720p buffer to the panel. No display-mode switch.
+    extent_ = surfaceExtent_;
+    if (options_.outputHeight && options_.outputHeight < surfaceExtent_.height) {
+        uint32_t height = std::clamp(options_.outputHeight, caps.minImageExtent.height, caps.maxImageExtent.height);
+        height = std::min(height, surfaceExtent_.height);
+        uint32_t width = uint32_t((uint64_t(surfaceExtent_.width) * height + surfaceExtent_.height / 2) / surfaceExtent_.height);
+        width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
+        extent_ = {width, height};
+    }
 
     uint32_t fn = 0;
     Check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, nullptr), "surface formats");
@@ -326,9 +461,18 @@ void VkSceneRenderer::CreateSwapchain() {
         blitLinear_ = (fp.optimalTilingFeatures & need) == need;
     }
     sci.clipped = VK_TRUE;
-    Check(vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_), "vkCreateSwapchainKHR");
-    std::printf("graphics: swapchain %ux%u, format %d, colorspace %d, present %d, requested images %u\n",
-        extent_.width, extent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
+    VkResult created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    if (created != VK_SUCCESS && (extent_.width != surfaceExtent_.width || extent_.height != surfaceExtent_.height)) {
+        // Some WSI implementations refuse an extent different from the surface: keep the game running at full size.
+        std::printf("graphics: the driver rejected a %ux%u output, using the surface %ux%u\n",
+                    extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height);
+        extent_ = surfaceExtent_;
+        sci.imageExtent = extent_;
+        created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    }
+    Check(created, "vkCreateSwapchainKHR");
+    std::printf("graphics: swapchain %ux%u (surface %ux%u), format %d, colorspace %d, present %d, requested images %u\n",
+        extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(device_, swapchain_, &n, nullptr);
@@ -443,6 +587,9 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
     }
     Check(vkAllocateMemory(device_, &mai, nullptr, &img.memory), "vkAllocateMemory(scene)");
     Check(vkBindImageMemory(device_, img.image, img.memory, 0), "vkBindImageMemory(scene)");
+    img.allocated = req.size;
+    allocatedBytes_ += req.size;
+    ReportAllocation();
     VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     vci.image = img.image;
     vci.viewType = cube?VK_IMAGE_VIEW_TYPE_CUBE:layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
@@ -459,11 +606,12 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
 }
 
 void VkSceneRenderer::DestroyImage(Image& img) {
+    DestroyFramebuffers(); // a cached framebuffer keeps these views alive
     for (VkImageView& v : img.layer)
         if (v) vkDestroyImageView(device_, v, nullptr);
     if (img.view) vkDestroyImageView(device_, img.view, nullptr);
     if (img.image && img.ownsImage) vkDestroyImage(device_, img.image, nullptr);
-    if (img.memory) vkFreeMemory(device_, img.memory, nullptr);
+    if (img.memory) { allocatedBytes_ -= img.allocated; vkFreeMemory(device_, img.memory, nullptr); }
     img = {};
 }
 
@@ -510,9 +658,10 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
     if (options == options_) return;
     vkDeviceWaitIdle(device_);
     const bool presentChanged = options.vsync != options_.vsync && !offscreen_; // no presentation of our own in the XR path
+    const bool outputChanged = options.outputHeight != options_.outputHeight && !offscreen_;
     options_ = options;
-    if (presentChanged) {
-        DestroySwapchain(); // recreated with the new present mode by the next Draw
+    if (presentChanged || outputChanged) {
+        DestroySwapchain(); // recreated with the new present mode / output size by the next Draw
         return;
     }
     if (swapchain_ || offscreen_) CreateSceneTargets();
@@ -521,6 +670,7 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
 }
 
 void VkSceneRenderer::DestroySwapchain() {
+    DestroyFramebuffers(); // views_ / depthView_ are about to go away
     DestroySceneTargets();
     if (offscreen_) DestroyImage(offscreenTarget_); // views_[0] is its view
     else
@@ -735,11 +885,16 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
     rateState.fragmentSize = {1, 1};
     rateState.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
     rateState.combinerOps[1] = ((cachedOnly || modelOnly) && !cachedHud) ? VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR : VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
-    if (stereo && context_.ShadingRate()) {
+    if (!useDynamicRendering_) {
+        // Vulkan 1.1/1.2: the pipeline names the render pass whose attachments it was built for. MSAA pipelines
+        // always draw into the multisampled attachment that is resolved at the end of the pass.
+        gpi.renderPass = GetRenderPass(stereo ? stereoFormat_ : colorFormat_, samples, samples != VK_SAMPLE_COUNT_1_BIT, viewMask,
+                                       VK_ATTACHMENT_LOAD_OP_CLEAR, stereo && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE);
+    } else if (stereo && context_.ShadingRate()) {
         rendering.pNext = &rateState;
         gpi.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
     }
-    gpi.pNext = &rendering;
+    if (useDynamicRendering_) gpi.pNext = &rendering;
     gpi.stageCount = 2;
     gpi.pStages = stages;
     gpi.pVertexInputState = &vin;
@@ -825,11 +980,177 @@ void VkSceneRenderer::WriteBuffer(Buffer& buffer, size_t offset, const void* dat
         std::memcpy(static_cast<uint8_t*>(buffer.mapped) + offset, data, bytes);
     }
 }
+void VkSceneRenderer::WriteVertices(Buffer& buffer, uint32_t first, uint32_t count, size_t elementSize, const void* data) {
+    if (!count) return;
+    const size_t bytes = size_t(count) * elementSize;
+    if (deferUploads_) {
+        if (pendingWriteCount_ == pendingWrites_.size()) pendingWrites_.emplace_back();
+        auto& write = pendingWrites_[pendingWriteCount_++];
+        write.buffer = &buffer; write.offset = 0; write.elementSize = elementSize;
+        write.first = first; write.count = count;
+        write.bytes.resize(bytes);
+        std::memcpy(write.bytes.data(), data, bytes);
+    } else {
+        WaitFrame();
+        const size_t offset = size_t(ResolveVertex(first, count)) * elementSize;
+        std::memcpy(static_cast<uint8_t*>(buffer.mapped) + offset, data, bytes);
+    }
+}
+
+uint32_t VkSceneRenderer::ResolveVertex(uint32_t first, uint32_t count) {
+    const uint32_t end = first + count;
+    constexpr uint32_t granularity = 512; // a run's block is rounded up, so small growth stays in place
+    auto next = vertexRuns_.upper_bound(first);
+    if (next != vertexRuns_.begin()) {
+        auto run = std::prev(next);
+        if (first < run->second.end && end <= run->second.end) return run->second.physical + (first - run->second.first);
+        // This write continues the run (inside it or right after it) and no other run starts inside the range.
+        const bool free = first >= run->second.first && first <= run->second.end &&
+                          (next == vertexRuns_.end() || next->second.first >= end);
+        if (free) {
+            const uint32_t need = end - run->second.first;
+            if (need <= run->second.capacity) {
+                run->second.end = end;
+                return run->second.physical + (first - run->second.first);
+            }
+            // The newest block can grow where it is, so chunked uploads stay O(1) instead of copying the run.
+            if (run->second.physical + run->second.capacity == vertexUsed_) {
+                uint32_t capacity = (std::max(need, run->second.capacity * 2) + granularity - 1) / granularity * granularity;
+                if (vertexUsed_ - run->second.capacity + capacity > vertexCapacity_)
+                    GrowVertexArena(vertexUsed_ - run->second.capacity + capacity);
+                vertexUsed_ += capacity - run->second.capacity;
+                run->second.capacity = capacity;
+                run->second.end = end;
+                return run->second.physical + (first - run->second.first);
+            }
+        }
+    }
+    // A new range, or one that grows a run which cannot grow in place: rebuild the touched runs into one run.
+    uint32_t lo = first, hi = end;
+    auto scan = vertexRuns_.lower_bound(first);
+    if (scan != vertexRuns_.begin() && std::prev(scan)->second.end >= lo) scan = std::prev(scan);
+    std::vector<VertexRun> moved;
+    while (scan != vertexRuns_.end() && scan->second.first <= hi) {
+        lo = std::min(lo, scan->second.first);
+        hi = std::max(hi, scan->second.end);
+        moved.push_back(scan->second);
+        scan = vertexRuns_.erase(scan);
+    }
+    uint32_t length = (hi - lo + granularity - 1) / granularity * granularity;
+    uint32_t physical = ~0u;
+    for (auto hole = vertexFree_.begin(); hole != vertexFree_.end(); ++hole) {
+        if (hole->second < length) continue;
+        physical = hole->first;
+        const uint32_t left = hole->second - length;
+        vertexFree_.erase(hole);
+        if (left) vertexFree_.emplace(physical + length, left);
+        break;
+    }
+    if (physical == ~0u) {
+        physical = vertexUsed_;
+        vertexUsed_ += length;
+        if (vertexUsed_ > vertexCapacity_) GrowVertexArena(vertexUsed_);
+        // Fragmentation can only make the packed content larger than the virtual span; the old buffer refused
+        // content past kMaxVertices the same way.
+        if (vertexUsed_ > vertexCapacity_) throw std::runtime_error("SetVertices: vertex buffer is full");
+    }
+    auto* vertexBytes = static_cast<uint8_t*>(vertexBuffer_.mapped);
+    auto* rectBytes = static_cast<uint8_t*>(rectBuffer_.mapped);
+    auto* codeBytes = static_cast<uint8_t*>(environmentCodes_.mapped);
+    auto freeBlock = [&](uint32_t start, uint32_t size) {
+        auto next = vertexFree_.upper_bound(start);
+        if (next != vertexFree_.begin()) {
+            auto before = std::prev(next);
+            if (uint64_t(before->first) + before->second == start) {
+                start = before->first;
+                size += before->second;
+                vertexFree_.erase(before);
+            }
+        }
+        if (next != vertexFree_.end() && uint64_t(start) + size == next->first) {
+            size += next->second;
+            vertexFree_.erase(next);
+        }
+        vertexFree_.emplace(start, size);
+    };
+    for (const auto& run : moved) {
+        const uint32_t target = physical + (run.first - lo);
+        const size_t vertices = run.end - run.first;
+        if (size_t(run.physical) + vertices > vertexCapacity_ || size_t(target) + vertices > vertexCapacity_)
+            throw std::runtime_error("vertex arena: run outside the buffer");
+        // The target is a hole or above the high-water, so it never aliases the run being moved (memmove anyway).
+        std::memmove(vertexBytes + size_t(target) * sizeof(SceneVertex),
+                     vertexBytes + size_t(run.physical) * sizeof(SceneVertex), vertices * sizeof(SceneVertex));
+        std::memmove(rectBytes + size_t(target) * 4 * sizeof(float),
+                     rectBytes + size_t(run.physical) * 4 * sizeof(float), vertices * 4 * sizeof(float));
+        std::memmove(codeBytes + size_t(target) * sizeof(uint32_t),
+                     codeBytes + size_t(run.physical) * sizeof(uint32_t), vertices * sizeof(uint32_t));
+        freeBlock(run.physical, run.capacity);
+    }
+    vertexRuns_.emplace(lo, VertexRun{lo, hi, physical, length});
+    return physical + (first - lo);
+}
+
+void VkSceneRenderer::GrowVertexArena(uint32_t vertices) {
+    if (vertices <= vertexCapacity_) return;
+    const uint32_t capacity = std::min(std::max(vertices, 32768u), kMaxVertices); // content, not slack
+    vkDeviceWaitIdle(device_);
+    Buffer grownVertex = CreateBuffer(size_t(capacity) * sizeof(SceneVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    Buffer grownRect = CreateBuffer(size_t(capacity) * 4 * sizeof(float), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    Buffer grownCodes = CreateBuffer(size_t(capacity) * sizeof(uint32_t), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    // vertexUsed_ may already count the range that caused this growth: only the old capacity's bytes exist.
+    const size_t used = std::min(vertexUsed_, vertexCapacity_);
+    if (used) {
+        std::memcpy(grownVertex.mapped, vertexBuffer_.mapped, used * sizeof(SceneVertex));
+        std::memcpy(grownRect.mapped, rectBuffer_.mapped, used * 4 * sizeof(float));
+        std::memcpy(grownCodes.mapped, environmentCodes_.mapped, used * sizeof(uint32_t));
+    }
+    DestroyBuffer(vertexBuffer_); vertexBuffer_ = grownVertex;
+    DestroyBuffer(rectBuffer_); rectBuffer_ = grownRect;
+    DestroyBuffer(environmentCodes_); environmentCodes_ = grownCodes;
+    vertexCapacity_ = capacity;
+    std::printf("graphics: vertex arena %.1f MiB (%u vertices, %u used)\n",
+                double(capacity) * (sizeof(SceneVertex) + 4 * sizeof(float) + sizeof(uint32_t)) / (1024 * 1024),
+                capacity, vertexUsed_);
+}
+
+bool VkSceneRenderer::VertexRange(uint32_t first, uint32_t count, uint32_t& physicalFirst, int32_t& bias) const {
+    const uint32_t end = first + count;
+    auto next = vertexRuns_.upper_bound(first);
+    if (next == vertexRuns_.begin()) return false;
+    auto run = std::prev(next);
+    if (first < run->second.first) return false;
+    uint32_t covered = run->second.end;
+    uint32_t physicalEnd = run->second.physical + (covered - run->second.first);
+    while (covered < end) {
+        // A gap is a range that was never written (it drew the zeros of the reserved buffer before); a run that
+        // is not adjacent in physical memory cannot be one contiguous draw.
+        ++run;
+        if (run == vertexRuns_.end() || run->second.first != covered || run->second.physical != physicalEnd) return false;
+        covered = run->second.end;
+        physicalEnd = run->second.physical + (covered - run->second.first);
+    }
+    physicalFirst = run->second.physical + (first - run->second.first);
+    bias = int32_t(int64_t(first) - int64_t(physicalFirst));
+    return true;
+}
+
+const SceneVertex* VkSceneRenderer::VertexAt(uint32_t index) const {
+    auto next = vertexRuns_.upper_bound(index);
+    if (next == vertexRuns_.begin()) return nullptr;
+    const auto& run = std::prev(next)->second;
+    if (index >= run.end) return nullptr;
+    return static_cast<const SceneVertex*>(vertexBuffer_.mapped) + run.physical + (index - run.first);
+}
+
 void VkSceneRenderer::FlushFrameUploads() {
-    // Preserve call order, including overlapping dynamic ranges and VRAM rows.
+    // Preserve call order, including overlapping dynamic ranges and VRAM rows. Vertex ranges resolve here, after
+    // the fence, so a run that had to move in this batch is copied before the writes that follow it.
     for (size_t i = 0; i < pendingWriteCount_; ++i) {
         const auto& write = pendingWrites_[i];
-        std::memcpy(static_cast<uint8_t*>(write.buffer->mapped) + write.offset, write.bytes.data(), write.bytes.size());
+        const size_t offset = write.elementSize ? size_t(ResolveVertex(write.first, write.count)) * write.elementSize
+                                                : write.offset;
+        std::memcpy(static_cast<uint8_t*>(write.buffer->mapped) + offset, write.bytes.data(), write.bytes.size());
     }
     pendingWriteCount_ = 0;
     deferUploads_ = false;
@@ -845,15 +1166,47 @@ void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>
 }
 std::vector<SceneVertex> VkSceneRenderer::VerticesForAudit(const DrawItem& item) const {
     if(uint64_t(item.firstVertex)+item.vertexCount>kMaxVertices)throw std::runtime_error("audit vertex range");
-    const auto* first=static_cast<const SceneVertex*>(vertexBuffer_.mapped)+item.firstVertex;
-    return {first,first+item.vertexCount};
+    std::vector<SceneVertex> out;
+    out.reserve(item.vertexCount);
+    for (uint32_t i = 0; i < item.vertexCount; ++i) {
+        const SceneVertex* vertex = VertexAt(item.firstVertex + i);
+        if (!vertex) throw std::runtime_error("audit vertex range was never uploaded");
+        out.push_back(*vertex);
+    }
+    return out;
 }
+void VkSceneRenderer::EnsureNativeCapacity(Buffer& buffer, uint32_t& capacity, uint32_t need, uint32_t limit,
+                                           size_t elementSize, uint32_t chunk, uint32_t binding) {
+    if (need <= capacity) return;
+    const uint32_t grown = std::min((need + chunk - 1) / chunk * chunk, limit);
+    vkDeviceWaitIdle(device_);
+    Buffer next = CreateBuffer(size_t(grown) * elementSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    std::memset(next.mapped, 0, size_t(next.size)); // the shader may read an entry before it is written
+    if (buffer.mapped) std::memcpy(next.mapped, buffer.mapped, std::min<size_t>(buffer.size, next.size));
+    DestroyBuffer(buffer);
+    buffer = next;
+    capacity = grown;
+    const VkDescriptorBufferInfo info{buffer.buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstBinding = binding; write.descriptorCount = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.pBufferInfo = &info;
+    for (VkDescriptorSet set : {descSet_, mirrorSourceSet_}) {
+        if (!set) continue;
+        write.dstSet = set;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+}
+
 void VkSceneRenderer::SetNativeModelVertices(uint32_t first,const std::vector<NativeModelVertex>& vertices) {
     if(uint64_t(first)+vertices.size()>uint64_t(8)*kModelSetVertexStride)throw std::runtime_error("native vertex range");
+    EnsureNativeCapacity(nativeVertexBuffer_, nativeVertexCapacity_, first + uint32_t(vertices.size()),
+                         8 * kModelSetVertexStride, sizeof(NativeModelVertex), 16384, 10);
     WriteBuffer(nativeVertexBuffer_,size_t(first)*sizeof(NativeModelVertex),vertices.data(),vertices.size()*sizeof(NativeModelVertex));
 }
 void VkSceneRenderer::SetNativeModelMaterials(uint32_t first,const std::vector<NativeModelMaterial>& materials) {
     if(uint64_t(first)+materials.size()>uint64_t(8)*kNativeMaterialsPerSlot)throw std::runtime_error("native material range");
+    EnsureNativeCapacity(nativeMaterialBuffer_, nativeMaterialCapacity_, first + uint32_t(materials.size()),
+                         8 * kNativeMaterialsPerSlot, sizeof(NativeModelMaterial), 2048, 11);
     WriteBuffer(nativeMaterialBuffer_,size_t(first)*sizeof(NativeModelMaterial),materials.data(),materials.size()*sizeof(NativeModelMaterial));
 }
 void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVertex>& vertices) {
@@ -879,7 +1232,7 @@ void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVert
         if (uint64_t(first) < uint64_t(start) + count && uint64_t(start) < uint64_t(first) + vertices.size()) it = materialRanges_.erase(it);
         else ++it;
     }
-    WriteBuffer(vertexBuffer_, size_t(first) * sizeof(SceneVertex), vertices.data(), vertices.size() * sizeof(SceneVertex));
+    WriteVertices(vertexBuffer_, first, uint32_t(vertices.size()), sizeof(SceneVertex), vertices.data());
     // Every caller writes triangle lists starting at `first`: the UV rectangle of each triangle for the smooth filter.
     rectScratch_.resize(vertices.size() * 4);
     float* rect = rectScratch_.data();
@@ -894,7 +1247,7 @@ void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVert
         }
         for (size_t k = 0; k < n; k++) std::memcpy(rect + (t + k) * 4, r, sizeof(r));
     }
-    WriteBuffer(rectBuffer_, size_t(first) * 4 * sizeof(float), rect, rectScratch_.size() * sizeof(float));
+    WriteVertices(rectBuffer_, first, uint32_t(vertices.size()), 4 * sizeof(float), rect);
 }
 
 void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uint16_t* words) {
@@ -929,6 +1282,8 @@ void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uin
 
 void VkSceneRenderer::UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba) {
     if (uint64_t(firstTexel) + count > kExternalTexels) throw std::runtime_error("UploadExternalTexture: texels out of range");
+    if (!count) return;
+    EnsureExternalCapacity(firstTexel + count);
     WriteBuffer(externalBuffer_, size_t(firstTexel) * sizeof(uint32_t), rgba, size_t(count) * sizeof(uint32_t));
     if (firstTexel>=kModelSetTexelBase) {
         modelSourcePixels_[firstTexel].assign(rgba,rgba+count);
@@ -946,7 +1301,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     // Wayland's WSI never reports OUT_OF_DATE/SUBOPTIMAL on resize, so compare the window ourselves.
     VkExtent2D drawable{};
     if (swapchain_ && extentFromWindow_ && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-        (drawable.width != extent_.width || drawable.height != extent_.height)) {
+        (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height)) {
         vkDeviceWaitIdle(device_);
         DestroySwapchain();
     }
@@ -1019,9 +1374,9 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
         Transition(cmd_, depthImage_, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-        BeginTargetRendering(WindowTarget(imageIndex), VK_ATTACHMENT_LOAD_OP_CLEAR);
+        BeginTargetRendering(WindowTarget(imageIndex), {VK_ATTACHMENT_LOAD_OP_CLEAR});
         RecordItems(items, 0, items.size(), extent_, pipelines_, sceneItems);
-        cmdEndRendering_(cmd_);
+        EndTargetRendering();
     }
     FinishFrame(imageIndex, screenshotPath);
 }
@@ -1038,14 +1393,25 @@ RenderTarget VkSceneRenderer::WindowTarget(uint32_t imageIndex) const {
     return target;
 }
 
-// Dynamic rendering into `target` (depth cleared and not stored), colour cleared or kept.
-void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, VkAttachmentLoadOp colorLoad) {
+// Dynamic rendering into `target` (depth cleared and not stored), colour cleared or kept. On a Vulkan 1.1/1.2
+// device the same call records an equivalent render pass instead.
+void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, const PassOptions& options) {
+    if (!useDynamicRendering_) {
+        BeginRenderPassTarget(target, options);
+        return;
+    }
     VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     color.imageView = target.colorView;
     color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = colorLoad;
-    color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    color.loadOp = options.colorLoad;
+    color.storeOp = options.discardColor ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    if (options.transparentClear) color.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    else color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    if (options.resolveView) {
+        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+        color.resolveImageView = options.resolveView;
+        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
     VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     depth.imageView = target.depthView;
     depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1055,10 +1421,195 @@ void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, VkAttachm
     VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
     ri.renderArea = {{0, 0}, target.extent};
     ri.layerCount = target.layers;
+    ri.viewMask = target.viewMask;
     ri.colorAttachmentCount = 1;
     ri.pColorAttachments = &color;
     ri.pDepthAttachment = target.depthView ? &depth : nullptr;
+    VkRenderingFragmentShadingRateAttachmentInfoKHR rateAttachment{VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+    if (options.shadingRate && rateImage_.image) {
+        rateAttachment.imageView = rateImage_.view; // one identical rate map is broadcast to both eyes
+        rateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateAttachment.shadingRateAttachmentTexelSize = rateTexel_;
+        ri.pNext = &rateAttachment;
+    }
     cmdBeginRendering_(cmd_, &ri);
+}
+
+void VkSceneRenderer::EndTargetRendering() {
+    if (useDynamicRendering_) cmdEndRendering_(cmd_);
+    else vkCmdEndRenderPass(cmd_);
+}
+
+void VkSceneRenderer::DestroyFramebuffers() {
+    for (auto& entry : framebuffers_) vkDestroyFramebuffer(device_, entry.second, nullptr);
+    framebuffers_.clear();
+}
+
+// The Vulkan 1.1/1.2 path: render passes and framebuffers cached by their attachment set. The surrounding code
+// already transitions every image to its attachment layout, so the pass uses the attachment layouts as both its
+// initial and final layout - the same state dynamic rendering leaves behind and the next transition expects.
+VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
+                                            VkAttachmentLoadOp colorLoad, VkImageView rateView) {
+    const std::array<uint64_t, 6> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad), HandleBits(rateView)};
+    const auto found = renderPasses_.find(key);
+    if (found != renderPasses_.end()) return found->second;
+    // Attachment order everywhere in the renderer: colour, resolve (if any), depth, shading-rate map (if any).
+    VkAttachmentDescription attachments[4]{};
+    VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    uint32_t count = 0;
+    attachments[count].format = colorFormat;
+    attachments[count].samples = samples;
+    attachments[count].loadOp = colorLoad;
+    attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    count++;
+    VkAttachmentReference resolveRef{};
+    if (resolve) {
+        attachments[count].format = colorFormat;
+        attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        resolveRef = {count, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        count++;
+    }
+    VkAttachmentReference depthRef{};
+    attachments[count].format = kDepthFormat;
+    attachments[count].samples = samples;
+    attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthRef = {count, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    count++;
+    VkAttachmentReference rateRef{};
+    if (rateView) {
+        attachments[count].format = kShadingRateFormat;
+        attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // uploaded once, then read as it is
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateRef = {count, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR};
+        count++;
+    }
+    VkRenderPass pass = VK_NULL_HANDLE;
+    if (!rateView) {
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef;
+        subpass.pResolveAttachments = resolve ? &resolveRef : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef;
+        uint32_t mask = viewMask;
+        VkRenderPassMultiviewCreateInfo multiview{VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO};
+        multiview.subpassCount = 1;
+        multiview.pViewMasks = &mask;
+        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        if (viewMask) {
+            if (!context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+            rpci.pNext = &multiview;
+        }
+        rpci.attachmentCount = count;
+        rpci.pAttachments = attachments;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(vkCreateRenderPass(device_, &rpci, nullptr, &pass), "vkCreateRenderPass");
+    } else {
+        // Foveation in VR: a fragment shading rate attachment can only be declared in VkSubpassDescription2, so this
+        // pass is built with vkCreateRenderPass2 and multiview moves from VkRenderPassMultiviewCreateInfo into viewMask.
+        if (!createRenderPass2_) throw std::runtime_error("Vulkan: vkCreateRenderPass2 (core in 1.2, VK_KHR_create_renderpass2 on 1.1) is needed for foveation without dynamic rendering");
+        if (viewMask && !context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+        VkAttachmentDescription2 descriptions[4]{};
+        for (uint32_t i = 0; i < count; ++i) {
+            descriptions[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+            descriptions[i].format = attachments[i].format;
+            descriptions[i].samples = attachments[i].samples;
+            descriptions[i].loadOp = attachments[i].loadOp;
+            descriptions[i].storeOp = attachments[i].storeOp;
+            descriptions[i].stencilLoadOp = attachments[i].stencilLoadOp;
+            descriptions[i].stencilStoreOp = attachments[i].stencilStoreOp;
+            descriptions[i].initialLayout = attachments[i].initialLayout;
+            descriptions[i].finalLayout = attachments[i].finalLayout;
+        }
+        VkAttachmentReference2 colorRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        colorRef2.attachment = colorRef.attachment;
+        colorRef2.layout = colorRef.layout;
+        VkAttachmentReference2 resolveRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        resolveRef2.attachment = resolveRef.attachment;
+        resolveRef2.layout = resolveRef.layout;
+        VkAttachmentReference2 depthRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        depthRef2.attachment = depthRef.attachment;
+        depthRef2.layout = depthRef.layout;
+        VkAttachmentReference2 rateRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        rateRef2.attachment = rateRef.attachment;
+        rateRef2.layout = rateRef.layout;
+        VkFragmentShadingRateAttachmentInfoKHR rateInfo{VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+        rateInfo.pFragmentShadingRateAttachment = &rateRef2;
+        rateInfo.shadingRateAttachmentTexelSize = rateTexel_;
+        VkSubpassDescription2 subpass{VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2};
+        subpass.pNext = &rateInfo; // the rate map is declared on the subpass, not as a member
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.viewMask = viewMask;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef2;
+        subpass.pResolveAttachments = resolve ? &resolveRef2 : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef2;
+        VkRenderPassCreateInfo2 rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2};
+        rpci.attachmentCount = count;
+        rpci.pAttachments = descriptions;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(createRenderPass2_(device_, &rpci, nullptr, &pass), "vkCreateRenderPass2");
+    }
+    renderPasses_[key] = pass;
+    return pass;
+}
+
+void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options) {
+    const bool resolve = options.resolveView != VK_NULL_HANDLE;
+    // Foveation is an attachment here; the same 1-layer map is used by both eyes of a multiview pass.
+    const VkImageView rateView = options.shadingRate && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE;
+    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad, rateView);
+    const std::array<uint64_t, 5> fbKey{HandleBits(pass), HandleBits(target.colorView), HandleBits(target.depthView),
+                                        HandleBits(options.resolveView), HandleBits(rateView)};
+    VkFramebuffer framebuffer = framebuffers_[fbKey];
+    if (!framebuffer) {
+        VkImageView views[4];
+        uint32_t count = 0;
+        views[count++] = target.colorView;
+        if (resolve) views[count++] = options.resolveView;
+        if (target.depthView) views[count++] = target.depthView;
+        if (rateView) views[count++] = rateView;
+        uint32_t layers = FramebufferLayers(target.viewMask, target.layers);
+        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fci.renderPass = pass;
+        fci.attachmentCount = count;
+        fci.pAttachments = views;
+        fci.width = target.extent.width;
+        fci.height = target.extent.height;
+        fci.layers = layers;
+        Check(vkCreateFramebuffer(device_, &fci, nullptr, &framebuffer), "vkCreateFramebuffer");
+        framebuffers_[fbKey] = framebuffer;
+    }
+    // One clear value per attachment, in attachment order: colour, resolve (ignored by its load op), depth.
+    VkClearValue color{};
+    if (options.transparentClear) color.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    else color.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    const RenderPassClears clears = MakeRenderPassClears(color, resolve, target.depthView != VK_NULL_HANDLE);
+    VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    begin.renderPass = pass;
+    begin.framebuffer = framebuffer;
+    begin.renderArea = {{0, 0}, target.extent};
+    begin.clearValueCount = clears.count;
+    begin.pClearValues = clears.values;
+    vkCmdBeginRenderPass(cmd_, &begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[9],
@@ -1089,6 +1640,17 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         } else if (menuCarItem ? menuCarActive_ : (menuCarTexture && (!menuCarActive_ || compositeDrawn))) continue;
         if (menuCarTexture) compositeDrawn = true;
         if (item.vertexCount == 0) continue;
+        // The arena stores the uploaded ranges packed; this draw's physical first vertex and the bias back to the
+        // virtual index the shader's native-model lookup needs.
+        uint32_t physicalFirst = 0;
+        int32_t vertexBias = 0;
+        if (!VertexRange(item.firstVertex, item.vertexCount, physicalFirst, vertexBias)) {
+            const uint64_t range = (uint64_t(item.firstVertex) << 32) | item.vertexCount;
+            if (missingVertexRanges_.insert(range).second)
+                std::printf("graphics: draw of %u vertices at %u was never uploaded, skipped\n",
+                            item.vertexCount, item.firstVertex);
+            continue;
+        }
         // Reversed Z: disjoint ranges preserve depth within each layer and
         // guarantee that grass/curbs cannot overwrite occupied interior pixels.
         const int depthLayer=DepthBand(item,recordStereo_);
@@ -1132,11 +1694,11 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (recordStereo_ && item.space == kSpaceWorld && !item.clearDepth &&
             uint64_t(item.firstVertex) + item.vertexCount <= kMaxVertices) {
             ++culling_.tested;
-            const auto& bounds = boundsCache_.Get(static_cast<const SceneVertex*>(vertexBuffer_.mapped), item.firstVertex, item.vertexCount);
+            const auto& bounds = boundsCache_.Get(VertexAt(item.firstVertex), item.firstVertex, item.vertexCount);
             if (!BoundsInStereo(bounds, stereoViews_.worldVP, item.mvp)) { ++culling_.culled; continue; }
         }
         if(recordNativeEnvironment_ && !item.clearDepth && uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices) {
-            const auto& bounds=boundsCache_.Get(static_cast<const SceneVertex*>(vertexBuffer_.mapped),item.firstVertex,item.vertexCount);
+            const auto& bounds=boundsCache_.Get(VertexAt(item.firstVertex),item.firstVertex,item.vertexCount);
             const float identity[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
             if(!BoundsInView(bounds,identity,item.mvp))continue;
         }
@@ -1181,7 +1743,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         // general shader; the complete cached material path is shared with VR.
         const bool cachedMenu = cachedMenuShader_ && !recordStereo_ && !recordMirror_ && i >= sceneItems &&
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
-            (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
+            (VertexAt(item.firstVertex)->flags & kCarPaint);
         bool modelOnly=false;
         if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
@@ -1229,7 +1791,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             }
         }
         const bool modelPaint = item.firstVertex < kMaxVertices &&
-            (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kModelReflection);
+            (VertexAt(item.firstVertex)->flags & kModelReflection);
         // Imported clearcoat reuses the exact opaque surface. The PS1 decal
         // bias can reveal hidden panels through the body, and its slope term
         // grows without bound on nearly edge-on triangles. Keep the native
@@ -1242,6 +1804,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         FrameParams params;
         std::memcpy(params.mvp, item.mvp, sizeof(params.mvp));
         params.nativeModelRotation=item.nativeModelRotation;
+        params.vertexBias = vertexBias;
         params.paint = item.paint;
         params.brakeLit = item.brakeLit & 0x3fffffffu;
         params.stpPass = item.stpPass;
@@ -1254,7 +1817,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
         vkCmdPushConstants(cmd_, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(FrameParams), &params);
-        vkCmdDraw(cmd_, item.vertexCount, 1, item.firstVertex, 0);
+        vkCmdDraw(cmd_, item.vertexCount, 1, physicalFirst, 0);
     }
 }
 
@@ -1282,34 +1845,18 @@ void VkSceneRenderer::RecordMirrorPass(const std::vector<DrawItem>& items, size_
         Transition(cmd_, mirrorMsaa_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? mirrorMsaa_.view : mirrorColor_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = mirrorColor_.view;
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = mirrorDepth.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, kMirrorExtent};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? mirrorMsaa_.view : mirrorColor_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = mirrorDepth.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = kMirrorExtent;
+    target.samples = msaa ? msaaSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, msaa ? mirrorColor_.view : VK_NULL_HANDLE, msaa});
     recordMirror_ = true;
     RecordItems(items, first, last, kMirrorExtent, msaa ? msaaPipelines_ : pipelines_, sceneItems);
     recordMirror_ = false;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
     Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -1366,32 +1913,18 @@ void VkSceneRenderer::RecordMenuCarPass(const std::vector<DrawItem>& items) {
     Transition(cmd_, menuCarDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = menuCarMsaa_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-    color.resolveImageView = menuCarColor_.view;
-    color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = menuCarDepth_.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, menuCarExtent_};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = menuCarMsaa_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = menuCarDepth_.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = menuCarExtent_;
+    target.samples = menuCarSamples_;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, menuCarColor_.view, true, true});
     recordMenuCar_ = true;
     RecordItems(items, 0, items.size(), menuCarExtent_, menuCarPipelines_, items.size());
     recordMenuCar_ = false;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
     Transition(cmd_, menuCarColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -1450,9 +1983,9 @@ void VkSceneRenderer::BakePaintEnvironment(const std::array<std::vector<DrawItem
     recordMirror_=true;
     for(size_t f=0;f<6;++f) {
         RenderTarget target;target.colorView=paintCourse_.layer[f];target.colorFormat=colorFormat_;target.depthView=depth.view;target.depthFormat=kDepthFormat;target.extent=size;
-        BeginTargetRendering(target,VK_ATTACHMENT_LOAD_OP_CLEAR);
+        BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR});
         auto items=faces[f];for(auto& item:items)item.space=kSpaceMirrorSource;
-        RecordItems(items,0,items.size(),size,pipelines_,items.size());cmdEndRendering_(cmd_);
+        RecordItems(items,0,items.size(),size,pipelines_,items.size());EndTargetRendering();
         VkMemoryBarrier sync{VK_STRUCTURE_TYPE_MEMORY_BARRIER};sync.srcAccessMask=sync.dstAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,0,1,&sync,0,nullptr,0,nullptr);
     }
@@ -1540,21 +2073,25 @@ void VkSceneRenderer::RecordNativeEnvironment() {
             RenderTarget target;target.colorView=nativeEnvironment_.layer[f];target.colorFormat=colorFormat_;
             target.depthView=nativeEnvironmentDepth_.view;target.depthFormat=kDepthFormat;
             target.extent={kNativeEnvironmentWidth,kNativeEnvironmentHeight};
-            BeginTargetRendering(target,VK_ATTACHMENT_LOAD_OP_CLEAR);
+            BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR});
             const auto& items=nativeEnvironmentFaces_[f];
             cachedDraws_=nativeEnvironmentCached_[f];
             if(std::getenv("GT2_DEBUG_NATIVE_ENV")) {
-                size_t inside=0,count=0;const auto* vertices=static_cast<const SceneVertex*>(vertexBuffer_.mapped);
-                for(const auto& item:items)for(uint32_t j=0;j<item.vertexCount;++j) {
-                    const auto& v=vertices[item.firstVertex+j];float p[4]{};
-                    for(int k=0;k<4;++k)p[k]=item.mvp[k]*v.pos[0]+item.mvp[4+k]*v.pos[1]+item.mvp[8+k]*v.pos[2]+item.mvp[12+k];
-                    if(p[3]>0 && p[2]>=0 && p[2]<=p[3] && std::abs(p[0])<=p[3] && std::abs(p[1])<=p[3])++inside;
-                    ++count;
+                size_t inside=0,count=0;
+                for(const auto& item:items) {
+                    const auto* vertices=VertexAt(item.firstVertex);
+                    if(!vertices)continue;
+                    for(uint32_t j=0;j<item.vertexCount;++j) {
+                        const auto& v=vertices[j];float p[4]{};
+                        for(int k=0;k<4;++k)p[k]=item.mvp[k]*v.pos[0]+item.mvp[4+k]*v.pos[1]+item.mvp[8+k]*v.pos[2]+item.mvp[12+k];
+                        if(p[3]>0 && p[2]>=0 && p[2]<=p[3] && std::abs(p[0])<=p[3] && std::abs(p[1])<=p[3])++inside;
+                        ++count;
+                    }
                 }
                 std::printf("Env face %zu: %zu items %zu inside/%zu vertices\n",f,items.size(),inside,count);
             }
 
-            RecordItems(items,0,items.size(),target.extent,pipelines_,items.size());cmdEndRendering_(cmd_);
+            RecordItems(items,0,items.size(),target.extent,pipelines_,items.size());EndTargetRendering();
             VkMemoryBarrier sync{VK_STRUCTURE_TYPE_MEMORY_BARRIER};sync.srcAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             sync.dstAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT|VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,0,1,&sync,0,nullptr,0,nullptr);
@@ -1616,32 +2153,16 @@ void VkSceneRenderer::DrawScenePass(const std::vector<DrawItem>& items, size_t s
                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     Transition(cmd_, sceneDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0,
                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? sceneMsaa_.view : sceneColor_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = sceneColor_.view;
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = sceneDepth_.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, sceneExtent_};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? sceneMsaa_.view : sceneColor_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = sceneDepth_.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = sceneExtent_;
+    target.samples = msaa ? msaaSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, msaa ? sceneColor_.view : VK_NULL_HANDLE, msaa});
     RecordItems(items, 0, sceneItems, sceneExtent_, msaa ? msaaPipelines_ : pipelines_, sceneItems);
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 
     Transition(cmd_, sceneColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -1660,12 +2181,13 @@ void VkSceneRenderer::DrawScenePass(const std::vector<DrawItem>& items, size_t s
                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     Transition(cmd_, depthImage_, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0,
                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    BeginTargetRendering(WindowTarget(imageIndex), VK_ATTACHMENT_LOAD_OP_LOAD);
+    BeginTargetRendering(WindowTarget(imageIndex), {VK_ATTACHMENT_LOAD_OP_LOAD});
     RecordItems(items, sceneItems, items.size(), extent_, pipelines_, sceneItems);
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 }
 
 void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screenshotPath) {
+    if ((++frames_ & 63) == 0) SampleDeviceMemory();
     const bool capture = !screenshotPath.empty();
     VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     VkAccessFlags access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -1716,7 +2238,7 @@ void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screen
     VkResult pres = vkQueuePresentKHR(queue_, &pi);
     VkExtent2D drawable{};
     const bool resized = pres == VK_SUBOPTIMAL_KHR && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-                         (drawable.width != extent_.width || drawable.height != extent_.height);
+                         (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height);
     // SUBOPTIMAL is still a successful presentation. Cocoa can report it while
     // entering fullscreen without changing the drawable; avoid rebuilding every frame.
     if (pres == VK_ERROR_OUT_OF_DATE_KHR || resized) {
@@ -1764,6 +2286,8 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     // The HUD/menu pass is always single-sample, so it needs its own depth target.
     stereoDepth2D_ = CreateImage(stereoExtent_, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                  VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 2);
+    // The shading-rate map before the pipelines: in the render-pass path it is an attachment of the pass they name.
+    CreateRateImage();
     DestroyPipelineSet(stereoPipelines_);
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
@@ -1779,7 +2303,6 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     CreatePipelineSet(stereoSamples_, cachedPipelines_, true, multiview ? 0x3u : 0u, true);
     CreatePipelineSet(stereoSamples_, cachedHudPipelines_, true, multiview ? 0x3u : 0u, true, true);
     stereoReady_ = true;
-    CreateRateImage();
 }
 
 void VkSceneRenderer::SetExternalStereoImage(VkImage image) {
@@ -1821,40 +2344,18 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     const size_t eye = all ? 0 : size_t(layer);
     const size_t first = hudPass ? sceneItems : 0;
     const size_t last = hudPass ? items.size() : sceneItems;
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? (all ? stereoMsaa_.view : stereoMsaa_.layer[eye]) : (all ? colorTarget.view : colorTarget.layer[eye]);
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = all ? colorTarget.view : colorTarget.layer[eye];
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = hudPass ? (all ? stereoDepth2D_.view : stereoDepth2D_.layer[eye])
-                              : (all ? stereoDepth_.view : stereoDepth_.layer[eye]);
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    // Only single-sample depth is submitted to OpenXR. Multisample depth is tile-local scratch.
-    depth.storeOp = (hudPass || msaa) ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    depth.clearValue.depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, stereoExtent_};
-    ri.layerCount = 1; // with a view mask the layer count is ignored; a per-eye pass writes its own layer view
-    ri.viewMask = all ? 0x3u : 0u;
-    VkRenderingFragmentShadingRateAttachmentInfoKHR rateAttachment{VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
-    if (rateImage_.image) {
-        rateAttachment.imageView = rateImage_.view; // one identical rate map is broadcast to both eyes
-        rateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-        rateAttachment.shadingRateAttachmentTexelSize = rateTexel_;
-        ri.pNext = &rateAttachment;
-    }
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? (all ? stereoMsaa_.view : stereoMsaa_.layer[eye]) : (all ? colorTarget.view : colorTarget.layer[eye]);
+    target.colorFormat = stereoFormat_;
+    target.depthView = hudPass ? (all ? stereoDepth2D_.view : stereoDepth2D_.layer[eye])
+                               : (all ? stereoDepth_.view : stereoDepth_.layer[eye]);
+    target.depthFormat = kDepthFormat;
+    target.extent = stereoExtent_;
+    target.samples = msaa ? stereoSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    target.viewMask = all ? 0x3u : 0u;
+    const VkAttachmentLoadOp colorLoad = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    BeginTargetRendering(target, {colorLoad, msaa ? (all ? colorTarget.view : colorTarget.layer[eye]) : VK_NULL_HANDLE,
+                                  msaa, false, rateImage_.image != VK_NULL_HANDLE});
     recordEye_ = uint32_t(eye);
     recordLayers_ = 1;
     recordStereo_ = true;
@@ -1863,7 +2364,7 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     recordStereo2D_ = false;
     recordStereo_ = false;
     recordEye_ = 0;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 }
 
 std::vector<uint8_t> VkSceneRenderer::CaptureStereoForAudit(const std::vector<DrawItem>& items,size_t sceneItems) {

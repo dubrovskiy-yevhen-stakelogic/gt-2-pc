@@ -177,7 +177,8 @@ struct FrameParams {
     uint32_t options = 0; // kOption* of the scene items (RenderOptions), 0 for the 2D layers
     uint32_t space = kSpaceScreen; // DrawItem::space (the stereo shader; the desktop shader does not declare it)
     uint32_t eye = 0;              // the two-pass stereo path's array layer
-    uint32_t padding[2] = {};
+    int32_t vertexBias = 0;        // virtual vertex index - physical: gl_VertexIndex + vertexBias (vertex arena)
+    uint32_t reserved = 0;
     float hudClip[4] = {};
     std::array<float,4> nativeModelRotation{0,0,0,1};
 };
@@ -199,6 +200,7 @@ struct StereoViews {
 // rear-view mirror); the 2D layers after them (HUD, panels) and every screen that passes no scene count (menus, title)
 // keep the native window resolution and the PS1's nearest texels.
 struct RenderOptions {
+    uint32_t outputHeight = 0;   // 0: the surface's size; N: the swapchain height (the WSI scales it to the surface)
     uint32_t sceneWidth = 0, sceneHeight = 0;
     float sceneScale = 1.0f;     // internal resolution of the scene, times the window (0.5 .. 2)
     uint32_t msaa = 1;           // multisampling of the scene: 1 (off), 2, 4, 8 (clamped to the GPU's limit)
@@ -216,7 +218,9 @@ public:
     virtual ~SceneRendererState() = default;
     // The native Vulkan renderer can put the menu/showroom 3D car through its own MSAA target.
     virtual bool MenuCarMsaaTarget() const { return false; }
-    // Native menu/font and profiler occupy reserved ranges above the original scene/HUD buffers.
+    // The virtual vertex index space. These ranges are stable addresses that SceneAssets, DrawItem::firstVertex
+    // and the shaders (gl_VertexIndex, with the native-model index) use; the GPU buffer only holds the ranges that
+    // are actually written, packed by VkSceneRenderer's vertex arena, so the gaps here cost nothing.
     static constexpr uint32_t kNativeUiVertexBase = 1 << 20, kNativeUiVertexLimit = 16384;
     static constexpr uint32_t kProfilerVertexBase = kNativeUiVertexBase + kNativeUiVertexLimit;
     static constexpr uint32_t kVrDrivingVertexBase = kProfilerVertexBase + 8192, kVrDrivingVertexLimit = 40960;

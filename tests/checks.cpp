@@ -226,6 +226,47 @@ static void CheckPcChanges(const char* discPath) {
     Check(restored.carReflections && !restored.modernCarReflections, "original car reflections survive the tri-state key");
     restored.Parse("render_height", "99999");
     Check(restored.renderHeight == 0, "invalid fixed resolution falls back to window scale");
+    const shell::GraphicsSettings lowSpec = shell::GraphicsSettings::LowSpec();
+    Check(lowSpec.msaa == 1 && lowSpec.outputHeight == 720 && !lowSpec.carReflections,
+          "low spec preset renders at 720p without MSAA or car reflections");
+    Check(shell::GraphicsSettings::Vanilla().renderScale == 100 && shell::GraphicsSettings::Modern().renderScale == 100 &&
+              shell::GraphicsSettings::LowSpec().renderScale == 100,
+          "every preset keeps the scene scale at 100%: Resolution is the output knob");
+    Check(shell::GraphicsSettings::Modern().modernCarReflections && shell::GraphicsSettings::Modern().carReflections,
+          "the Modern preset uses modern car reflections");
+    shell::GraphicsSettings outputHeight;
+    outputHeight.Parse("output_height", "900");
+    Check(outputHeight.outputHeight == 900, "the output height parses");
+    outputHeight.Parse("output_height", "99999");
+    Check(outputHeight.outputHeight == 0, "an invalid output height falls back to the display");
+    shell::GraphicsSettings lowSpecRestored;
+    std::istringstream lowSpecSettings(lowSpec.Serialize());
+    while (std::getline(lowSpecSettings, line)) { const auto at = line.find('='); if (at != std::string::npos) lowSpecRestored.Parse(line.substr(0, at), line.substr(at + 1)); }
+    Check(lowSpecRestored == lowSpec, "low spec preset survives the settings round trip");
+
+    // The PC SETTINGS page derives every row from the settings: stepping the preset updates the rows it changes.
+    shell::PcSettings preset;
+    Check(shell::PcRowOf(preset, 11).index == 2, "the preset row starts Custom");
+    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps left to Vanilla");
+    Check(shell::PcRowOf(preset, 1).index == 0 && shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 6).index == 0,
+          "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
+    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps left to Low spec");
+    Check(shell::PcRowOf(preset, 4).index == 0, "the Low spec preset sets Resolution to 720p immediately");
+    Check(shell::PcRowOf(preset, 4).values.size() == 4 && shell::PcRowOf(preset, 4).values[3] == "Display",
+          "the Resolution row offers Display as the sharpest option");
+    Check(shell::StepPcRow(preset, 4, 1) && preset.graphics.outputHeight == 900, "the Resolution row steps up to 900p");
+    shell::PcSettings stepping;
+    stepping.graphics = shell::GraphicsSettings::Modern();
+    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
+    stepping.graphics = shell::GraphicsSettings{};
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
+    stepping.graphics = shell::GraphicsSettings{};
+    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
+    stepping.graphics = shell::GraphicsSettings::LowSpec();
+    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
+    Check(shell::kPcRowCount == 12 && shell::PcRowOf(stepping, 10).label == std::string("Power Units") && shell::StepPcRow(stepping, 10, 1) && stepping.powerMetric,
+          "the Power Units row still steps to PS");
 
     struct CounterStream final : audio::StreamSource {
         size_t cursor = 0;

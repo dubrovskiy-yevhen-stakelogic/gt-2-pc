@@ -37,6 +37,16 @@ struct Band {
 // 0x8006B6E4: POLY_G4 0x3A (x, y, w, h), c0 on the left (v0 / v2), c1 on the right.
 void AddGradientQuad(MenuOtSlot& ot, int x, int y, int w, int h, uint32_t c0, uint32_t c1);
 
+// ---- the PC SETTINGS page: rows as choice lists over PcSettings (speed units, graphics)
+struct PcRow {
+    const char* label = "";
+    std::vector<std::string> values;
+    int index = 0;
+};
+constexpr int kPcRowCount = 12;
+PcRow PcRowOf(const PcSettings& pc, int row);
+bool StepPcRow(PcSettings& pc, int row, int step); // -1 / +1; true when a setting changed
+
 // ---------------------------------------------------------------- options
 
 class OptionsScreen {
