@@ -1132,10 +1132,15 @@ void ShowSettingsMenu(GameWindow& window) {
                 "Back"};
         }
         if (page == 1 && !vr) {
-            rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
+            rows[0] = "Resolution: " + (graphics.outputHeight ? std::to_string(graphics.outputHeight) + "p" : std::string("Display"));
             rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
             rows[6] = std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF");
             rows.insert(rows.begin() + 7, "Frame presentation: " + std::string(graphics.frameRate ? "Display rate" : "Original"));
+        }
+        if (page == 1) {
+            const bool low = graphics == gt2::shell::GraphicsSettings::LowSpec(), vanilla = graphics == gt2::shell::GraphicsSettings::Vanilla(),
+                       modern = graphics == gt2::shell::GraphicsSettings::Modern();
+            rows.insert(rows.end() - 1, std::string("Preset: ") + (low ? "Low spec" : vanilla ? "Vanilla" : modern ? "Modern" : "Custom"));
         }
         if (page == 2) {
             title = "GT2 VR / OPTIONS AND CHEATS";
@@ -1289,7 +1294,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         window.Close(); done = true;
                     } else { page = 13; selected = 0; }
                 }
-                else if (page == 1 && (direction || selected == (!vr ? 9 : 8))) {
+                else if (page == 1 && (direction || selected == (!vr ? 10 : 9))) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     const std::string prior = status;
                     const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
@@ -1304,11 +1309,8 @@ void ShowSettingsMenu(GameWindow& window) {
                         } else status = "Headset does not offer refresh-rate selection.";
                     }
                     if (!vr && selected == 0) {
-                        const int resolutions[] = {50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,
-                            130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,-720,-1080,-1440,-2160};
-                        const int choice = Cycle(graphics.renderHeight ? -graphics.renderHeight : graphics.renderScale, resolutions, direction);
-                        graphics.renderHeight = choice < 0 ? -choice : 0;
-                        if (choice > 0) graphics.renderScale = choice;
+                        const int outputs[] = {720, 900, 1080, 0}; // output height; 0 = the display
+                        graphics.outputHeight = Cycle(graphics.outputHeight, outputs, direction);
                     }
                     if (!vr && selected == 1) {
                         const int caps[] = {0,30,60,72,80,90,120,144,165,240};
@@ -1321,7 +1323,16 @@ void ShowSettingsMenu(GameWindow& window) {
                     if (vr && selected == 6) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
                     if (!vr && selected == 6) graphics.vsync = !graphics.vsync;
                     if (!vr && selected == 7) graphics.frameRate = !graphics.frameRate;
-                    if (selected == (!vr ? 9 : 8)) { page = 0; selected = 0; }
+                    if (selected == (!vr ? 9 : 8) && direction) {
+                        // Low spec <-> Vanilla <-> Modern; Custom is derived from the values.
+                        const gt2::shell::GraphicsSettings presets[] = {gt2::shell::GraphicsSettings::LowSpec(),
+                            gt2::shell::GraphicsSettings::Vanilla(), gt2::shell::GraphicsSettings::Modern()};
+                        int at = graphics == presets[0] ? 0 : graphics == presets[1] ? 1 : graphics == presets[2] ? 2 : -1;
+                        at = at < 0 ? (direction < 0 ? 1 : 2) : std::clamp(at + direction, 0, 2);
+                        graphics = presets[at];
+                        status = "Preset saved.";
+                    }
+                    if (selected == (!vr ? 10 : 9)) { page = 0; selected = 0; }
                     if (selected == (!vr ? 8 : 7) && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;

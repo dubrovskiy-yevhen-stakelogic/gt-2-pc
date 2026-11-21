@@ -67,19 +67,24 @@ std::string VersionText(uint32_t version) {
 
 } // namespace
 
-GraphicsProfile VulkanCapabilities::profile() const {
+const GpuCapability* VulkanCapabilities::best() const {
     // The same preference as the renderer's device choice: the first discrete GPU, else the first usable one.
-    GraphicsProfile best = GraphicsProfile::Unsupported;
+    const GpuCapability* best = nullptr;
     int bestScore = -1;
     for (const auto& gpu : gpus) {
         if (gpu.profile == GraphicsProfile::Unsupported) continue;
         const int score = gpu.type == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 2 : 1;
         if (score > bestScore) {
             bestScore = score;
-            best = gpu.profile;
+            best = &gpu;
         }
     }
     return best;
+}
+
+GraphicsProfile VulkanCapabilities::profile() const {
+    const GpuCapability* gpu = best();
+    return gpu ? gpu->profile : GraphicsProfile::Unsupported;
 }
 
 VulkanCapabilities ProbeVulkan() {
@@ -136,6 +141,7 @@ VulkanCapabilities ProbeVulkan() {
     const auto getProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(gipa(instance, "vkGetPhysicalDeviceProperties"));
     const auto getFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(gipa(instance, "vkGetPhysicalDeviceFeatures2"));
     const auto getMemory = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(gipa(instance, "vkGetPhysicalDeviceMemoryProperties"));
+    const auto getMemory2 = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2>(gipa(instance, "vkGetPhysicalDeviceMemoryProperties2"));
     const auto enumerateDeviceExtensions =
         reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(gipa(instance, "vkEnumerateDeviceExtensionProperties"));
     struct Destroy {
@@ -168,8 +174,8 @@ VulkanCapabilities ProbeVulkan() {
         gpu.vendorID = properties.vendorID;
         gpu.deviceID = properties.deviceID;
         gpu.maxImageDimension2D = properties.limits.maxImageDimension2D;
+        VkPhysicalDeviceMemoryProperties memory{};
         if (getMemory) {
-            VkPhysicalDeviceMemoryProperties memory{};
             getMemory(device, &memory);
             for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
                 if (memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) gpu.deviceLocalBytes += memory.memoryHeaps[i].size;
@@ -187,11 +193,29 @@ VulkanCapabilities ProbeVulkan() {
         if (enumerateDeviceExtensions) {
             uint32_t count = 0;
             enumerateDeviceExtensions(device, nullptr, &count, nullptr);
-            std::vector<VkExtensionProperties> deviceExtensions(count);
-            if (count) enumerateDeviceExtensions(device, nullptr, &count, deviceExtensions.data());
-            gpu.swapchain = HasExtension(deviceExtensions.data(), count, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            std::vector<VkExtensionProperties> extensions(count);
+            if (count) enumerateDeviceExtensions(device, nullptr, &count, extensions.data());
+            gpu.swapchain = HasExtension(extensions.data(), count, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            // How much device-local memory this process may actually use, not just the heap sizes (the desktop and
+            // other applications already hold part of it). Without VK_EXT_memory_budget the total is the best guess.
+            if (getMemory && getMemory2 && HasExtension(extensions.data(), count, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) {
+                VkPhysicalDeviceMemoryBudgetPropertiesEXT budget{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT};
+                VkPhysicalDeviceMemoryProperties2 memory2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2};
+                memory2.pNext = &budget;
+                getMemory2(device, &memory2);
+                for (uint32_t i = 0; i < memory2.memoryProperties.memoryHeapCount; i++)
+                    if (memory2.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && budget.heapBudget[i] > budget.heapUsage[i])
+                        gpu.availableBytes += budget.heapBudget[i] - budget.heapUsage[i];
+            }
         }
         gpu.profile = ChooseGraphicsProfile(gpu.apiVersion, gpu.dynamicRendering);
+        // Dev/support switch, like GT2_VK_RENDERPASS: pretend the GPU has N MiB free to try the adaptive plan (or a
+        // too-low machine's refusal) on a big one. Never set by the game itself.
+        if (const char* fake = std::getenv("GT2_FAKE_VIDEO_MIB")) {
+            const unsigned long long mib = std::strtoull(fake, nullptr, 10);
+            gpu.availableBytes = mib << 20;
+            gpu.deviceLocalBytes = std::max<uint64_t>(gpu.deviceLocalBytes, mib << 20);
+        }
         out.gpus.push_back(std::move(gpu));
     }
     return out;
@@ -215,9 +239,11 @@ std::string VulkanDiagnosticReport() {
     for (size_t i = 0; i < caps.gpus.size(); i++) {
         const GpuCapability& gpu = caps.gpus[i];
         char line[512];
-        std::snprintf(line, sizeof(line), "  GPU %zu: %s (%s), Vulkan %s, driver 0x%08x, %llu MiB video memory\n", i, gpu.name.c_str(),
+        const std::string available = gpu.availableBytes
+            ? " (" + std::to_string(gpu.availableBytes / (1024 * 1024)) + " MiB available)" : "";
+        std::snprintf(line, sizeof(line), "  GPU %zu: %s (%s), Vulkan %s, driver 0x%08x, %llu MiB video memory%s\n", i, gpu.name.c_str(),
                       TypeName(gpu.type), VersionText(gpu.apiVersion).c_str(), gpu.driverVersion,
-                      static_cast<unsigned long long>(gpu.deviceLocalBytes / (1024 * 1024)));
+                      static_cast<unsigned long long>(gpu.deviceLocalBytes / (1024 * 1024)), available.c_str());
         text += line;
         std::snprintf(line, sizeof(line), "    max texture %u, dynamic rendering: %s, multiview: %s, swapchain: %s\n",
                       gpu.maxImageDimension2D,
@@ -233,6 +259,23 @@ std::string VulkanDiagnosticReport() {
     if (const char* forced = std::getenv("GT2_VK_RENDERPASS"); forced && std::strcmp(forced, "1") == 0)
         text += " - forced by GT2_VK_RENDERPASS=1";
     text += "\n";
+    if (caps.profile() != GraphicsProfile::Unsupported) {
+        const gt2view::GpuCapability* best = caps.best();
+        const uint64_t usable = best ? UsableMemory(*best) : 0;
+        const uint32_t output = RecommendedOutputHeight(usable, 0);
+        // The adaptive plan: the cache takes what the frame leaves over, MSAA only when that fits, and the two big
+        // content choices default off when the cache would be under half.
+        const uint32_t layers = RecommendedDecodedCacheLayers(usable, output);
+        const uint32_t cache = layers * kDecodedCacheLayerKiB / 1024; // MiB of GPU memory, upload and image
+        const uint32_t msaa = RecommendedMsaa(usable, output, 4);
+        text += std::string("  recommended: ") + (output ? std::to_string(output) + "p" : "display") +
+                ", MSAA " + (msaa > 1 ? std::to_string(msaa) + "x" : std::string("off")) +
+                ", decoded cache " + std::to_string(cache) + " MiB, HD media and GT4 models " +
+                (cache < 64 ? "off" : "on") + "\n";
+        if (GraphicsMemoryTooLow(caps, output))
+            text += "  warning: the game needs at least " + std::to_string(GraphicsMemoryFloor(output) / (1024 * 1024)) +
+                    " MiB of available video memory with this output; close other applications or use a stronger GPU.\n";
+    }
     return text;
 }
 

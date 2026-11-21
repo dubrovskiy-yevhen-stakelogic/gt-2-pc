@@ -120,6 +120,7 @@ bool GraphicsSettings::Parse(const std::string& key, const std::string& value) {
     else if (key == "frame_cap") frameCap = clamp(v, 0, 1000);
     else if (key == "vsync") vsync = v != 0;
     else if (key == "render_scale") { renderScale = clamp(v, 50, 200); renderHeight = 0; }
+    else if (key == "output_height") outputHeight = v >= 240 && v <= 4320 ? v : 0;
     else if (key == "render_height") renderHeight = v == 720 || v == 1080 || v == 1440 || v == 2160 ? v : 0;
     else if (key == "msaa") msaa = v >= 8 ? 8 : v >= 4 ? 4 : v >= 2 ? 2 : 1;
     else if (key == "texture_filter") smoothTextures = value == "smooth";
@@ -137,6 +138,7 @@ std::string GraphicsSettings::Serialize() const {
     o << "frame_rate=" << (frameRate == kFrameRateOriginal ? "original" : "display") << "\n";
     o << "frame_cap=" << frameCap << "\n";
     o << "vsync=" << int(vsync) << "\n";
+    o << "output_height=" << outputHeight << "\n";
     o << "render_scale=" << renderScale << "\n";
     o << "render_height=" << renderHeight << "\n";
     o << "msaa=" << msaa << "\n";

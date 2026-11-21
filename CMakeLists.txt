@@ -441,7 +441,9 @@ if(BUILD_TESTING AND TARGET gt2vk AND (WIN32 OR GT2_BUILD_MACOS_CLIENT OR GT2_BU
   target_include_directories(gt2surfacechecks PRIVATE src ${Vulkan_INCLUDE_DIRS})
   add_test(NAME display_surface_format_checks COMMAND gt2surfacechecks)
   add_executable(gt2profilechecks tests/vulkan_profile_checks.cpp)
+  target_sources(gt2profilechecks PRIVATE src/gt2view/vk_capabilities.cpp)
   target_include_directories(gt2profilechecks PRIVATE src ${Vulkan_INCLUDE_DIRS})
+  target_link_libraries(gt2profilechecks PRIVATE ${CMAKE_DL_LIBS})
   add_test(NAME vulkan_profile_checks COMMAND gt2profilechecks)
 endif()
 

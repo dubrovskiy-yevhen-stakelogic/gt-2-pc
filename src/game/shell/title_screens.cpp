@@ -28,17 +28,11 @@ MenuPrim Tile(int x, int y, int w, int h, uint32_t colour) {
 uint32_t Grey(uint32_t v) { return v | v << 8 | v << 16; }
 
 // ---- the PC SETTINGS page (ours): its rows as choice lists over PcSettings (speed units, graphics).
-constexpr int kPcRowCount = 12;
 constexpr int kPcCaps[] = {0, 30, 60, 120, 144, 165, 240};
 constexpr int kPcScales[] = {50, 75, 100, 125, 150, 200};
+constexpr int kPcOutputs[] = {720, 900, 1080, 0}; // output height; 0 = the display
 constexpr int kPcMsaa[] = {1, 2, 4, 8};
 constexpr int kPcDistances[] = {0, 500, 1000, 2000, -1};
-
-struct PcRow {
-    const char* label = "";
-    std::vector<std::string> values;
-    int index = 0;
-};
 
 template <size_t N>
 int IndexOf(const int (&table)[N], int value, std::vector<std::string>& values, const char* customFormat) {
@@ -49,6 +43,8 @@ int IndexOf(const int (&table)[N], int value, std::vector<std::string>& values, 
     values.push_back(buffer);
     return int(values.size()) - 1;
 }
+
+} // namespace
 
 PcRow PcRowOf(const PcSettings& pc, int row) {
     const GraphicsSettings& g = pc.graphics;
@@ -62,8 +58,8 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         break;
     case 3: r = {"VSync", {"Off", "On"}, g.vsync ? 1 : 0}; break;
     case 4:
-        r = {"Render Scale", {"50%", "75%", "100%", "125%", "150%", "200%"}, 0};
-        r.index = IndexOf(kPcScales, g.renderScale, r.values, "%d%%");
+        r = {"Resolution", {"720p", "900p", "1080p", "Display"}, 0};
+        r.index = IndexOf(kPcOutputs, g.outputHeight, r.values, "%dp");
         break;
     case 5:
         r = {"Anti-Aliasing", {"Off", "MSAA 2x", "MSAA 4x", "MSAA 8x"}, 0};
@@ -78,8 +74,9 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         break;
     case 10: r = {"Power Units", {"hp", "PS"}, pc.powerMetric ? 1 : 0}; break;
     default: {
+        const bool lowSpec = g == GraphicsSettings::LowSpec();
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
-        r = {"Preset", {"Vanilla", "Custom", "Modern"}, vanilla ? 0 : modern ? 2 : 1};
+        r = {"Preset", {"Low spec", "Vanilla", "Custom", "Modern"}, lowSpec ? 0 : vanilla ? 1 : modern ? 3 : 2};
         break;
     }
     }
@@ -89,30 +86,38 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
 // Steps row `row` by `step` (-1 / +1, no wrap); true when a setting changed.
 bool StepPcRow(PcSettings& pc, int row, int step) {
     const PcRow r = PcRowOf(pc, row);
-    const int count = std::min(int(r.values.size()), row == 2 ? int(std::size(kPcCaps)) : row == 4 ? int(std::size(kPcScales))
-                                                     : row == 5 ? int(std::size(kPcMsaa)) : row == 9 ? int(std::size(kPcDistances)) : int(r.values.size()));
-    int index = r.index;
-    if (index >= count) index = step > 0 ? count - 1 : 0; // a custom value: the first step lands on the table
-    else index = std::clamp(index + step, 0, count - 1);
-    if (row == 11) index = step < 0 ? 0 : 2; // Preset: left = Vanilla, right = Modern
     GraphicsSettings& g = pc.graphics;
     const PcSettings before = pc;
+    int index = r.index;
+    if (row == 11) { // presets are Low spec / Vanilla / Modern; Custom is derived, never stepped onto
+        static constexpr int kPresets[] = {0, 1, 3};
+        if (index == 2) index = step < 0 ? 1 : 3; // Custom -> the preset in that direction
+        else index = kPresets[std::clamp((index == 0 ? 0 : index == 1 ? 1 : 2) + step, 0, 2)];
+        g = index == 0 ? GraphicsSettings::LowSpec() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern();
+    } else {
+        const int count = std::min(int(r.values.size()), row == 2 ? int(std::size(kPcCaps)) : row == 4 ? int(std::size(kPcOutputs))
+                                                         : row == 5 ? int(std::size(kPcMsaa)) : row == 9 ? int(std::size(kPcDistances)) : int(r.values.size()));
+        if (index >= count) index = step > 0 ? count - 1 : 0; // a custom value: the first step lands on the table
+        else index = std::clamp(index + step, 0, count - 1);
+    }
     switch (row) {
     case 0: pc.metric = index == 1; break;
     case 1: g.frameRate = index == 0 ? GraphicsSettings::kFrameRateOriginal : GraphicsSettings::kFrameRateDisplay; break;
     case 2: g.frameCap = kPcCaps[index]; break;
     case 3: g.vsync = index == 1; break;
-    case 4: g.renderScale = kPcScales[index]; break;
+    case 4: g.outputHeight = kPcOutputs[index]; break;
     case 5: g.msaa = kPcMsaa[index]; break;
     case 6: g.smoothTextures = index == 1; break;
     case 7: g.affine = index == 1; break;
     case 8: g.maxDetail = index == 1; break;
     case 9: g.drawDistance = kPcDistances[index]; break;
     case 10: pc.powerMetric = index == 1; break;
-    default: g = index == 0 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break;
+    default: break;
     }
     return !(before.metric == pc.metric && before.powerMetric == pc.powerMetric && before.graphics == pc.graphics);
 }
+
+namespace {
 
 // 0x8006C5DC / 0x8006CD04 in the settled state: the text object of the button bars. Per character: a space or a digit
 // takes the font's cell (digits drawn right-aligned in the middle of the cell + extra), others the text engine's

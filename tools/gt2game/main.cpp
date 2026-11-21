@@ -5,6 +5,7 @@
 #include "../gt2mac/launch_protocol.h"
 #include "platform/os/paths.h"
 #include "game/shell/shared_vr_settings.h"
+#include "graphics_options.h"
 #ifndef __EMSCRIPTEN__
 #include "gt2view/vk_capabilities.h"
 #endif
@@ -103,6 +104,12 @@ int main(int argc, char** argv) {
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
             "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
+        const RecommendedMemory memory = ApplyRecommendedMemory((saves / "settings.txt").string()); // before the overlay
+        if (memory.memoryTooLow) {
+            std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", memory.reason.c_str());
+            return 1;
+        }
+        if (memory.applied) std::printf("graphics: settings adapted to the video memory (%s)\n", memory.reason.c_str());
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;

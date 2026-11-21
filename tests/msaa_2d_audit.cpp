@@ -149,6 +149,20 @@ int main() {
             std::fprintf(stderr, "FAIL: 3D scene did not change between MSAA 1x and 8x\n");
             return 1;
         }
+        // The external texture store grows to the texel ranges content uses (the memory win): a PS1-only upload
+        // keeps the small default allocation, the model-set range grows it.
+        const uint32_t texel = 0xffffffffu;
+        const uint64_t smallStore = renderer.AllocatedBytes();
+        renderer.UploadExternalTexture(0, 1, &texel);
+        if (renderer.AllocatedBytes() != smallStore) {
+            std::fprintf(stderr, "FAIL: a PS1-range external texel grew the store\n");
+            return 1;
+        }
+        renderer.UploadExternalTexture(gt2view::SceneRendererState::kModelSetTexelBase, 1, &texel);
+        if (renderer.AllocatedBytes() <= smallStore) {
+            std::fprintf(stderr, "FAIL: the model-set range did not grow the external store\n");
+            return 1;
+        }
         // The window path (one target, viewMask 0) - the fallback's most common pass, which the stereo-only frame
         // above does not reach. GT2_VK_RENDERPASS=1 records it through render passes, 1.3 through dynamic rendering.
         const auto dir = std::filesystem::temp_directory_path();

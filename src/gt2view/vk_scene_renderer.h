@@ -11,6 +11,7 @@
 #include "gt2view/vk_context.h"
 #include "gt2view/draw_culling.h"
 #include "gt2view/decoded_texture_cache.h"
+#include "gt2view/vk_capabilities.h"
 
 namespace gt2view {
 
@@ -87,12 +88,22 @@ public:
     void WaitFrame();
     void SetFoveation(int level);
     int Foveation() const { return rateImage_.image ? foveation_ : 0; }
-    void EnableDecodedTextures(bool enabled) { decodedEnabled_ = enabled; }
+    // Test / diagnostic override. The default is adaptive: the cache is sized from the video memory the frame left
+    // over the first time it is used (0 layers = off), like the original's own texture budget scales with the disc.
+    void EnableDecodedTextures(bool enabled) { decodedLayers_ = int(enabled ? int(DecodedTextureCache::kLayers) : 0); }
+    // The decoded cache size in layers actually used (0 = off), for the log and the audits.
+    int DecodedTextureLayers() const { return decodedLayers_; }
     bool MenuCarMsaaTarget() const override { return true; }
     uint32_t CachedMaterials() const { return decoded_.hits; }
     uint32_t UncachedMaterials() const { return decoded_.misses; }
-    // Device memory this renderer has allocated so far (buffers and images), for the log and the memory audits.
+    // Device memory this renderer has allocated so far (buffers, images, swapchain images excluded), for the log and
+    // the memory audits.
     uint64_t AllocatedBytes() const { return uint64_t(allocatedBytes_); }
+    // Peaks since construction, for the log and memory reports: this renderer's buffers and images, and the
+    // device-local memory the process has in use (VK_EXT_memory_budget: swapchain and driver included).
+    uint64_t PeakAllocatedBytes() const { return peakAllocatedBytes_; }
+    uint64_t PeakDeviceBytes() const { return peakDeviceBytes_; }
+    uint64_t DeviceBudgetBytes() const { return deviceBudgetBytes_; }
     double EnvironmentGpuMilliseconds() const {return environmentGpuMs_;}
     double GpuMilliseconds() const { return gpuMs_; } // -1 when queue timestamps are unavailable
     // Corpus tools replace all model slots between cars. Give each independent
@@ -164,7 +175,7 @@ private:
         VkImageView layer[6] = {};           // individual stereo eyes or environment cube faces
         uint32_t layers = 1, mipLevels = 1;
         bool ownsImage = true;
-        VkDeviceSize allocated = 0;
+        VkDeviceSize allocated = 0;          // memory size of this image's allocation
     };
     Image CreateImage(VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, VkSampleCountFlagBits samples, VkImageAspectFlags aspect,
                       uint32_t layers = 1, uint32_t mipLevels = 1,bool cube = false);
@@ -230,13 +241,29 @@ private:
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present
     Buffer CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage);
     void DestroyBuffer(Buffer& b);
-    uint32_t FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags flags) const;
+    // The external texture store grows to the highest texel a model / HD asset uses; a PS1-only install never pays
+    // its full 116 MiB.
+    void EnsureExternalCapacity(uint32_t texels);
     // The native-model storage grows to the slots the content uses: a PS1-only install never pays its 12 + 1.5 MiB.
     void EnsureNativeCapacity(Buffer& buffer, uint32_t& capacity, uint32_t need, uint32_t limit, size_t elementSize,
                               uint32_t chunk, uint32_t binding);
     uint32_t nativeVertexCapacity_ = 1, nativeMaterialCapacity_ = 1;
     void ReportAllocation();
     VkDeviceSize allocatedBytes_ = 0, reportedBytes_ = 0;
+    uint64_t peakAllocatedBytes_ = 0, peakDeviceBytes_ = 0, deviceBudgetBytes_ = 0;
+    uint32_t frames_ = 0;
+    // VK_EXT_memory_budget: the device-local memory in use, sampled about once a second (one driver query per 64
+    // frames) so the log reports the peak a race really needed, driver and swapchain included.
+    PFN_vkGetPhysicalDeviceMemoryProperties2 getMemoryProperties2_ = nullptr;
+    bool memoryBudget_ = false;
+    bool memoryPressure_ = false;
+    bool DeviceMemory(uint64_t& used, uint64_t& budget) const;
+    void SampleDeviceMemory();
+    // Layers of the decoded texture cache for the video memory left now (0 = cache off); see
+    // RecommendedDecodedCacheMiB.
+    uint32_t AdaptiveDecodedLayers() const;
+    uint32_t externalCapacity_ = 0;
+    uint32_t FindMemoryType(uint32_t typeBits, VkMemoryPropertyFlags flags) const;
     void SaveScreenshot(const std::string& path);
     void SaveReadback(const std::string& path, VkExtent2D extent, VkFormat format);
 
@@ -256,6 +283,7 @@ private:
     VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
     VkFormat colorFormat_ = VK_FORMAT_B8G8R8A8_UNORM;
     VkExtent2D extent_{};
+    VkExtent2D surfaceExtent_{}; // the window's size; extent_ may be smaller when a fixed output height is set
     bool extentFromWindow_ = false; // surface leaves the size to us (Wayland): track window resizes ourselves
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;
@@ -365,7 +393,7 @@ private:
     uint32_t recordEye_ = 0;             // the eye index RecordItems pushes (the two-pass path)
     uint32_t recordLayers_ = 1;          // array layers of the target being recorded (vkCmdClearAttachments)
     StereoViews stereoViews_;
-    bool decodedEnabled_ = true;
+    int decodedLayers_ = -1; // -1: sized from the video memory on first use; 0: off
     bool cacheMenuTextures_ = false; // Metal also decodes palette textures outside the race scene.
     bool cachedMenuShader_ = false;
     DecodedTextureCache decoded_;

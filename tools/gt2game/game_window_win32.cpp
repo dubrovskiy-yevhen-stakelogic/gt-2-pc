@@ -7,11 +7,13 @@
 #include <dwmapi.h>
 
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
 #include <thread>
 #include <vector>
 
+#include "graphics_options.h"
 #include "gt2view/vk_context.h"
 
 namespace gt2game {

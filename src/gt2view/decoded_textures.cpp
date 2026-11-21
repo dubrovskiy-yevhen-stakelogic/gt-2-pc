@@ -111,12 +111,16 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
     decoded_.Begin();
     cachedDraws_.assign(items.size(), 0);
     const size_t decodedItems = cacheMenuTextures_ ? items.size() : std::min(sceneItems, items.size());
-    if (!decodedEnabled_ || !decodedItems) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
+    if (decodedLayers_ < 0) decodedLayers_ = int(AdaptiveDecodedLayers());
+    if (decodedLayers_ < 4 || !decodedItems) { std::memset(decodedTable_.mapped, 0, sizeof(decoded_.table)); return; }
     if (!decodedUpload_.buffer) {
-        decodedUpload_ = CreateBuffer(size_t(DecodedTextureCache::kLayers) * DecodedTextureCache::kTexels * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        decoded_.layers = uint32_t(decodedLayers_);
+        decodedUpload_ = CreateBuffer(size_t(decoded_.layers) * DecodedTextureCache::kTexels * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         DestroyImage(decodedImage_);
         decodedImage_ = CreateImage({256, 256}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, DecodedTextureCache::kLayers, 9);
+            VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT, decoded_.layers, 9);
+        std::printf("graphics: decoded texture cache enabled (%u layers, %u MiB of video memory)\n",
+                    decoded_.layers, decoded_.layers * gt2view::kDecodedCacheLayerKiB / 1024);
         VkDescriptorImageInfo info{decodedSampler_, decodedImage_.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = descSet_; write.dstBinding = 3; write.descriptorCount = 1;
