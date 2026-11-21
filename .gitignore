@@ -108,3 +108,5 @@ __pycache__/
 
 build_macos/
 .DS_Store
+
+!docs/images/mod-datasets-picker.png
