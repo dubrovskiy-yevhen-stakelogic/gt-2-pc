@@ -1247,7 +1247,9 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.stpPass = item.stpPass;
         const bool sceneLike = i < sceneItems || item.space == kSpaceMenuCar;
         params.options = sceneLike ? sceneOptions : 0u;
-        if(sceneLike && nativeCameraActive_)params.options|=16u;
+        // The race cubemap stays loaded after the race (cleared only by the next course load). A menu/showroom car
+        // must keep the neutral studio environment instead of reflecting the last race's scenery.
+        if (sceneLike && nativeCameraActive_ && !recordMenuCar_) params.options |= 16u;
         if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
