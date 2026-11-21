@@ -1076,11 +1076,10 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
     return presets[at];
 }
 
-// The port menu's first graphics page, top to bottom: the preset first, so one row changes everything.
+// The port menu's graphics page, top to bottom: the preset first, so one row changes everything. The panel paginates
+// the list, so the display and scenery rows stay on the same page instead of a "More graphics" sub-page.
 enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
-             kGfxProfiler, kGfxMore, kGfxBack };
-// Its "More graphics" sub-page: presentation timing, world detail, memory, then Scene scale (flat) or Foveation (VR).
-enum : int { kMoreVsync = 0, kMorePresentation, kMoreScenery, kMoreMapping, kMoreSceneScale, kMoreFoveation = kMoreSceneScale };
+             kGfxProfiler, kGfxVsync, kGfxPresentation, kGfxScenery, kGfxMapping, kGfxSceneScale, kGfxBack };
 // The main menu rows: explicit indices, so adding a page does not shift the handlers.
 // Navigation first, then Campaign, and Resume / Quit as the last two entries. Import and the original pause menu are
 // on Content and media / the game's own Start button respectively.
@@ -1102,34 +1101,25 @@ std::string MainHint(int selected) {
     }
 }
 
-// The hint line under the graphics pages: what the selected row changes (kept short for the panel's status line).
-std::string GraphicsHint(int page, int selected, bool vr, int rowCount) {
-    if (selected == rowCount - 1) return page == 1 ? "Back to the menu." : "Back to the graphics page.";
-    if (page == 1) {
-        switch (selected) {
-        case kGfxPreset: return "Uses less memory and runs faster; simpler graphics.";
-        case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "Renders the game softer to use less memory.";
-        case kGfxFrameLimit: return vr ? "How many times per second the headset updates." : "Limit the frame rate, or follow the screen.";
-        case kGfxMsaa: return "Smooths jagged edges; higher costs more.";
-        case kGfxDistance: return "How much of the course is drawn in the distance.";
-        case kGfxFilter: return "Smooth old textures, or keep the PS1 sharpness.";
-        case kGfxReflections: return "Off, original look, or modern reflections.";
-        case kGfxProfiler: return "Show and record frame rate information.";
-        case kGfxMore: return "Display, scenery, texture and memory options.";
-        default: return {};
-        }
+// The hint line under the graphics page: what the selected row changes (kept short for the panel's status line).
+std::string GraphicsHint(int selected, bool vr, int rowCount) {
+    if (selected == rowCount - 1) return "Back to the menu.";
+    switch (selected) {
+    case kGfxPreset: return "Uses less memory and runs faster; simpler graphics.";
+    case kGfxResolution: return vr ? "Sharpness in the headset; restart to apply." : "Renders the game softer to use less memory.";
+    case kGfxFrameLimit: return vr ? "How many times per second the headset updates." : "Limit the frame rate, or follow the screen.";
+    case kGfxMsaa: return "Smooths jagged edges; higher costs more.";
+    case kGfxDistance: return "How much of the course is drawn in the distance.";
+    case kGfxFilter: return "Smooth old textures, or keep the PS1 sharpness.";
+    case kGfxReflections: return "Off, original look, or modern reflections.";
+    case kGfxProfiler: return "Show and record frame rate information.";
+    case kGfxVsync: return "Prevents screen tearing; may cap the frame rate.";
+    case kGfxPresentation: return "Follow the screen, or the original 30 fps.";
+    case kGfxScenery: return "Draw every scenery object, or the original set.";
+    case kGfxMapping: return "Textures on slopes: correct, or retro like PS1.";
+    case kGfxSceneScale: return vr ? "Sharper centre, softer edges in VR." : "3D detail inside the output; lower is softer and faster.";
+    default: return {};
     }
-    if (page == 8) {
-        switch (selected) {
-        case kMoreVsync: return "Prevents screen tearing; may cap the frame rate.";
-        case kMorePresentation: return "Follow the screen, or the original 30 fps.";
-        case kMoreScenery: return "Draw every scenery object, or the original set.";
-        case kMoreMapping: return "Textures on slopes: correct, or retro like PS1.";
-        case kMoreSceneScale: return vr ? "Sharper centre, softer edges in VR." : "3D detail inside the output; lower is softer and faster.";
-        default: return {};
-        }
-    }
-    return {};
 }
 
 void ShowSettingsMenu(GameWindow& window) {
@@ -1197,15 +1187,10 @@ void ShowSettingsMenu(GameWindow& window) {
             rows.push_back("Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"));
             rows.push_back("GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"));
             rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
-            rows.push_back("More graphics..."); // last: the sub-page of the options that do not fit here
-            rows.push_back("Back");
-        }
-        if (page == 8) {
-            title = "GT2 / MORE GRAPHICS";
-            rows = {std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF"),
-                    std::string("Frame presentation: ") + (graphics.frameRate ? "Display rate" : "Original"),
-                    std::string("Scenery detail: ") + (graphics.maxDetail ? "Max" : "Original"),
-                    std::string("Texture mapping: ") + (graphics.affine ? "Affine PS1" : "Perspective")};
+            rows.push_back("VSync: " + std::string(graphics.vsync ? "ON" : "OFF"));
+            rows.push_back("Frame presentation: " + std::string(graphics.frameRate ? "Display rate" : "Original"));
+            rows.push_back("Scenery detail: " + std::string(graphics.maxDetail ? "Max" : "Original"));
+            rows.push_back("Texture mapping: " + std::string(graphics.affine ? "Affine PS1" : "Perspective"));
             if (vr) rows.push_back("Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"));
             else rows.push_back("Scene scale: " + std::to_string(graphics.renderScale) + "%"); // advanced: the scene inside the output
             rows.push_back("Back");
@@ -1393,12 +1378,24 @@ void ShowSettingsMenu(GameWindow& window) {
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
                         else { graphics.carReflections = false; graphics.modernCarReflections = false; }
                     }
-                    if (selected == kGfxMore && accept) { page = 8; selected = 0; }
+                    if (selected == kGfxVsync && direction) graphics.vsync = !graphics.vsync;
+                    if (selected == kGfxPresentation && direction) graphics.frameRate = !graphics.frameRate;
+                    if (selected == kGfxScenery && direction) graphics.maxDetail = !graphics.maxDetail;
+                    if (selected == kGfxMapping && direction) graphics.affine = !graphics.affine;
+                    if (vr && selected == kGfxSceneScale && direction) {
+                        foveation = (foveation + direction + 4) % 4;
+                        window.Renderer().SetFoveation(foveation);
+                        status = "Saved. Sharper centre, softer edges.";
+                    }
+                    if (!vr && selected == kGfxSceneScale && direction) {
+                        static constexpr int scales[] = {50, 75, 100, 125, 150, 200};
+                        graphics.renderScale = Cycle(graphics.renderScale, scales, direction);
+                    }
                     if (selected == kGfxBack) { page = 0; selected = 0; }
                     SetGraphicsFromOverlay(graphics); window.Renderer().SetLowMemory(graphics.lowMemory);
                     window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
                     const auto after = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
-                    const std::string hint = GraphicsHint(page, selected, vr, int(rows.size()));
+                    const std::string hint = GraphicsHint(selected, vr, int(rows.size()));
                     if (before != after) {
                         savedFrames = 120;
                         if (status == hint || status.empty()) status = "Saved. " + hint;
@@ -1406,33 +1403,6 @@ void ShowSettingsMenu(GameWindow& window) {
                         status = hint; // a key press that changed nothing (a clamp) must not claim a save
                     }
                     window.Input().SetRumbleScale(rumble);
-                } else if (page == 8) {
-                    const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
-                    if (selected == kMoreVsync && direction) graphics.vsync = !graphics.vsync;
-                    if (selected == kMorePresentation && direction) graphics.frameRate = !graphics.frameRate;
-                    if (selected == kMoreScenery && direction) graphics.maxDetail = !graphics.maxDetail;
-                    if (selected == kMoreMapping && direction) graphics.affine = !graphics.affine;
-                    if (vr && selected == kMoreFoveation && direction) {
-                        foveation = (foveation + direction + 4) % 4;
-                        window.Renderer().SetFoveation(foveation);
-                        status = "Saved. Sharper centre, softer edges.";
-                    }
-                    if (!vr && selected == kMoreSceneScale && direction) {
-                        static constexpr int scales[] = {50, 75, 100, 125, 150, 200};
-                        graphics.renderScale = Cycle(graphics.renderScale, scales, direction);
-                    }
-                    if (selected == int(rows.size()) - 1) { page = 1; selected = kGfxMore; }
-                    SetGraphicsFromOverlay(graphics);
-                    window.Renderer().SetLowMemory(graphics.lowMemory);
-                    window.Renderer().SetOptions(RenderOptionsOf(CurrentGraphics()));
-                    const auto after = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
-                    const std::string hint = GraphicsHint(page, selected, vr, int(rows.size()));
-                    if (before != after) {
-                        savedFrames = 120;
-                        if (status == hint || status.empty()) status = "Saved. " + hint;
-                    } else if (status.rfind("Saved", 0) == 0) {
-                        status = hint;
-                    }
                 } else if (page == 2) {
                     if (selected == 0 && direction) gt2::pc::SetUnlocks(!gt2::pc::unlockCourses, gt2::pc::unlockCars);
                     if (selected == 1 && direction) gt2::pc::SetUnlocks(gt2::pc::unlockCourses, !gt2::pc::unlockCars);
@@ -1556,9 +1526,9 @@ void ShowSettingsMenu(GameWindow& window) {
             }
         }
         // The status line is the selected row's hint; "Saved. ..." flashes for about two seconds after a real change.
-        const bool hintPage = page == 0 || page == 1 || page == 8;
+        const bool hintPage = page == 0 || page == 1;
         const std::string hint = page == 0 ? MainHint(selected)
-                              : (page == 1 || page == 8) ? GraphicsHint(page, selected, vr, int(rows.size())) : std::string();
+                              : page == 1 ? GraphicsHint(selected, vr, int(rows.size())) : std::string();
         const bool pageChanged = page != lastPage, rowChanged = selected != lastSelected;
         if (pageChanged) {
             savedFrames = 0;
