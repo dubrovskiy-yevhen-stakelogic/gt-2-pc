@@ -34,6 +34,36 @@ GT2+'s separate save file works through the executable's own card names: saves a
 vanilla save is never renamed or modified; a GT2+ game creates or updates only its own file. The two careers are
 separate by design (GT2+ saves are not compatible with vanilla), so switch discs to switch saves.
 
+## Saves, installs and modified data
+
+A career stores car ids and setups, not car names or power figures. Two images whose car tables
+(`.carcolor`, `.carinfoa`, `.carinfoe`, `.carinfoj`) differ therefore read the same save as different cars and
+horsepower, which is why a retail save opened in A-Spec looks wrong. The four tables' SHA-1 names the **dataset**, and
+the dataset decides where saves and installs live:
+
+| Dataset | Install folder | Memory card and settings |
+|---|---|---|
+| Retail US Simulation / Combined v1.2 (`be0dc795…`) | `simulation`, `combined` | `saves/simulation/card1.mcd`, `saves/simulation/settings.txt` |
+| Project A-Spec 1.2.1 (`03092e33…`) | `simulation-aspec`, `combined-aspec` | `saves/simulation-aspec/card1.mcd`, shared `saves/simulation/settings.txt` |
+| GT2+ Complete beta 7 (`3e100467…`) | `simulation-plus`, `combined-plus` | `saves/simulation-plus/card1.mcd`, shared `saves/simulation/settings.txt` |
+| Any other data set | `<mode>-<first 8 hex digits>` | its own folder; settings stay per mode |
+
+- Silent's combined disc copies the Simulation volume's car tables unchanged, so a combined and a standalone disc of
+  the same mod share one card (`simulation-aspec`), while the arcade flow of a combined disc uses `arcade-aspec`.
+- The retail Arcade discs (v1.0 and v1.1) keep the plain `arcade` install and save folder; GT2+ Arcade uses
+  `arcade-plus` because its car tables are the GT2+ dataset.
+- A new mod needs no code change to keep its saves apart: its unrecognised dataset gets a hash suffix. Register its
+  fingerprint in `src/gt2formats/dataset.cpp` (one line) to give it a readable name and label.
+- Each installed dataset is its own entry in the disc picker, so the retail disc, A-Spec and GT2+ can be installed
+  side by side. Installing one never replaces another.
+
+![Disc picker with the retail Simulation disc, GT2+ Complete (combined) and Project A-Spec 1.2.1 installed beside each other](images/mod-datasets-picker.png)
+- Install folders made before this layout have no `disc.json`: they keep their old names and the original
+  `saves/<mode>` folders. Re-import the image once to move it to a suffixed entry; the old save card is left in place
+  and is not renamed or deleted.
+- GT2+ saves made before this layout are in the shared `saves/simulation/card1.mcd`. Copy that card to
+  `saves/simulation-plus/` (a copy, not a move) to keep using them from the GT2+ entry.
+
 ## Checking an image
 
 ```
@@ -41,7 +71,8 @@ gt2install inspect /path/to/disc.bin
 ```
 
 The JSON reports `mode`, `combined`, the image's `exeSha1`, the matched `profile`, the asset count, the card file
-names (`save` / `replay`) and the registered `mod` name. An unknown executable is refused with its SHA-1.
+names (`save` / `replay`), the registered `mod` name, and the dataset `suffix`, install `folder` and display `label`.
+An unknown executable is refused with its SHA-1.
 
 ## Adding another modified build
 

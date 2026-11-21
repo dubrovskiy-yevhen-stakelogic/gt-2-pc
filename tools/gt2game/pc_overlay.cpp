@@ -1,6 +1,7 @@
 #include "pc_overlay.h"
 #include "gt2_version.h"
 #include "gt2formats/hd_media.h"
+#include "gt2formats/json.h"
 #include "gt2formats/model_set.h"
 #include "gt2formats/car_info.h"
 #include "game/shell/shared_vr_settings.h"
@@ -9,6 +10,7 @@
 #include <windows.h>
 #endif
 #include "game_window.h"
+#include "disc_launch.h"
 #include "graphics_options.h"
 #include "game/pc_features.h"
 #include "game/audio/pause.h"
@@ -19,9 +21,11 @@
 #include <cstring>
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <map>
 #include <stdexcept>
@@ -1540,17 +1544,67 @@ bool TakeDiscImportRequest() {
     discImportRequested = false;
     return requested;
 }
+struct InstalledDisc {
+    std::string folder, label;
+    bool combined = false;
+};
+
+// Installs are folders with disc.raw2352; disc.json (written by gt2install extract) names the dataset. Installs made
+// before the manifest existed are the canonical mode folders and keep their old labels.
+std::vector<InstalledDisc> ScanInstalledDiscs(const std::filesystem::path& root) {
+    std::vector<InstalledDisc> found;
+    std::error_code error;
+    for (const auto& entry : std::filesystem::directory_iterator(root, error)) {
+        if (!std::filesystem::is_regular_file(entry.path() / "disc.raw2352")) continue;
+        const std::string folder = entry.path().filename().string();
+        const std::string mode = InstallModeOf(folder);
+        if (!IsDiscMode(mode)) continue;
+        InstalledDisc disc{folder, "", mode == "combined"};
+        if (std::ifstream in(entry.path() / "disc.json", std::ios::binary); in) {
+            const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            try {
+                disc.label = gt2::json::Parse(text).StringOr("label", "");
+            } catch (...) {} // a broken manifest falls back to the folder/label defaults
+        }
+        found.push_back(std::move(disc));
+    }
+    auto rank = [](const std::string& folder) {
+        return folder == "arcade" ? 0 : folder == "simulation" ? 1 : folder == "combined" ? 2 : 3;
+    };
+    std::sort(found.begin(), found.end(), [&](const InstalledDisc& a, const InstalledDisc& b) {
+        return std::make_pair(rank(a.folder), a.folder) < std::make_pair(rank(b.folder), b.folder);
+    });
+    return found;
+}
+
+std::string UpperCase(std::string text) {
+    for (char& c : text) c = char(std::toupper(static_cast<unsigned char>(c)));
+    return text;
+}
+
+void AddDiscRows(const InstalledDisc& disc, std::vector<std::string>& modes, std::vector<std::string>& rows) {
+    const bool canonical = InstallSuffixOf(disc.folder).empty();
+    if (disc.combined) {
+        modes.push_back(disc.folder + ":arcade");
+        modes.push_back(disc.folder + ":simulation");
+        const std::string name = !canonical && !disc.label.empty() ? UpperCase(disc.label) : "COMBINED DISC";
+        rows.push_back(name + " - Arcade Mode");
+        rows.push_back(name + " - Simulation Mode");
+        return;
+    }
+    modes.push_back(disc.folder);
+    if (canonical)
+        rows.push_back(disc.folder == "arcade" ? "ARCADE DISC - Quick races and time trials" : "SIMULATION DISC - GT Mode career");
+    else
+        rows.push_back(UpperCase(disc.label.empty() ? disc.folder : disc.label) +
+                      (disc.folder.starts_with("arcade") ? " - Quick races and time trials" : " - GT Mode career"));
+}
+
 std::string SelectGameDisc(const std::string& root, const std::string& preferred, bool vrMode,
                           bool deterministic, const std::string& script, const std::string& shot, bool sound, bool playStartup) {
-    // A row's key is what last-disc.txt keeps; the combined disc offers both flows from its one installed image.
+    // A row's key is what last-disc.txt keeps; a combined disc offers both flows from its one installed image.
     std::vector<std::string> modes, rows;
-    auto installed = [&](const char* mode) { return std::filesystem::exists(std::filesystem::path(root) / mode / "disc.raw2352"); };
-    if (installed("arcade")) { modes.push_back("arcade"); rows.push_back("ARCADE DISC - Quick races and time trials"); }
-    if (installed("simulation")) { modes.push_back("simulation"); rows.push_back("SIMULATION DISC - GT Mode career"); }
-    if (installed("combined")) {
-        modes.push_back("combined-arcade"); rows.push_back("COMBINED DISC - Arcade Mode");
-        modes.push_back("combined-simulation"); rows.push_back("COMBINED DISC - Simulation Mode");
-    }
+    for (const InstalledDisc& disc : ScanInstalledDiscs(root)) AddDiscRows(disc, modes, rows);
     if (modes.empty()) throw std::runtime_error("No installed GT2 disc found");
     gameChangeAvailable = modes.size() > 1;
     gameChangeRequested = false;
@@ -1568,7 +1622,8 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
         catch (const std::exception& e) { std::printf("BIOS intro unavailable: %s\n", e.what()); }
     }
     int selected = 0;
-    for (size_t i = 0; i < modes.size(); i++) if (modes[i] == preferred) selected = int(i);
+    const std::string wanted = NormalizeDiscSelection(preferred);
+    for (size_t i = 0; i < modes.size(); i++) if (modes[i] == wanted) selected = int(i);
     std::printf("player: disc picker (%s), %zu installed disc(s)\n", vrMode ? "VR" : "desktop", modes.size());
     while (window.BeginFrame()) {
         if (window.Pressed(gt2::keys::kEscape) || window.Pressed(gt2::keys::kBack)) return {};
@@ -1576,7 +1631,7 @@ std::string SelectGameDisc(const std::string& root, const std::string& preferred
         if (window.Pressed(gt2::keys::kDown)) selected = (selected + 1) % int(modes.size());
         if (window.Pressed(gt2::keys::kReturn)) {
             std::printf("player: selected %s\n", modes[size_t(selected)].c_str());
-            const bool arcade = modes[size_t(selected)].starts_with("arcade") || modes[size_t(selected)] == "combined-arcade";
+            const bool arcade = DescribeDiscSelection(modes[size_t(selected)]).saveMode == "arcade";
             Panel(window,"GRAN TURISMO 2",{arcade?"Loading Arcade...":"Loading Simulation..."},-1,"","");
             window.RetainBackendForNextWindow(); return modes[size_t(selected)];
         }

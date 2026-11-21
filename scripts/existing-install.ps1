@@ -1,9 +1,9 @@
 # Shared by the launcher and its first-run folder picker.
 function Test-Gt2ExistingData([string]$Path) {
     if (!$Path -or !(Test-Path -LiteralPath $Path -PathType Container)) { return $false }
-    foreach ($mode in @('arcade','simulation','combined')) {
-        if ((Test-Path -LiteralPath (Join-Path $Path "$mode/disc.raw2352") -PathType Leaf) -and
-            (Test-Path -LiteralPath (Join-Path $Path "$mode/assets") -PathType Container)) { return $true }
+    foreach ($item in (Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)) {
+        if ((Test-Path -LiteralPath (Join-Path $item.FullName 'disc.raw2352') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $item.FullName 'assets') -PathType Container)) { return $true }
     }
     return $false
 }

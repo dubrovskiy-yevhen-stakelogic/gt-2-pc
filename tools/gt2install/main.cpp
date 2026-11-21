@@ -1,5 +1,6 @@
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
+#include "gt2formats/dataset.h"
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/save_ids.h"
@@ -16,6 +17,21 @@ static fs::path SafePath(const fs::path& root, const std::string& name) {
     for (const auto& part : relative) if (part == ".." || part == ".") throw std::runtime_error("unsafe asset traversal");
     return root / relative;
 }
+static std::string JsonString(const std::string& text) {
+    std::string out;
+    for (char c : text) {
+        switch (c) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) out += ' '; else out += c;
+        }
+    }
+    return out;
+}
 int main(int argc, char** argv) {
     try {
         if (argc < 3 || (std::string(argv[1]) != "inspect" && std::string(argv[1]) != "extract")) {
@@ -27,11 +43,19 @@ int main(int argc, char** argv) {
         const auto saveIds = gt2::ReadSaveFileIds(exe);
         const char* mode = profile.arcade ? "arcade" : "simulation";
         gt2::GtfsVolume volume(disc);
+        const gt2::DiscDataset dataset = gt2::IdentifyDataset(volume);
+        const bool combined = gt2::IsCombinedDisc(disc);
+        // The install folder and the save folder both carry the dataset suffix, so two mods of one mode keep separate
+        // entries and separate memory cards (docs/MOD-SUPPORT.md).
+        const std::string folder = gt2::InstallFolder(combined ? "combined" : mode, dataset.suffix);
+        const std::string label = dataset.label.empty() ? fs::path(argv[2]).stem().string() : dataset.label;
         if (std::string(argv[1]) == "inspect") {
-            std::cout << "{\"mode\":\"" << mode << "\",\"combined\":" << (gt2::IsCombinedDisc(disc) ? "true" : "false")
+            std::cout << "{\"mode\":\"" << mode << "\",\"combined\":" << (combined ? "true" : "false")
                       << ",\"exeSha1\":\"" << exe.fileSha1 << "\",\"profile\":\"" << profile.name << "\",\"assets\":" << volume.Files().size()
                       << ",\"save\":\"" << saveIds.game << "\",\"replay\":\"" << saveIds.replay << "\""
-                      << ",\"mod\":\"" << (exe.modName ? exe.modName : "") << "\"}\n";
+                      << ",\"mod\":\"" << (exe.modName ? exe.modName : "") << "\""
+                      << ",\"suffix\":\"" << dataset.suffix << "\",\"folder\":\"" << folder << "\""
+                      << ",\"label\":\"" << JsonString(label) << "\"}\n";
             return 0;
         }
         if (argc != 4) throw std::runtime_error("extract requires a new destination directory");
@@ -53,7 +77,15 @@ int main(int argc, char** argv) {
             if (!out) throw std::runtime_error("cannot extract " + e.path);
             ++count;
         }
+        // The launcher lists installs by this manifest; installs without one stay the canonical mode folders.
+        std::ofstream manifest(target / "disc.json", std::ios::binary);
+        manifest << "{\"mode\":\"" << mode << "\",\"combined\":" << (combined ? "true" : "false")
+                 << ",\"suffix\":\"" << JsonString(dataset.suffix) << "\",\"folder\":\"" << JsonString(folder) << "\""
+                 << ",\"save\":\"" << JsonString(saveIds.game) << "\",\"replay\":\"" << JsonString(saveIds.replay) << "\""
+                 << ",\"label\":\"" << JsonString(label) << "\"}\n";
+        if (!manifest) throw std::runtime_error("cannot write disc.json");
         std::cout << "Extracted " << count << " assets for " << mode << "; original media retained for XA/audio/video.\n";
         return 0;
     } catch (const std::exception& e) { std::cerr << "gt2install: " << e.what() << '\n'; return 1; }
 }
+

@@ -6,6 +6,7 @@
 - Support the US Arcade v1.1 disc the GT2+ Arcade patch is built on: its own generated address profile, the shifted menu text block and font descriptors, and the v1.1 Arcade menu view table.
 - Read the memory-card save and replay file names from the disc's executable, so GT2+ saves (`…7C`) coexist with the retail save on one card.
 - Tolerate A-Spec's sparse car-colour entries and unsorted solo data instead of rejecting the GT-mode menus.
+- Name each image's car-table dataset by SHA-1: retail, A-Spec and GT2+ keep separate memory cards and settings, while a combined and a standalone disc of the same mod share one card. Installed discs become separate picker entries (`simulation`, `simulation-aspec`, `simulation-plus`, …) instead of replacing each other; installs made before this change keep their paths.
 
 - Group content and media settings separately from graphics; keep vibration under Controls.
 - Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.

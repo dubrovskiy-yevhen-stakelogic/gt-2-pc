@@ -111,10 +111,10 @@ void Import(const fs::path& tools, const fs::path& root, const std::string& imag
     if (Run({(tools / "gt2install").string(), "inspect", image}, &info) != 0)
         throw std::runtime_error("This disc could not be read. Select a supported raw 2352-byte BIN/ISO. See gt2game.log for details.");
     const auto parsed = gt2::json::Parse(info);
-    const auto mode = parsed.Require("combined").AsBool() ? std::string("combined") : parsed.Require("mode").AsString();
-    if (mode != "arcade" && mode != "simulation" && mode != "combined") throw std::runtime_error("Unsupported disc type.");
-    if (fs::exists(fs::symlink_status(root / mode)))
-        throw std::runtime_error("This disc is already installed. To add the other disc, select its BIN file.");
+    std::string folder = parsed.StringOr("folder", "");
+    if (folder.empty()) folder = parsed.Require("combined").AsBool() ? std::string("combined") : parsed.Require("mode").AsString();
+    if (fs::exists(fs::symlink_status(root / folder)))
+        throw std::runtime_error("This disc is already installed. Existing discs and saves were kept.");
     std::string pattern = (root / ".import-XXXXXX").string();
     if (!mkdtemp(pattern.data())) throw std::runtime_error("Cannot create disc staging folder.");
     const fs::path stage(pattern);
@@ -122,7 +122,7 @@ void Import(const fs::path& tools, const fs::path& root, const std::string& imag
         const auto prepared = stage / "disc";
         if (Run({(tools / "gt2install").string(), "extract", image, prepared.string()}) != 0)
             throw std::runtime_error("Disc installation failed. Existing discs and saves were kept. See gt2game.log for details.");
-        gt2linux::PublishDisc(root, mode, prepared);
+        gt2linux::PublishDisc(root, folder, prepared);
     } catch (...) {
         std::error_code ignored;
         fs::remove_all(stage, ignored);

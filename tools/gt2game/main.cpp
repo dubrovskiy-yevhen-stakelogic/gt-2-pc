@@ -89,9 +89,8 @@ int main(int argc, char** argv) {
         bool firstLaunch = true;
         bool directLaunch = false;
         auto installed = [&](const std::string& key) {
-            const auto [folder, saveMode, modeFlag] = DescribeDiscSelection(key);
-            (void)saveMode; (void)modeFlag;
-            return std::filesystem::exists(root / folder / "disc.raw2352");
+            const std::string folder = DescribeDiscSelection(key).folder;
+            return !folder.empty() && std::filesystem::exists(root / folder / "disc.raw2352");
         };
         for (;;) {
             std::string mode;
