@@ -9,6 +9,7 @@ install(TARGETS gt2game gt2install gt2media gt2linuxlauncher RUNTIME DESTINATION
 install(FILES tools/gt2linux/io.github.gt2pc.GT2.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES tools/gt2linux/io.github.gt2pc.GT2.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES LICENSE THIRD_PARTY.md DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/gt2)
+install(FILES tools/gt2linux/README.txt DESTINATION .)
 install(DIRECTORY third_party/ DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/gt2/third_party
   FILES_MATCHING PATTERN "*LICENSE*" PATTERN "SOURCE.md")
 if(BUILD_TESTING)
