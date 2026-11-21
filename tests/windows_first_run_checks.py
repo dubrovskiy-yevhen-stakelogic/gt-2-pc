@@ -17,9 +17,12 @@ class FirstRunChecks(unittest.TestCase):
                 root = Path(folder)
                 scripts = root/'scripts'
                 scripts.mkdir()
+                (scripts/'existing-install.ps1').write_text((ROOT/'scripts/existing-install.ps1').read_text())
+                # Keep the first-run fixture independent of installations on this PC.
+                (root/'install-location.txt').write_text(str(root/'runtime'))
                 (scripts/'launch.ps1').write_text(launcher.replace('[Console]::IsInputRedirected', '$true' if redirected else '$false'))
                 (scripts/'install-player.ps1').write_text(signature + '''
-if ($Target -ne 'PC' -or $DiscImage -or $InstallDir -eq '-HdMedia') { throw 'Incorrect first-run parameters' }
+if (!$ReuseExisting -or $Target -ne 'PC' -or $DiscImage -or $InstallDir -eq '-HdMedia') { throw 'Incorrect first-run parameters' }
 ''' + ("if ($HdMedia -ne 'Original' -or !$NoBios) { throw 'Incorrect unattended options' }\n" if redirected else "if ($NoBios) { throw 'Interactive BIOS option changed' }\n") + "Write-Output 'FIRST_RUN_BINDING_OK'; exit 0\n")
                 result = subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(scripts/'launch.ps1')], capture_output=True, text=True)
                 self.assertIn('FIRST_RUN_BINDING_OK', result.stdout, result.stdout + result.stderr)

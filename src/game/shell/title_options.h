@@ -102,6 +102,7 @@ struct GraphicsSettings {
     bool smoothTextures = false;           // false: the PS1's nearest texel; true: CLUT-aware bilinear
     bool affine = false;                   // true: the PS1's screen-linear texture mapping; false: perspective-correct
     bool modernCarReflections = false; // opt-in cube reflections for original GT2 bodies
+    bool carReflections = true;        // false: no car reflections at all (Off); true: Original or Modern
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: + every chunk within N m;
                                            // -1: every chunk of the course

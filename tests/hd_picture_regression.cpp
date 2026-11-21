@@ -74,6 +74,21 @@ int main(int argc,char** argv) { try {
     std::ofstream(out/"report.json")<<"{\"menu_after_save_pixels\":"<<saveDiff<<",\"menu_after_other_menu_pixels\":"<<menuDiff<<",\"title_after_menu_pixels\":"<<titleDiff<<"}\n";
     std::cout<<"Different pixels after save/menu/title: "<<saveDiff<<'/'<<menuDiff<<'/'<<titleDiff<<'\n';
     if(saveDiff || menuDiff || titleDiff)throw std::runtime_error("shared HD picture was not restored");
+    // Compare an automatic rebuild with a forced rebuild after a setting change.
+    gt2::hd::SetEnabled(false);
+    gt2::MenuFrame spriteFrame;spriteFrame.clearBehind=true;
+    gt2::MenuPrim sprite;sprite.kind=gt2::MenuPrim::kSprite;sprite.w=sprite.h=8;
+    spriteFrame.prims.push_back(sprite);
+    auto flags=[&](){std::vector<gt2view::DrawItem> items;first.Build(spriteFrame,1,items);
+        return renderer.VerticesForAudit(items.at(0)).at(0).flags;};
+    auto options=renderer.Options();options.smoothTextures=false;renderer.SetOptions(options);
+    const auto sharp=flags();
+    options.smoothTextures=true;renderer.SetOptions(options);
+    const auto smooth=flags();first.InvalidateCache();const auto rebuilt=flags();
+    if(smooth!=rebuilt || !(smooth&gt2view::kSmoothUi) || (sharp&gt2view::kSmoothUi))
+        throw std::runtime_error("cached menu ignored smooth texture change");
+    options.smoothTextures=false;renderer.SetOptions(options);
+    if(flags()!=sharp)throw std::runtime_error("cached menu did not restore sharp textures");
     std::cout<<"PASS: HD menu and title pictures survive shared-slot replacement\n";
     return 0;
 } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;} }

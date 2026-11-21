@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Keep browser rumble on the selected controller, including identical pads and reconnects.
+- Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
+- Refresh cached menus after HD media, texture smoothing or raster settings change.
+
+- Keep the FPS profiler's 1% low line aligned with the FPS and GPU lines.
+- Rumble supported controllers in the browser build through the Gamepad API, so pads vibrate in Chrome, Edge and Safari on macOS; Firefox exposes no vibration actuator. ([#88](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/issues/88), @lucianodato)
+
+- Add **Off** to the GT2 car-reflection setting; the preference is shared between disc profiles and a saved `modern_car_reflections` still selects Modern.
 - Keep a 40 ms SDL audio queue at the output device's sample rate, including 96/192 kHz, and stop cleanly on resampler errors.
 
 - Latch Simulation damage when entering an event so changes to preferences cannot alter its replay. Save the native damage option with the replay, retaining GT event-table selection; changes apply when entering the next event.

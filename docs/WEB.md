@@ -21,7 +21,10 @@ depends on available memory and graphics limits.
 - Up: accelerate. Down: brake, then reverse after stopping in automatic transmission.
 - Left / Right: steer. Space: handbrake. C: camera. Esc: pause.
 - Shift+Q: settings. Desktop render scale changes in 5% steps from 50% to 200%.
-- A browser-supported gamepad can be used through the browser Gamepad API.
+- A browser-supported gamepad can be used through the browser Gamepad API. Vibration
+  uses that API too: it works where the browser exposes a vibration actuator for
+  the pad (Chrome and Edge, plus Safari on macOS). Firefox exposes no actuator, so
+  pads stay silent there, and a pad the browser reports without one does not rumble.
 
 Brake-to-reverse can be disabled in settings. Manual transmission retains its
 explicit reverse binding. The browser runs in flat-screen mode; VR and

@@ -231,7 +231,8 @@ with both stick clicks or both grips plus Menu. See [Quest controls](docs/QUEST.
 [cockpit adjustments](docs/COCKPIT.md) and [wheel setup](docs/WHEELS.md).
 Windows supports native DualSense controls and adaptive pedal resistance.
 Physical wheels use the native Windows input backend; browser force feedback is
-not available.
+not available. Browser gamepads rumble where the browser exposes the Gamepad
+vibration actuator (Chrome and Edge, plus Safari on macOS); Firefox exposes none.
 
 Native desktop/PCVR saves share the installed save directory. Use the supplied
 transfer scripts for [PC/Quest save exchange](docs/SAVE-TRANSFER.md). Browser saves
