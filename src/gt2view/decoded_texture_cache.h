@@ -26,6 +26,17 @@ public:
         hash *= 0x7feb352du;
         return (hash ^ (hash >> 15)) & (kTableSize - 1);
     }
+    // One decoded layer request: page, palette/depth, and the paint/soften variants. Renderers dedupe draws by
+    // this key, so the variant bits must stay clear of the clut and depth fields (bits 0-29).
+    static uint64_t MaterialKey(uint32_t page, uint32_t clutDepth, bool carPaint, bool soften) {
+        return uint64_t(page) | (uint64_t(clutDepth) << 32) |
+            (carPaint ? uint64_t(1) << 63 : 0) | (soften ? uint64_t(1) << 62 : 0);
+    }
+    // The palette key a renderer looks up (environment capture) and decodes with. Bit 30 keeps the softened
+    // variant of one page separate; clut Y stops at bit 24 and the depth field at bit 29, so it is free.
+    static uint32_t Soften(uint32_t clutDepth, bool softenLines) {
+        return softenLines ? clutDepth | kSoftenKey : clutDepth;
+    }
     void Begin() {
         uploads.clear(); hits = misses = 0; protected_.clear(); priority_.clear();
         for (auto& [key, entry] : entries_) { (void)key; entry.prepared = false; }
@@ -105,7 +116,6 @@ public:
                     } else if (pixel) pixel |= 0xff000000u;
                 }
                 if (softenLines) {
-                    const size_t base = size_t(entry.slot) * kTexels;
                     const std::vector<uint32_t> source(pixels.begin() + base, pixels.begin() + base + kTexels);
                     const auto painted = [](uint32_t p) {
                         if ((p >> 24) != 0xff) return false;
@@ -145,12 +155,7 @@ public:
         ++misses;
     }
 private:
-    // Bit 30 of the cache key: the same page/palette must be decoded twice when one draw wants the painted-texel
-    // prefilter and another wants it sharp. Bit 30 is unused by clut (Y stops at bit 24) and by the depth field.
     static constexpr uint32_t kSoftenKey = 1u << 30;
-    static uint32_t Soften(uint32_t clutDepth, bool softenLines) {
-        return softenLines ? clutDepth | kSoftenKey : clutDepth;
-    }
     static uint32_t Expand(uint32_t v) { return (v << 3) | (v >> 2); }
     static uint64_t Key(uint32_t page, uint32_t clutDepth) { return (uint64_t(page) << 32) | clutDepth; }
     std::unordered_map<uint64_t, Entry> entries_;

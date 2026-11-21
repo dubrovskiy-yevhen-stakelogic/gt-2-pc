@@ -91,7 +91,8 @@ void VkSceneRenderer::PrepareFrameTextures(const std::vector<DrawItem>& items,si
                 // shader. Track geometry has none of these dynamic attributes.
                 if(vertex.flags & (kCarPaint|kModelNative|kModelReflection)) {found->second=false;break;}
                 if(!(vertex.flags & kTextured))continue;
-                const uint32_t key=vertex.clut|(((vertex.flags>>8)&3u)<<28);
+                const uint32_t key=DecodedTextureCache::Soften(
+                    vertex.clut|(((vertex.flags>>8)&3u)<<28), (vertex.flags&kCourseSoft)!=0);
                 uint32_t at=DecodedTextureCache::Bucket(vertex.page,key);
                 for(uint32_t probe=0;probe<16;++probe,at=(at+1)&4095u) {
                     const auto& e=decoded_.table[at];if(!e[3])break;
@@ -151,12 +152,8 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                     if (v.flags & (kOverlay | kExternalTexture | kHdUi)) { materials.push_back(~uint64_t(0)); continue; }
                     if (!(v.flags & kTextured)) continue;
                     const uint32_t clutDepth = v.clut | (((v.flags >> 8) & 3u) << 28);
-                    // Bit 62 is the cache's soften bit (bit 30 of clutDepth): softened and sharp requests for the
-                    // same page must not share one decoded layer.
-                    const uint64_t key = uint64_t(v.page) | (uint64_t(clutDepth) << 32) |
-                        ((v.flags & kCarPaint) ? uint64_t(1) << 63 : 0) |
-                        ((v.flags & kCourseSoft) ? uint64_t(1) << 62 : 0);
-                    materials.push_back(key);
+                    materials.push_back(DecodedTextureCache::MaterialKey(
+                        v.page, clutDepth, (v.flags & kCarPaint) != 0, (v.flags & kCourseSoft) != 0));
                 }
                 std::sort(materials.begin(), materials.end());
                 materials.erase(std::unique(materials.begin(), materials.end()), materials.end());

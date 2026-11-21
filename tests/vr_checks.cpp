@@ -14,6 +14,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_set>
 using namespace gt2::vr;
 static void Check(bool condition, const char* label) { if (!condition) throw std::runtime_error(label); }
 int main() {
@@ -185,6 +186,28 @@ int main() {
             Check(lines.uploads.size() == 2 &&
                   lines.pixels[2 * gt2view::DecodedTextureCache::kTexels + 267] == 0xffe2001c,
                   "softened page decodes into its own layer and prefilters painted texels");
+            const auto lookup = [](const gt2view::DecodedTextureCache& cache, uint32_t page, uint32_t clut) {
+                uint32_t at = gt2view::DecodedTextureCache::Bucket(page, clut);
+                for (uint32_t i = 0; i < 16; ++i, at = (at + 1) & 4095u) {
+                    const auto& e = cache.table[at];
+                    if (!e[3]) break;
+                    if (e[0] == page && e[1] == clut) return e[2];
+                }
+                return 0u;
+            };
+            const uint32_t softClut = gt2view::DecodedTextureCache::Soften(clut, true);
+            Check(lookup(soft, 64u << 16, gt2view::DecodedTextureCache::Soften(1u << 28, true)) != 0,
+                  "environment lookup finds a softened-only entry");
+            Check(lookup(lines, page, clut) != 0 && lookup(lines, page, softClut) != 0 &&
+                  lookup(lines, page, clut) != lookup(lines, page, softClut),
+                  "environment lookup selects the softened entry when both variants exist");
+            const auto materialKey = [](bool soften) {
+                return gt2view::DecodedTextureCache::MaterialKey(256u << 16, 2u << 28, false, soften);
+            };
+            std::unordered_set<uint64_t> forward{materialKey(false), materialKey(true)};
+            std::unordered_set<uint64_t> backward{materialKey(true), materialKey(false)};
+            Check(forward.size() == 2 && backward.size() == 2,
+                  "direct-colour sharp/soft materials keep distinct keys in either order");
         }
         {
             gt2view::DecodedTextureCache pressure;

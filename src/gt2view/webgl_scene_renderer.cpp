@@ -140,7 +140,8 @@ void WebGlSceneRenderer::PrepareMaterials(const std::vector<DrawItem>& items) {
                 for (uint32_t i=0;i<item.vertexCount;i+=3) {
                     const auto& v=shadow_[item.firstVertex+i];
                     if (!(v.flags&kTextured) || (v.flags&(kOverlay|kExternalTexture|kHandTexture|kHdUi|kSmoothUi))) continue;
-                    const auto key=uint64_t(v.page)|(uint64_t(v.clut|(((v.flags>>8)&3u)<<28)|((v.flags&kCarPaint)?1u<<30:0u)|((v.flags&kCourseSoft)?1u<<29:0u))<<32);
+                    const auto key=DecodedTextureCache::MaterialKey(v.page, v.clut|(((v.flags>>8)&3u)<<28),
+                        (v.flags&kCarPaint)!=0, (v.flags&kCourseSoft)!=0);
                     if (seen.insert(key).second) it->second.push_back(v);
                 }
             }
