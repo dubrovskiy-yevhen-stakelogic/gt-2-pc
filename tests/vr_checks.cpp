@@ -14,6 +14,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_set>
 using namespace gt2::vr;
 static void Check(bool condition, const char* label) { if (!condition) throw std::runtime_error(label); }
 int main() {
@@ -163,6 +164,51 @@ int main() {
         Check(textures.hits == 1 && textures.pixels[0] == 0xff00ff00, "cache decodes 8-bit palette pages");
         textures.Begin(); textures.Prepare(256u << 16, 2u << 28, vram.data(), 512);
         Check(textures.pixels[2 * gt2view::DecodedTextureCache::kTexels] == 0, "direct-colour zero texels retain transparent coverage");
+        {
+            gt2view::DecodedTextureCache soft;
+            std::vector<uint32_t> pageVram(1024 * 512);
+            // 8-bit palette page: the soften bit (30) must not leak into the depth field.
+            pageVram[size_t(64) * 1024] = 0x0101; // indices 1,1 for the first two texels of row 0
+            pageVram[1] = 0x001f;                 // palette index 1 = red, index 0 stays transparent
+            soft.Begin(); soft.Prepare(64u << 16, 1u << 28, pageVram.data(), 512, false, true);
+            Check(soft.pixels[0] == 0xff0000ff, "softened page keeps its palette depth");
+            // A sharp and a softened request for the same page/palette are separate layers.
+            gt2view::DecodedTextureCache lines;
+            const uint32_t page = 256u << 16, clut = 2u << 28;
+            for (int y = 0; y < 3; ++y) for (int x = 10; x < 13; ++x) pageVram[size_t(256 + y) * 1024 + x] = 0x7c00;
+            pageVram[size_t(257) * 1024 + 11] = 0x001f;
+            lines.Begin();
+            lines.Prepare(page, clut, pageVram.data(), 512);
+            const uint32_t sharp = lines.pixels[267];
+            lines.Prepare(page, clut, pageVram.data(), 512, false, true);
+            Check(sharp == 0xff0000ff && lines.pixels[267] == sharp,
+                  "sharp decode survives a later softened request for the same page");
+            Check(lines.uploads.size() == 2 &&
+                  lines.pixels[2 * gt2view::DecodedTextureCache::kTexels + 267] == 0xffe2001c,
+                  "softened page decodes into its own layer and prefilters painted texels");
+            const auto lookup = [](const gt2view::DecodedTextureCache& cache, uint32_t page, uint32_t clut) {
+                uint32_t at = gt2view::DecodedTextureCache::Bucket(page, clut);
+                for (uint32_t i = 0; i < 16; ++i, at = (at + 1) & 4095u) {
+                    const auto& e = cache.table[at];
+                    if (!e[3]) break;
+                    if (e[0] == page && e[1] == clut) return e[2];
+                }
+                return 0u;
+            };
+            const uint32_t softClut = gt2view::DecodedTextureCache::Soften(clut, true);
+            Check(lookup(soft, 64u << 16, gt2view::DecodedTextureCache::Soften(1u << 28, true)) != 0,
+                  "environment lookup finds a softened-only entry");
+            Check(lookup(lines, page, clut) != 0 && lookup(lines, page, softClut) != 0 &&
+                  lookup(lines, page, clut) != lookup(lines, page, softClut),
+                  "environment lookup selects the softened entry when both variants exist");
+            const auto materialKey = [](bool soften) {
+                return gt2view::DecodedTextureCache::MaterialKey(256u << 16, 2u << 28, false, soften);
+            };
+            std::unordered_set<uint64_t> forward{materialKey(false), materialKey(true)};
+            std::unordered_set<uint64_t> backward{materialKey(true), materialKey(false)};
+            Check(forward.size() == 2 && backward.size() == 2,
+                  "direct-colour sharp/soft materials keep distinct keys in either order");
+        }
         {
             gt2view::DecodedTextureCache pressure;
             auto lookup = [&](uint32_t page, uint32_t clut) {
