@@ -149,14 +149,23 @@ jobs:
 
       - uses: jakoch/install-vulkan-sdk-action@7fe84289ddbf750f7eff9f8e4588e600e1dd06c8 # v1.8.1
         with:
-          vulkan_version: latest
+          # 1.4.313.0 is the last SDK whose runtime components the action installs;
+          # newer versions expect a system vulkan-1.dll that the runner lacks.
+          vulkan_version: 1.4.313.0
           cache: true
+          # msaa_2d_audit runs on this GPU-less runner: install the loader and
+          # register SwiftShader so the test can create a Vulkan device.
+          install_runtime: true
+          install_swiftshader: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and test
         shell: cmd
         run: |
           call build.cmd build_ci
           if errorlevel 1 exit /b 1
+          rem The Vulkan runtime sits next to the SDK; msaa_2d_audit loads vulkan-1.dll.
+          set "PATH=%VULKAN_SDK%\runtime\x64;%PATH%"
           ctest --test-dir build_ci --output-on-failure
           if errorlevel 1 exit /b 1
 
