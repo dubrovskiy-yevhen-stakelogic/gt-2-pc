@@ -21,21 +21,26 @@ it is rebuilt.
 | Quest standalone | `GT2-VR-<version>.apk` over USB/ADB or a headset installer | On the headset |
 | macOS | `GT2-<version>-macos-<arch>.dmg` | Mac, flat screen |
 | Steam Deck / desktop Linux | `GT2-<version>-linux-x86_64.flatpak` | Linux, flat screen |
+| Linux x86_64 / arm64 binary | `GT2-<version>-linux-<arch>.zip` | Linux, flat screen |
 | Browser | `GT2-Web-<version>.zip`, or serve `web/` from a source kit | Browser, flat screen |
 
 The portable `GT2-<version>-windows-x64.zip` is an alternative to the MSI, and
-`INSTALL-STEAMDECK.sh` adds the Steam Deck desktop shortcut. Source kits build
-with `INSTALL.bat`, `INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are
-only needed for development or unsupported architectures.
+`INSTALL-STEAMDECK.sh` adds the Steam Deck desktop shortcut. The Linux ZIP has no
+installer: extract it and run `bin/gt2launcher`; it uses the SDL2, GTK 3 and
+Vulkan libraries from your distribution, listed in the included `README.txt`.
+Source kits build with `INSTALL.bat`,
+`INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are only needed for
+development or unsupported architectures.
 
-The Windows MSI and portable ZIP use precompiled tools; the macOS DMG and Linux
-Flatpak are precompiled packages. Source kits build with `INSTALL.bat`,
+The Windows MSI and portable ZIP use precompiled tools; the macOS DMG, Linux ZIPs
+and Linux Flatpak are precompiled packages. Source kits build with `INSTALL.bat`,
 `INSTALL-MACOS.command` or `INSTALL-STEAMDECK.sh` and are only needed for
 development or unsupported architectures. Native applications retain their
 platform-specific VR, controller and graphics features; the browser runs in
 flat-screen mode.
 
 Supply your own supported disc images. Game data, BIOS and saves are not included.
+A-Spec and GT2+ disc images load directly; see [modified disc images](docs/MOD-SUPPORT.md).
 The screenshots illustrate gameplay. Release history is in
 [CHANGELOG.md](CHANGELOG.md); the feature list below describes the current project.
 
@@ -208,7 +213,7 @@ saves are preserved by the normal update path.
 - **Quiver Launcher:** find **Gran Turismo 2 PC, VR & Browser** in the [Quiver catalog](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser) and press **Get**. Quiver downloads the release file for your platform and keeps the game updated.
 - **Windows / PCVR:** run `GT2-<version>-windows-x64.msi`, choose the program folder, then open **GT2**. The first run asks where to keep discs, saves and HD media. `GT2-<version>-windows-x64.zip` is the portable alternative. To move an existing data folder, see [player installation](docs/PLAYER-INSTALL.md#moving-the-data-folder-later). Open settings with F10. See [PCVR setup](docs/PCVR.md).
 - **macOS:** open `GT2-<version>-macos-<arch>.dmg` and drag **GT2** to Applications. See [macOS setup](docs/MACOS.md).
-- **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. See [Steam Deck setup](docs/STEAMDECK.md).
+- **Linux / Steam Deck:** `flatpak install --user GT2-<version>-linux-x86_64.flatpak`, then open **GT2**. On a Steam Deck use Desktop Mode or add the shortcut to Steam; the same x86_64 bundle runs on other Flatpak-enabled desktops. Without Flatpak, extract `GT2-<version>-linux-<arch>.zip` and run `bin/gt2launcher`. See [Steam Deck setup](docs/STEAMDECK.md).
 - **Quest:** install `GT2-VR-<version>.apk`, then use the installer scripts to prepare your disc data over ADB; see [Quest instructions](docs/QUEST.md). `INSTALL-LINUX.sh` is the separate Linux-to-Quest installer, not the Steam Deck desktop game installer.
 - **Browser:** download the web ZIP, or run `python web/serve-web.py --directory web --port 8080` from a source kit, then open `http://127.0.0.1:8080/`. For deployment, upload the contents of `web/` to a static HTTPS host. Keep `index.html`, `launcher.js`, `gt2.js` and `gt2.wasm` together; serve Wasm as `application/wasm`. Opening the HTML through `file://` does not work. See [browser build and hosting](docs/WEB.md).
 

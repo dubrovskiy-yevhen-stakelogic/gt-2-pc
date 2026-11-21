@@ -35,6 +35,8 @@
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/png_reader.h"
 #include "gt2formats/replay_card.h"
+#include "gt2formats/save_ids.h"
+#include "gt2formats/units.h"
 #include "gt2formats/title_assets.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
@@ -295,7 +297,9 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     save.header = career::BuildSaveHeader(assets.exe);
     std::array<shell::CardSlot, 2> slots{shell::CardSlot{options.card1Path}, shell::CardSlot{options.card2Path}};
     shell::PcSettings settings = shell::PcSettings::Load(options.settingsPath);
+    gt2::metricPower = settings.powerMetric;
     auto storeSettings = [&] {
+        gt2::metricPower = settings.powerMetric;
         gt2game::SetGraphicsFromPage(settings.graphics); // the PC SETTINGS page's graphics for the next race (unless the command line pinned them)
         if (options.settingsPath.empty()) return;
         settings.options = shell::ReadGameOptions(save.state);
@@ -495,7 +499,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     };
     { // 0x80011384: the first-boot view runs while 0x801EF5F0 == 0 (our process start)
         std::vector<uint8_t> image;
-        if (shell::CardStatus(slots[0], &image) == 0 && shell::CardFindFile(image, "BASCUS-94455GAME") >= 0 && options.careerPath.empty()) {
+        if (shell::CardStatus(slots[0], &image) == 0 && shell::CardFindFile(image, gt2::ActiveSaveFileIds().game) >= 0 && options.careerPath.empty()) {
             screen = Screen::kBootLoad;
             boot.state = 3;
             boot.remaining = 0x7F00 + 0x80;

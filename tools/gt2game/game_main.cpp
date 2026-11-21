@@ -73,6 +73,8 @@
 #include "race_menu_check.h"
 #include "gt2formats/car_info.h"
 #include "gt2formats/exe_profile.h"
+#include "gt2formats/save_ids.h"
+#include "gt2formats/units.h"
 #include "gt2formats/license_data.h"
 #include "gt2formats/replay_card.h"
 #include "gt2formats/xa_audio.h"
@@ -413,8 +415,10 @@ int GameMain(int argc, char** argv) {
         GtfsVolume vol(disc);
         // The build of the disc (gt2formats/exe_profile.h): every table / global the game reads by its US Simulation v1.2
         // address is translated to this build's address; an unknown executable stops here.
-        const ExeProfile& profile = ProfileOf(disc);
-        gt2::hd::SetRoot(argv[1], profile.exeSha1);
+        const GuestImage exeImage = LoadExeImage(disc);
+        const ExeProfile& profile = ProfileOf(exeImage);
+        SetActiveSaveFileIds(ReadSaveFileIds(exeImage));
+        gt2::hd::SetRoot(argv[1], exeImage.fileSha1); // a modded EXE must not pick up media prepared for the clean build
         SetActiveProfile(profile);
         const bool combinedDisc = IsCombinedDisc(disc);
         if (combinedArcade) {
@@ -423,6 +427,7 @@ int GameMain(int argc, char** argv) {
         }
         if (arcadeMode && combinedDisc) SetCombinedArcadeFlow(true);        // --arcade on a combined disc
         if (!profile.reference) std::printf("disc: %s (%s), address profile of that build\n", profile.name, profile.exeName);
+        if (exeImage.modName) std::printf("executable: %s (SHA-1 %s)\n", exeImage.modName, exeImage.fileSha1.c_str());
         if (!raceScreenCheck.empty()) return RunRaceScreenCheck(disc, vol, raceScreenCheck);
         if (raceMenuCheck) return RunRaceMenuCheck(disc, vol, argc, argv);
         if (changePartsCheck) return RunChangePartsCheck(disc, vol, argc, argv);
@@ -433,6 +438,7 @@ int GameMain(int argc, char** argv) {
         }
         // The options of the title (PC settings file, shell::PcSettings) for the races: units, music / effects volumes.
         const shell::PcSettings pcSettings = shell::PcSettings::Load(titleOptions.settingsPath);
+        gt2::metricPower = pcSettings.powerMetric;
         if (pcSettings.metric) metricHud = true;
         // The race view's presentation options (race_view.h) for the standalone race and the races of the menus.
         RaceViewConfig view;

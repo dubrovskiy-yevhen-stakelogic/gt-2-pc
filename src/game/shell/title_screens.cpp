@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "game/shell/title_draw.h"
+#include "gt2formats/save_ids.h"
 
 namespace gt2::shell {
 
@@ -76,6 +77,7 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
         r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
         break;
+    case 11: r = {"Power Units", {"hp", "PS"}, pc.powerMetric ? 1 : 0}; break;
     default: break; // no more rows: the memory regime is automatic / part of the Low spec preset
     }
     return r;
@@ -108,9 +110,10 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 8: g.affine = index == 1; break;
     case 9: g.maxDetail = index == 1; break;
     case 10: g.drawDistance = kPcDistances[index]; break;
+    case 11: pc.powerMetric = index == 1; break;
     default: break;
     }
-    return !(before.metric == pc.metric && before.graphics == pc.graphics);
+    return !(before.metric == pc.metric && before.powerMetric == pc.powerMetric && before.graphics == pc.graphics);
 }
 
 namespace {
@@ -587,7 +590,7 @@ std::vector<MenuPrim> OptionsScreen::Frame() const {
 
 namespace {
 constexpr size_t kFrame = 128, kCardSize = 128 * 1024;
-constexpr char kSaveName[] = "BASCUS-94455GAME"; // EXE 0x80091C94
+// The save file's card name comes from the disc's EXE (GT2+ uses its own so both games coexist).
 // Strings of data-global.txd (0x801EF6B0 block).
 constexpr uint32_t kSelectSlot = 0x801EF709u, kChecking = 0x801EF726u, kDoNotRemove = 0x801EF744u, kNoCard = 0x801EF76Fu, kReadFailed = 0x801EF78Cu,
                    kNotFormatted = 0x801EF7B5u, kWantFormat = 0x801EF7D6u, kFormatting = 0x801EF7EEu, kFormatFailed = 0x801EF807u,
@@ -864,7 +867,7 @@ int CardManager::Enter(int id) {
     case 0x1F: { // 0x8006A0FC -> 0x8007D428: create "BASCUS-94455GAME" with 4 blocks
         line1_ = kSavingNow, line2_ = kDoNotRemove;
         const int status = CardStatus(slots_[size_t(slot_)], &card);
-        if (status != 0 || CardFindFile(card, kSaveName) >= 0 || CardFreeBlocks(card) < kSaveBlocks) {
+        if (status != 0 || CardFindFile(card, ActiveSaveFileIds().game) >= 0 || CardFreeBlocks(card) < kSaveBlocks) {
             error_ = kCreateFailed;
             return 0x21;
         }
@@ -969,7 +972,7 @@ int CardManager::Enter(int id) {
         return -1;
     }
     case 0x0C: { // 0x80070254 h(0): 0x800696EC = 0x8007D428(slot, "BASCUS-94455REPLAY", blocks << 13)
-        if (CardStatus(slots_[size_t(slot_)], &card) != 0 || CardFindFile(card, kReplayCardFileName) >= 0 || CardFreeBlocks(card) < replayFile_->Blocks()) {
+        if (CardStatus(slots_[size_t(slot_)], &card) != 0 || CardFindFile(card, ActiveSaveFileIds().replay) >= 0 || CardFreeBlocks(card) < replayFile_->Blocks()) {
             error_ = kCreateReplayFailed;
             return 1;
         }
@@ -1062,7 +1065,7 @@ int CardManager::Step() {
     case 3: {
         std::vector<uint8_t> card;
         const int status = CardStatus(slots_[size_t(slot_)], &card);
-        const bool found = status == 0 && CardFindFile(card, kSaveName) >= 0;
+        const bool found = status == 0 && CardFindFile(card, ActiveSaveFileIds().game) >= 0;
         if (mode_ == kSaveGame) {
             switch (status) {
             case 1: return -1;
@@ -1078,7 +1081,7 @@ int CardManager::Step() {
             case 2: return 4;
             case 3: return 5;
             case 4: error_ = kReadFailed; return 1;
-            default: fileOnCard_ = CardFindFile(card, kReplayCardFileName) >= 0; return fileOnCard_ ? 7 : 8;
+            default: fileOnCard_ = CardFindFile(card, ActiveSaveFileIds().replay) >= 0; return fileOnCard_ ? 7 : 8;
             }
         }
         if (mode_ == kLoadReplay || mode_ == kRenameReplay || mode_ == kLoadGhost) { // 0x80071B30 modes 1 / 3 (no file: 0x11) and 2 (0x16)
@@ -1087,7 +1090,7 @@ int CardManager::Step() {
             case 1: return -1;
             case 2: return 4;
             case 4: error_ = kReadFailed; return 1;
-            case 0: return CardFindFile(card, kReplayCardFileName) >= 0 ? 7 : noFile;
+            case 0: return CardFindFile(card, ActiveSaveFileIds().replay) >= 0 ? 7 : noFile;
             default: return noFile;
             }
         }

@@ -13,7 +13,15 @@ PROFILES = {
     "3030aa271c0a4022fc69ce09d76a6bc75e69a32a": "simulation",
     "2b59ad844a4dbb934fc1d8ef955c63038f54e932": "arcade",
     "5172a19c1d0fe07a2a61966653b755afe26d9e69": "simulation",
+    "23803938bf67de78dd836839e690fd66c7f10d7e": "arcade",      # US Arcade v1.1 (the GT2+ Arcade base)
 }
+# Modified executables that keep a stock build's address layout (mirrors src/gt2formats/exe_profile.cpp).
+MODS = {
+    "9d733c40f91b7ff5c6b4e4141ce3ebf8f4f5bde1": "simulation",  # GT2+ Complete NTSC-U Simulation v1.2 beta 7
+    "85aa2586fb8692a0e9830a1cd63ba6017a6f85d2": "arcade",      # GT2+ Complete NTSC-U Arcade v1.1 beta 7
+}
+# Combined discs patch their Simulation executable; the marker is the same as IsCombinedDisc.
+COMBINED_BASES = {"SCUS_944.88", "SCES_123.80"}
 MAX_ASSET = 256 * 1024 * 1024
 
 
@@ -67,9 +75,12 @@ class Disc:
                 raise ValueError("Invalid executable size.")
             data = self.form1(lba, 0, length)
             self.profile = hashlib.sha1(data).hexdigest()
-            if self.profile not in PROFILES:
+            if self.profile in PROFILES or self.profile in MODS:
+                self.mode = PROFILES.get(self.profile) or MODS[self.profile]
+            elif exe in COMBINED_BASES and self.combined_marker():
+                self.mode = "simulation"
+            else:
                 raise ValueError("Unsupported disc executable: " + exe + " (SHA-1 " + self.profile + ")")
-            self.mode = PROFILES[self.profile]
             self.files = self.read_gtfs()
         except BaseException:
             self.close()
@@ -128,6 +139,22 @@ class Disc:
             pos += length
         return result
 
+    def overlay_member(self, index):
+        lba, length = self.root["GT2.OVL"]
+        raw = self.form1(lba, 0, length)
+        count = struct.unpack_from("<I", raw, 0)[0] // 8
+        if index >= count:
+            raise ValueError("GT2.OVL: member index out of range")
+        offset, packed = struct.unpack_from("<II", raw, index * 8)
+        return zlib.decompress(raw[offset:offset + packed], 31)
+
+    def combined_marker(self):
+        marker = bytes((0x07, 0x00, 0x06, 0x24, 0xFD, 0xFF, 0x02, 0x24))
+        try:
+            return marker in self.overlay_member(1)
+        except Exception:
+            return False
+
     def read_gtfs(self):
         if "GT2.VOL" not in self.root:
             raise ValueError("GT2.VOL not found.")
@@ -139,6 +166,8 @@ class Disc:
         table = struct.unpack("<" + "I" * offsets, self.form1(self.vol_lba, 16, offsets * 4))
         starts = [n & ~2047 for n in table]
         sizes = [starts[i + 1] - starts[i] - (table[i] & 2047) for i in range(offsets - 1)]
+        # A rebuilt VOL (GT2+) may place its last file at offsetCount-1 and let it run to the end of the volume.
+        sizes.append(vol_size - starts[-1])
         if any(n < 0 for n in sizes) or any(n > vol_size for n in starts) or sizes[1] != records * 32:
             raise ValueError("Invalid GTFS offsets or TOC size.")
         toc = self.form1(self.vol_lba, starts[1], sizes[1])
@@ -157,7 +186,7 @@ class Disc:
                     path = prefix + name
                     if flags & 1:
                         walk(index, path + "/", depth + 1)
-                    elif 2 <= index < offsets - 1:
+                    elif 2 <= index < offsets:
                         if path in seen or sizes[index] > MAX_ASSET:
                             raise ValueError("Duplicate or oversized GTFS asset: " + path)
                         seen.add(path)

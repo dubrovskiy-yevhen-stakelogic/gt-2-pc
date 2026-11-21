@@ -94,6 +94,7 @@ add_library(gt2formats STATIC
   src/gt2formats/license_data.cpp
   src/gt2formats/gtmode_tables.cpp
   src/gt2formats/save_data.cpp
+  src/gt2formats/save_ids.cpp
   src/gt2formats/xa_audio.cpp
   src/gt2formats/str_video.cpp
   src/gt2formats/gt_menu.cpp

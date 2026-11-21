@@ -2,6 +2,7 @@
 #include "gt2vfs/gtfs.h"
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/save_ids.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -21,12 +22,16 @@ int main(int argc, char** argv) {
             std::cerr << "usage: gt2install inspect <disc> | extract <disc> <new-directory>\n"; return 2;
         }
         gt2::DiscImage disc(argv[2]);
-        const auto& profile = gt2::ProfileOf(disc); // rejects unsupported executables by SHA-1
+        const gt2::GuestImage exe = gt2::LoadExeImage(disc);
+        const auto& profile = gt2::ProfileOf(exe); // rejects unsupported executables by SHA-1
+        const auto saveIds = gt2::ReadSaveFileIds(exe);
         const char* mode = profile.arcade ? "arcade" : "simulation";
         gt2::GtfsVolume volume(disc);
         if (std::string(argv[1]) == "inspect") {
             std::cout << "{\"mode\":\"" << mode << "\",\"combined\":" << (gt2::IsCombinedDisc(disc) ? "true" : "false")
-                      << ",\"exeSha1\":\"" << profile.exeSha1 << "\",\"assets\":" << volume.Files().size() << "}\n";
+                      << ",\"exeSha1\":\"" << exe.fileSha1 << "\",\"profile\":\"" << profile.name << "\",\"assets\":" << volume.Files().size()
+                      << ",\"save\":\"" << saveIds.game << "\",\"replay\":\"" << saveIds.replay << "\""
+                      << ",\"mod\":\"" << (exe.modName ? exe.modName : "") << "\"}\n";
             return 0;
         }
         if (argc != 4) throw std::runtime_error("extract requires a new destination directory");

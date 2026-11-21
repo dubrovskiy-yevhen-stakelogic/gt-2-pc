@@ -28,6 +28,7 @@ struct GuestImage {
     int module = -1;             // -1 = the executable, N = GT2.OVL member N, kRaceRam = a RAM image of a race (member 0 + executable)
     static constexpr int kRaceRam = -2;
     std::string fileName, fileSha1; // the executable's root file name and SHA-1 (of the whole file)
+    const char* modName = nullptr;  // a registered modified executable (KnownMod), null for a stock build
 
     // The address in this image's build of the Simulation v1.2 address `simAddress` of the same module (the profile's
     // facts; identity for the Simulation build). Throws when the build is unknown or no fact covers the address.
@@ -57,6 +58,10 @@ bool IsCombinedDisc(const DiscImage& disc);
 // Gameplay and disc identification continue to use the original images/profiles.
 GuestImage UiLayout(GuestImage image, bool arcade = false);
 uint32_t UiAddress(const GuestImage& image, uint32_t address, bool arcade = false);
+// Relocate the image's bytes to another build's addresses: every Simulation address the target maps is copied from
+// the address this image's profile maps it to, and pointers between the copied words are translated. Used to read a
+// non-reference Arcade revision's menu data with the reference Arcade constants.
+GuestImage RelocateImage(const GuestImage& image, const ExeProfile& target);
 // Member `index` of GT2.OVL, inflated, at 0x80010000.
 GuestImage LoadOverlayImage(const DiscImage& disc, uint32_t index);
 

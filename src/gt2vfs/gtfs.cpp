@@ -47,7 +47,11 @@ GtfsVolume::GtfsVolume(const DiscImage& disc) : disc_(disc) {
     }
     auto start = [&](uint32_t i) { return static_cast<uint64_t>(ReadU32(&table[i * 4]) >> 11) * kBlockSize; };
     auto pad = [&](uint32_t i) { return ReadU32(&table[i * 4]) & 0x7FF; };
-    auto size = [&](uint32_t i) { return static_cast<uint32_t>(start(i + 1) - start(i) - pad(i)); };
+    // A rebuilt VOL (GT2+) may place its last file at offsetCount-1 and let it run to the end of the volume.
+    auto size = [&](uint32_t i) {
+        const uint64_t end = i + 1 < offsetCount ? start(i + 1) : vol_.size;
+        return static_cast<uint32_t>(end - start(i) - pad(i));
+    };
 
     if (size(1) != recordCount * kRecordSize) throw std::runtime_error("GT2.VOL: TOC size mismatch");
     std::vector<uint8_t> toc(size(1));
@@ -63,7 +67,7 @@ GtfsVolume::GtfsVolume(const DiscImage& disc) : disc_(disc) {
             if (name != "..") {
                 if (flags & 0x01) {
                     walk(index, prefix + name + "/", depth + 1);
-                } else if (index >= 2 && index + 1u < offsetCount) {
+                } else if (index >= 2 && index < offsetCount) {
                     files_.push_back({prefix + name, ReadU32(r), start(index), size(index), index});
                 }
             }
