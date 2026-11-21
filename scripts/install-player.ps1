@@ -110,11 +110,7 @@ if ($Target -eq 'Quest') {
 }
 & (Join-Path $PSScriptRoot 'install.ps1') -DiscImage $DiscImage -InstallDir $InstallDir -BuildDir (Join-Path $root 'tools') -NoBuild -HdMedia $HdMedia -Bios $Bios -CaptureCore $CaptureCore
 if ($Target -eq 'Quest') {
-    $modes = @('arcade','simulation','combined' | Where-Object { Test-Path -LiteralPath (Join-Path $InstallDir "$_/disc.raw2352") })
-    if ($modes.Count -eq 0) { throw 'No prepared discs.' }
-    $questMode = if ($modes -contains 'combined') { 'combined' } else { $modes[0] }
-    $both = ($modes -contains 'arcade') -and ($modes -contains 'simulation')
-    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root $apkName) -Runtime $InstallDir -Mode $questMode -BothDiscs:$both -Gt4Bundle $Gt4Bundle -Python $Python
+    & (Join-Path $PSScriptRoot 'install-quest.ps1') -Adb $adbPath -Serial $Serial -Apk (Join-Path $root $apkName) -Runtime $InstallDir -AllDiscs -Gt4Bundle $Gt4Bundle -Python $Python
 } else {
     if ($Gt4Bundle) {
         & $Python -E -s (Join-Path $PSScriptRoot 'install-gt4-pack.py') --bundle $Gt4Bundle --runtime $InstallDir

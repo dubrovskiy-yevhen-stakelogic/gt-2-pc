@@ -35,6 +35,21 @@ int main() { try {
     Check(!ValidDiscSelection("combined") && !ValidDiscSelection("simulation:arcade") && !ValidDiscSelection("nonsense"),
           "incomplete or unknown keys are rejected");
 
+    for (const std::string folder : {"combined", "combined-plus", "combined-aspec"}) {
+        std::string current = folder + ":simulation";
+        for (int round = 0; round < 3; ++round) {
+            for (const std::string flow : {"arcade", "simulation"}) {
+                current = ResolveInstalledDiscChange(current, "combined-" + flow, true);
+                const auto installed = InstalledDiscArguments("gt2game", "data", "saves", current);
+                Check(fs::path(installed[1]) == fs::path("data") / folder, "installed transition must retain the dataset");
+                Check(fs::path(Value(installed, "--card")) == fs::path("saves") / Suffixed(flow, InstallSuffixOf(folder)) / "card1.mcd",
+                      "installed transition must retain the dataset card");
+            }
+        }
+        Check(ResolveInstalledDiscChange(current, "", false) == current, "empty picker preference retains current dataset");
+        Check(ResolveInstalledDiscChange(current, "combined:arcade", false) == "combined:arcade", "explicit retail selection is not rewritten");
+        Check(ResolveInstalledDiscChange(current, "combined-other:arcade", true) == "combined-other:arcade", "explicit dataset selection is not rewritten");
+    }
     std::vector<std::string> args{"gt2game", "/data/disc.bin", "--windowed", "--card", "/saves/simulation/card1.mcd",
         "--settings", "/saves/simulation/settings.txt", "--card2", "/saves/simulation/card2.mcd"};
     for (int round = 0; round < 3; ++round) {

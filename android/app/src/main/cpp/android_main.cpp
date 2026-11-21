@@ -187,7 +187,8 @@ void android_main(android_app* app) {
                         if (code != 0 || !gt2game::TakeGameChangeRequest()) break;
                         const auto next = gt2game::TakeGameChangePreference();
                         const bool direct = gt2game::TakeGameChangeDirect();
-                        if (gt2game::ValidDiscSelection(next)) { mode = next; directLaunch = direct; }
+                        const auto selection = gt2game::ResolveInstalledDiscChange(mode, next, direct);
+                        if (gt2game::ValidDiscSelection(selection)) { mode = selection; directLaunch = direct; }
                         gt2game::SetFakePadScript({}); gt2game::SetFakePad2Script({});
                     }
                 } catch (const std::exception& e) {

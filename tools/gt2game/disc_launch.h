@@ -49,6 +49,17 @@ inline DiscSelection DescribeDiscSelection(const std::string& rawKey) {
     return {key, InstallModeOf(key), key, ""};
 }
 
+// Direct Combined menu transitions change the flow, not the installed dataset.
+inline std::string ResolveInstalledDiscChange(const std::string& current, const std::string& requested, bool direct) {
+    if (requested.empty()) return current;
+    if (direct && (requested == "combined-arcade" || requested == "combined-simulation")) {
+        const auto running = DescribeDiscSelection(current);
+        if (InstallModeOf(running.folder) == "combined")
+            return running.folder + ":" + DescribeDiscSelection(requested).saveMode;
+    }
+    return NormalizeDiscSelection(requested);
+}
+
 inline bool ValidDiscSelection(const std::string& key) { return !DescribeDiscSelection(key).folder.empty(); }
 
 inline std::vector<std::string> InstalledDiscArguments(const std::string& executable,

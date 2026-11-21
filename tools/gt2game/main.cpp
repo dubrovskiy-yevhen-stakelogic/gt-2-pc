@@ -107,8 +107,9 @@ int main(int argc, char** argv) {
             for (auto& arg : args) pointers.push_back(arg.data());
             result = GameMain(int(pointers.size()), pointers.data());
             if (result != 0 || !TakeGameChangeRequest()) break;
-            if (const std::string next = TakeGameChangePreference(); !next.empty()) preferred = next;
+            const auto next = TakeGameChangePreference();
             directLaunch = TakeGameChangeDirect();
+            preferred = ResolveInstalledDiscChange(mode, next, directLaunch);
             SetFakePadScript({}); SetFakePad2Script({});
         }
     } catch (const std::exception& e) {

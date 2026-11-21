@@ -3,7 +3,8 @@ param(
     [string]$Serial,
     [string]$Apk = (Join-Path (Split-Path $PSScriptRoot) 'android/app/build/outputs/apk/debug/app-debug.apk'),
     [string]$Runtime = (Join-Path (Split-Path $PSScriptRoot) 'runtime'),
-    [ValidateSet('arcade','simulation','combined')][string]$Mode = 'arcade',
+    [ValidatePattern('^(arcade|simulation|combined)(-[a-z0-9]+(-[a-z0-9]+)*)?$')][string]$Mode = 'arcade',
+    [switch]$AllDiscs,
     [switch]$BothDiscs,
     [switch]$Gt4Only,
     [string]$Gt4Bundle,
@@ -31,7 +32,22 @@ function Invoke-Adb([string[]]$Arguments) {
     & $Adb -s $Serial @Arguments 2>&1 | ForEach-Object { $_.ToString() }
     if ($global:LASTEXITCODE -ne 0) { throw "ADB failed: $($Arguments -join ' ')" }
 }
-$modes = if ($Gt4Only) { @() } elseif ($BothDiscs) { @('arcade','simulation') } else { @($Mode) }
+if ($AllDiscs -and $BothDiscs) { throw 'Choose AllDiscs or BothDiscs.' }
+$modes = if ($Gt4Only) { @() } elseif ($AllDiscs) {
+    @(Get-ChildItem -LiteralPath $Runtime -Directory | Where-Object {
+        $_.Name -cmatch '^(arcade|simulation|combined)(-[a-z0-9]+(-[a-z0-9]+)*)?$' -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'disc.raw2352') -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName 'assets') -PathType Container)
+    } | Sort-Object Name | ForEach-Object { $_.Name })
+} elseif ($BothDiscs) { @('arcade','simulation') } else { @($Mode) }
+if (!$Gt4Only) {
+    if (@($modes).Count -eq 0) { throw 'No prepared discs.' }
+    if ($AllDiscs -and !$PSBoundParameters.ContainsKey('Mode')) {
+        $combined = @($modes | Where-Object { $_ -match '^combined($|-)' })
+        $Mode = if ($combined.Count) { $combined[0] } else { @($modes)[0] }
+    }
+    if ($Mode -notin $modes) { throw 'Selected launch mode is not included in this transfer.' }
+}
 foreach ($disc in $modes) {
     $source = Join-Path $Runtime $disc
     if (!(Test-Path (Join-Path $source 'disc.raw2352')) -or !(Test-Path (Join-Path $source 'assets'))) {
@@ -120,7 +136,8 @@ if ($Gt4Only) {
 }
 $modeFile = [IO.Path]::GetTempFileName()
 try {
-    [IO.File]::WriteAllText($modeFile, $Mode, [Text.UTF8Encoding]::new($false))
+    $selection = if ($Mode -match '^combined($|-)') { "${Mode}:simulation" } else { $Mode }
+    [IO.File]::WriteAllText($modeFile, $selection, [Text.UTF8Encoding]::new($false))
     Invoke-Adb @('push',$modeFile,"$external/launch-mode.txt")
 } finally { Remove-Item -LiteralPath $modeFile }
 Invoke-Adb @('shell','dumpsys','package',$package)
