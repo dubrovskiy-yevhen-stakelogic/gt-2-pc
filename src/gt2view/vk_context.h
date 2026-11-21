@@ -7,6 +7,9 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
 
 namespace gt2view {
 
@@ -20,7 +23,65 @@ struct RenderTarget {
     VkFormat depthFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D extent{};
     uint32_t layers = 1;
+    // The renderer's fallback path (Vulkan 1.1/1.2 render passes) needs the sample count and multiview mask that
+    // dynamic rendering reads from the attachment/pipeline instead.
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+    uint32_t viewMask = 0;
 };
+
+// What the renderer can use on a device: 1.3 dynamic rendering, and the multiview feature of stereo targets.
+struct VkDeviceFeatures {
+    bool dynamicRendering = false;
+    bool multiview = false;
+};
+
+inline VkDeviceFeatures QueryDeviceFeatures(VkPhysicalDevice physical, uint32_t apiVersion) {
+    VkDeviceFeatures out;
+    if (apiVersion < VK_API_VERSION_1_1) return out;
+    VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    if (apiVersion >= VK_API_VERSION_1_3) f11.pNext = &f13;
+    VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    features.pNext = &f11;
+    vkGetPhysicalDeviceFeatures2(physical, &features);
+    out.multiview = f11.multiview == VK_TRUE;
+    out.dynamicRendering = apiVersion >= VK_API_VERSION_1_3 && f13.dynamicRendering == VK_TRUE;
+    return out;
+}
+
+// A device extension, by name. The XR session enables create_renderpass2 for the foveation render pass on a 1.1 GPU.
+inline bool HasDeviceExtension(VkPhysicalDevice physical, const char* name) {
+    uint32_t count = 0;
+    if (vkEnumerateDeviceExtensionProperties(physical, nullptr, &count, nullptr) != VK_SUCCESS) return false;
+    std::vector<VkExtensionProperties> extensions(count);
+    if (vkEnumerateDeviceExtensionProperties(physical, nullptr, &count, extensions.data()) != VK_SUCCESS) return false;
+    for (const auto& extension : extensions)
+        if (std::strcmp(extension.extensionName, name) == 0) return true;
+    return false;
+}
+
+// vkCreateRenderPass2 is core in 1.2 and VK_KHR_create_renderpass2 on 1.1: the foveation render pass needs it because
+// a fragment shading rate attachment can only be declared in VkSubpassDescription2.
+inline bool RenderPass2Available(uint32_t apiVersion, bool extension) {
+    return apiVersion >= VK_API_VERSION_1_2 || extension;
+}
+
+// Opt-in compatibility path: GT2_VK_RENDERPASS=1 uses render passes on a 1.3 device too (testing, or a driver that
+// misbehaves on the 1.3 path).
+inline bool ForceRenderPassPath() {
+    const char* value = std::getenv("GT2_VK_RENDERPASS");
+    return value && std::strcmp(value, "1") == 0;
+}
+
+// The instance version to request: what the loader supports, clamped to the renderer's 1.1 floor and 1.3 (some
+// implementations, MoltenVK among them, report the device as no newer than the instance).
+inline uint32_t RequestedInstanceApiVersion() {
+    uint32_t supported = VK_API_VERSION_1_1;
+    if (const auto enumerate = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion")))
+        if (enumerate(&supported) != VK_SUCCESS) supported = VK_API_VERSION_1_1;
+    if (supported < VK_API_VERSION_1_1) return VK_API_VERSION_1_1;
+    return supported < VK_API_VERSION_1_3 ? supported : VK_API_VERSION_1_3;
+}
 
 class VkContext {
 public:
@@ -33,11 +94,15 @@ public:
         uint32_t queueFamily = 0;
         VkQueue queue = VK_NULL_HANDLE;
         bool shadingRate = false;
+        // What the device was created with (the XR runtime's device): 1.1/1.2 has no dynamic rendering, so the
+        // renderer uses render passes. Both default to the fallback that always works, never to an assumed feature.
+        bool dynamicRendering = false;
+        bool multiview = false;
     };
 
-    // The window path (Windows): a Vulkan 1.3 instance with the surface extensions, the surface of `window`
+    // The window path (Windows): a Vulkan 1.1+ instance with the surface extensions, the surface of `window`
     // (`instanceHandle` = the module's HINSTANCE), the best GPU with a graphics + present queue for it, and a device
-    // with dynamic rendering and the swapchain extension.
+    // with dynamic rendering (1.3) or render passes (1.1/1.2) plus the swapchain extension.
     VkContext(void* instanceHandle, void* window);
     explicit VkContext(const Existing& existing);
     ~VkContext();
@@ -52,6 +117,9 @@ public:
     uint32_t QueueFamily() const { return queueFamily_; }
     VkQueue Queue() const { return queue_; }
     bool ShadingRate() const { return shadingRate_; }
+    // False on a Vulkan 1.1/1.2 device: the renderer then uses render passes (discussion #77).
+    bool DynamicRendering() const { return dynamicRendering_; }
+    bool Multiview() const { return multiview_; }
 
     // The window's client size, for a surface that does not report its own extent. False without a window.
     bool WindowExtent(VkExtent2D& extent) const;
@@ -66,6 +134,8 @@ private:
     VkQueue queue_ = VK_NULL_HANDLE;
     [[maybe_unused]] bool owns_ = true;
     bool shadingRate_ = false; // false for Existing: destroy nothing
+    bool dynamicRendering_ = false;
+    bool multiview_ = false;
 };
 
 } // namespace gt2view
