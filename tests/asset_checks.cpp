@@ -127,6 +127,25 @@ void Fixtures() {
     reversed.reverseDrawOrder = true;
     Require(gt2::BuildCarMesh(lights, plain)[0].pos[0] == 0 && gt2::BuildCarMesh(lights, reversed)[0].pos[0] == 2,
         "reverse draw order puts the later lamp face under its earlier housing");
+    {
+        gt2::CarModel panel;
+        panel.lods.resize(1);
+        panel.lods[0].scale = 28; // 1 metre per unit
+        panel.lods[0].vertices = {{0,0,0,0}, {1,0,0,0}, {1,1,0,0}, {0,1,0,0}};
+        gt2::CarPolygon front, back;
+        front.primCode = back.primCode = 0x2d;
+        front.vertex = {0,1,2,3};
+        back.vertex = {0,3,2,1};
+        panel.lods[0].polygons = {front, back};
+        const auto twin = gt2::BuildCarMesh(panel, plain);
+        bool allCulled = twin.size() == 12;
+        for (const auto& v : twin) allCulled = allCulled && v.cullBack;
+        Require(allCulled, "the two sides of a zero-thickness panel are culled per side");
+        panel.lods[0].polygons = {front, front}; // two layers on one side, not a two-sided panel
+        bool anyCulled = false;
+        for (const auto& v : gt2::BuildCarMesh(panel, plain)) anyCulled = anyCulled || v.cullBack;
+        Require(!anyCulled, "coincident faces with the same winding keep both layers");
+    }
     // 30-degree bank; a shadow stored 0.4 m below the body must land 4 cm
     // above the ground, independent of the suspension's body-space height.
     float ground[16] = {0.8660254f,0.5f,0,0, -0.5f,0.8660254f,0,0, 0,0,1,0, 10,20,30,1};

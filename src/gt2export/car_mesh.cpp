@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "gt2formats/car_texture.h"
 #include "gt2view/psx_gte.h"
@@ -386,8 +387,42 @@ std::vector<CarMeshVertex> BuildCarMesh(const CarModel& model, const CarMeshOpti
     const float s = static_cast<float>(CarBodyMetresPerUnit(lod));
     std::vector<CarMeshVertex> out;
 
+    // A zero-thickness panel (the rear wing is one) is stored as two coincident polygons with
+    // opposite winding, one per side. The console showed one face per view; a depth buffer with
+    // both faces drawn picks a different winner per pixel on a warped quad, which flickers. Cull
+    // each side instead. Only exact vertex-set twins with opposite normals are affected.
+    std::vector<bool> cullFace(lod.polygons.size(), false);
+    {
+        std::unordered_map<uint64_t, std::vector<size_t>> coincident;
+        for (size_t i = 0; i < lod.polygons.size(); i++) {
+            const CarPolygon& p = lod.polygons[i];
+            const size_t n = p.IsQuad() ? 4 : 3;
+            std::array<uint8_t, 4> v{p.vertex[0], p.vertex[1], p.vertex[2], p.IsQuad() ? p.vertex[3] : uint8_t(0)};
+            std::sort(v.begin(), v.begin() + n);
+            uint64_t key = n;
+            for (uint8_t index : v) key = (key << 8) | index;
+            coincident[key].push_back(i);
+        }
+        auto faceNormal = [&](const CarPolygon& p) {
+            const CarVertex& a = lod.vertices[p.vertex[0]];
+            const CarVertex& b = lod.vertices[p.vertex[1]];
+            const CarVertex& c = lod.vertices[p.vertex[2]];
+            const double ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z;
+            const double vx = c.x - a.x, vy = c.y - a.y, vz = c.z - a.z;
+            return std::array<double, 3>{uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx};
+        };
+        for (const auto& [key, group] : coincident) {
+            (void)key;
+            if (group.size() != 2) continue;
+            const auto a = faceNormal(lod.polygons[group[0]]), b = faceNormal(lod.polygons[group[1]]);
+            if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0)
+                cullFace[group[0]] = cullFace[group[1]] = true;
+        }
+    }
+
     for (size_t index = 0; index < lod.polygons.size(); index++) {
-        const CarPolygon& p = lod.polygons[opt.reverseDrawOrder ? lod.polygons.size() - 1 - index : index];
+        const size_t source = opt.reverseDrawOrder ? lod.polygons.size() - 1 - index : index;
+        const CarPolygon& p = lod.polygons[source];
         static constexpr int kTri[3] = {0, 1, 2};
         static constexpr int kQuadRing[6] = {0, 1, 3, 1, 2, 3}; // the PS1's split: GPU slots (v0 v1 v3 v2) -> (v0 v1 v3) + (v1 v2 v3)
         static constexpr int kQuadStrip[6] = {0, 1, 2, 1, 3, 2};
@@ -400,7 +435,8 @@ std::vector<CarMeshVertex> BuildCarMesh(const CarModel& model, const CarMeshOpti
                            {p.r / 255.0f, p.g / 255.0f, p.b / 255.0f},
                            p.palette,
                            p.IsTextured(),
-                           (p.primCode & CarPolygon::kCodeRawTexture) != 0});
+                           (p.primCode & CarPolygon::kCodeRawTexture) != 0,
+                           false, cullFace[source]});
         }
     }
 
