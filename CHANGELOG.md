@@ -34,8 +34,8 @@
 
 ### GT2+ gameplay options
 
-- Fix the pre-race Change Parts Turbo section for cars whose only turbo kit is the stock one (GT2+ `w8_settings_menu_fix`).
-- Add a **Power Units** setting (hp / PS) with GT2+ metric-horsepower behaviour. Values are display-only; simulation and saves stay in PS.
+- Fix the pre-race Change Parts Turbo section for cars whose only turbo kit is the stock one (GT2+ `w8_settings_menu_fix`) and show GT2+'s PS power figures, both keyed to a GT2+ disc so retail and A-Spec keep the stock behaviour.
+- Add the two overrides to the F10 menu: **Options and cheats → Turbo section fix** (`AUTO` / `ON` / `OFF`) and **HUD elements → Power units** (`AUTO` / `hp` / `PS`). `AUTO` follows the disc in both; power values stay display-only, and simulation and saves stay in PS. The title PC SETTINGS Power Units row uses the same Auto / hp / PS values.
 
 ## 0.9.2 - Installation, car lights and HUD fixes
 

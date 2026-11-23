@@ -425,7 +425,9 @@ int GameMain(int argc, char** argv) {
         }
         // The options of the title (PC settings file, shell::PcSettings) for the races: units, music / effects volumes.
         const shell::PcSettings pcSettings = shell::PcSettings::Load(titleOptions.settingsPath);
-        gt2::metricPower = pcSettings.powerMetric;
+        gt2::gt2PlusDisc = gt2::IsGt2Plus(exeImage);
+        gt2::powerUnits = pcSettings.powerUnits;
+        gt2::ApplyPowerUnits();
         if (pcSettings.metric) metricHud = true;
         // The race view's presentation options (race_view.h) for the standalone race and the races of the menus.
         RaceViewConfig view;
