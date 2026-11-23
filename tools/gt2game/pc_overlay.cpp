@@ -6,6 +6,7 @@
 #include "gt2formats/json.h"
 #include "gt2formats/model_set.h"
 #include "gt2formats/car_info.h"
+#include "gt2formats/units.h"
 #include "game/shell/shared_vr_settings.h"
 #include "movie_player.h"
 #ifdef _WIN32
@@ -35,7 +36,7 @@
 
 namespace gt2game {
 namespace {
-std::string settingsPath;
+std::string settingsPath, baseSettingsPath;
 gt2::shell::VrSettings baseVrSettings;
 int adaptive = 60, rumble = 50, vrScale = -1, vrRefresh = 72;
 bool profiler = false;
@@ -196,7 +197,8 @@ void Save() {
         out << "vr_foveation=" << foveation << "\n";
         out << "vr_refresh=" << vrRefresh << "\nunlock_sim_events=" << int(gt2::pc::unlockSimulationEvents)
             << "\nsimulation_damage=" << int(gt2::pc::simulationDamage)
-            << "\nskip_race_replays=" << int(gt2::pc::skipRaceReplays) << "\n";
+            << "\nskip_race_replays=" << int(gt2::pc::skipRaceReplays)
+            << "\nturbo_section=" << int(gt2::pc::turboSectionFix) << "\n";
         out.flush();
         if (!out) throw std::runtime_error("cannot write overlay settings");
     }
@@ -228,7 +230,9 @@ void LoadOverlaySettings(const std::string& basePath) {
     metricUnits = -1;
     playStationIntro = true;
     const auto base=gt2::shell::PcSettings::Load(basePath);
+    baseSettingsPath = basePath;
     baseMetricUnits = base.metric; baseVrSettings=base.vr;
+    gt2::powerUnits = base.powerUnits; // Auto follows the disc (GT2+ shows PS)
     gt2::hd::SetEnabled(true);
     gt2::generated::SetEnabled(false);
     gt2::generated::categories=gt2::generated::allCategories;
@@ -236,6 +240,7 @@ void LoadOverlaySettings(const std::string& basePath) {
     gt2::pc::unlockSimulationEvents = false;
     gt2::pc::simulationDamage = false;
     gt2::pc::skipRaceReplays = false;
+    gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix::kAuto;
     settingsPath = basePath + ".overlay";
     std::istringstream in(gt2::shell::ReadPreferences(settingsPath)+"\n"+
         gt2::shell::VrPreferences(gt2::shell::ReadPreferences(gt2::shell::sharedVrSettingsPath)));
@@ -301,6 +306,7 @@ void LoadOverlaySettings(const std::string& basePath) {
         else if (key == "unlock_sim_events") gt2::pc::unlockSimulationEvents = value == "1";
         else if (key == "simulation_damage") gt2::pc::simulationDamage = value == "1";
         else if (key == "skip_race_replays") gt2::pc::skipRaceReplays = value == "1";
+        else if (key == "turbo_section") gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix(std::clamp(std::atoi(value.c_str()), 0, 2));
         else if (key == "unlock_courses") courses = value == "1";
         else if (key == "unlock_cars") cars = value == "1";
         else {
@@ -1062,6 +1068,15 @@ void ShowWheelSettings(GameWindow& w) {
 // The main menu rows: explicit indices, so moving a page does not shift the handlers.
 enum : int { kMainGraphics = 0, kMainOptions, kMainHud, kMainContent, kMainControls, kMainCockpit, kMainCampaign, kMainResume, kMainQuit };
 
+// GT2+ stock-turbo Turbo section: Auto follows the disc, On applies it everywhere, Off keeps the retail menu.
+const char* TurboSectionLabel() {
+    switch (gt2::pc::turboSectionFix) {
+    case gt2::pc::TurboSectionFix::kOn: return "ON (all discs)";
+    case gt2::pc::TurboSectionFix::kOff: return "OFF (retail menu)";
+    default: return "AUTO (GT2+ only)";
+    }
+}
+
 // The status line on the main page: what the selected row opens.
 std::string MainHint(int selected) {
     switch (selected) {
@@ -1167,7 +1182,8 @@ void ShowSettingsMenu(GameWindow& window) {
                 "Simulation - all licences GOLD", "Simulation - 99,999,999 credits", "Simulation - all cars catalogue",
                 "Simulation - event unlock: " + std::string(gt2::pc::unlockSimulationEvents ? "ON" : "OFF"), "Simulation - GT4 cars catalogue", "Arcade - add all cars to garage",
                 "Simulation - car damage: " + std::string(gt2::pc::simulationDamage ? "ON" : "OFF"),
-                "Auto replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF" : "ON"), "Back"};
+                "Auto replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF" : "ON"),
+                "Turbo section fix: " + std::string(TurboSectionLabel()), "Back"};
         }
         if (page == 3) {
             title = std::string(catalogueGt4 ? "GT4 CARS / PAGE " : "ALL CARS / PAGE ") + std::to_string(carPage + 1);
@@ -1219,6 +1235,7 @@ void ShowSettingsMenu(GameWindow& window) {
             rows.push_back(std::string("Speed units: ") + (OverlayMetricUnits(baseMetricUnits) ? "km/h" : "mph"));
             for (const auto& setting : hudSettings)
                 rows.push_back(std::string(setting.label) + ": " + (hudVisibility.*setting.member ? "ON" : "OFF"));
+            rows.push_back(std::string("Power units: ") + (gt2::powerUnits == gt2::PowerUnits::kPs ? "PS" : gt2::powerUnits == gt2::PowerUnits::kHp ? "hp" : "Auto (GT2+ PS)"));
             rows.push_back("Back");
         }
         if (!vr && title.starts_with("GT2 VR")) title.replace(0, 6, "GT2");
@@ -1401,7 +1418,11 @@ void ShowSettingsMenu(GameWindow& window) {
                         gt2::pc::skipRaceReplays = !gt2::pc::skipRaceReplays;
                         status = "Saved. Automatic replay: " + std::string(gt2::pc::skipRaceReplays ? "OFF." : "ON.");
                     }
-                    if (selected == 10 && page == 2) { page = 0; selected = 0; }
+                    if (selected == 10 && page == 2 && direction) {
+                        gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix((int(gt2::pc::turboSectionFix) + direction + 3) % 3);
+                        status = std::string("Saved. Turbo section: ") + TurboSectionLabel() + ".";
+                    }
+                    if (selected == 11 && page == 2) { page = 0; selected = 0; }
                 } else if (page == 13) {
                     const int importRow = discImportAvailable ? 1 : -1;
                     const int hdRow = discImportAvailable ? 2 : 1;
@@ -1420,6 +1441,16 @@ void ShowSettingsMenu(GameWindow& window) {
                     else if (selected == hdRow + 4 && accept) { page = 0; selected = kMainContent; }
                 } else if (page == 4) {
                     if (selected == count - 1) { page = 0; selected = 0; }
+                    else if (selected == count - 2 && direction) {
+                        gt2::powerUnits = gt2::PowerUnits((int(gt2::powerUnits) + direction + 3) % 3);
+                        gt2::ApplyPowerUnits();
+                        try {
+                            gt2::shell::PcSettings settings = gt2::shell::PcSettings::Load(baseSettingsPath);
+                            settings.powerUnits = gt2::powerUnits;
+                            if (!baseSettingsPath.empty()) settings.Save(baseSettingsPath);
+                            status = std::string("Saved. Power units: ") + (gt2::powerUnits == gt2::PowerUnits::kPs ? "PS" : gt2::powerUnits == gt2::PowerUnits::kHp ? "hp" : "Auto (GT2+ PS)") + ".";
+                        } catch (const std::exception& e) { status = std::string("Not saved: ") + e.what(); }
+                    }
                     else if (selected == 0 && direction) { metricUnits = !OverlayMetricUnits(baseMetricUnits); status = "Saved. Speed units apply on resume."; }
                     else if (direction) { hudVisibility.*hudSettings[size_t(selected - 1)].member ^= true; status = "Saved. HUD changes apply on resume."; }
                 }

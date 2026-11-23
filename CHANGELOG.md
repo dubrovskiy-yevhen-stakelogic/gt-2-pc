@@ -34,12 +34,13 @@
 - Add a Simulation car-damage switch. Record its event-time value with replays so later preference changes do not change replay behaviour. ([#70])
 - Add replay input-display front-wheel indicators and preserve their original pixel-aligned, nearest-filtered graphics. ([#72], [#92])
 - Prevent P from skipping an event race's finish and result handling. ([#82])
-- Fix the pre-race Change Parts Turbo section for cars with only a stock turbo, and add hp/PS display units with GT2+ metric-horsepower behaviour. Physics and saves keep their native units. ([#116])
+- Add disc-aware GT2+ turbo-section and power-unit behaviour: Auto follows the loaded disc, with Turbo Auto/On/Off and Power Auto/hp/PS overrides. Retail and A-Spec keep stock defaults; physics and saves keep their native units. ([#116], [#127])
 
 ### Menus, graphics, audio and controls
 
 - Reduce painted road-line flicker and stationary-camera shimmer, improve decoded-texture cache handling, and avoid repeated texture promotion during the start countdown. ([#95])
 
+- Prevent flickering on zero-thickness car panels such as rear wings by drawing the correct side of coincident opposite-facing polygons. ([#126])
 - Apply the saved texture filter from the first menu frame. ([#74])
 - Improve MSAA coverage for stereo HUD layers, menu cars and mirrors; keep VR menu-car clipping attached to the HUD plane. ([#75])
 - Cache unchanged 2D menu layers instead of rebuilding them, and refresh them when HD media or rendering settings change. ([#85])
@@ -99,6 +100,9 @@ Thanks to **@lucianodato** for the contributions linked above. Integration PRs
 [#116]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/116
 [#118]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/118
 [#119]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/119
+[#126]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/126
+[#127]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/127
+
 
 ## 0.9.2 - Installation, car lights and HUD fixes
 

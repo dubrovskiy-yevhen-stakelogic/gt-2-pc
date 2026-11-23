@@ -1,5 +1,7 @@
 // The race overlay's CHANGE PARTS page. See change_parts.h.
 #include "gt2view/change_parts.h"
+#include "game/pc_features.h"
+#include "gt2formats/exe_profile.h"
 #include "gt2formats/units.h"
 
 #include <algorithm>
@@ -215,7 +217,7 @@ ChangePartsView::ChangePartsView(const RaceMenuAssets& a, const ChangePartsConte
     page_.previousColour = page_.colour = 0; // +0x34 = 0 before 0x800534B4
     SelectGroup(0);
     SelectPart(0);
-    page_.groupCount = career::HasTurboKit(*c_.sheet) ? 8 : 7; // 0x80052D40 (0x8005F7C8)
+    page_.groupCount = career::HasTurboKit(*c_.sheet, pc::AppliesTurboSectionFix(IsGt2Plus(c_.data->exe))) ? 8 : 7; // 0x80052D40 (0x8005F7C8)
     page_.band = shell::Band::Read(o, kPageBand);
     page_.band.anim = -1; // page + 0x2C
     list_ = MenuListWidget::Read(o, kListWidget);
@@ -235,7 +237,7 @@ std::string ChangePartsView::Title() const { return a_.Text(a_.ovl0.Get<uint32_t
 uint32_t ChangePartsView::Colour() const { return a_.ovl0.Get<uint32_t>(kView + 0x0C); }
 
 uint32_t ChangePartsView::GroupRecord(int group) const { // 0x80052CB4
-    const bool turbo = career::HasTurboKit(*c_.sheet);                                           // 0x8005F7C8
+    const bool turbo = career::HasTurboKit(*c_.sheet, pc::AppliesTurboSectionFix(IsGt2Plus(c_.data->exe))); // 0x8005F7C8
     bool na = false;
     for (int s = 1; s < 4; s++) na = na || SheetSlotRow(*c_.sheet, career::kTuneNaTune, s) >= 0; // 0x8005F790
     const uint32_t table = !turbo ? kGroupTables[2] : !na ? kGroupTables[1] : kGroupTables[0];
