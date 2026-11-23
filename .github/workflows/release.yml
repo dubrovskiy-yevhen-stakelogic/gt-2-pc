@@ -21,6 +21,11 @@ on:
         description: Existing release tag to upload assets to (leave empty to only keep artifacts)
         required: false
         type: string
+      macos_only:
+        description: Rebuild only macOS packages for an existing release
+        required: false
+        type: boolean
+        default: false
   release:
     types: [published]
 
@@ -112,7 +117,7 @@ jobs:
             source scripts/macos-env.sh
             python3 - "$binary" <<'PY'
           import subprocess, sys
-          subprocess.run(['lldb', '--batch', '-o', 'run', '-o', 'thread backtrace all', '--', sys.argv[1]], timeout=180)
+          subprocess.run(['lldb', '--batch', '-o', 'run', '-k', 'thread backtrace all', '--', sys.argv[1]], timeout=180)
           PY
           fi
 
@@ -149,6 +154,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   windows:
+    if: ${{ !inputs.macos_only }}
     name: Windows x64
     runs-on: windows-2022
     permissions:
@@ -273,6 +279,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   linux:
+    if: ${{ !inputs.macos_only }}
     name: Linux ${{ matrix.arch }} zip
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -359,6 +366,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   android:
+    if: ${{ !inputs.macos_only }}
     name: Android arm64 (Quest)
     outputs:
       signed: ${{ steps.sign.outputs.signed }}
@@ -492,6 +500,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   web:
+    if: ${{ !inputs.macos_only }}
     name: WebAssembly
     runs-on: ubuntu-24.04
     permissions:
@@ -562,6 +571,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   steamdeck:
+    if: ${{ !inputs.macos_only }}
     name: Steam Deck Flatpak
     runs-on: ubuntu-24.04
     permissions:
