@@ -274,6 +274,10 @@ public:
             ((OverlayDrivingSettings().mode == 1 && (driving_.Grabbed(0) || driving_.Grabbed(1))) ||
              (OverlayDrivingSettings().mode == 2 && driving_.MotionCalibrated()));
     }
+    bool PhysicalWheelAngle(float& value) const override {
+        if(!pad_->active || !drivingActive_ || vrMenuActive_ || OverlayDrivingSettings().mode!=1)return false;
+        value=driving_.Angle();return true;
+    }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
         if (stereoFrame_ && pad_->active && !vrMenuActive_ && drivingActive_) {
             hands_->Append(items, tracking_, driving_, EffectiveDrivingSettings(OverlayDrivingSettings()), vehicleFrame ? vehicleFrame : drivingMatrix_);
@@ -388,7 +392,7 @@ XrWindow::XrWindow(const std::string& title, int clientWidth, int clientHeight, 
                 double(options.quadDistance), deterministic_ ? ", deterministic (one field per compositor frame)" : "");
 
     const gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
-                                                session_->Queue()};
+                                                session_->Queue(), session_->Info().shadingRate, session_->Info().astcTextures};
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*vulkan_, VkExtent2D{uint32_t(kCinemaWidth), uint32_t(kCinemaHeight)}, session_->RenderFormat());
     hands_ = std::make_unique<gt2view::VrDrivingVisuals>(*renderer_);

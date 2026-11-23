@@ -35,6 +35,7 @@ struct TitleSprite {
 
 // One row of the title list (0x14 bytes at 0x800B1230 + row * 0x14).
 struct TitleRowState {
+    int8_t englishLabel = -1;
     uint8_t flags = 0;        // +00 bit 0 second pass (selected: black + light; else a subtractive shadow), bit 1 semi-
                               //     transparent, bit 2 reveal ghosts, bits 3-4 blend mode (<< 2 -> E1 bits 5-6),
                               //     bits 5-6 alignment (0x20 left edge at x, 0x40 right edge at x)

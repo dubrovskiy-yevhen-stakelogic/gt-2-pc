@@ -1,0 +1,14 @@
+{
+  "title": "1970 Nissan Skyline High Poly Interior",
+  "author": "Marc Ed",
+  "source": "https://sketchfab.com/3d-models/1970-nissan-skyline-high-poly-interior-b00cbb09d26449d3ae89f0ec3f534bfe",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": [
+    "Left-hand-drive conversion preserving readable instrument faces",
+    "R32 fit and roof lining replacement",
+    "Game mesh simplification",
+    "Baked materials for legacy renderer"
+  ],
+  "baseBody": "User-local GT4 R32 model; not included in public redistribution"
+}

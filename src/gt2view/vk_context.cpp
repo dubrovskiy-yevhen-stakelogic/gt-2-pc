@@ -81,7 +81,7 @@ VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
 
 VkContext::VkContext(const Existing& existing)
     : instance_(existing.instance), physical_(existing.physical), device_(existing.device), queueFamily_(existing.queueFamily), queue_(existing.queue),
-      owns_(false), shadingRate_(existing.shadingRate) {}
+      owns_(false), shadingRate_(existing.shadingRate), astc_(existing.astc) {}
 
 VkContext::~VkContext() {
     if (!owns_) return;

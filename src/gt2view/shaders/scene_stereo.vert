@@ -99,11 +99,11 @@ void main() {
     gl_Position.z *= 1.0 + float((inFlags >> 12) & 3u) * 2e-5;
     outTexel = inTexel;
     outColor = inColor;
-    outPaintView=vec3(0,0,-1);
+    outPaintView=(inFlags & (16u|32768u))==(16u|32768u) ? inPos : vec3(0,0,-1);
 #ifndef GT2_CACHED
     outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
     if((inFlags & 64u)!=0u) {
-        vec3 sourceNormal=nativeVertices.entries[gl_VertexIndex-1228800].xyz;
+        vec3 sourceNormal=nativeVertices.entries[gl_VertexIndex-GT2_NATIVE_MODEL_VERTEX_BASE].xyz;
         if(pc.space==0u) {
             mat3 basis=nativeProjectedBasis(views.worldVP[v]);
             vec3 ray=transpose(basis)*nativeProjectedRay(p.xyz,views.worldVP[v]);

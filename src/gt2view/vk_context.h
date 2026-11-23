@@ -33,6 +33,7 @@ public:
         uint32_t queueFamily = 0;
         VkQueue queue = VK_NULL_HANDLE;
         bool shadingRate = false;
+        bool astc = false;
     };
 
     // The window path (Windows): a Vulkan 1.3 instance with the surface extensions, the surface of `window`
@@ -52,6 +53,7 @@ public:
     uint32_t QueueFamily() const { return queueFamily_; }
     VkQueue Queue() const { return queue_; }
     bool ShadingRate() const { return shadingRate_; }
+    bool AstcTextures() const { return astc_; }
 
     // The window's client size, for a surface that does not report its own extent. False without a window.
     bool WindowExtent(VkExtent2D& extent) const;
@@ -66,6 +68,7 @@ private:
     VkQueue queue_ = VK_NULL_HANDLE;
     [[maybe_unused]] bool owns_ = true;
     bool shadingRate_ = false; // false for Existing: destroy nothing
+    bool astc_ = false;
 };
 
 } // namespace gt2view

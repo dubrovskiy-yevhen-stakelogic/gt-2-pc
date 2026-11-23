@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -141,6 +142,10 @@ private:
     using Rgb = std::array<uint8_t, 3>;
     // One GPU command of the HUD: a draw mode (E1 texture page / blend), a sprite (RECT, texture page from the
     // current draw mode), a tile, or a flat / gouraud quad.
+    struct ArtRect { int x=0, y=0, w=0, h=0; };
+    static ArtRect Letter(unsigned ch);
+    bool UseArt() const;
+    void UploadArtMap();
     struct Cmd {
         enum Kind { kMode, kSprite, kTile, kPoly } kind = kSprite;
         uint16_t tpage = 0;
@@ -150,12 +155,16 @@ private:
         uint16_t clut = 0;
         float fx[4] = {}, fy[4] = {}; // subpixel corners (textured quads); x / y keep their rounded values for dumps
         bool semi = false, gouraud = false, textured = false, subpixel = false;
+        ArtRect art;
+        bool fitInk=false, fullColor=false;
+        int generatedUnit = -1;
         int anchor = 0;
     };
     struct Quad {
         float x[4], y[4];       // frame pixels, corner order 0 1 2 3 = TL TR BR BL
         float u[4], v[4];
         uint32_t page = 0, clut = 0;
+        bool generated = false;
         bool textured = false;
         Rgb color[4] = {};
         uint32_t blend = kBlendOpaque;
@@ -202,6 +211,9 @@ private:
     void UploadBlock();
     int DialIndexFor(int revLimitRpm) const;               // 0x8002BD84's face choice
 
+    std::vector<uint32_t> artAtlas_;
+    std::map<std::array<int,8>,ArtRect> inkBounds_;
+    bool haveGeneratedUnits_ = false;
     SceneRenderer& renderer_;
     const gt2::GtfsVolume& vol_;
     std::array<int16_t, 5120> sinTable_{}; // the executable's 0x80093150 (sine; cosine at + 0x400)

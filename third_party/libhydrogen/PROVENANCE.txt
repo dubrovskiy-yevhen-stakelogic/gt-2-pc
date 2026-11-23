@@ -1,0 +1,4 @@
+Upstream: https://github.com/jedisct1/libhydrogen
+Revision: 9819a7cb39678d1e9d31874c238d5b8ce375ff4f
+License: ISC (LICENSE)
+Only C source, headers, upstream CMake and tests are vendored. No upstream binaries or game assets.

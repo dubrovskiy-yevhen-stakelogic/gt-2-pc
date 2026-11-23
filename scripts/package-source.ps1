@@ -28,7 +28,7 @@ try {
         $hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($hash -ne (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash) { throw "Source copy mismatch: $file" }
         $entry = [ordered]@{path=$file;sha256=$hash}
-        if ([IO.Path]::GetExtension($file) -notin @('.png', '.uxrh')) {
+        if ([IO.Path]::GetExtension($file) -notin @('.png', '.uxrh', '.glb')) {
             $bytes = [IO.File]::ReadAllBytes($destination)
             $utf8 = [Text.UTF8Encoding]::new($false, $true)
             $text = $utf8.GetString($bytes).Replace("`r`n", "`n")

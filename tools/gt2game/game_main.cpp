@@ -359,9 +359,7 @@ int GameMain(int argc, char** argv) {
             else throw std::runtime_error("unknown argument " + a);
         }
 
-        // An automated run (a key script, a screenshot, a comparison or check, --fast, --headless, a frame limit)
-        // shows its window without activating it, so that it does not take the keyboard from whatever the user is
-        // doing; an interactive launch activates its window as before (game_window.h SetWindowNoFocus).
+        // Preserve keyboard focus during automated runs; interactive launches activate normally.
         for (int i = 2; i < argc; i++) {
             const std::string a = argv[i];
             if (a.rfind("--", 0) != 0) continue;

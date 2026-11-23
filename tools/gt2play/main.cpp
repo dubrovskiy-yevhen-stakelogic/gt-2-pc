@@ -551,7 +551,7 @@ int main(int argc, char** argv) {
                                   rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hinst, nullptr);
         if (!hwnd) throw std::runtime_error("CreateWindow failed");
         // GT2_NO_FOCUS=1 (automated runs): show the window without taking the foreground, so the machine stays usable.
-        // Dev tool: never take the foreground (the user keeps working while runs happen); GT2_FOCUS=1 restores activation.
+        // Keep diagnostic windows inactive; GT2_FOCUS=1 enables activation.
         ShowWindow(hwnd, std::getenv("GT2_FOCUS") ? SW_SHOW : SW_SHOWNOACTIVATE);
         VkContext vulkan(hinst, hwnd);
         VkSceneRenderer renderer(vulkan);

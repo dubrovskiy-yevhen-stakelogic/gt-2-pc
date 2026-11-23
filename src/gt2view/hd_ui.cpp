@@ -53,7 +53,7 @@ void SceneRendererState::ApplyHdUi(std::vector<SceneVertex>& vertices) {
                     const auto png=gt2::ReadPngFile(path);
                     if(png.width!=1024 || png.height!=1024) continue;
                     size_t slot=hdUiSlots_.size();
-                    if(slot>=kHdUiSlots) {
+                    if(slot>=kHdUiSlots-1) {
                         slot=0;
                         for(size_t i=1;i<hdUiSlots_.size();++i) if(hdUiSlots_[i].used<hdUiSlots_[slot].used) slot=i;
                         if(hdUiSlots_[slot].used==hdUiFrame_) continue;

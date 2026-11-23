@@ -1,6 +1,8 @@
 // gt2game's title (src/game/shell, gt2view/title_view). See title_mode.h.
 #include "title_mode.h"
 #include "boot_screen.h"
+#include "gt2formats/model_set_preload.h"
+#include "gt2formats/car_info.h"
 
 #include "platform/os/keys.h"
 #include "platform/os/paths.h"
@@ -319,6 +321,17 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
         }
     };
 
+    auto preloadCareerCar = [&] {
+      if (gt2game::OverlayGt4ModelSet()) {
+        std::vector<std::string> priority;
+        const auto& garage = save.state.garage;
+        if (garage.currentCar >= 0 && garage.currentCar < garage.count && garage.currentCar < career::kGarageCapacity)
+            priority.push_back(UnpackCarId(garage.cars[garage.currentCar].modelId));
+        gt2::StartModelSetPreload(gt2::gt4ModelSetRoot, gt2::os::DataRoot() / "gt4-preload-recent.txt", priority);
+      }
+    };
+    preloadCareerCar();
+
     // One window for the title, the GT-mode menus and the races (game_window.h): Start Game runs the menus in it.
     gt2game::GameWindow window("gt2game", options.windowWidth, options.windowHeight);
     window.SetPacing(options.pacing);
@@ -553,6 +566,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
                         const career::CareerSave loaded = career::LoadCareerFromCard(career::ReadFileBytes(slots[0].path));
                         if (loaded.CrcOk()) {
                             save.state = loaded.state; // 0x8006A278
+                            preloadCareerCar();
                             boot.state = 5, boot.timer = 0xB4, boot.line = assets.Text(0x801B9956u), boot.colour = 0x604610; // "Auto Loading Complete"
                             std::printf("title: auto-loaded %s (day %u, money %d, %d car(s))\n", slots[0].path.c_str(), save.state.record.days, save.state.garage.money,
                                         save.state.garage.count);

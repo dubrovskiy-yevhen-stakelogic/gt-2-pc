@@ -6,6 +6,7 @@
 #include "pc_overlay.h"
 #include "graphics_options.h"
 #include "gt2formats/hd_media.h"
+#include "gt2formats/generated_world.h"
 #include "platform/os/paths.h"
 #include "platform/input/input_diagnostics.h"
 
@@ -65,7 +66,7 @@ int ScriptKeyCode(const std::string& raw) {
         {"up", keys::kUp}, {"down", keys::kDown}, {"left", keys::kLeft}, {"right", keys::kRight},
         {"enter", keys::kReturn}, {"cross", keys::kReturn}, {"space", keys::kSpace}, {"circle", keys::kSpace},
         {"backspace", keys::kBack}, {"back", keys::kBack}, {"triangle", keys::kBack}, {"delete", keys::kDelete}, {"square", keys::kDelete},
-        {"esc", keys::kEscape}, {"escape", keys::kEscape}, {"start", 'S'}, {"shift", keys::kShift}, {"f5", keys::kF5}, {"f10", keys::kF10},
+        {"esc", keys::kEscape}, {"escape", keys::kEscape}, {"start", 'S'}, {"shift", keys::kShift}, {"f5", keys::kF5}, {"f7", keys::kF7}, {"f8", keys::kF8}, {"f9", keys::kF9}, {"f10", keys::kF10},
     };
     const auto it = kNames.find(name);
     if (it != kNames.end()) return it->second;
@@ -190,6 +191,17 @@ bool GameWindow::BeginFrame() {
     if (pad2_.type == gt2::input::kTypeNone) pad2_.type = gt2::input::kTypeDigital; // the keyboard is always there
     pad2Pressed_ = uint16_t(pad2_.buttons & ~pad2Previous_);
     pad2Previous_ = pad2_.buttons;
+    if (onlineEmotes_ && !overlayActive_ && !(buttons & ps1::kStart)) {
+        auto consumeEmote=[](gt2::input::Ps1PadFrame& p,bool touch) {
+            if(p.buttons & ps1::kL3) p.buttons &= ~(ps1::kL3 | (touch?ps1::kSelect:0));
+        };
+#if defined(__ANDROID__)
+        consumeEmote(pad_,true);consumeEmote(desktopPad_,true);
+#else
+        consumeEmote(pad_,bool(vrInput_));consumeEmote(desktopPad_,false);
+#endif
+        consumeEmote(vrPad_,true);
+    }
     if (nativeMenuEnabled_ && !overlayActive_ && (input_.Wheel().Pressed(gt2::input::wheel::Menu) || Pressed(gt2::keys::kF10) || SettingsPressed())) {
         overlayActive_ = true;
         backend_->SetVrMenuActive(true);
@@ -322,13 +334,14 @@ void GameWindow::DrawFrame(const std::vector<gt2view::DrawItem>& items, size_t s
         f.cached = renderer.CachedMaterials(); f.uncached = renderer.UncachedMaterials();
         f.tested = wasStereo ? renderer.LastCulling().tested : 0;
         f.culled = wasStereo ? renderer.LastCulling().culled : 0;
-        f.width = extent.width; f.height = extent.height; f.msaa = renderer.EffectiveMsaa();
+        f.width = extent.width; f.height = extent.height; f.msaa = renderer.EffectiveMsaa(); f.requestedMsaa = unsigned(CurrentGraphics().msaa);
         f.stereo = wasStereo; f.overlay = overlayActive_; f.foveation = renderer.Foveation();
         f.refresh = OverlayRefreshRate(); f.drawDistance = CurrentGraphics().drawDistance;
         f.cockpit = OverlayCockpitSettings().enabled; f.mirror = OverlayHudVisibility().mirror;
         f.cockpitMirror = OverlayCockpitSettings().mirror;
         f.cockpitMirrorScale = OverlayCockpitSettings().mirrorScalePercent;
         f.smooth = renderer.Options().smoothTextures; f.hd = gt2::hd::Enabled();
+        f.generatedMask = gt2::generated::ActiveMask();
         profilerLog_.Record(f, frameProfiler_);
     }
     frameBuildTimed_ = false;

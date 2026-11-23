@@ -25,6 +25,7 @@ inline float CockpitSeatBack(const CockpitSettings& settings, bool desktop = fal
 // Eye tuning is independent of furniture: authored cabins sit 30 cm forward
 // of the furniture reference, generated cabins 10 cm forward (+Z is back).
 inline float CockpitEyeBack(const gt2view::CockpitFit& fit, const CockpitSettings& settings, bool desktop = false) {
+    if(fit.frozenInterior)return settings.seatBackCm*.01f;
     return CockpitSeatBack(settings,desktop)-(fit.nativeInterior ? gt2view::kNativeCockpitEyeForward : gt2view::kGeneratedCockpitEyeForward);
 }
 
@@ -50,11 +51,11 @@ inline std::array<float,3> CockpitWheelTrackingCenter(const std::array<float,3>&
             (hub[2]-controls[14])/controls[10]};
 }
 
-inline bool CockpitShown(const gt2::camera::RaceCamera& camera, bool enabled, bool replay, bool oldCamera, uint32_t hold) {
+inline bool CockpitShown(const gt2::camera::RaceCamera& camera, bool enabled, bool replay, bool oldCamera, uint32_t hold, uint8_t localCar = 0) {
     // StartIntro returns to the selected race camera for its final 60 fields.
     // The cabin must be present from that camera cut, before the cars are released.
     return enabled && !replay && !oldCamera && hold < 60 && camera.position == 0 &&
-        camera.target == 0 && camera.hideTarget && !camera.external;
+        camera.target == localCar && camera.hideTarget && !camera.external;
 }
 
 

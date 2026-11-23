@@ -1,3 +1,4 @@
+#include "gt2formats/authored_cockpit_catalogue.h"
 #include "gt2formats/gt_menu_list.h"
 
 #include <algorithm>
@@ -508,11 +509,13 @@ MenuPopupList::MenuPopupList(MenuListKind k, const MenuAssets& assets, const Men
 
 void MenuPopupList::Reset() { // 0x80020490 / 0x800209B0
     MenuListReset(widget, [this](int command, const MenuListWidget& w, int row, const MenuListRowDraw* draw) { return RowCallback(command, w, row, draw); });
+    cockpitRows_.clear();
     count = 0;
     flash = -1;
 }
 
 void MenuPopupList::LoadGarage(const MenuItem* it, std::vector<MenuGarageRow> rows, int16_t current) { // 0x800204EC
+    cockpitRows_.clear();
     garageRows = std::move(rows);
     currentCar = current;
     item = it;
@@ -537,6 +540,17 @@ void MenuPopupList::LoadUsedCars(const MenuItem* it, std::vector<MenuUsedCarRow>
     count = n;
 }
 
+bool MenuPopupList::ToggleCockpitFilter(){
+    if(kind!=MenuListKind::kGarage)return false;
+    if(cockpitRows_.empty()){
+        const auto models=AuthoredCockpitCars();
+        for(size_t i=0;i<garageRows.size();++i)if(models.contains(garageRows[i].modelId))cockpitRows_.push_back(int16_t(i));
+        if(cockpitRows_.empty())return false;
+        unfilteredSelection_=widget.selection;widget.selection=0;count=widget.count=int16_t(cockpitRows_.size());
+    }else{cockpitRows_.clear();count=widget.count=int16_t(garageRows.size());widget.selection=std::clamp<int16_t>(unfilteredSelection_,0,int16_t(count-1));}
+    widget.scroll=widget.blink=0;MenuListOpen(widget);return true;
+}
+
 int32_t MenuPopupList::Update(const MenuListPad* pad, bool active) { // 0x8002055C / 0x80020A94
     if (!active) {
         flash = -1;
@@ -557,14 +571,14 @@ int32_t MenuPopupList::Update(const MenuListPad* pad, bool active) { // 0x800205
     if (r == -2) {
         // 0x8002055C reads pad +4 even when the pad is null (then RAM word 4, 0 in every dump we have).
         if (kind == MenuListKind::kGarage && pad && (pad->pressed & menu_list_pad::kStart)) {
-            if (moveToTop) moveToTop(widget.selection);
+            if (moveToTop && cockpitRows_.empty()) moveToTop(widget.selection);
             if (sound) sound(1);
         }
         return -1;
     }
     if (r == -1) return -2;
-    chosen = int16_t(r);
-    return r;
+    chosen = cockpitRows_.empty()?int16_t(r):cockpitRows_.at(size_t(r));
+    return chosen;
 }
 
 void MenuPopupList::Draw(MenuOtSlot& ot) {
@@ -579,6 +593,7 @@ void MenuPopupList::Draw(MenuOtSlot& ot) {
         return;
     }
     MenuListDraw(widget, ot);
+    if(garage){std::vector<MenuPrim> glyphs;MenuTextWriter text(assets_.fonts,glyphs);text.Left(MenuTextWriter::Widen(cockpitRows_.empty()?"L3: 3D cockpits":"L3: All cars"),true,false,widget.x-152,widget.y-18,kEmptyColour);ot.AddGlyphs(glyphs);}
 }
 
 void MenuPopupList::Draw(std::vector<MenuPrim>& gpuOrder) {
@@ -615,6 +630,7 @@ int32_t MenuPopupList::RowCallback(int command, const MenuListWidget& w, int row
         return width;
     };
     if (garage) { // 0x80020198
+        if(!cockpitRows_.empty()) { if(size_t(row)>=cockpitRows_.size())return 1;row=cockpitRows_[size_t(row)]; }
         if (size_t(row) >= garageRows.size()) return 1;
         const MenuGarageRow& s = garageRows[size_t(row)];
         const std::u16string prefix = (s.word98 >> 15) ? names_.racingPrefix : std::u16string();

@@ -64,10 +64,8 @@ constexpr std::pair<uint16_t, int> kPlayer2Keys[] = {
 };
 void SetRumbleScale(int percent);
 
-// Automated runs (a key script, a screenshot, --fast, --headless, a comparison or a check, a frame limit) must not
-// steal the keyboard: their window is shown without being activated, so the user can keep working. Interactive
-// launches activate their window as before. The environment variable GT2_NO_FOCUS forces it as well. Call before the
-// first GameWindow.
+// Automated runs show inactive windows and preserve keyboard focus.
+// GT2_NO_FOCUS also enables this mode. Set before constructing GameWindow.
 void SetWindowNoFocus(bool on);
 bool WindowNoFocus();
 void SetWindowedMode(bool on);
@@ -93,13 +91,19 @@ public:
     virtual void BeginRenderFrame() {}
     virtual void ConfigureVr() {}
     virtual void SetDrivingActive(bool) {}
-    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center) { cockpitWheelCenter_ = center; }
+    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center, bool authored=false, float radius=0, std::array<float,3> axis={0,0,1}) {
+        cockpitWheelCenter_=center;authoredWheel_=center.has_value() && authored;authoredWheelRadius_=radius;authoredWheelAxis_=axis;
+    }
     gt2::vr::DrivingSettings EffectiveDrivingSettings(gt2::vr::DrivingSettings settings) const {
         settings.cockpitWheelCenter = cockpitWheelCenter_;
+        settings.authoredWheel=authoredWheel_;
+        settings.cockpitWheelAxis=authoredWheel_?authoredWheelAxis_:std::array<float,3>{0,0,1};
+        if(authoredWheel_ && authoredWheelRadius_>0)settings.wheelRadiusCm=int(std::lround(authoredWheelRadius_*100));
         return settings;
     }
     virtual void SetVrMenuActive(bool) {}
     virtual bool PhysicalSteering(float&) const { return false; }
+    virtual bool PhysicalWheelAngle(float&) const { return false; }
     virtual void AppendDrivingVisuals(std::vector<gt2view::DrawItem>&, const float* = nullptr) {}
     virtual void EndRenderFrame() {}
     virtual bool Closed() const = 0;
@@ -150,6 +154,9 @@ public:
     virtual void CancelStereoScene() {}
 private:
     std::optional<std::array<float,3>> cockpitWheelCenter_;
+    bool authoredWheel_=false;
+    float authoredWheelRadius_=0;
+    std::array<float,3> authoredWheelAxis_{0,0,1};
 };
 
 // The platform's backend with its window of `clientWidth` x `clientHeight` (game_window_win32.cpp).
@@ -267,8 +274,9 @@ public:
     bool VBlankTiming(std::chrono::steady_clock::time_point& vblank, std::chrono::steady_clock::duration& period) const;
     // Restarts the pacing clock (after a long load, so that the next frames do not rush to catch up).
     void ResetPacing() { next_ = Clock::now(); }
-    void SetDrivingActive(bool on) { backend_->SetDrivingActive(on); if (!on) backend_->SetCockpitWheelCenter(std::nullopt); }
-    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center) { backend_->SetCockpitWheelCenter(center); }
+    void SetDrivingActive(bool on) { drivingActive_=on;backend_->SetDrivingActive(on); if (!on) backend_->SetCockpitWheelCenter(std::nullopt); }
+    void SetCockpitWheelCenter(std::optional<std::array<float,3>> center, bool authored=false, float radius=0, std::array<float,3> axis={0,0,1}) { backend_->SetCockpitWheelCenter(center,authored,radius,axis); }
+    bool PhysicalWheelAngle(float& angle) const { return backend_->PhysicalWheelAngle(angle); }
     bool CockpitWheelAnchored() const { return backend_->EffectiveDrivingSettings({}).cockpitWheelCenter.has_value(); }
     bool PhysicalSteering(float& value) const { return backend_->PhysicalSteering(value); }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame = nullptr) {
@@ -301,10 +309,12 @@ public:
     bool PadHasMotors() const { return input_.Port1HasMotors() || (vrInput_ && vrInput_->HasMotors()); }
     void SetPadActuators(const gt2::input::Actuators& actuators);
     const gt2::input::Ps1PadFrame& Pad() const { return pad_; }
+    bool PhysicalPadHeld(uint16_t buttons) const { return (padPrevious_ & buttons) != 0; }
     bool PadHeld(uint16_t ps1Buttons) const { return (pad_.buttons & ps1Buttons) != 0; }
     bool PausePressed() const { return menuShortcuts_.pause; }
     bool MenuPressed() const { return menuShortcuts_.menu; }
     bool SettingsPressed() const { return menuShortcuts_.settings; }
+    void SetOnlineEmotes(bool active) { onlineEmotes_ = active; }
     bool PadPressed(uint16_t ps1Buttons) const { return (padPressed_ & ps1Buttons) != 0; }
     // Port 2 of this field: the second controller (InputSystem::Port2) merged with player 2's keyboard (kPlayer2Keys; a
     // digital pad when no controller is in port 2), and its newly pressed buttons.
@@ -337,6 +347,8 @@ private:
     std::vector<gt2view::DrawItem> lastItems_;
     size_t lastScene_ = 0;
     bool focused_ = false;
+    bool drivingActive_ = false;
+    bool onlineEmotes_ = false;
     bool pacing_ = true;
     bool stereo_ = false; // a stereo frame was begun and is waiting for its draw list
     int field_ = 0;

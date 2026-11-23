@@ -27,5 +27,5 @@ void main() {
     gl_Position.z*=1.0+float((inFlags>>12)&3u)*2e-5;
     outTexel=inTexel;outColor=inColor;outPage=inPage;outClut=inClut;outFlags=inFlags;
     outTexelAffine=inTexel;outColorAffine=inColor;outRect=inRect;
-    outScreen=vec3(screen.xy,screen.w);outCache=inCode;outPaintView=vec3(0,0,-1);
+    outScreen=vec3(screen.xy,screen.w);outCache=inCode;outPaintView=(inFlags & (16u|32768u))==(16u|32768u) ? inPos : vec3(0,0,-1);
 }

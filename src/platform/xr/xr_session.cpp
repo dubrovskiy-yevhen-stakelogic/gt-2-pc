@@ -446,6 +446,10 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     f11.pNext = &f13;
     VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     features.pNext = &f11;
+    VkPhysicalDeviceFeatures supportedFeatures{};
+    vkGetPhysicalDeviceFeatures(vkPhysical_, &supportedFeatures);
+    features.features.textureCompressionASTC_LDR=supportedFeatures.textureCompressionASTC_LDR;
+    info_.astcTextures=features.features.textureCompressionASTC_LDR!=0;
     std::vector<const char*> deviceExtensions;
     if (options_.mirrorWindow) deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};

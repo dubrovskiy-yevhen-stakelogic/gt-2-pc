@@ -116,8 +116,7 @@ Win32Window::Win32Window(const std::string& title, int clientWidth, int clientHe
     RegisterClassA(&wc); // (fails harmlessly when already registered)
     RECT rc{0, 0, clientWidth, clientHeight};
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-    // Created hidden and then shown: an automated run (WindowNoFocus / GT2_NO_FOCUS) must not take the keyboard away
-    // from whatever the user is doing, so its window appears without being activated.
+    // Create hidden; automated runs subsequently show the window without activation.
     hwnd_ = CreateWindowA("gt2game_window", title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
                           nullptr, nullptr, hinst, nullptr);
     if (!hwnd_) throw std::runtime_error("CreateWindow failed");

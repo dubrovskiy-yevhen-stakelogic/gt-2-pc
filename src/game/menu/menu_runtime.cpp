@@ -335,6 +335,7 @@ public:
     }
     void Reset() override { list_.Reset(); }
     int Count() const override { return list_.count; }
+    bool ToggleCockpitFilter() override { return list_.ToggleCockpitFilter(); }
     void Load(const MenuPage& page, const MenuItem& item, bool keepSelection) override {
         const career::CareerState& s = actions_.Career();
         if (list_.kind == MenuListKind::kGarage) { // 0x800204EC: the garage slots

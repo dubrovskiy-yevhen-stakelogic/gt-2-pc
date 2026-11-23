@@ -17,7 +17,15 @@ float Steering(float angle, const DrivingSettings& s) {
 }
 }
 void DrivingController::Reset() { *this = {}; }
-float DrivingController::Update(const TrackedControllers& in, const DrivingSettings& s, bool active, float elapsedSeconds) {
+float DrivingController::Update(const TrackedControllers& tracked, const DrivingSettings& s, bool active, float elapsedSeconds) {
+    auto in=tracked;
+    if(s.mode==1 && s.authoredWheel) {
+        const auto center=DrivingWheelCenter(s);const auto basis=DrivingWheelBasis(s);
+        for(int h=0;h<2;++h)for(int k=0;k<3;++k) {
+            in.gripPose[h].position[k]=center[k];
+            for(int j=0;j<3;++j)in.gripPose[h].position[k]+=(tracked.gripPose[h].position[j]-center[j])*basis[k][j];
+        }
+    }
     if (!active || s.mode == 0) { Reset(); return 0; }
     if (mode_ != s.mode || hand_ != s.motionHand || toggleGrip_ != s.toggleGrip) {
         Reset(); mode_ = s.mode; hand_ = s.motionHand; toggleGrip_ = s.toggleGrip;

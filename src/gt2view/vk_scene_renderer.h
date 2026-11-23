@@ -1,9 +1,11 @@
 #pragma once
 #include "gt2view/model_texture_atlas.h"
+#include "gt2view/generated_mip_atlas.h"
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <map>
 
 #include "gt2view/scene_types.h"
 #include "gt2view/vk_context.h"
@@ -49,6 +51,8 @@ public:
     // Copies `count` RGBA8 texels (R in the low byte) into the external texture store at `firstTexel`
     // (kExternalTexture vertices address it; see scene_assets.h UseExternalCar).
     void UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba) override;
+    void BeginGeneratedTextures(const std::string& cacheDirectory = {});
+    void UploadGeneratedTexture(uint32_t firstTexel,uint32_t width,uint32_t height,const uint32_t* rgba);
     void BakePaintEnvironment(const std::array<std::vector<DrawItem>,6>& faces) override;
     void BeginModelTextures() override;
     void ClearPaintProbes() override;
@@ -72,6 +76,7 @@ public:
     void SetOptions(const RenderOptions& options);
     const RenderOptions& Options() const { return options_; }
     // The MSAA sample count actually used (the request clamped to the device's colour / depth limits).
+    size_t CachedPipelineVariantsForAudit() const { return pipelineVariants_.size(); }
     uint32_t EffectiveMsaa() const { return uint32_t(ClampSamples(options_.msaa)); }
     // The present mode in use (VK_PRESENT_MODE_*), for the frame-rate log.
     VkPresentModeKHR PresentMode() const { return presentMode_; }
@@ -147,7 +152,7 @@ private:
     void DestroySwapchain();
     void CreatePipeline();
     // `stereo` = the stereo vertex shader (scene_stereo.vert); `viewMask` != 0 = its multiview variant.
-    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[9], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false, bool modelOnly = false, bool uiOnly = false, bool backCull = false, bool environmentOnly = false);
+    void CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[9], bool stereo = false, uint32_t viewMask = 0, bool cachedOnly = false, bool cachedHud = false, bool modelOnly = false, bool uiOnly = false, bool backCull = false, bool environmentOnly = false, bool worldOnly = false);
     void DestroyPipelineSet(VkPipeline set[9]);
     struct Image {
         VkImage image = VK_NULL_HANDLE;
@@ -291,11 +296,13 @@ private:
     std::unordered_map<VkImage, Image> externalStereoViews_;
     VkPipeline cachedPipelines_[9] = {};
     VkPipeline modelPipelines_[9] = {};
+    VkPipeline stereoWorldPipelines_[9] = {};
     VkPipeline stereoModelPipelines_[9] = {};
     VkPipeline modelCullPipelines_[9] = {},stereoModelCullPipelines_[9] = {};
     struct ModelRasterRun {uint32_t first,count;bool cull;};
     std::unordered_map<uint64_t,std::vector<ModelRasterRun>> modelRasterRuns_;
     std::unordered_map<uint64_t,bool> modelRanges_;
+    std::unordered_map<uint64_t,bool> generatedWorldRanges_;
     std::vector<uint32_t> vertexFlags_; // CPU copy; never scan mapped GPU memory for draw classification.
     VkPipeline uiPipelines_[9] = {};
     VkPipeline cachedHudPipelines_[9] = {}; // Cached 2D materials keep full-rate shading and HUD clipping.
@@ -318,12 +325,22 @@ private:
     Buffer modelUpload_;
     bool modelPending_=true, modelFullSize_=false;
     ModelTextureAtlas modelAtlas_;
+    GeneratedMipAtlas generatedAtlas_;
+    Image generatedImage_;
+    Buffer generatedUpload_;
+    bool generatedPending_=true,generatedFullSize_=false;
+    bool generatedCompressed_=false;
+    std::string generatedCacheDirectory_;
+    void UploadGeneratedImage();
     std::unordered_map<uint32_t,std::vector<uint32_t>> modelSourcePixels_;
     std::unordered_map<uint32_t,uint32_t> modelSourceSizes_;
     std::unordered_set<uint32_t> nativeTextureSources_;
     void UploadModelImage();
     void PromoteModelTextures(uint32_t first,const std::vector<SceneVertex>& vertices);
     void SetVerticesRaw(uint32_t first,const std::vector<SceneVertex>& vertices);
+    // Own all immutable pipeline variants until renderer shutdown. Active sets borrow handles.
+    std::map<uint64_t, std::array<VkPipeline,9>> pipelineVariants_;
+    VkPipelineCache pipelineCache_ = VK_NULL_HANDLE;
     Buffer handUpload_;
     bool handPending_ = false;
     VkExtent2D handExtent_{1,1};

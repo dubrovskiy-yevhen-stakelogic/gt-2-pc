@@ -1,0 +1,101 @@
+{
+  "format": "gt2-authored-car",
+  "version": 1,
+  "car": "nn32n",
+  "mesh": "r32.glb",
+  "eye": [
+    -0.3536115288734436,
+    1.0084424018859863,
+    0.14134694635868073
+  ],
+  "mirror": [
+    0,
+    1.172,
+    -0.176
+  ],
+  "wheelRadius": 0.159,
+  "controls": [
+    {
+      "nodes": [
+        "Racing_wheel"
+      ],
+      "center": [
+        -0.3536114990711212,
+        0.7284423112869263,
+        -0.3086530864238739
+      ],
+      "axis": [
+        0.00037730255631743546,
+        0.3262605695338462,
+        0.9452797990067445
+      ]
+    },
+    {
+      "name": "Speedometer",
+      "nodes": [
+        "Speedometer_needle"
+      ],
+      "center": [
+        -0.42104777693748474,
+        0.790200412273407,
+        -0.42278480529785156
+      ],
+      "axis": [
+        0.06155852973461151,
+        0.2581474184989929,
+        0.964142382144928
+      ],
+      "maximum": 320,
+      "sweepRadians": -4.71238898038469
+    },
+    {
+      "name": "Tachometer",
+      "nodes": [
+        "Tachometer_needle"
+      ],
+      "center": [
+        -0.2954438328742981,
+        0.7897887229919434,
+        -0.42384806275367737
+      ],
+      "axis": [
+        -0.061692915856838226,
+        0.25507688522338867,
+        0.964950680732727
+      ],
+      "maximum": 10000,
+      "sweepRadians": -4.71238898038469
+    }
+  ],
+  "sourceRevision": "r32-family-v58",
+  "instruments": "Separate donor needles, calibrated speed 0-320 km/h and engine 0-10000 RPM; auxiliary donor gauges remain decorative",
+  "mirrors": [
+    {
+      "node": "LiveMirror_center",
+      "uvRect": [
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "node": "LiveMirror_left",
+      "uvRect": [
+        0,
+        0,
+        0.4,
+        1
+      ]
+    },
+    {
+      "node": "LiveMirror_right",
+      "uvRect": [
+        0.6,
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}

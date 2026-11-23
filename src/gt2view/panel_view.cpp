@@ -20,6 +20,9 @@ void PanelView::Build(const std::vector<gt2::MenuPrim>& prims, float windowAspec
 }
 
 void PanelView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, int frameHeight, float windowAspect, std::vector<DrawItem>& items) {
+    BuildRange(prims,frameWidth,frameHeight,windowAspect,kVertexBase,kPanelVertices,items);
+}
+void PanelView::BuildRange(const std::vector<gt2::MenuPrim>& prims,int frameWidth,int frameHeight,float windowAspect,uint32_t base,uint32_t limit,std::vector<DrawItem>& items) {
     std::vector<Quad> quads;
     for (const gt2::MenuPrim& p : prims) {
         if (p.clipX1 >= p.clipX0) continue; // separate draw environments (the menus' 3D car) are not used here
@@ -93,7 +96,7 @@ void PanelView::Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, i
         if (p.semi) q.blend = mode;
         quads.push_back(q);
     }
-    Submit(quads, frameWidth, frameHeight, windowAspect, kVertexBase, kPanelVertices, items);
+    Submit(quads, frameWidth, frameHeight, windowAspect, base, limit, items);
 }
 
 void PanelView::BuildOverlay(const std::vector<gt2::raceui::Gp0Prim>& prims, float windowAspect, std::vector<DrawItem>& items) {

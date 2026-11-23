@@ -48,6 +48,7 @@ struct GltfMaterial {
 
 // One triangle list in world (scene) space: the node transforms are already applied.
 struct GltfPrimitive {
+    std::string nodeName; // Authored controls retain explicit node identity after transform baking.
     std::vector<GltfVertex> vertices;
     std::vector<uint32_t> indices; // triangles (3 per face)
     int material = -1;             // index into GltfMesh::materials, -1 = default material

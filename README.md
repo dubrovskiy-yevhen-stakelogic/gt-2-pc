@@ -1,14 +1,81 @@
 [![Release binaries](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml/badge.svg)](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/actions/workflows/release.yml)
 [![Quiver Launcher](https://img.shields.io/badge/Quiver_Launcher-Get_it-00A0F8)](https://quiverlauncher.com/apps/gran-turismo-2-gran-turismo-2-pc-vr-browser)
 
-![Gran Turismo 2 cockpit gameplay](docs/images/cockpit-0.5.0.png)
-
 # Gran Turismo 2 PC, VR & Browser
 
 A native C++ port with Arcade and Simulation, cockpit driving, desktop and VR
 support. The browser compiles the same game code to WebAssembly and renders with
 WebGL2. Gameplay fixes belong to the shared C++ code and reach each platform when
 it is rebuilt.
+
+## Cross-platform multiplayer
+
+Race together across Windows desktop/PCVR, Steam Deck/Linux and standalone Quest.
+Open **Arcade Mode > Multiplayer** to find a room or create your own; players do
+not need to enter IP addresses or copy invitation files. Use matching game versions
+and compatible disc datasets; see [multiplayer compatibility and controls](docs/MULTIPLAYER.md).
+
+- Rooms support **2–6 real players**. At least two humans must join and mark Ready
+  before the host can start. Optional bots fill empty places; choose Easy, Normal
+  or Hard, or turn bots off.
+- Give your room a name and an optional password for friends. Set your nickname,
+  choose a track, supported day/night and reverse layouts, laps and car rules.
+  The host can require the same car or an Arcade class; players choose their car
+  in the garage. Rally tracks use rally cars.
+- Everyone loads before the shared race start. Player names appear above cars
+  and in results, and the emote wheel lets you react during a race.
+- The first human finisher starts a visible **30-second countdown** for everyone
+  still racing; the race ends earlier if all human players finish.
+- The host can remove players in the room or during a race. After results,
+  **Return to room** on each device to race again: the room stays open, readiness
+  resets, and the host can choose another track while players choose cars again.
+
+**There has been no public multiplayer test yet.** So far I have tested it alone
+using multiple devices. Bugs, connection problems and other rough edges are still
+possible; please report them with your game version and steps to reproduce.
+
+![Cross-platform race with player names and emotes](docs/images/multiplayer-1.0.0.png)
+
+## HD textures support
+
+HD textures are an **optional, separate image pack**. Put its `textures` folder
+in your game-data folder, beside `arcade` and `simulation`, then enable
+**HD texture pack** in the game's HD textures settings. You can also switch
+individual texture categories off. See [installation and custom textures](docs/TEXTURE-PACKS.md)
+for desktop, Steam Deck and Quest paths.
+
+**The supplied HD pictures are AI-generated, not the work of an artist.** Expect
+occasional mistakes, nonsensical details and strange-looking surfaces. The pack
+is optional: replace individual PNGs with your own pictures, keeping their names,
+dimensions and alpha channels, or delete any images you dislike. Missing
+replacements use the original game textures. Restart after editing pack files;
+no rebuilding or repacking is needed.
+
+Seattle, the same race-start frame and camera with only the HD texture setting changed:
+
+| Original textures | HD texture pack |
+|---|---|
+| ![Seattle with original textures](docs/images/seattle-original-1.0.0.png) | ![Seattle with HD textures](docs/images/seattle-hd-1.0.0.png) |
+
+## 3D cockpit
+
+Authored 3D interiors currently cover **12 Nissan Skyline GT-R/R32 catalogue
+models and variants**. More cars are planned. Other cars keep the existing
+fitted cockpit; an authored interior is not yet available for every car.
+The new steering wheel and fabric gloves are included in the source kit and
+embedded in the player. The supported interior family is included when preparing
+GT4 models; see [cockpit installation and supported cars](docs/TEXTURE-PACKS.md#r32-cockpits).
+
+The interior and steering wheel are adapted from **Marc Ed's
+[1970 Nissan Skyline High Poly Interior](https://sketchfab.com/3d-models/1970-nissan-skyline-high-poly-interior-b00cbb09d26449d3ae89f0ec3f534bfe)**,
+under **CC BY 4.0**. The adaptation includes fitting, mesh simplification,
+material baking and extracting the moving wheel. See the bundled
+[attribution and modification record](assets/cockpits/r32/nr32n/attribution.json).
+The technical gloves are from **VRMADA's UltimateXR**, under the **MIT License**;
+[source details](third_party/vrhands/SOURCE.md) and the
+[license](third_party/vrhands/ULTIMATEXR_LICENSE.txt) are included.
+
+![Authored Skyline cockpit with the new wheel and gloves](docs/images/cockpit-1.0.0.png)
 
 **[Play the browser version](https://ydubr-gt2.surge.sh/)** — select your own BIN disc image to start.
 
@@ -47,22 +114,13 @@ The screenshots illustrate gameplay. Release history is in
 ## Version and bug reports
 
 Open the custom **GT2 settings menu** (F10 on desktop, the settings/menu button
-in VR) and read the version in its title, for example **v0.9.2**. Include that
+in VR) and read the version in its title, for example **v1.0.0**. Include that
 version, your platform and the steps to reproduce when reporting a bug. Older
 builds without a version label should be updated before comparing results.
 
-Version 0.9.2 focuses on ready-to-install packages, car lights, cockpit/HUD
-layering and combined-disc fixes. See [the changelog](CHANGELOG.md#092---installation-car-lights-and-hud-fixes).
-
-## Planned for future releases
-
-- Network multiplayer.
-- New HD car models.
-- Fully authored 3D cockpits.
-
-These features are still in development and are **not included in 0.9.2**.
-The existing local split-screen mode, GT4 model import and current cockpit
-rendering are separate features and remain available. No release dates are promised.
+The sections above describe the 1.0.0 source kit. Check the version of your
+installed build; older releases do not include all of these features. See
+[the changelog](CHANGELOG.md) for release history.
 
 ## Features
 
@@ -95,6 +153,21 @@ rendering are separate features and remain available. No release dates are promi
 - Browser play through WebAssembly/WebGL2, local BIN selection, keyboard/gamepad input, audio, persistent saves and save backup import/export.
 - Desktop render scale from 50% to 200% in 5% steps, plus fixed output resolutions.
 - Automatic brake-to-reverse for keyboard and supported controller bindings: hold Down to stop and then reverse; Up brakes reverse motion before driving forward.
+
+## Multiplayer (next release)
+
+The source kit includes native multiplayer for PC, Steam Deck and Quest, its room
+directory and dedicated server. Create a room for up to six players; the host
+starts when all connected players are ready, with AI filling vacant places.
+The host can remove a player. Rooms remain available for another race, with new
+track/car selection and readiness. Build and deployment details are in
+[Multiplayer development](docs/MULTIPLAYER.md). Matching protocol-5 clients and
+server must be deployed together; editing this source kit does not update the
+public server. Browser builds do not include native networking.
+
+## Optional visual packs (next release)
+
+The development player accepts an editable `textures` folder beside the game data folders. Enable **HD texture pack** in the VR/graphics menu; missing images use the original textures. The twelve reviewed R32 cockpit entries are included by the updated GT4 preparation and packaging scripts. These features require the updated player, not the published 0.9.2 executable. See [texture packs and cockpit installation](docs/TEXTURE-PACKS.md).
 
 ## GT4 cars
 

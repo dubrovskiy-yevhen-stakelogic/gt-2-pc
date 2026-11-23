@@ -33,7 +33,7 @@ public:
     void Upload();
     void SetCarAssets(gt2view::SceneAssets* assets) { modelView_.reset(); carAssets_ = assets; }
 
-    void Clear() { prims_.clear(), overlay_.clear(), screen_.clear(), model_.reset(); }
+    void Clear() { emoteWheelFrame_=false; prims_.clear(), overlay_.clear(), screen_.clear(), model_.reset(); }
     // A full-screen 352 x 480 frame of the race overlay's menus (gt2view/race_menus.h, GPU order) drawn instead of the
     // scene, with the VRAM of its pictures (licence: arcade/license_tim.tim, event / settings: arcade/setting.tim).
     enum class Screen { kLicence, kSettings };
@@ -57,6 +57,10 @@ public:
     int TextRight(int right, int y, const std::string& text, uint32_t colour = 0x808080);
     int TextCentre(int centre, int y, const std::string& text, uint32_t colour = 0x808080);
     int Width(const std::string& text) const;
+    void EmoteIcon(int x,int y,int scale,uint8_t emote);
+    void EmoteWheel(int selected);
+    void CoursePreview(const std::string& course,int x,int y,int w,int h);
+    void WorldLabel(const std::string& text, size_t slot, const float* matrix, std::vector<gt2view::DrawItem>& items,uint8_t emote=0);
     static constexpr int kLine = 20; // line pitch of the panels
 
     // A titled panel with lines of text and optional selectable items (the selected one highlighted); the box is
@@ -89,12 +93,16 @@ private:
     gt2view::PanelView view_;
     bool arcade_ = false; // the US Arcade disc: race overlay screens only, no GT-mode menu font (panel.cpp)
     gt2::MenuFonts fonts_;
+    gt2::HudFont arcadeFont_;
     gt2::raceui::RaceOverlayAssets overlayAssets_;
     gt2::RaceMenuAssets licenceAssets_, settingsAssets_;
     std::vector<uint16_t> vram_; // 1024 x 512 console words: the overlay's areas + the menus' font page
     std::vector<gt2::MenuPrim> screen_;
     Screen screenKind_ = Screen::kLicence;
     int uploaded_ = -1;          // which image the panel rows hold: 0 = vram_, 1 / 2 = the licence / settings menus' VRAM
+    bool emoteWheelFrame_=false;
+    std::string previewCourse_;
+    bool previewValid_=false;
     std::vector<gt2::MenuPrim> prims_;
     std::vector<gt2::raceui::Gp0Prim> overlay_;
     // FullScreenModel: the frame through a MenuView on the panel rows (the far / 3D / front split), the model by MenuCarView.
