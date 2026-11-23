@@ -248,8 +248,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "b5034b6e7a07c80ee44b19ea742c8a295a55067d58e1c8d4a213848abb9fb810",
-      "textSha256": "fdc7939dc32a624288f592af0fc56fdd72fe8a05bfb45fd2567f9d80025fd383"
+      "sha256": "7cf5a552323f61cdbe761168a3c4dcf17587458b66a04bc11cbcc5305cdf8f15",
+      "textSha256": "0d04b5f4d93ecc1c0a14e69cafbcabb04e2d2a3cdd1b7b04aa6caff8cfeec812"
     },
     {
       "path": "cmake/android.cmake",
@@ -2431,13 +2431,13 @@
     },
     {
       "path": "src/gt2view/decoded_texture_cache.h",
-      "sha256": "59080cfa80781fe2e799da41bbf239be506f12d402f29751f50bb5d98ed02435",
-      "textSha256": "5d916b2e544de51991f95d5955bf5f07fd08e7a8100cd6f15448648b188af683"
+      "sha256": "07c35bc523284981572c39f0c0d6b3bf5eebaa5bbd99c659050d027424ea8161",
+      "textSha256": "c24096aecdb60dc83200961a494ef04fdaf87f1348e8067e47374019a1644eb6"
     },
     {
       "path": "src/gt2view/decoded_textures.cpp",
-      "sha256": "d6b1310b4a1f4ec04ccca9eb64678eee3d10123dac4c2e0271cc4bdf90a6817a",
-      "textSha256": "9c09ed9c0f29e01d65be81e9d0ea93c0643858713ba65c1a14a9073f39c4f7df"
+      "sha256": "2fcc4809e09b420caf6f5c86c4e994bdc50c41f9f497520e85c107e1924677c1",
+      "textSha256": "2fcc4809e09b420caf6f5c86c4e994bdc50c41f9f497520e85c107e1924677c1"
     },
     {
       "path": "src/gt2view/draw_culling.h",
@@ -2711,8 +2711,8 @@
     },
     {
       "path": "src/gt2view/scene_assets.h",
-      "sha256": "ff4e0c3b7daf9bd8a6c2965d1eedf7d2345444efc99fd64435e5031c3af1eb30",
-      "textSha256": "ff4e0c3b7daf9bd8a6c2965d1eedf7d2345444efc99fd64435e5031c3af1eb30"
+      "sha256": "458dacdb3607d27026124528ca79ca534b07c7019358470a19bcf93bc8ef9948",
+      "textSha256": "458dacdb3607d27026124528ca79ca534b07c7019358470a19bcf93bc8ef9948"
     },
     {
       "path": "src/gt2view/scene_renderer.h",
@@ -2721,8 +2721,8 @@
     },
     {
       "path": "src/gt2view/scene_types.h",
-      "sha256": "806979fa530ff8b15e6cab3b9f3cae62ec05f84497cfdca744cf2da72ed6b555",
-      "textSha256": "9cfff9fb0dde0c75407cd4b7670496101f628897c23b8e90777fcb39ff5e102c"
+      "sha256": "f4807507b755c89bdd86e43ae2bd57fa3844a7df26b7dae8a4f3ce518edc60aa",
+      "textSha256": "f4807507b755c89bdd86e43ae2bd57fa3844a7df26b7dae8a4f3ce518edc60aa"
     },
     {
       "path": "src/gt2view/scene_vertex_layout.h",
@@ -2781,8 +2781,8 @@
     },
     {
       "path": "src/gt2view/shaders/scene_environment.vert",
-      "sha256": "503b6df809efab41f9e2e39fc9f989968529bde5b3540f86751e59cc65c61fc0",
-      "textSha256": "ee325803ed9c01b0628a616fc79ea3792291e62bbb7f36bff839531d5774ad39"
+      "sha256": "5efd3311108d503105abfdeac12157584c857404a2965a28e831bddb86218d2a",
+      "textSha256": "fadb0839484ac7f587462be86d0d9a7f1b17724ccb0a6f23c46ca42693c60d9c"
     },
     {
       "path": "src/gt2view/shaders/scene_model_common.glsl",
@@ -2806,8 +2806,8 @@
     },
     {
       "path": "src/gt2view/shaders/scene_stereo.vert",
-      "sha256": "9244d2dcb60ad19ea1bbf261a8f34e0fbadaa6315a53a77ffbae3bb70f73721c",
-      "textSha256": "ae8b597449d4180537290830945db558844d1c06b310f5852bc051c7130dd19f"
+      "sha256": "bd4e445fef3e72399d4470dd2ad8247930937ec069459722c82ed0e5cb847396",
+      "textSha256": "70b58e671829c63b6af83aa56133c87b87ecd652bc3188d8c4466d81928dcaf5"
     },
     {
       "path": "src/gt2view/shaders/scene_ui.frag",
@@ -2821,8 +2821,8 @@
     },
     {
       "path": "src/gt2view/shaders/scene.vert",
-      "sha256": "64f9c5b4d0e80a1d0acb9c6ebe79b53fed9734d62e30566528cc0bffa253c85c",
-      "textSha256": "613e9b76eebd580013643f9a1a33b4aa1e0ffc257cae1587d15f0996be1fccf4"
+      "sha256": "8ee2861da91393907295b2f61695caa9c81d219b8d460da9cf7802211655136e",
+      "textSha256": "1261b6cbee1cc3940251713f5a1da81f160434741d49f70a7f772a3e2a3c994f"
     },
     {
       "path": "src/gt2view/shaders/texture_mips.glsl",
@@ -2891,8 +2891,8 @@
     },
     {
       "path": "src/gt2view/vk_scene_renderer.cpp",
-      "sha256": "520bca989d53e00109dcf2cb97aa77622b083673377c9976b668bfeb49280b36",
-      "textSha256": "520bca989d53e00109dcf2cb97aa77622b083673377c9976b668bfeb49280b36"
+      "sha256": "38ae2d8aa69d9d5dcde4f962fdeb728e24e4d6e17f04d6ef9876255959c6ab29",
+      "textSha256": "a877c1a54cea4de90f33c115122c5c05817e8cabe517399f13c2af409bc999a4"
     },
     {
       "path": "src/gt2view/vk_scene_renderer.h",
@@ -2911,8 +2911,8 @@
     },
     {
       "path": "src/gt2view/webgl_scene_renderer.cpp",
-      "sha256": "89a5023e441fae812c8491846a70324a9ef5d2139a16fc7b8674e92bcb14dd08",
-      "textSha256": "f7443c06c6b16d7cc48ed0f55455ea8595c2a180a8ab18501af0bab308b1186b"
+      "sha256": "acd37c05e4dd1c84ae510d5c4aa444d25608768e19ad83f45a03cff0bc00037f",
+      "textSha256": "acd37c05e4dd1c84ae510d5c4aa444d25608768e19ad83f45a03cff0bc00037f"
     },
     {
       "path": "src/gt2view/webgl_scene_renderer.h",
@@ -3936,8 +3936,8 @@
     },
     {
       "path": "tests/vr_checks.cpp",
-      "sha256": "e54a38e5c7524d7c2ed68169207f9a7dd4c5cccdebece679ecee8cad2a27a523",
-      "textSha256": "a5e8358d01e0e8a7768f931f0b5b5efbc0a3c0a2cf99bdeb02ba8743fae8880d"
+      "sha256": "389517e520bca81c3face1d858bba7c34a01eb6713e8d9c9d0049a791f6b4908",
+      "textSha256": "389517e520bca81c3face1d858bba7c34a01eb6713e8d9c9d0049a791f6b4908"
     },
     {
       "path": "tests/vr_input_merge_checks.h",
@@ -4865,8 +4865,8 @@
     },
     {
       "path": "tools/gt2game/race_view.cpp",
-      "sha256": "fe40840c5ce26bf0bd663f915a6ac5b7e7c8b8760d4701586398d576a90a7a88",
-      "textSha256": "bfed68c03b3acfd3ada0319d9362fd2bf220e724ddddc664070d0ffa61a9fc01"
+      "sha256": "dd57c169c35bea39fed05f0eb385a49c49e116e9f3def79ca9130b0c6fd45b70",
+      "textSha256": "f19402db654d11add8cee9cc6ddea6c65fa3f3696935794ba2c7a97a6b3ff28d"
     },
     {
       "path": "tools/gt2game/race_view.h",

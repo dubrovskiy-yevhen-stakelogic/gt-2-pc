@@ -79,17 +79,14 @@ void VkSceneRenderer::BeginModelTextures() {
 }
 void VkSceneRenderer::PromoteModelTextures(uint32_t first,const std::vector<SceneVertex>& vertices) {
     auto promoted=vertices;
-    size_t textured=0,hardware=0;
     for (auto& vertex:promoted) {
         if (!(vertex.flags & kExternalTexture)) continue;
         modelSourceSizes_[vertex.page]=vertex.clut;
         if(vertex.flags & kModelNative)nativeTextureSources_.insert(vertex.page);
-        ++textured;
         const auto it=modelSourcePixels_.find(vertex.page);
         uint32_t origin=0;
         if (it!=modelSourcePixels_.end() && modelAtlas_.Insert(vertex.page,vertex.clut&65535u,vertex.clut>>16,it->second,origin,nativeTextureSources_.contains(vertex.page))) {
             vertex.page=origin;vertex.flags|=kModelAtlasTexture;
-            ++hardware;
         }
     }
     if (modelAtlas_.dirty) {
@@ -109,7 +106,6 @@ void VkSceneRenderer::PromoteModelTextures(uint32_t first,const std::vector<Scen
         modelAtlas_.dirty=false;modelPending_=true;
     }
     SetVerticesRaw(first,promoted);
-    std::printf("GT4 texture atlas: %zu/%zu textured vertices use hardware sampling\n",hardware,textured);
 }
 void VkSceneRenderer::UploadModelImage() {
     if (modelFullSize_ && modelAtlas_.dirty) {
@@ -160,7 +156,8 @@ void VkSceneRenderer::PrepareFrameTextures(const std::vector<DrawItem>& items,si
                 // shader. Track geometry has none of these dynamic attributes.
                 if(vertex.flags & (kCarPaint|kModelNative|kModelReflection)) {found->second=false;break;}
                 if(!(vertex.flags & kTextured))continue;
-                const uint32_t key=vertex.clut|(((vertex.flags>>8)&3u)<<28);
+                const uint32_t key=DecodedTextureCache::Soften(
+                    vertex.clut|(((vertex.flags>>8)&3u)<<28), (vertex.flags&kCourseSoft)!=0);
                 uint32_t at=DecodedTextureCache::Bucket(vertex.page,key);
                 for(uint32_t probe=0;probe<16;++probe,at=(at+1)&4095u) {
                     const auto& e=decoded_.table[at];if(!e[3])break;
@@ -225,8 +222,8 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                     if (v.flags & (kOverlay | kExternalTexture | kHdUi)) { materials.push_back(~uint64_t(0)); continue; }
                     if (!(v.flags & kTextured)) continue;
                     const uint32_t clutDepth = v.clut | (((v.flags >> 8) & 3u) << 28);
-                    const uint64_t key = uint64_t(v.page) | (uint64_t(clutDepth) << 32) | ((v.flags & kCarPaint) ? uint64_t(1) << 63 : 0);
-                    materials.push_back(key);
+                    materials.push_back(DecodedTextureCache::MaterialKey(
+                        v.page, clutDepth, (v.flags & kCarPaint) != 0, (v.flags & kCourseSoft) != 0));
                 }
                 std::sort(materials.begin(), materials.end());
                 materials.erase(std::unique(materials.begin(), materials.end()), materials.end());
@@ -236,14 +233,15 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
             for (uint64_t key : it->second) {
                 if (key == ~uint64_t(0)) { supported = false; continue; }
                 uint32_t clutDepth = uint32_t(key >> 32) & 0x7fffffffu;
+                const bool soften = (key & (uint64_t(1) << 62)) != 0;
                 if (key >> 63) {
                     clutDepth += item.paint << 16;
                     if ((clutDepth & 65535) == 224 && item.brakeLit) clutDepth += 16;
                 }
                 // Decode from the CPU copy: repeated palette reads from the mapped
                 // GPU upload allocation can stall for seconds on discrete GPUs.
-                if (pass == 0) decoded_.Protect(uint32_t(key), clutDepth, item.softParticle != 0);
-                else decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows, item.softParticle != 0);
+                if (pass == 0) decoded_.Protect(uint32_t(key), clutDepth, item.softParticle != 0, soften);
+                else decoded_.Prepare(uint32_t(key), clutDepth, vramShadow_.data(), kVramRows, item.softParticle != 0, soften);
             }
             cachedDraws_[draw] = supported && decoded_.misses == misses;
         }

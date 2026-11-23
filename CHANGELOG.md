@@ -38,6 +38,8 @@
 
 ### Menus, graphics, audio and controls
 
+- Reduce painted road-line flicker and stationary-camera shimmer, improve decoded-texture cache handling, and avoid repeated texture promotion during the start countdown. ([#95])
+
 - Apply the saved texture filter from the first menu frame. ([#74])
 - Improve MSAA coverage for stereo HUD layers, menu cars and mirrors; keep VR menu-car clipping attached to the HUD plane. ([#75])
 - Cache unchanged 2D menu layers instead of rebuilding them, and refresh them when HD media or rendering settings change. ([#85])
@@ -80,6 +82,7 @@ Thanks to **@lucianodato** for the contributions linked above. Integration PRs
 [#90]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/90
 [#92]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/92
 [#93]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/93
+[#95]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/95
 [#96]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/96
 [#97]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/97
 [#98]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/98

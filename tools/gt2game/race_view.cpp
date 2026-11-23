@@ -592,6 +592,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     };
 
     // The flow's state.
+    camera::RaceCamera frozenCam{};
+    bool frozen = false;
     Phase phase = flow ? Phase::kPreRace : Phase::kRacing;
     int hudSubFrame = 0;
     int menuSelected = 0; // the pre-race menu's selection (startItem below)
@@ -1607,7 +1609,18 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         // Camera: the original's race camera (game/camera), as updated after the last step; --old-camera: gt2game's
         // former chase / bonnet / high camera from the physics pose (debugging only).
         const sim::CarPose pose = race.Pose(localCar);
-        const camera::RaceCamera& cam = raceCamera.Camera();
+        const camera::RaceCamera& camLive = raceCamera.Camera();
+        // A stopped car still has a display-rate chase camera settling by subpixels, which makes one-texel painted
+        // lines crawl. Hold the camera exactly while the car is stationary; head tracking and replay cameras are
+        // unaffected.
+        const bool stationary = !stereoActive && !replaying && race.HoldFrames() == 0 && race.CarAt(localCar).body.forwardSpeed == 0;
+        if (stationary) {
+            if (!frozen || CameraCut(frozenCam, camLive)) { frozenCam = camLive; frozen = true; }
+        } else {
+            frozen = false;
+        }
+        const camera::RaceCamera& cam = frozen ? frozenCam : camLive;
+
         // Game mode 6: what 0x800140A4 reads for the ghost (car 1) in this frame, `c` = the pass's camera (race_shell.h CarDrawRule).
         auto ghostDrawInputs = [&](const camera::RaceCamera& c, bool mirror) {
             sim::CarDrawInputs in;
@@ -1630,7 +1643,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             for (size_t w = 0; w < 4; w++) in.wheelGround[w] = ghostCar.body.wheels[w].surfaceAttribute; // car + 0x4A1 + w * 0x68
             return in;
         };
-        const bool cameraInterp = interp && !CameraCut(previous.camera, cam); // the camera's output between the two steps
+        const bool cameraInterp = !frozen && interp && !CameraCut(previous.camera, cam); // the camera's output between the two steps
         Vec3 eye{}, cf{}, cs{}, cu{}; // eye, forward, right, up (world, metres)
         float vp[16], model[16];
         double projectionDistance = kProjectionDistance; // the view's H on the 320 x 240 frame (scenery LOD, smoke size)

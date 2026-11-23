@@ -863,7 +863,9 @@ void VkSceneRenderer::FlushFrameUploads() {
     deferUploads_ = false;
 }
 void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>& vertices) {
-    if (first>=kModelSetVertexBase && uint64_t(first)+vertices.size()<=kPaintProbeVertexBase && !vertices.empty()) {
+    // Promote only complete uploads within the native model-set slots.
+    // Paint probes, scenery and menu composites use separate vertex ranges.
+    if (first >= kModelSetVertexBase && uint64_t(first) + vertices.size() <= kPaintProbeVertexBase && !vertices.empty()) {
         PromoteModelTextures(first,vertices); return;
     }
     SetVerticesRaw(first,vertices);

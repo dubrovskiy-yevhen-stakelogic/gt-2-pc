@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <unordered_map>
@@ -25,14 +26,25 @@ public:
         hash *= 0x7feb352du;
         return (hash ^ (hash >> 15)) & (kTableSize - 1);
     }
+    // One decoded layer request: page, palette/depth, and the paint/soften variants. Renderers dedupe draws by
+    // this key, so the variant bits must stay clear of the clut and depth fields (bits 0-29).
+    static uint64_t MaterialKey(uint32_t page, uint32_t clutDepth, bool carPaint, bool soften) {
+        return uint64_t(page) | (uint64_t(clutDepth) << 32) |
+            (carPaint ? uint64_t(1) << 63 : 0) | (soften ? uint64_t(1) << 62 : 0);
+    }
+    // The palette key a renderer looks up (environment capture) and decodes with. Bit 30 keeps the softened
+    // variant of one page separate; clut Y stops at bit 24 and the depth field at bit 29, so it is free.
+    static uint32_t Soften(uint32_t clutDepth, bool softenLines) {
+        return softenLines ? clutDepth | kSoftenKey : clutDepth;
+    }
     void Begin() {
         uploads.clear(); hits = misses = 0; protected_.clear(); priority_.clear();
         for (auto& [key, entry] : entries_) { (void)key; entry.prepared = false; }
     }
     // Reserve every material of this submission before decoding any of them.
     // Slots used by earlier menus or courses may then be reused safely.
-    void Protect(uint32_t page, uint32_t clutDepth, bool priority = false) {
-        const auto key = Key(page, clutDepth);
+    void Protect(uint32_t page, uint32_t clutDepth, bool priority = false, bool softenLines = false) {
+        const auto key = Key(page, Soften(clutDepth, softenLines));
         protected_.insert(key);
         if (priority) priority_.insert(key);
     }
@@ -46,8 +58,9 @@ public:
         }
     }
     template<class Word>
-    void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false) {
+    void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false, bool softenLines = false) {
         if (pixels.empty()) pixels.resize(size_t(kLayers) * kTexels);
+        clutDepth = Soften(clutDepth, softenLines);
         const uint64_t key = Key(page, clutDepth);
         protected_.insert(key);
         auto it = entries_.find(key);
@@ -83,7 +96,7 @@ public:
             if (entry.dirty) {
                 uint32_t classes = 0;
                 const uint32_t px = page & 65535, py = page >> 16;
-                const uint32_t cx = clutDepth & 65535, cy = (clutDepth & 0x0fffffffu) >> 16, depth = clutDepth >> 28;
+                const uint32_t cx = clutDepth & 65535, cy = (clutDepth & 0x0fffffffu) >> 16, depth = (clutDepth >> 28) & 3u;
                 const auto word = [&](uint32_t x, uint32_t y) { const uint64_t at = uint64_t(y) * 1024 + x; return at < uint64_t(rows) * 1024 ? vram[at] : 0u; };
                 for (uint32_t y = 0; y < 256; ++y) for (uint32_t x = 0; x < 256; ++x) {
                     uint32_t texel;
@@ -102,6 +115,35 @@ public:
                         if ((pixel >> 24) == 128) pixel = 0;
                     } else if (pixel) pixel |= 0xff000000u;
                 }
+                if (softenLines) {
+                    const std::vector<uint32_t> source(pixels.begin() + base, pixels.begin() + base + kTexels);
+                    const auto painted = [](uint32_t p) {
+                        if ((p >> 24) != 0xff) return false;
+                        const int r = p & 255, g = (p >> 8) & 255, b = (p >> 16) & 255;
+                        const int lo = std::min({r, g, b}), hi = std::max({r, g, b});
+                        return hi - lo > 24 || lo > 0x80;
+                    };
+                    for (uint32_t y = 0; y < 256; ++y) for (uint32_t x = 0; x < 256; ++x) {
+                        const size_t at = y * 256 + x;
+                        const uint32_t center = source[at];
+                        if ((center >> 24) != 0xff) continue;
+                        bool nearPaint = painted(center);
+                        for (int dy = -1; dy <= 1 && !nearPaint; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                            const int nx = int(x) + dx, ny = int(y) + dy;
+                            if (nx >= 0 && nx < 256 && ny >= 0 && ny < 256 && painted(source[size_t(ny) * 256 + nx])) { nearPaint = true; break; }
+                        }
+                        if (!nearPaint) continue;
+                        uint32_t r = 0, g = 0, b = 0, count = 0;
+                        for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                            const int nx = int(x) + dx, ny = int(y) + dy;
+                            if (nx < 0 || nx >= 256 || ny < 0 || ny >= 256) continue;
+                            const uint32_t p = source[size_t(ny) * 256 + nx];
+                            if ((p >> 24) != 0xff) continue;
+                            r += p & 255; g += (p >> 8) & 255; b += (p >> 16) & 255; ++count;
+                        }
+                        if (count) pixels[base + at] = (r / count) | ((g / count) << 8) | ((b / count) << 16) | 0xff000000u;
+                    }
+                }
                 target = {page, clutDepth, (entry.slot + 1) | (classes == 2 ? 65536u : 0u) | (classes == 3 ? 131072u : 0u), 1};
                 uploads.push_back(entry.slot);
                 if (classes == 3) uploads.push_back(entry.slot + 1);
@@ -113,6 +155,7 @@ public:
         ++misses;
     }
 private:
+    static constexpr uint32_t kSoftenKey = 1u << 30;
     static uint32_t Expand(uint32_t v) { return (v << 3) | (v >> 2); }
     static uint64_t Key(uint32_t page, uint32_t clutDepth) { return (uint64_t(page) << 32) | clutDepth; }
     std::unordered_map<uint64_t, Entry> entries_;
