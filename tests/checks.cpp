@@ -13,6 +13,7 @@
 #include "game/menu/menu_runtime.h"
 #include "game/shell/title_attract.h"
 #include "game/sim/ground.h"
+#include "game/sim/race_shell.h"
 #include "game/sim/disc_data.h"
 #include "game/arcade/arcade_setup.h"
 #include "game/pc_features.h"
@@ -455,6 +456,27 @@ int main(int argc, char** argv) {
             noCar[0x5A] = 0;
             Check(rejected(noCar), "dirt ghost: no car rejected");
             Check(rejected(std::vector<uint8_t>(bytes.begin(), bytes.begin() + 0x200)), "dirt ghost: short file rejected");
+        }
+        { // a dirt event's ghost (mode 11, pad slot 1): 0x800140A4's look - see-through once the start hold is over, a
+          // normal car during it (the recording's own start), per the career's ghost option + 0xB5
+            gt2::sim::CarDrawInputs in;
+            in.padSlot = 1;
+            in.gameMode = 11;
+            in.ghostOption = 1; // Type1
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: see-through after the start");
+            in.hold = 180;
+            Check(gt2::sim::CarDrawRule(in).group != gt2::sim::kCarDrawGhostLook, "rally ghost: normal car during the start hold");
+            in.hold = 0;
+            in.ghostOption = 2; // Type2: the ghost look only within 3 m
+            in.dx = 0x40000;
+            Check(gt2::sim::CarDrawRule(in).group != gt2::sim::kCarDrawGhostLook, "rally ghost: Type2 normal when far");
+            in.dx = 0;
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: Type2 see-through up close");
+            in.dx = 0x40000;
+            in.ghostOption = 0; // "No Ghost": not drawn in mode 6, the ghost look in another mode
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: No Ghost in mode 11");
+            in.ghostToggle = 0; // Select
+            Check(!gt2::sim::CarDrawRule(in).drawn, "rally ghost: Select hides it");
         }
         for (uint8_t speed : std::array<uint8_t, 3>{0, 80, 100}) {
             const auto shell = gt2::sim::EventRaceShell(speed);

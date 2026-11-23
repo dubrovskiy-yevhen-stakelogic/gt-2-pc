@@ -245,7 +245,7 @@ void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::
     out.constants.catchUp = sim::CatchUpFromSettings(p.settings, true);
     for (const career::GridCar& car : p.grid) AddCarRecord(vol, data.tables, car.carId, car.config, PaintIndexOf(data, car.carId, car.paint), out);
     if (p.dirt && p.grid.size() == 2) { // car 1: the recorded opponent (entry kind 2, no contact), starting from its grid slot
-        out.gridSlots = {p.ghostGridSlot, p.ghostGridSlot}; // both start from the recorded line (a fair ghost comparison)
+        out.gridSlots = {0, p.ghostGridSlot}; // the player's slot and the recorded opponent's: they must not share a grid box
         out.entryKinds = {sim::kEntryPlayer1, sim::kEntryGhost};
         out.transmissions = {0, p.ghostTransmission};
         out.ghostStream = p.ghostStream;
@@ -1481,6 +1481,7 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
         return true;
     }
     std::unique_ptr<EventPlan> plan = PrepareEvent(disc, vol, data, menu, s, name, ctx.seed);
+    ctx.view.ghostOption = s.options[0xB4]; // career + 0xB5 (0x801C9995): the ghost look of a dirt event's opponent
     career::GarageCar& car = s.garage.cars[s.garage.currentCar];
     std::array<uint8_t, 0x10> eventTail{};
     {

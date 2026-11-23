@@ -32,7 +32,7 @@
 
 - Make a positive Draw Distance a real cap: road chunks, scenery, billboards and glows beyond it are no longer drawn, so a shorter setting costs fewer polygons instead of adding the in-range chunks on top of the original render list. The camera's own chunk still draws.
 
-- Race GT-mode rally events against their opponent instead of alone: each event's recorded ghost lap from the disc's `dirt/` files drives the opponent car from its recorded grid slot, and the event is ranked against it. Rally races run in the original's game mode 11 with the RALLY post-race menu, and the ghost reproduces its recorded lap time exactly.
+- Race GT-mode rally events against their opponent instead of alone: each event's recorded ghost lap from the disc's `dirt/` files drives the opponent car from its recorded grid slot, and the event is ranked against it. Rally races run in the original's game mode 11 with the RALLY post-race menu, the opponent uses the original's see-through ghost look once the race starts, and it reproduces its recorded lap time exactly.
 
 ### GT2+ gameplay options
 
