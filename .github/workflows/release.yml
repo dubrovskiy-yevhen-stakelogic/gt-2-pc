@@ -104,6 +104,18 @@ jobs:
           cd "$RUNNER_TEMP/gt2-source"
           bash INSTALL-MACOS.command "${args[@]}"
 
+      - name: Diagnose failed macOS renderer tests
+        if: failure()
+        run: |
+          binary="$RUNNER_TEMP/gt2-source/build_macos/gt2generatedtexturechecks"
+          if [ -x "$binary" ]; then
+            source scripts/macos-env.sh
+            python3 - "$binary" <<'PY'
+          import subprocess, sys
+          subprocess.run(['lldb', '--batch', '-o', 'run', '-o', 'thread backtrace all', '--', sys.argv[1]], timeout=180)
+          PY
+          fi
+
       - name: Collect assets
         env:
           ARCH: ${{ matrix.arch }}
