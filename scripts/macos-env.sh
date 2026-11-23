@@ -3,6 +3,8 @@ if [ "$(uname -s)" != Darwin ]; then
     echo 'This launcher requires macOS.' >&2
     return 1
 fi
+# Use the same resource bindings for offscreen checks and the player.
+export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS="${MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS:-0}"
 # Recover Homebrew dependencies in a fresh Finder/Terminal session.
 # Explicit SDK/prefix choices still take precedence for development builds.
 if [ -z "${GT2_VULKAN_PREFIX:-}" ] && [ -z "${VULKAN_SDK:-}" ]; then

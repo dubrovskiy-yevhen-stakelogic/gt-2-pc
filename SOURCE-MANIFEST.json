@@ -926,8 +926,8 @@
     },
     {
       "path": "scripts/macos-env.sh",
-      "sha256": "6c921363c830aae6ff423e20f748444f3bc3476c53ad9f2b7ea74b7be161a427",
-      "textSha256": "6c921363c830aae6ff423e20f748444f3bc3476c53ad9f2b7ea74b7be161a427"
+      "sha256": "d56a904209c29e4e3252ebf51354dff45b1a4a28686650dbaf8389d1ea5bd3d7",
+      "textSha256": "4fe49eb5f0114b4d8033c8ca9c2c18fc3119c8916311a127f8f02b1e178dacf7"
     },
     {
       "path": "scripts/package-cockpits.py",
