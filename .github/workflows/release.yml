@@ -707,6 +707,6 @@ jobs:
           if (!$notes.Contains($url)) {
             $intro = "## Quest and PCVR`n`n[Download $($zip.Name)]($url)`n`nExtract on Windows. Quest: run INSTALL-QUEST.bat (or INSTALL.bat). PCVR: run INSTALL-PCVR.bat. The APK and disc-import tools are included; no source kit or separate APK download is needed. Supply your own game disc image.`n`n"
             [IO.File]::WriteAllText("$env:RUNNER_TEMP/vr-release-notes.md", $intro + $notes)
-            gh release edit $env:TAG --notes-file "$env:RUNNER_TEMP/vr-release-notes.md"
+            gh release edit $env:TAG --tag $env:TAG --notes-file "$env:RUNNER_TEMP/vr-release-notes.md"
             if ($LASTEXITCODE -ne 0) { throw 'Cannot update VR download instructions' }
           }
