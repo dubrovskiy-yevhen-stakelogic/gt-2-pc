@@ -47,6 +47,8 @@ jobs:
           - runner: macos-15-intel
             arch: x86_64
     env:
+      # Match the player's MoltenVK resource binding mode in offscreen tests.
+      MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS: '0'
       # Optional Developer ID signing/notarization. Without these secrets the
       # package is ad-hoc signed, as the macOS installer does for local builds.
       MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
