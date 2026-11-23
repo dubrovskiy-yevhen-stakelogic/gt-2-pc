@@ -1,10 +1,16 @@
-param([string]$Repo = (Split-Path $PSScriptRoot), [switch]$FileSystem)
+param([string]$Repo = (Split-Path $PSScriptRoot), [switch]$FileSystem, [switch]$Tracked)
 $ErrorActionPreference = 'Stop'
 $Repo = (Get-Item -LiteralPath $Repo).FullName
 Push-Location $Repo
 try {
     $files = @(& (Join-Path $PSScriptRoot 'source-files.ps1') -Repo $repo -FileSystem:$FileSystem)
     if (!$files.Count) { throw 'No source files found for auditing.' }
+    if ($Tracked) {
+        $trackedFiles = @(& git ls-files)
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot read Git source inventory.' }
+        $missing = @($files | Where-Object { $_ -notin $trackedFiles })
+        if ($missing.Count) { throw ('Source files missing from Git: ' + ($missing -join ', ')) }
+    }
     # Multiplayer is part of the source kit. Reject an incomplete export instead
     # of silently publishing a client without its protocol, dependencies or server.
     $networkRequired = @('cmake/network.cmake', 'src/platform/net/lobby.h',

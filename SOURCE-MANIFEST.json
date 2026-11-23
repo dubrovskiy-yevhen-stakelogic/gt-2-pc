@@ -10,8 +10,8 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "b4778b92c6ca26f6f1760a65b203d20cd6867ddd89aa8457165e8f31c038b1a1",
-      "textSha256": "c96982f7a35338643c5f208279131c4892adf5127149faa9d81b0a7cb84c85e7"
+      "sha256": "5f095533e8abf9eba19e44a829f21ecb475d36fd3d01ad7bbe00e96b1c0a2fbf",
+      "textSha256": "7798d0a84536e51818c56a359dddca5871c9e2262535019577baf4122b3d52c7"
     },
     {
       "path": "android/app/build.gradle",
@@ -248,7 +248,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "86bc588eff25c28582dd5970351c6a49a3c9577d46410a41427d4433e924333e",
+      "sha256": "b75f6da3386df148aaab0768a02ccbca67da5d634229f9fd6a740668c3872f3e",
       "textSha256": "b75f6da3386df148aaab0768a02ccbca67da5d634229f9fd6a740668c3872f3e"
     },
     {
@@ -621,8 +621,8 @@
     },
     {
       "path": "scripts/audit-source.ps1",
-      "sha256": "6709805b56ea604bc80b81861fe06cf51fba5aea0cac5c763b3c349c8dfe6755",
-      "textSha256": "dc17361f3172c0334fa31c39e98c5239b5575c175b07f32f22b5c11a0e892463"
+      "sha256": "e3c4cba13b2afbfb244127517d007142b3a2e0ee11dffaeb2d373546e2993462",
+      "textSha256": "be3cf207a898830baf6aace248550197ee889f48c56ec8d52764220595e1a000"
     },
     {
       "path": "scripts/audit-wheel-inputmaps.py",
@@ -1486,7 +1486,7 @@
     },
     {
       "path": "src/game/pc_features.h",
-      "sha256": "909e89ff600b598d774f180074c164ad963f08e9f121bd398abd349a6541bbb5",
+      "sha256": "8ce37bc72ba5dfc58109738c4e9b0e93079beb266fd84b7c0ebbfedc59fba53a",
       "textSha256": "8ce37bc72ba5dfc58109738c4e9b0e93079beb266fd84b7c0ebbfedc59fba53a"
     },
     {
@@ -1566,7 +1566,7 @@
     },
     {
       "path": "src/game/shell/title_options.cpp",
-      "sha256": "83f7fce38443ca21a85ac53b39c7ba47d2bdf1c62e56c1d3d028b23300e54ef9",
+      "sha256": "665cdc7432ced6aa306cdc978fece19159be309e2630d9609e06d2ad3893f00e",
       "textSha256": "665cdc7432ced6aa306cdc978fece19159be309e2630d9609e06d2ad3893f00e"
     },
     {
@@ -3446,7 +3446,7 @@
     },
     {
       "path": "tests/checks.cpp",
-      "sha256": "5fe396851c9348b5b2d97195d07b12cf7bdd167a77ed25159152c401ccf661a5",
+      "sha256": "ad2d300dbe4e67b8a62a72e7347cd8a45f1b3a503e8108154e10f21ffbb6fb0b",
       "textSha256": "ad2d300dbe4e67b8a62a72e7347cd8a45f1b3a503e8108154e10f21ffbb6fb0b"
     },
     {
