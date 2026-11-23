@@ -145,6 +145,14 @@ void Fixtures() {
         bool anyCulled = false;
         for (const auto& v : gt2::BuildCarMesh(panel, plain)) anyCulled = anyCulled || v.cullBack;
         Require(!anyCulled, "coincident faces with the same winding keep both layers");
+        front.primCode = back.primCode = 0x20;
+        front.vertex = {1,2,3,0};
+        back.vertex = {3,2,1,0};
+        panel.lods[0].polygons = {front, back};
+        const auto triangles = gt2::BuildCarMesh(panel, plain);
+        bool trianglesCulled = triangles.size() == 6;
+        for (const auto& v : triangles) trianglesCulled = trianglesCulled && v.cullBack;
+        Require(trianglesCulled, "padded triangle keys identify opposite panel faces");
     }
     // 30-degree bank; a shadow stored 0.4 m below the body must land 4 cm
     // above the ground, independent of the suspension's body-space height.

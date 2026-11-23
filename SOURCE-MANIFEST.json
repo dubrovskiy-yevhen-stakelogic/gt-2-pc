@@ -671,8 +671,8 @@
     },
     {
       "path": "scripts/build-macos.sh",
-      "sha256": "3be97dafd77c1e4a030503a231b75320f86dbdbb442b9604633dabaf5f171269",
-      "textSha256": "3be97dafd77c1e4a030503a231b75320f86dbdbb442b9604633dabaf5f171269"
+      "sha256": "937eddc3ccff1ff1f5997876985bab9940a4c665d1287a2adb47b91b576c3405",
+      "textSha256": "ddd8cf96726f029934ba2e72a0cc4205869b02001de5781d0331a5490bde7c48"
     },
     {
       "path": "scripts/build-quest-gt4-candidate.ps1",
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/package-source.ps1",
-      "sha256": "2d3f08a5f5e72487a874e3a185b1db27ad4b7c991a11905b20eb0028254fa0fc",
-      "textSha256": "36912dcaa75be28fdd6ce4792cba7348d47a785a767adc5f6bff2704228a8313"
+      "sha256": "7e31fe7b75f60ac8dff184b8acbd96b75ff015453022acf46e2b71fa8fc1c524",
+      "textSha256": "ad2d97424ff2b6ef22ad224c0ac5938a2cf74f78190ab3942f217dad5f22736e"
     },
     {
       "path": "scripts/package-vr.py",
@@ -1776,8 +1776,8 @@
     },
     {
       "path": "src/gt2export/car_mesh.cpp",
-      "sha256": "2779b85eee736dacd1bc43e494101ab122b84e871ac4b07140c4b024872033cc",
-      "textSha256": "2779b85eee736dacd1bc43e494101ab122b84e871ac4b07140c4b024872033cc"
+      "sha256": "e8bf910593c9240ac241ee8862db8c247e0f2b35f759f14258d3b2a4c63e52ba",
+      "textSha256": "0e642bf8b7144ef0f826e842c617fca3f4304155da9c469ee7b5cbd77ada86fe"
     },
     {
       "path": "src/gt2export/car_mesh.h",
@@ -3271,8 +3271,8 @@
     },
     {
       "path": "tests/asset_checks.cpp",
-      "sha256": "2b9d8d121882eae6a64efc14e07cd0150ac7e0b50985d775d36e114ed635814d",
-      "textSha256": "2b9d8d121882eae6a64efc14e07cd0150ac7e0b50985d775d36e114ed635814d"
+      "sha256": "781e6f906ec565a725f01826be1bc1fd9057b6f001bb860c9905debe6701a11c",
+      "textSha256": "2bc1b41f90a1e1dbb3ff4ee1a343adfcf4823b2c74a166251e76889b38bda1a1"
     },
     {
       "path": "tests/audio_clock_checks.cpp",

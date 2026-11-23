@@ -398,7 +398,10 @@ std::vector<CarMeshVertex> BuildCarMesh(const CarModel& model, const CarMeshOpti
             const CarPolygon& p = lod.polygons[i];
             const size_t n = p.IsQuad() ? 4 : 3;
             std::array<uint8_t, 4> v{p.vertex[0], p.vertex[1], p.vertex[2], p.IsQuad() ? p.vertex[3] : uint8_t(0)};
-            std::sort(v.begin(), v.begin() + n);
+            // Sort the padded key too; the vertex count keeps triangles distinct from quads.
+            for (size_t a = 1; a < v.size(); ++a)
+                for (size_t b = a; b > 0 && v[b] < v[b - 1]; --b)
+                    std::swap(v[b], v[b - 1]);
             uint64_t key = n;
             for (uint8_t index : v) key = (key << 8) | index;
             coincident[key].push_back(i);

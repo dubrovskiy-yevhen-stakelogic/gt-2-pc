@@ -5,7 +5,7 @@ $project = Get-Content -LiteralPath (Join-Path $repo 'CMakeLists.txt') -Raw
 if ($project -notmatch 'project\(gt2pc VERSION ([0-9]+\.[0-9]+\.[0-9]+) ') { throw 'Cannot determine source version.' }
 $sourceVersion = $Matches[1]
 if (!$Output) { $Output = Join-Path $repo "dist/GT2-source-$sourceVersion" }
-& (Join-Path $PSScriptRoot 'audit-source.ps1') -Repo $repo -FileSystem:$FileSystem
+& (Join-Path $PSScriptRoot 'audit-source.ps1') -Repo $repo -FileSystem:$FileSystem -Tracked:(!$FileSystem)
 $Output = [IO.Path]::GetFullPath($Output)
 if (Test-Path -LiteralPath $Output) { throw 'The source output folder already exists. Choose a new folder.' }
 Push-Location $repo
