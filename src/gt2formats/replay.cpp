@@ -328,6 +328,31 @@ ReplayFile ParseReplayFile(std::span<const uint8_t> bytes) {
     return r;
 }
 
+ReplayFile ParseDirtGhostFile(std::span<const uint8_t> bytes) {
+    if (bytes.size() < kReplayRaceBlockSize + kReplayCarStride) throw std::runtime_error("dirt ghost: too short");
+    ReplayFile r;
+    std::memcpy(r.raceBlock.data(), bytes.data(), kReplayRaceBlockSize);
+    if (r.CarCount() == 0 || r.CarCount() > kReplayCars) throw std::runtime_error("dirt ghost: car count " + std::to_string(r.CarCount()));
+    if (bytes.size() < kReplayRaceBlockSize + size_t(r.CarCount()) * kReplayCarStride) throw std::runtime_error("dirt ghost: car slots outside the file");
+    const size_t streamStart = kDirtGhostStreamOffset;
+    if (bytes.size() < streamStart + ReplayStream::kHeaderSize) throw std::runtime_error("dirt ghost: no stream");
+    uint16_t capacity;
+    std::memcpy(&capacity, bytes.data() + streamStart + 0x12, 2);
+    int32_t frames;
+    std::memcpy(&frames, bytes.data() + streamStart, 4);
+    if (capacity == 0 || frames <= 0) throw std::runtime_error("dirt ghost: the stream has no frames");
+    for (size_t i = 0; i < r.CarCount(); i++) {
+        ReplayEntry e;
+        std::memcpy(e.slot.data(), bytes.data() + kReplayRaceBlockSize + i * kReplayCarStride, kReplayCarStride);
+        std::memcpy(&e.carId, e.slot.data(), 4);
+        r.cars.push_back(e);
+    }
+    // The stream object as the ram image holds it (header + data area, capacity 0x4400 for player 1's stream).
+    const size_t end = std::min(bytes.size(), streamStart + ReplayStream::kHeaderSize + capacity);
+    r.stream.assign(bytes.begin() + std::ptrdiff_t(streamStart), bytes.begin() + std::ptrdiff_t(end));
+    return r;
+}
+
 std::vector<uint8_t> WriteReplayFile(const ReplayFile& replay, std::span<const uint8_t> base) {
     // A replay file of the original's format (replay_card.h) with this replay as entry 0 from sector 0: the header of
     // `base` when it has one ("SC", else a bare "SC" header without title and icons), the fewest blocks (>= 3, the

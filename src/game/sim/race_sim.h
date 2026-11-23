@@ -303,6 +303,11 @@ public:
     // Game mode 6: the pad source tells the frame it made player 1's pad record from (0x80013C90's frame of the logical pad);
     // the race records it into the ghost's lap stream (without a pad source: the idle pad's frame).
     void NotePlayerFrame(const gt2::ReplayFrame& frame);
+    // Game mode 11 (a dirt event): the recorded opponent's lap (RaceData::ghostStream). Car 1's pads come from this
+    // stream, one frame per step from the race start, like a saved replay - the recording includes the original's start
+    // hold, whose pads the physics core keeps the launch state from even while the cars are held.
+    void SetRallyGhost(std::span<const uint8_t> stream);
+    bool HasRallyGhost() const { return rallyGhostPlay_ && rallyGhost_.Frames() > 0; }
 
     // ---- game mode 6 (Time Trial / Rally, race_shell.h GhostSession)
     GhostSession& Ghost() { return *ghost_; }
@@ -381,6 +386,9 @@ private:
     std::array<uint16_t, 16> pedalTable_{};
     Car ghostDisplay_{};                       // car 1 as 0x800133F0 draws it (the blended pose of 0x8003F2F0)
     bool ghostDisplayValid_ = false;
+    // Game mode 11 (a dirt event): car 1's recorded lap.
+    gt2::ReplayStream rallyGhost_;
+    bool rallyGhostPlay_ = false;
 };
 
 } // namespace gt2::sim

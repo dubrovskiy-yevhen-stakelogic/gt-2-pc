@@ -152,6 +152,12 @@ struct ReplayFile {
 // Parses a .gmr: a replay file of the card format (replay_card.h: its first replay) or, without a valid directory, the
 // known sections at the offsets above (throws on a short file / a car count above 6).
 ReplayFile ParseReplayFile(std::span<const uint8_t> bytes);
+// A dirt event's ghost file (GT2.VOL dirt/<region><letter>_<course>): a RAM image of the race overlay from 0x801D585C -
+// the race block (0x0) and its car slots (0xD0 each at 0x5C, count at race block + 0x5A), player 1's stream object at
+// 0x728 (0x801D5F84; the recording of the opponent's lap from the race start) and the results record at 0x62C with the
+// finish time at 0x724. Throws on a short file / a bad car count or stream length.
+ReplayFile ParseDirtGhostFile(std::span<const uint8_t> bytes);
+constexpr size_t kDirtGhostStreamOffset = 0x728;
 // Writes a replay as a replay file of the original's format (replay_card.h) holding it as entry 0 from sector 0 (so the
 // offsets above hold): the save header of `base` when it has one, a new directory, the payload (0x80069948 layout; the
 // parameter / results records zero).

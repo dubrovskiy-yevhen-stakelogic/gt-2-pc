@@ -28,9 +28,11 @@
 #include "gt2formats/car_info.h"
 #include "gt2formats/car_texture.h"
 #include "gt2formats/course_data.h"
+#include "gt2formats/exe_profile.h"
 #include "gt2formats/gtmode_tables.h"
 #include "gt2formats/license_data.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/replay.h"
 #include "gt2formats/replay_card.h"
 #include "gt2vfs/disc_image.h"
 #include "gt2vfs/gtfs.h"
@@ -68,6 +70,10 @@ struct EventPlan {
     int32_t resultIndex = 0;
     int32_t races = 1;
     bool dirt = false;
+    // A dirt event's ghost opponent (game mode 11): the recorded opponent lap of the disc's dirt ghost file; empty = none.
+    std::vector<uint8_t> ghostStream;
+    uint8_t ghostGridSlot = 1;
+    uint8_t ghostTransmission = 0;
     uint32_t seed = 0;
     std::vector<uint8_t> scratch = std::vector<uint8_t>(0x400, 0);
 };
@@ -88,10 +94,52 @@ int32_t CheckEntry(const career::CareerData& data, const career::EventMenuData& 
     return career::EntryCheck(s, g, menu, infos, name, career::EntryCarStateOf(*sheet), message);
 }
 
+// A dirt event's opponent: the disc's recording of its lap (GT2.VOL dirt/<region><letter>_<course>, the letter from the
+// event code's last digit: DO30003 -> ac_). The file also holds the recorded car's slot; the event row supplies the car
+// and its dirt tyres, which is what the event card shows and what the recording was set up with.
+struct RallyGhost {
+    uint32_t carId = 0;
+    uint8_t gridSlot = 1;
+    uint8_t transmission = 0;
+    std::vector<uint8_t> stream;
+};
+
+std::optional<RallyGhost> RallyGhostOf(const GtfsVolume& vol, const career::CareerData& data, const RaceEvent& event, uint32_t opponentCarId) {
+    if (event.course.empty() || event.course == "none" || event.name.empty()) return std::nullopt;
+    const char region = data.exe.profile && (data.exe.profile->build == ExeBuild::kSimEu || data.exe.profile->build == ExeBuild::kArcadeEu) ? 'e' : 'a';
+    auto read = [&](char letter) -> std::optional<RallyGhost> {
+        try {
+            const std::optional<ReplayFile> replay = ReadDirtGhostFile(vol, region, letter, event.course);
+            if (!replay) return std::nullopt;
+            if (replay->GameMode() != 11 || replay->cars.empty()) {
+                std::printf("rally ghost: %c_%s is game mode %u with %zu car(s), not a dirt event\n", letter, event.course.c_str(), replay->GameMode(), replay->cars.size());
+                return std::nullopt;
+            }
+            RallyGhost ghost;
+            ghost.carId = replay->cars[0].carId;
+            ghost.gridSlot = replay->cars[0].gridSlot();
+            ghost.transmission = replay->cars[0].transmission();
+            ghost.stream = replay->stream;
+            std::printf("rally ghost: %c_%s (car %s, %d frames)\n", letter, event.course.c_str(), UnpackCarId(ghost.carId).c_str(), ReplayStream::FromBytes(ghost.stream).Frames());
+            return ghost;
+        } catch (const std::exception& e) {
+            std::printf("rally ghost: %c_%s: %s\n", letter, event.course.c_str(), e.what());
+            return std::nullopt;
+        }
+    };
+    const char last = event.name.back();
+    if (last >= '1' && last <= '3') // the event code's last digit names the ghost file's letter
+        if (auto ghost = read(char('a' + (last - '1')))) return ghost;
+    // A renamed event / a modded row: only a recording of this event's opponent on the course.
+    for (char letter : {'a', 'b', 'c'})
+        if (auto ghost = read(letter); ghost && ghost->carId == opponentCarId) return ghost;
+    return std::nullopt;
+}
+
 // The menus before the race (0x80013628): day + 1, the series (0x80018A84), the prizes (0x80018C8C, of race 1 of a
 // series), then the race block (0x80013108: opponents, course, the car's race tyres 0x80018004).
-std::unique_ptr<EventPlan> PrepareEvent(const DiscImage& disc, const career::CareerData& data, const career::EventMenuData& menu, career::CareerState& s,
-                                        const std::string& name, uint32_t seed) {
+std::unique_ptr<EventPlan> PrepareEvent(const DiscImage& disc, const GtfsVolume& vol, const career::CareerData& data, const career::EventMenuData& menu,
+                                        career::CareerState& s, const std::string& name, uint32_t seed) {
     using namespace gt2::career;
     auto plan = std::make_unique<EventPlan>();
     plan->name = name;
@@ -117,10 +165,23 @@ std::unique_ptr<EventPlan> PrepareEvent(const DiscImage& disc, const career::Car
         std::printf("championship %s: %d races, bonus %d cr, prize cars %d\n", SeriesBase(name).c_str(), plan->series.count, plan->prizes.bonus, plan->prizes.prizeCarCount);
         for (int32_t i = 0; i < plan->series.count; i++) std::printf("  race %d: %s, %u lap(s)\n", i + 1, plan->series.names[i], plan->series.laps[i]);
     }
-    plan->dirt = event.DirtTyresRequired() != 0; // 0x80019538: the rules' dirt bit -> a one-car rally (0x80013108)
+    plan->dirt = event.DirtTyresRequired() != 0; // 0x80019538: the rules' dirt bit -> a rally against a ghost (mode 11)
     uint32_t pick = seed;
-    plan->grid = PickEventOpponents(data, event, s.language, pick);
-    if (plan->dirt) plan->grid.resize(1);
+    plan->grid = PickEventOpponents(data, event, s.language, pick, plan->dirt ? 1 : 6); // six picks: five opponents + the player's slot
+    if (plan->dirt) {
+        // Slot 0 becomes the player below; the picked opponent moves to slot 1 and its recorded lap drives it. Without a
+        // ghost file the race is solo (as GT2 is without one).
+        const career::GridCar opponent = plan->grid.empty() ? career::GridCar{} : plan->grid[0];
+        plan->grid.assign(1, career::GridCar{});
+        if (const std::optional<RallyGhost> ghost = RallyGhostOf(vol, data, event, opponent.carId)) {
+            plan->grid.push_back(opponent);
+            plan->ghostStream = ghost->stream;
+            plan->ghostGridSlot = ghost->gridSlot;
+            plan->ghostTransmission = ghost->transmission;
+        } else {
+            std::printf("rally: no ghost file for %s on %s; racing alone\n", event.name.c_str(), event.course.c_str());
+        }
+    }
     plan->firstCourse = EventCourse(menu, event, seed);
     auto sheet = std::make_unique<TuneSheet>();
     PrepareRaceTyres(g, g.currentCar, plan->dirt, *sheet, data, BuildScratch{plan->scratch.data()}); // 0x80018004
@@ -171,7 +232,8 @@ std::string CarName(const career::CareerData& data, uint32_t carId) {
 // The race data of race `race`: the course with the event's settings block, the grid's cars.
 void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::CareerData& data, const EventPlan& p, int32_t race, RaceData& out) {
     DataOptions options;
-    const sim::ShellState shell = sim::EventRaceShell(p.settings[0], gt2::pc::simulationDamage);
+    sim::ShellState shell = sim::EventRaceShell(p.settings[0], gt2::pc::simulationDamage);
+    if (p.dirt) shell.gameMode = 11; // a dirt event's race block: mode 11 (the ghost's own recording says 11)
     options.shell = &shell;
     options.eventSettings = &p.settings;
     LoadRaceTrack(disc, vol, RaceCourse(vol, p, race), options, out);
@@ -180,13 +242,19 @@ void BuildEventRace(const DiscImage& disc, const GtfsVolume& vol, const career::
     // + 0xA): the AI catch-up of 0x8003EBF0 by the event row's settings (0x8003C12C -> 0x80041E4C, enabled in modes 2 / 4 / 0xC),
     // the rear-view mirror (0x800294D4: mode != 0). Captured: CBM0001 race block + 0xA = 2 (work/re/testrun/ev_race.bin.setup;
     // `--frames-compare` of that capture's race in mode 2: 1630 frames, 0 differ).
-    out.constants.gameMode = 2;
     out.constants.catchUp = sim::CatchUpFromSettings(p.settings, true);
     for (const career::GridCar& car : p.grid) AddCarRecord(vol, data.tables, car.carId, car.config, PaintIndexOf(data, car.carId, car.paint), out);
+    if (p.dirt && p.grid.size() == 2) { // car 1: the recorded opponent (entry kind 2, no contact), starting from its grid slot
+        out.gridSlots = {p.ghostGridSlot, p.ghostGridSlot}; // both start from the recorded line (a fair ghost comparison)
+        out.entryKinds = {sim::kEntryPlayer1, sim::kEntryGhost};
+        out.transmissions = {0, p.ghostTransmission};
+        out.ghostStream = p.ghostStream;
+        out.shell.pedalTable = PedalTable(disc); // the recorded frames' pedals (gt2formats/replay.h PadOfFrame)
+    }
     // ovl4 0x80013108, the six-car path: entry i = 0x80012F7C(block + 0x5C + i * 0xD0, grid slot 5 - i) {+0x8C 1, +0x8D 5 - i,
     // +0x8E 1, +0x8F 0}; then 0x80011000(block, 0, -1, 3, ..) makes entry 0 the player (kind 3, the grid slot kept): the player
-    // starts last (captured: CBM0001 race block entries 01050300 / 00040100 .. 00000100). The dirt path (one car, a ghost file
-    // 0x80019BF0) keeps its default here.
+    // starts last (captured: CBM0001 race block entries 01050300 / 00040100 .. 00000100). A dirt event's two entries are set
+    // above instead (the recorded opponent at its own grid slot, 0x80019BF0's ghost file).
     if (!p.dirt && p.grid.size() == 6) {
         out.gridSlots.clear(); // the kinds (player 3, AI 1) are RaceData's defaults; +0x8F the transmission of --manual / the keys
         for (size_t i = 0; i < 6; i++) out.gridSlots.push_back(uint8_t(5 - i));
@@ -314,7 +382,7 @@ std::vector<std::string> FinishEvent(EventPlan& p, career::CareerState& s, const
 // The whole event headless on `s` (the player's entry driven by the AI).
 int RunEventHeadless(const DiscImage& disc, const GtfsVolume& vol, const career::CareerData& data, const career::EventMenuData& menu, career::CareerState& s,
                      const std::string& name, uint32_t seed, RaceOptions raceOptions, double seconds) {
-    std::unique_ptr<EventPlan> plan = PrepareEvent(disc, data, menu, s, name, seed);
+    std::unique_ptr<EventPlan> plan = PrepareEvent(disc, vol, data, menu, s, name, seed);
     uint32_t clock = seed; // the VSync counter the result routines read (here: seed + race steps)
     for (int32_t race = 0; race < plan->races; race++) {
         if (plan->championship) std::printf("--- race %d of %d: %s\n", race + 1, plan->races, plan->series.names[race]);
@@ -322,6 +390,7 @@ int RunEventHeadless(const DiscImage& disc, const GtfsVolume& vol, const career:
         BuildEventRace(disc, vol, data, *plan, race, rd);
         RaceOptions ro = raceOptions;
         ro.laps = RaceLaps(*plan, race) ? RaceLaps(*plan, race) : ro.laps;
+        ApplyIntroHold(disc, rd, ro); // 0x800299D8: the intro music raises the start hold (the live race does this too)
         std::printf("%s: %d m, %u lap(s), %zu car(s)%s\n", rd.trackName.c_str(), rd.track.lengthMetres, ro.laps, plan->grid.size(),
                     plan->settings[0] ? (", rolling start at " + std::to_string(plan->settings[0]) + " km/h").c_str() : "");
         const EventRaceOutcome r = RunHeadlessRace(rd, plan->grid.size(), ro, seconds);
@@ -1411,7 +1480,7 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
         std::printf("career after:  %s\n", DescribeCareer(s).c_str());
         return true;
     }
-    std::unique_ptr<EventPlan> plan = PrepareEvent(disc, data, menu, s, name, ctx.seed);
+    std::unique_ptr<EventPlan> plan = PrepareEvent(disc, vol, data, menu, s, name, ctx.seed);
     career::GarageCar& car = s.garage.cars[s.garage.currentCar];
     std::array<uint8_t, 0x10> eventTail{};
     {
@@ -1453,9 +1522,10 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
             rd.sound[0].turbo = (config.flags & 2) != 0;
         };
         flow.continueLabel = plan->championship && race + 1 < plan->races ? "Next race" : "Continue";
-        // 0x801D5866: "Start Race" of the event menu sets sub-mode 2 for every event race, single or series (ovl0
-        // 0x800178B0 -> 0x8001710C writes race block +0xA; watched in the capture route of CBM0001, a single race).
-        flow.raceEndMode = 2;
+        // 0x801D5866: "Start Race" of the event menu sets sub-mode 2 for a road event race, single or series (ovl0
+        // 0x800178B0 -> 0x8001710C writes race block +0xA; watched in the capture route of CBM0001, a single race); a
+        // dirt event's block is mode 11, whose results are the RALLY table.
+        flow.raceEndMode = plan->dirt ? 11 : 2;
         // A replay of this race as Save Replay packs it (0x801D585C as the menus / 0x80017098 left it): the options' copies, the
         // race's name (+ 0x10, ovl4 0x8005E548 / the event), and in a Test Run (one car) the other five entries kept with + 0x8C = 0.
         auto eventReplay = [&](const ReplayFile& replay) {
@@ -1564,7 +1634,7 @@ bool RunMenuRace(const DiscImage& disc, const GtfsVolume& vol, career::CareerSav
                 show.bonus = bonus;
             }
             screens::PostMenuInput pm;
-            pm.mode = 2;
+            pm.mode = plan->dirt ? 11 : 2; // 0x801D5866: a dirt event's block is mode 11 ("RALLY" post-race menu)
             pm.race = plan->championship ? race : 0;                // s16 0x801D5DF4
             pm.races = plan->championship ? plan->races : 0;        // s16 0x801D5DF6 (0 for a single race, captured)
             pm.place = r.position;

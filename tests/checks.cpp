@@ -1,4 +1,5 @@
 #include "gt2formats/replay.h"
+#include "gt2formats/car_info.h"
 #include "gt2formats/track.h"
 #include "gt2formats/boot_images.h"
 #include "gt2formats/overlay_data.h"
@@ -422,6 +423,38 @@ int main(int argc, char** argv) {
             Check(!replay.SimulationDamage(), "licence replay ignores Simulation damage marker");
             replay.raceBlock[0xA] = 2; replay.raceBlock[9] = 0;
             Check(!replay.SimulationDamage(), "Arcade replay keeps original damage rules");
+        }
+        { // a dirt event's ghost file (gt2formats/replay.h ParseDirtGhostFile): a RAM image of the race overlay from 0x801D585C
+            std::vector<uint8_t> bytes(0x1200, 0);
+            const uint32_t carId = gt2::PackCarId("goasr");
+            bytes[0xA] = 11;   // game mode
+            bytes[0xD] = 1;    // countdown
+            bytes[0xF] = 1;    // laps
+            bytes[0x5A] = 1;   // one car
+            std::memcpy(bytes.data() + 0x5C, &carId, 4);
+            bytes[0x5C + 0x8D] = 1; // grid slot
+            bytes[0x5C + 0x8E] = 3; // the recorded driver's entry kind
+            gt2::ReplayStream stream;
+            stream.Init(false, gt2::ReplayStream::kPlayerCapacity);
+            gt2::ReplayFrame frame{};
+            frame.buttons = 4; // throttle
+            for (int i = 0; i < 5; i++) stream.Record(frame);
+            stream.End(false);
+            std::memcpy(bytes.data() + gt2::kDirtGhostStreamOffset, stream.Bytes().data(),
+                        std::min(stream.Bytes().size(), bytes.size() - gt2::kDirtGhostStreamOffset));
+            const gt2::ReplayFile ghost = gt2::ParseDirtGhostFile(bytes);
+            Check(ghost.GameMode() == 11 && ghost.Laps() == 1 && ghost.Countdown() == 1, "dirt ghost: race block");
+            Check(ghost.cars.size() == 1 && ghost.cars[0].carId == carId, "dirt ghost: the recorded car slot");
+            Check(ghost.cars[0].gridSlot() == 1 && ghost.cars[0].kind() == 3, "dirt ghost: the recorded grid slot and entry");
+            Check(gt2::ReplayStream::FromBytes(ghost.stream).Frames() == 5, "dirt ghost: the recorded stream");
+            auto rejected = [](std::vector<uint8_t> b) {
+                try { gt2::ParseDirtGhostFile(b); } catch (const std::exception&) { return true; }
+                return false;
+            };
+            std::vector<uint8_t> noCar = bytes;
+            noCar[0x5A] = 0;
+            Check(rejected(noCar), "dirt ghost: no car rejected");
+            Check(rejected(std::vector<uint8_t>(bytes.begin(), bytes.begin() + 0x200)), "dirt ghost: short file rejected");
         }
         for (uint8_t speed : std::array<uint8_t, 3>{0, 80, 100}) {
             const auto shell = gt2::sim::EventRaceShell(speed);
