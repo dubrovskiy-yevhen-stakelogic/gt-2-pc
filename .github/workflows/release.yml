@@ -119,7 +119,7 @@ jobs:
             source scripts/macos-env.sh
             python3 - "$binary" <<'PY'
           import subprocess, sys
-          subprocess.run(['lldb', '--batch', '-o', 'run', '-k', 'thread backtrace all', '--', sys.argv[1]], timeout=180)
+          subprocess.run(['lldb', '--batch', '-o', 'run', '-k', 'thread backtrace all', '--', sys.argv[1], '--mono'], timeout=180)
           PY
           fi
 

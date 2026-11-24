@@ -293,8 +293,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "sha256": "7e8215cf550d2d5bc18ad08145ee82ca2b0c6abcc0a0a4ed65758c8a938cd91e",
-      "textSha256": "8b8b60987e116f1272611712f5cfa3d7c6fdd01d4e98dad3394440196df216da"
+      "sha256": "0c82148fa81ba0c9333b07ec26aec1115bb74ebe3b92a77bd97dd8f2f376345a",
+      "textSha256": "0c82148fa81ba0c9333b07ec26aec1115bb74ebe3b92a77bd97dd8f2f376345a"
     },
     {
       "path": "db/arcade_eu_symbols.yaml",
@@ -3611,8 +3611,8 @@
     },
     {
       "path": "tests/generated_texture_checks.cpp",
-      "sha256": "08201197778c237b61c6414967531345d0f6e2786f3e9d58ed255c7c96b58300",
-      "textSha256": "08201197778c237b61c6414967531345d0f6e2786f3e9d58ed255c7c96b58300"
+      "sha256": "ae52be9165ded5cbdd55648b7597d8189207ad40a00ad3c60996122d559a63a3",
+      "textSha256": "ae52be9165ded5cbdd55648b7597d8189207ad40a00ad3c60996122d559a63a3"
     },
     {
       "path": "tests/gpu_wait_audit.cpp",

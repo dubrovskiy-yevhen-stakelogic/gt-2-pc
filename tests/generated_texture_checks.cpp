@@ -4,10 +4,13 @@
 #include <chrono>
 #include "gt2view/generated_world.h"
 #include "gt2export/png_writer.h"
+#include "gt2formats/png_reader.h"
 #include <cstdlib>
 #include "gt2view/generated_mip_atlas.h"
 using namespace gt2view;
-int main() { try {
+int main(int argc, char** argv) { try {
+    const bool mono = argc == 2 && std::strcmp(argv[1], "--mono") == 0;
+    if (argc != 1 && !mono) throw std::runtime_error("usage: gt2generatedtexturechecks [--mono]");
     Device device; VkContext context(device.existing);
     VkSceneRenderer renderer(context,{64,64},VK_FORMAT_R8G8B8A8_UNORM);
     renderer.EnableDecodedTextures(true);
@@ -54,16 +57,26 @@ int main() { try {
     }
     renderer.SetVertices(0,vertices);
     DrawItem item;item.vertexCount=6;item.space=kSpaceWorld;item.mvp[0]=item.mvp[5]=item.mvp[10]=item.mvp[15]=1;
+    const auto screenshot = std::filesystem::temp_directory_path() /
+        ("gt2-texture-frame-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".png");
+    struct RemoveScreenshot {std::filesystem::path path;~RemoveScreenshot(){std::error_code ec;std::filesystem::remove(path,ec);}} cleanup{screenshot};
+    auto capture = [&]() {
+        if (!mono) return renderer.CaptureStereoForAudit({item},1);
+        renderer.Draw({item},screenshot.string(),1);
+        auto decoded = gt2::ReadPngFile(screenshot.string());
+        if (decoded.width != 64 || decoded.height != 64) throw std::runtime_error("mono capture size");
+        return decoded.rgba;
+    };
     for(const bool smooth:{false,true})for(const unsigned samples:{1u,4u}) {
         RenderOptions options;options.smoothTextures=smooth;options.msaa=samples;renderer.SetOptions(options);
-        renderer.CreateStereoTarget({64,64},VK_FORMAT_R8G8B8A8_UNORM,true);
-        const auto rgba=renderer.CaptureStereoForAudit({item},1);
+        if (!mono) renderer.CreateStereoTarget({64,64},VK_FORMAT_R8G8B8A8_UNORM,true);
+        const auto rgba=capture();
 #ifdef _WIN32
         _putenv_s("GT2_AUDIT_UNFOVEATED_GENERATED","1");
 #else
         setenv("GT2_AUDIT_UNFOVEATED_GENERATED","1",1);
 #endif
-        const auto reference=renderer.CaptureStereoForAudit({item},1);
+        const auto reference=capture();
 #ifdef _WIN32
         _putenv_s("GT2_AUDIT_UNFOVEATED_GENERATED","");
 #else
@@ -72,7 +85,7 @@ int main() { try {
         if(rgba.size()!=reference.size())throw std::runtime_error("world specialization capture size");
         for(size_t p=0;p<rgba.size();++p)if(std::abs(int(rgba[p])-int(reference[p]))>1)
             throw std::runtime_error("world specialization changed unfoveated texture pixels");
-        for(size_t eye=0;eye<2;++eye) {
+        for(size_t eye=0;eye<(mono?1u:2u);++eye) {
             const size_t p=(eye*64*64+32*64+32)*4;
             if(rgba[p+1]<150 || rgba[p]>80 || rgba[p+2]>110)
                 throw std::runtime_error("generated clamp-U flag entered the nearest PS1 HUD sampler");
@@ -95,14 +108,14 @@ int main() { try {
     renderer.SetVertices(0,vertices);
     for(const unsigned samples:{1u,2u,4u}) {
         RenderOptions options;options.smoothTextures=true;options.msaa=samples;renderer.SetOptions(options);
-        renderer.CreateStereoTarget({64,64},VK_FORMAT_R8G8B8A8_UNORM,true);
-        const auto rgba=renderer.CaptureStereoForAudit({item},1);
+        if (!mono) renderer.CreateStereoTarget({64,64},VK_FORMAT_R8G8B8A8_UNORM,true);
+        const auto rgba=capture();
 #ifdef _WIN32
         _putenv_s("GT2_AUDIT_UNFOVEATED_GENERATED","1");
 #else
         setenv("GT2_AUDIT_UNFOVEATED_GENERATED","1",1);
 #endif
-        const auto reference=renderer.CaptureStereoForAudit({item},1);
+        const auto reference=capture();
 #ifdef _WIN32
         _putenv_s("GT2_AUDIT_UNFOVEATED_GENERATED","");
 #else
@@ -111,12 +124,12 @@ int main() { try {
         if(rgba.size()!=reference.size())throw std::runtime_error("world specialization capture size");
         for(size_t p=0;p<rgba.size();++p)if(std::abs(int(rgba[p])-int(reference[p]))>1)
             throw std::runtime_error("world specialization changed unfoveated texture pixels");
-        for(size_t eye=0;eye<2;++eye) {
+        for(size_t eye=0;eye<(mono?1u:2u);++eye) {
             const size_t a=(eye*64*64+32*64+20)*4,b=(eye*64*64+32*64+44)*4;
             if(std::abs(int(rgba[a])-int(rgba[b]))<40)
                 throw std::runtime_error("asphalt aggregate lost its spatial coordinates");
         }
     }
-    std::puts("PASS: asphalt detail varies across the road in both eyes, MSAA 1/2/4");
-    std::puts("PASS: generated/clamped external textures use their own sampler in both eyes, nearest/smooth, MSAA 1/4");
+    std::printf("PASS: asphalt detail varies across the road (%s), MSAA 1/2/4\n",mono?"mono":"both eyes");
+    std::printf("PASS: generated/clamped external textures use their own sampler (%s), nearest/smooth, MSAA 1/4\n",mono?"mono":"both eyes");
 } catch(const std::exception& e) {std::fprintf(stderr,"%s\n",e.what());return 1;} }
