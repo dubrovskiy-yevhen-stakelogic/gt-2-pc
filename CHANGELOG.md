@@ -2,6 +2,11 @@
 
 ## 1.0.0
 
+### Texture replacement update (2026-11-26)
+
+- Apply shared sponsor PNG replacements to matching fixed track billboards, including alternate-resolution logos across the course catalogue. Preserve track-specific overrides and shared/original fallbacks.
+- Reuse shared billboard images and fit selected race adverts within the existing texture budget, preventing later sponsor slots from silently losing their replacements.
+
 ### Installer update (2026-11-25)
 
 - Allow Linux and Steam Deck to recover incomplete disc installations instead of reporting an absent Arcade disc as already installed. Preserve previous files in a backup and restore them if publication fails.

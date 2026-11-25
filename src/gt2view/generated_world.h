@@ -10,6 +10,7 @@
 #include <sstream>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 
 namespace gt2view {
 // Explicit authored source rectangles, bound to the course texture-pack hash.
@@ -23,10 +24,12 @@ class GeneratedWorld {
         unsigned sash=0;
     };
     bool paletteAlpha_=false;
+    std::map<std::string,std::pair<uint32_t,uint32_t>> sponsorImages_;
     std::map<std::pair<uint32_t,uint32_t>,std::vector<Region>> regions_;
 public:
     void Load(const std::string& course, std::span<const uint8_t> source, SceneRenderer& renderer, uint32_t& cursor) {
         regions_.clear();
+        sponsorImages_.clear();
         size_t regionCount=0;
 #ifndef __EMSCRIPTEN__
         if(cursor==SceneRenderer::kGeneratedWorldTexelBase)renderer.BeginGeneratedTextures((gt2::generated::root/"_gpu").string());
@@ -100,10 +103,11 @@ public:
                     cursor+=512*512+GeneratedMipAtlas::kLevels;
 #endif
                 }
-                auto it=images.find(file);
+                const auto imagePath=gt2::generated::CourseImagePath(course,file);
+                const bool sponsorImage=imagePath.parent_path().filename()=="_sponsors";
+                const auto imageKey=sponsorImage ? imagePath.string() : file;
+                auto it=images.find(imageKey);
                 if (it==images.end()) {
-                    const auto local=dir/file;
-                    const auto imagePath=std::filesystem::is_regular_file(local)?local:gt2::generated::root/"_shared"/file;
                     if(!std::filesystem::is_regular_file(imagePath))continue;
                     const auto png=gt2::ReadPngFile(imagePath.string());
                     if (png.width<1 || png.height<1 || png.width>1024 || png.height>1024) throw std::runtime_error("image exceeds 1024x1024 budget");
@@ -175,7 +179,8 @@ public:
 #endif
                     if(std::getenv("GT2_TRACE_FACADE") && file.find("final-") != std::string::npos)
                         std::printf("Final facade %s base=%u size=%dx%d source=%s\n",file.c_str(),cursor,png.width,png.height,imagePath.string().c_str());
-                    it=images.emplace(file,std::pair{cursor,uint32_t(png.width)|(uint32_t(png.height)<<16)}).first;
+                    it=images.emplace(imageKey,std::pair{cursor,uint32_t(png.width)|(uint32_t(png.height)<<16)}).first;
+                    if(sponsorImage)sponsorImages_[imagePath.stem().string()]=it->second;
                     cursor+=count+mipWords;
                 }
                 const auto pageWord=(page&15)*64|(((page>>4)&1)*256<<16);
@@ -209,6 +214,10 @@ public:
         if(!paletteAlpha_ || regions_.empty() || !std::filesystem::is_directory(dir))return false;
         std::vector<Region> selected;
         std::map<std::string,std::pair<uint32_t,uint32_t>> images;
+        std::vector<std::string> hashes;
+        std::map<std::string,gt2::PngImage> pending;
+        std::vector<std::string> pendingOrder;
+        uint64_t wanted=0;
         for(const auto& u:uploads) {
             if(!u.tim)return false;
             const auto& tim=*u.tim;
@@ -219,25 +228,57 @@ public:
                 for(unsigned channel=0;channel<3;++channel)rgba.push_back(uint8_t(((color>>(5*channel))&31)*255/31));
                 rgba.push_back(color==0?0:(color&32768)?128:255);
             }
-            const auto hash=gt2::Sha1Hex(rgba);
-            auto it=images.find(hash);
-            if(it==images.end()) {
-                try {
-                    const auto png=gt2::ReadPngFile((dir/(hash+".png")).string());
-                    const bool validSize=(png.width==int(2*w) && png.height==int(2*h)) || (png.width==int(4*w) && png.height==int(4*h));
-                    if(!validSize || cursor+uint64_t(png.width)*png.height+11>SceneRenderer::kGeneratedHudBase)
-                        throw std::runtime_error("unexpected dimensions or exhausted race texture budget");
-                    const uint32_t count=uint32_t(png.width*png.height);
-                    std::vector<uint32_t> pixels(count);std::memcpy(pixels.data(),png.rgba.data(),count*4);
-#ifdef __EMSCRIPTEN__
-                    renderer.UploadExternalTexture(cursor,count,pixels.data());
-#else
-                    renderer.UploadGeneratedTexture(cursor,png.width,png.height,pixels.data());
-#endif
-                    it=images.emplace(hash,std::pair{cursor,uint32_t(png.width)|(uint32_t(png.height)<<16)}).first;
-                    cursor+=count+11;
-                } catch(const std::exception& e) {std::printf("Generated sponsor %s: %s\n",hash.c_str(),e.what());continue;}
+            const auto hash=gt2::Sha1Hex(rgba);hashes.push_back(hash);
+            if(images.contains(hash) || pending.contains(hash))continue;
+            const auto cached=sponsorImages_.find(hash);
+            if(cached!=sponsorImages_.end()) {
+                const uint32_t cw=cached->second.second&65535,ch=cached->second.second>>16;
+                if((cw==2*w && ch==2*h) || (cw==4*w && ch==4*h)) {
+                    images.emplace(hash,cached->second);continue;
+                }
             }
+            try {
+                auto png=gt2::ReadPngFile((dir/(hash+".png")).string());
+                if(!((png.width==int(2*w) && png.height==int(2*h)) || (png.width==int(4*w) && png.height==int(4*h))))
+                    throw std::runtime_error("unexpected dimensions "+std::to_string(png.width)+"x"+std::to_string(png.height));
+                wanted+=uint64_t(png.width)*png.height;
+                pending.emplace(hash,std::move(png));pendingOrder.push_back(hash);
+            } catch(const std::exception& e) {std::printf("Generated sponsor %s: %s\n",hash.c_str(),e.what());}
+        }
+        // Share the remaining budget across every selected advert instead of dropping
+        // the last slots. Disk PNGs remain intact; nearest resampling preserves STP alpha.
+        const uint64_t remaining=cursor<SceneRenderer::kGeneratedHudBase ? SceneRenderer::kGeneratedHudBase-cursor : 0;
+        const uint64_t overhead=pending.size()*11;
+        const double scale=wanted && remaining>overhead ? std::min(1.0,std::sqrt(double(remaining-overhead)/double(wanted))) : 0.0;
+        if(scale<1.0 && !pending.empty())std::printf("Generated sponsors: fitting %zu images to remaining atlas budget\n",pending.size());
+        for(const auto& hash:pendingOrder) {
+            try {
+            const auto& png=pending.at(hash);
+            const uint32_t width=std::max(1u,uint32_t(double(png.width)*scale));
+            const uint32_t height=std::max(1u,uint32_t(double(png.height)*scale));
+            const uint32_t count=width*height;
+            if(uint64_t(cursor)+count+11>SceneRenderer::kGeneratedHudBase) {
+                std::printf("Generated sponsor %s: exhausted race texture budget\n",hash.c_str());continue;
+            }
+            std::vector<uint32_t> pixels(count);
+            for(uint32_t y=0;y<height;++y)for(uint32_t x=0;x<width;++x) {
+                const auto sx=std::min(uint32_t(png.width-1),uint32_t((uint64_t(2*x+1)*uint32_t(png.width))/(2*width)));
+                const auto sy=std::min(uint32_t(png.height-1),uint32_t((uint64_t(2*y+1)*uint32_t(png.height))/(2*height)));
+                std::memcpy(&pixels[y*width+x],png.rgba.data()+(size_t(sy)*size_t(png.width)+sx)*4,4);
+            }
+#ifdef __EMSCRIPTEN__
+            renderer.UploadExternalTexture(cursor,count,pixels.data());
+#else
+            renderer.UploadGeneratedTexture(cursor,width,height,pixels.data());
+#endif
+            images.emplace(hash,std::pair{cursor,width|(height<<16)});
+            cursor+=count+11;
+            } catch(const std::exception& e) {std::printf("Generated sponsor %s: %s\n",hash.c_str(),e.what());}
+        }
+        for(size_t uploadIndex=0;uploadIndex<uploads.size();++uploadIndex) {
+            const auto& u=uploads[uploadIndex];
+            const uint32_t w=4u*u.tim->width,h=u.tim->height;
+            const auto it=images.find(hashes[uploadIndex]);if(it==images.end())continue;
             const uint32_t palette=u.clutX|(uint32_t(u.clutY)<<16);
             for(auto& [key,regions]:regions_) {
                 if(key.second!=palette)continue;

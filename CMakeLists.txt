@@ -591,6 +591,8 @@ if(BUILD_TESTING AND TARGET gt2vk AND NOT ANDROID AND NOT EMSCRIPTEN)
 endif()
 
 if(BUILD_TESTING AND TARGET gt2vk AND NOT ANDROID AND NOT EMSCRIPTEN)
+  add_executable(gt2sponsorpackaudit tests/sponsor_pack_audit.cpp)
+  target_link_libraries(gt2sponsorpackaudit PRIVATE gt2vk gt2export)
   add_executable(gt2generatedtexturechecks tests/generated_texture_checks.cpp)
   target_link_libraries(gt2generatedtexturechecks PRIVATE gt2vk gt2export)
   add_test(NAME generated_texture_mono_checks COMMAND gt2generatedtexturechecks --mono)

@@ -36,6 +36,17 @@ int main(int argc, char** argv) { try {
         gt2::WritePngRgba((dir/"custom.png").string(),4,4,art);load();auto restored=triangle(1);require(world.Apply(restored)==1,"restored PNG not reloaded");
         require(!gt2::generated::BuiltinTextureManifest("seatt_s","bb3a919b5115803ea33fee89b24d1761a3b01a35").empty(),"built-in Seattle mapping missing");
         require(gt2::generated::BuiltinTextureManifest("seatt_s","wrong-profile").empty(),"wrong disc mapping accepted");
+        const std::string sign="96x48-f60bc643569c23162271cd8f7257a6db1bad4ec7-none-signs-144x72.png";
+        const auto sponsor=gt2::generated::root/"_sponsors/6a28eb5d5c8cb15be7f162babdbdca324bc6e7fa.png";
+        fs::create_directories(sponsor.parent_path());
+        gt2::WritePngRgba(sponsor.string(),4,4,art);
+        require(gt2::generated::CourseImagePath("test",sign)==sponsor,"SSR5 fixed STI did not resolve shared sponsor");
+        require(gt2::generated::CourseImagePath("test","custom.png")==dir/"custom.png","sponsor replaced unrelated scenery");
+        gt2::WritePngRgba((dir/sign).string(),4,4,art);
+        require(gt2::generated::CourseImagePath("test",sign)==dir/sign,"course override lost priority");
+        fs::remove(dir/sign);fs::remove(sponsor);
+        require(gt2::generated::CourseImagePath("test",sign)==gt2::generated::root/"_shared"/sign,"missing sponsor lost shared fallback");
+        require(gt2::generated::SponsorImageFor("72x40-6a28eb5d5c8cb15be7f162babdbdca324bc6e7fa-none-signs-144x80.png")==sponsor.filename().string(),"identical sponsor hash mapping failed");
         gt2::generated::root.clear();
         std::puts("PASS: texture folder, partial pack, off, deleted/corrupt/restored PNG, profile binding");
     }
