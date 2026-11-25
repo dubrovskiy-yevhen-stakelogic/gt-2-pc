@@ -1209,7 +1209,11 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             rect.layerCount = recordLayers_;
             if (rect.rect.extent.width && rect.rect.extent.height) vkCmdClearAttachments(cmd_, 1, &clear, 1, &rect);
         }
+        const bool mirrorCar = recordMirror_ && item.firstVertex >= kModelSetVertexBase;
         uint32_t which = item.blend==kBlendStockSurfaceEnvironment?8u:item.blend==kBlendNativeSurfaceEnvironment?7u:item.blend==kBlendNativeEnvironment?1u:item.blend < 4 ? item.blend : item.blend == kBlendAlpha ? 6u : (i >= sceneItems ? 5u : 4u);
+        // Imported car body ranges can be authored in the alpha pass. In the
+        // mirror that makes the whole car translucent; keep its coverage solid.
+        if (mirrorCar && item.blend == kBlendAlpha) which = 4u;
         const bool cached = ((recordStereo_ && !recordMirror_) || recordNativeEnvironment_) && i < cachedDraws_.size() && cachedDraws_[i];
         // Menu body/wheel ranges carry kCarPaint on their first vertex. They are
         // single-sample screen draws even when the race scene uses MSAA. Leave
@@ -1301,7 +1305,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.nativeModelRotation=item.nativeModelRotation;
         params.paint = item.paint;
         params.brakeLit = item.brakeLit & 0x3fffffffu;
-        params.stpPass = item.stpPass;
+        params.stpPass = (mirrorCar && item.blend == kBlendAlpha) ? 0u : item.stpPass;
         const bool sceneLike = i < sceneItems || item.space == kSpaceMenuCar;
         params.options = sceneLike ? sceneOptions : 0u;
         if(sceneLike && nativeCameraActive_)params.options|=16u;
