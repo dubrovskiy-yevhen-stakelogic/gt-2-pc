@@ -265,7 +265,8 @@ static void CheckPcChanges(const char* discPath) {
     Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
     stepping.graphics = shell::GraphicsSettings::LowSpec();
     Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
-    Check(shell::kPcRowCount == 12 && shell::PcRowOf(stepping, 10).label == std::string("Power Units") && shell::StepPcRow(stepping, 10, 1) && stepping.powerMetric,
+    stepping.powerUnits = gt2::PowerUnits::kHp;
+    Check(shell::kPcRowCount == 12 && shell::PcRowOf(stepping, 10).label == std::string("Power Units") && shell::StepPcRow(stepping, 10, 1) && stepping.powerUnits == gt2::PowerUnits::kPs,
           "the Power Units row still steps to PS");
 
     struct CounterStream final : audio::StreamSource {
@@ -634,14 +635,29 @@ int main(int argc, char** argv) {
             Check(revisionMenu.LegacyText(0x800F8334u) == "Max Speed", "v1.1 arcade text map");
             Check(revisionMenu.Text(0x800F83F2u) == "Max Speed", "v1.1 arcade text base");
         }
-        { // GT2+'s turbo-section fix: the stock kit (stage 0) counts, the NA dummy (row 0) does not.
+        { // 0x8005F7C8: retail reads the upgrade slots only; GT2+'s fix also counts the stock kit (stage 0, not the
+          // NA dummy row 0), and belongs to the GT2+ executable alone.
             gt2::career::TuneSheet sheet{};
-            Check(!gt2::career::HasTurboKit(sheet), "NA sheet has no Turbo section");
+            Check(!gt2::career::HasTurboKit(sheet, false) && !gt2::career::HasTurboKit(sheet, true), "NA sheet has no Turbo section");
             sheet.turboKitRow[0] = 7;
-            Check(gt2::career::HasTurboKit(sheet), "stock turbo still shows the Turbo section");
+            Check(!gt2::career::HasTurboKit(sheet, false), "retail: a stock-only turbo has no Turbo section");
+            Check(gt2::career::HasTurboKit(sheet, true), "GT2+: the stock turbo shows the Turbo section");
             sheet.turboKitRow[0] = 0;
             sheet.turboKitRow[3] = 12;
-            Check(gt2::career::HasTurboKit(sheet), "an upgraded turbo kit shows the Turbo section");
+            Check(gt2::career::HasTurboKit(sheet, false), "an upgraded turbo kit shows the Turbo section");
+            gt2::GuestImage exe;
+            exe.fileSha1 = "3030aa271c0a4022fc69ce09d76a6bc75e69a32a"; // retail US Simulation v1.2
+            Check(!gt2::IsGt2Plus(exe), "retail and A-Spec keep the retail rule");
+            exe.fileSha1 = "9d733c40f91b7ff5c6b4e4141ce3ebf8f4f5bde1"; // GT2+ Complete Simulation
+            Check(gt2::IsGt2Plus(exe), "GT2+ applies its own fix");
+            const auto savedFix = gt2::pc::turboSectionFix;
+            gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix::kAuto;
+            Check(!gt2::pc::AppliesTurboSectionFix(false) && gt2::pc::AppliesTurboSectionFix(true), "turbo fix Auto follows the disc");
+            gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix::kOn;
+            Check(gt2::pc::AppliesTurboSectionFix(false) && gt2::pc::AppliesTurboSectionFix(true), "turbo fix On applies to every disc");
+            gt2::pc::turboSectionFix = gt2::pc::TurboSectionFix::kOff;
+            Check(!gt2::pc::AppliesTurboSectionFix(true), "turbo fix Off keeps the retail menu");
+            gt2::pc::turboSectionFix = savedFix;
         }
         { // ps vs hp display (GT2+ metric-horsepower patch)
             gt2::metricPower = false;
@@ -654,6 +670,39 @@ int main(int argc, char** argv) {
             Check(gt2::DisplayPowerText(" hp") == " PS", "PS graph label");
             Check(gt2::DisplayPowerText("PS") == "PS", "metric disc label unchanged");
             gt2::metricPower = false;
+            // Auto shows PS only on a GT2+ disc; hp / PS force the unit.
+            const auto savedUnits = gt2::powerUnits;
+            gt2::powerUnits = gt2::PowerUnits::kAuto;
+            gt2::gt2PlusDisc = false;
+            gt2::ApplyPowerUnits();
+            Check(!gt2::metricPower, "power units Auto: retail shows hp");
+            gt2::gt2PlusDisc = true;
+            gt2::ApplyPowerUnits();
+            Check(gt2::metricPower, "power units Auto: GT2+ shows PS");
+            gt2::powerUnits = gt2::PowerUnits::kHp;
+            gt2::ApplyPowerUnits();
+            Check(!gt2::metricPower, "power units hp overrides GT2+");
+            gt2::powerUnits = gt2::PowerUnits::kPs;
+            gt2::ApplyPowerUnits();
+            Check(gt2::metricPower, "power units PS overrides retail");
+            gt2::powerUnits = savedUnits;
+            gt2::gt2PlusDisc = false;
+            gt2::ApplyPowerUnits();
+            { // the old power_units=hp default migrates to Auto; ps / the new key keep an explicit choice
+                const auto settingsPath = std::filesystem::temp_directory_path() / "gt2-power-units-test.txt";
+                auto load = [&] { return gt2::shell::PcSettings::Load(settingsPath.string()).powerUnits; };
+                { std::ofstream out(settingsPath); out << "power_units=hp\n"; }
+                Check(load() == gt2::PowerUnits::kAuto, "legacy power_units=hp migrates to Auto");
+                { std::ofstream out(settingsPath); out << "power_units=ps\n"; }
+                Check(load() == gt2::PowerUnits::kPs, "legacy power_units=ps stays PS");
+                { std::ofstream out(settingsPath); out << "power_units_mode=hp\n"; }
+                Check(load() == gt2::PowerUnits::kHp, "power_units_mode=hp selects hp");
+                gt2::shell::PcSettings written;
+                written.powerUnits = gt2::PowerUnits::kHp;
+                written.Save(settingsPath.string());
+                Check(load() == gt2::PowerUnits::kHp, "power units round trip");
+                Check(std::filesystem::remove(settingsPath), "power units test file removed");
+            }
         }
         std::cout << checks << " regression checks passed\n";
         return 0;

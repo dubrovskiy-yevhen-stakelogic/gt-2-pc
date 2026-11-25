@@ -309,7 +309,7 @@ inline std::vector<gt2::GltfVertex> GlazingInside(std::span<const gt2::GltfVerte
     if(holes.size()==1 && holes[0].size()==4 && holes[0][0]==Point{0,0} &&
        holes[0][1]==Point{1,0} && holes[0][2]==Point{1,1} && holes[0][3]==Point{0,1})return {triangle.begin(),triangle.end()};
     using GlazingPolygon=std::vector<gt2::GltfVertex>;
-    auto clip=[](const GlazingPolygon& poly,auto distance){
+    auto clip=[](std::span<const gt2::GltfVertex> poly,auto distance){
         GlazingPolygon next;if(poly.empty())return next;
         auto prev=poly.back();float pd=distance(prev);
         for(const auto& v:poly){const float vd=distance(v);
@@ -339,8 +339,7 @@ inline std::vector<gt2::GltfVertex> GlazingInside(std::span<const gt2::GltfVerte
     }
     GlazingPolygon result;
     for(const auto& u:regions[0])for(const auto& v:regions[1]){
-        GlazingPolygon region(triangle.begin(),triangle.end());
-        region=clip(region,[&](const auto& p){return p.uv[0]-u.lo;});
+        auto region=clip(triangle,[&](const auto& p){return p.uv[0]-u.lo;});
         region=clip(region,[&](const auto& p){return u.hi-p.uv[0];});
         region=clip(region,[&](const auto& p){return p.uv[1]-v.lo;});
         region=clip(region,[&](const auto& p){return v.hi-p.uv[1];});

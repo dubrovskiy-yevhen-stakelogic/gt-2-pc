@@ -197,6 +197,7 @@ void HudFont::Glyph(uint32_t code, int x, int y, std::vector<HudFontSprite>& out
     if (code & kRightAlign) x -= halfWidth;
     const int top = y - int((w1 >> 6) & 0x3F);
     HudFontSprite g;
+    if (((w0 >> 14) & 7) == 0) g.character = uint8_t(code);
     g.x = int(int16_t(uint16_t(x + int(w1 & 0x3F))));
     g.y = top;
     g.w = halfWidth * 2;

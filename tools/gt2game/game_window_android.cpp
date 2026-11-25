@@ -76,6 +76,7 @@ int GameKey(int32_t androidKeyCode) {
     case 122: return keys::kHome;   // AKEYCODE_MOVE_HOME
     case 59: case 60: return keys::kShift; // AKEYCODE_SHIFT_LEFT / _RIGHT
     case 136: return keys::kF5;    // AKEYCODE_F5
+    case 140: return keys::kF9;    // AKEYCODE_F9
     case 141: return keys::kF10;   // AKEYCODE_F10
     default: break;
     }
@@ -178,6 +179,10 @@ public:
     bool PhysicalSteering(float& value) const override {
         value = steering_; return drivingActive_ && !vrMenuActive_ && OverlayDrivingSettings().mode != 0;
     }
+    bool PhysicalWheelAngle(float& value) const override {
+        if(!drivingActive_ || vrMenuActive_ || OverlayDrivingSettings().mode!=1)return false;
+        value=driving_.Angle();return true;
+    }
     void AppendDrivingVisuals(std::vector<gt2view::DrawItem>& items, const float* vehicleFrame) override {
         if (stereoFrame_ && !vrMenuActive_ && drivingActive_) hands_->Append(items, tracking_, driving_, EffectiveDrivingSettings(OverlayDrivingSettings()), vehicleFrame ? vehicleFrame : drivingMatrix_);
     }
@@ -209,7 +214,9 @@ public:
     }
     bool BeginStereoScene(const gt2::vr::Camera& camera, gt2::vr::View& view) override;
     void DrawStereoScene(const std::vector<gt2view::DrawItem>& items, size_t sceneItems, const std::string& shotPath) override {
-        const VkImage target = renderer_->EffectiveMsaa() > 1 ? session_->AcquireStereoRenderImage() : VK_NULL_HANDLE;
+        // Use the same direct colour path at every sample count. Depth-copy mode
+        // remains available for diagnostics, but adds a GPU wait and two full-eye copies.
+        const VkImage target = std::getenv("GT2_XR_COPY_DEPTH") ? VK_NULL_HANDLE : session_->AcquireStereoRenderImage();
         renderer_->SetExternalStereoImage(target);
         directFrame_ = target != VK_NULL_HANDLE;
         renderer_->DrawStereo(items, shotPath, sceneItems);
@@ -276,10 +283,8 @@ AndroidWindow::AndroidWindow(const std::string& title, bool deterministic) : det
     if (!rates.empty()) std::printf("xr: refresh rates offered: %s\n", rates.c_str());
     std::printf("xr: cinema quad %dx%d (%s)\n", kCinemaWidth, kCinemaHeight, title.c_str());
 
-    gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
-                                          session_->Queue(), session_->Info().shadingRate};
-    existing.dynamicRendering = info.dynamicRendering;
-    existing.multiview = info.multiview;
+    const gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
+                                                session_->Queue(), info.shadingRate, info.dynamicRendering, info.multiview, info.astcTextures};
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(session_->PhysicalDevice(), &props);
@@ -367,7 +372,7 @@ void AndroidWindow::Pump() {
         pad.buttons &= ~(gt2::input::ps1::kLeft|gt2::input::ps1::kRight|gt2::input::ps1::kUp|gt2::input::ps1::kDown);
     }
     if (!vrMenuActive_ && drivingActive_ && OverlayDrivingSettings().mode != 0) {
-        pad.analog = {128,128,128,128};
+        pad.analog[2] = pad.analog[3] = 128; // Keep the non-driving stick available for background emotes.
         pad.buttons &= ~(gt2::input::ps1::kLeft | gt2::input::ps1::kRight | gt2::input::ps1::kUp | gt2::input::ps1::kDown);
     }
     gt2::input::android::SetXrPad(pad);
@@ -462,7 +467,7 @@ void AndroidWindow::EndRenderFrame() {
     const auto renderDone=Clock::now();
     if (frameOpen_) {
         if (stereoFrame_) {
-            const VkImage depth = renderer_->EffectiveMsaa() == 1 ? renderer_->StereoDepthImage() : VK_NULL_HANDLE;
+            const VkImage depth = !directFrame_ && renderer_->EffectiveMsaa() == 1 ? renderer_->StereoDepthImage() : VK_NULL_HANDLE;
             session_->SubmitStereoFrame(renderer_->StereoImage(), depth, eyes_, rig_.nearZ);
         } else {
             session_->SubmitFrame(renderer_->OffscreenImage());
@@ -481,7 +486,7 @@ void AndroidWindow::EndRenderFrame() {
 void AndroidWindow::IdleFrame() {
     if (!session_->Running() || !session_->BeginFrame()) return;
     if (lastStereo_ && renderer_->StereoReady()) {
-        const VkImage depth = renderer_->EffectiveMsaa() == 1 ? renderer_->StereoDepthImage() : VK_NULL_HANDLE;
+        const VkImage depth = !directFrame_ && renderer_->EffectiveMsaa() == 1 ? renderer_->StereoDepthImage() : VK_NULL_HANDLE;
         session_->SubmitStereoFrame(renderer_->StereoImage(), depth, eyes_, rig_.nearZ);
         return;
     }

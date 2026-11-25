@@ -46,6 +46,7 @@ Vec3 Forward(const gt2::sim::CarPose& pose);
 
 // Everything a race needs from the data files: track, course extras, constants, race data and car records.
 struct RaceData {
+    bool networkArcadeCars=false;
     gt2::Track track;
     gt2::sim::CourseExtras extras;
     gt2::sim::SimConstants constants;        // race overlay + executable tables (disc_data.h)
@@ -105,6 +106,7 @@ struct DataOptions {
 
 // How the race is run: the shell's options (laps, start countdown) and who drives slot 0.
 struct RaceOptions {
+    uint8_t botDifficulty = 1;
     uint8_t laps = 2;          // --laps N
     bool countdown = true;     // --no-countdown: no start hold (the original's 0x801D5869 = 0)
     bool aiPlayer = false;     // --ai-player: slot 0 driven by the AI too

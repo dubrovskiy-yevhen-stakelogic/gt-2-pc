@@ -31,6 +31,7 @@ public:
     // everything drawn before.
     void Build(const std::vector<gt2::MenuPrim>& prims, float windowAspect, std::vector<DrawItem>& items);
     void Build(const std::vector<gt2::MenuPrim>& prims, int frameWidth, int frameHeight, float windowAspect, std::vector<DrawItem>& items);
+    void BuildRange(const std::vector<gt2::MenuPrim>& prims, int frameWidth, int frameHeight, float aspect, uint32_t base, uint32_t limit, std::vector<DrawItem>& items);
     // Appends the race overlay's primitives (GPU order, draw modes included) of a 320 x 240 frame shown like the race's
     // 4:3 picture, centred in the window; tiles over the whole frame width (the darkening) cover the whole window.
     void BuildOverlay(const std::vector<gt2::raceui::Gp0Prim>& prims, float windowAspect, std::vector<DrawItem>& items);

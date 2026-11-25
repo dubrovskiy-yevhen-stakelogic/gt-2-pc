@@ -9,6 +9,10 @@ void CockpitCameraChecks(Check check) {
     gt2::camera::RaceCamera native{};
     native.hideTarget = 1;
     check(gt2game::CockpitShown(native, true, false, false, 0), "driver camera selects the cockpit");
+    native.target = 1;
+    check(gt2game::CockpitShown(native, true, false, false, 0, 1), "second online player sees their own cockpit");
+    check(!gt2game::CockpitShown(native, true, false, false, 0, 0), "another player's camera cannot attach the local cockpit");
+    native.target = 0;
     check(!gt2game::CockpitShown(native, false, false, false, 0), "original driver view remains selectable");
     check(gt2game::CockpitShown(native, true, false, false, 1), "last countdown field already shows the selected driver cabin");
     check(!gt2game::CockpitShown(native, true, false, false, 60), "intro orbit does not attach the cabin before the driver camera cut");

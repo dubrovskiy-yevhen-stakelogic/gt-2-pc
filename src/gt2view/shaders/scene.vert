@@ -101,7 +101,7 @@ void main() {
     if ((inFlags & 2147483648u) != 0u && (inFlags & 16u) == 0u) gl_Position.z *= 1.0005;
     outTexel = inTexel;
     outColor = inColor;
-    outPaintView=vec3(0,0,-1);
+    outPaintView=(inFlags & (16u|32768u))==(16u|32768u) ? inPos : vec3(0,0,-1);
 #ifndef GT2_WEBGL
     outNativeAlpha=1.0;outNativeTint=vec3(1);outNativeMaterial=0u;outNativeInfo=vec4(0);outNativeState=vec4(0);outNativeEnvironmentBasis=mat3(1);
     if((inFlags & 64u)!=0u) {

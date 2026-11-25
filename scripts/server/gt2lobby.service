@@ -1,0 +1,23 @@
+[Unit]
+Description=GT2 multiplayer room directory
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gt2
+Group=gt2
+ExecStart=/opt/gt2/bin/gt2lobby /var/lib/gt2/arcade/disc.raw2352 /var/lib/gt2/directory/host.gt2host 0.0.0.0
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=768M
+TasksMax=64
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

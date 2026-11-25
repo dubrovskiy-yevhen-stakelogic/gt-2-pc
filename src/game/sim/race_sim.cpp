@@ -254,6 +254,8 @@ void RaceSim::Setup(const Track& track, const CourseExtras& extras, const SimCon
     if (slots.empty() || slots.size() > kMaxCars) throw std::runtime_error("race: 1 to 6 cars");
     if (params.size() != slots.size()) throw std::runtime_error("race: one parameter record per slot");
     if (extras.chunks.size() != track.chunks.size()) throw std::runtime_error("race: course extras do not match the track");
+    setupIdentity_ = std::make_shared<const uint8_t>(uint8_t(0));
+    networkDrivers_ = false;
     track_ = &track;
     course_ = NativeCourse(track, extras);
     constants_ = constants;
@@ -584,12 +586,13 @@ void RaceSim::BindContext() {
         t.steerCentring = constants_.steerCentring;
         t.steerCurve = {constants_.steerCurveXs.data(), constants_.steerCurveYs.data(), uint32_t(constants_.steerCurveXs.size())};
         // 0x80046DB0 + car * 2 and the five tables that follow it, read like the original (players are cars 0 / 1).
-        t.throttleRise = constants_.pedalRates[car];
-        t.throttleFall = constants_.pedalRates[2 + car];
-        t.brakeRise = constants_.pedalRates[4 + car];
-        t.brakeFall = constants_.pedalRates[6 + car];
-        t.handbrakeRise = constants_.pedalRates[8 + car];
-        t.handbrakeFall = constants_.pedalRates[10 + car];
+        const size_t pedalSlot = networkDrivers_ && body.controlClass == 0 ? 0 : car;
+        t.throttleRise = constants_.pedalRates[pedalSlot];
+        t.throttleFall = constants_.pedalRates[2 + pedalSlot];
+        t.brakeRise = constants_.pedalRates[4 + pedalSlot];
+        t.brakeFall = constants_.pedalRates[6 + pedalSlot];
+        t.handbrakeRise = constants_.pedalRates[8 + pedalSlot];
+        t.handbrakeFall = constants_.pedalRates[10 + pedalSlot];
     }
     const uint16_t holdFrames = shell_.State().hold;
     PhysicsContext& p = physics_;
@@ -663,6 +666,72 @@ void RaceSim::LoadState(std::span<const Car> cars, const CarContactState& contac
     SetupShell(shellOptions_);
     shell_.State().hold = 0;
     shell_.State().raceClock = constants_.word80046F64;
+    BindContext();
+}
+
+RaceSim::Checkpoint RaceSim::CaptureCheckpoint() const {
+    if (!setupIdentity_ || cars_.empty()) throw std::runtime_error("checkpoint: race is not set up");
+    // These sources own mutable state outside RaceSim. Reject them rather than
+    // claim that an incomplete restore can reproduce their side effects.
+    if (HasGhost() || padSource_ || shell_.Context().courseRecordTarget)
+        throw std::runtime_error("checkpoint: external replay, ghost or record target is not supported");
+    Checkpoint c;
+    c.setup = setupIdentity_;
+    c.cars = cars_;
+    c.contact = contact_;
+    c.work = work_;
+    c.requests = requests_;
+    for (size_t i = 0; i < kMaxCars; ++i)
+        for (size_t j = 0; j < 4; ++j) c.deltas[i][j] = deltas_[i][j];
+    c.scratch = scratch_;
+    c.shell = shell_.State();
+    c.order = raceOrder_;
+    c.drivetrain = physics_.drivetrain;
+    c.taskOver = raceTaskOver_;
+    return c;
+}
+
+void RaceSim::RestoreCheckpoint(const Checkpoint& c) {
+    if (!setupIdentity_ || c.setup != setupIdentity_ || c.cars.size() != cars_.size())
+        throw std::runtime_error("checkpoint: different race setup");
+    if (HasGhost() || padSource_ || shell_.Context().courseRecordTarget)
+        throw std::runtime_error("checkpoint: external replay, ghost or record target is not supported");
+    // Preserve vector storage: shell and curves have references into it.
+    std::copy(c.cars.begin(), c.cars.end(), cars_.begin());
+    contact_ = c.contact;
+    work_ = c.work;
+    requests_ = c.requests;
+    for (size_t i = 0; i < kMaxCars; ++i)
+        for (size_t j = 0; j < 4; ++j) deltas_[i][j] = c.deltas[i][j];
+    std::copy(c.scratch.begin(), c.scratch.end(), scratch_.begin());
+    shell_.State() = c.shell;
+    raceOrder_ = c.order;
+    raceTaskOver_ = c.taskOver;
+    BindContext();
+    physics_.drivetrain = c.drivetrain;
+}
+
+void RaceSim::ConfigureNetworkDrivers(uint8_t humanMask) {
+    if (!setupIdentity_ || cars_.empty() || (humanMask >> cars_.size()) != 0)
+        throw std::runtime_error("network race: invalid participant mask");
+    if (constants_.gameMode != 2 && constants_.gameMode != 4 && constants_.gameMode != 0xC)
+        throw std::runtime_error("network race: normal circuit race required");
+    if (padSource_ || shell_.Context().courseRecordTarget)
+        throw std::runtime_error("network race: external replay or save target");
+    if (shell_.State().raceClock != 0)
+        throw std::runtime_error("network race: configure participants before the first tick");
+    for (size_t i = 0; i < cars_.size(); ++i)
+        if (cars_[i].body.controlClass != ((humanMask & (1u << i)) ? 0 : 2))
+            throw std::runtime_error("network race: participant must match initial car setup");
+    setupIdentity_ = std::make_shared<const uint8_t>(uint8_t(0));
+    networkDrivers_ = true;
+    constants_.catchUp = {};
+    constants_.viewMode = 0;
+    for (size_t i = 0; i < cars_.size(); ++i) {
+        cars_[i].padSlot = 0;
+        cars_[i].body.controlClass = (humanMask & (1u << i)) ? 0 : 2;
+        cars_[i].body.timeScale = 0x1000;
+    }
     BindContext();
 }
 

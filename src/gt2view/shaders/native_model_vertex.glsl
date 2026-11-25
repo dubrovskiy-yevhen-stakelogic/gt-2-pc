@@ -1,5 +1,6 @@
+#include "../scene_vertex_layout.h"
 layout(set=0,binding=13) uniform NativeEnvironmentViews {mat4 camera[3];vec4 enabled;vec4 lightDirection;vec4 lightAmbient;vec4 lightDiffuse;vec4 lightSpecular;vec4 stockSky;} nativeViews;
-// CAR4 VU routines reconstructed in the user's gt4-pc renderer. No generic PBR
+// CAR4 VU routines reconstructed in the gt4-pc renderer. No generic PBR
 // tint or guessed whole-body reflection weight participates in these passes.
 layout(std430,set=0,binding=10) readonly buffer NativeVertices { vec4 entries[]; } nativeVertices;
 layout(std430,set=0,binding=11) readonly buffer NativeMaterials { vec4 rows[]; } nativeMaterials;

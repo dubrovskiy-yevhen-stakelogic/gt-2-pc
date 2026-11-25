@@ -184,7 +184,7 @@ public:
     void Enter(int cls, const std::vector<uint8_t>& available, bool reenter, uint8_t language, MenuVram& vram, TextCtx& c);
     enum Result { kStay = 0, kChosen = 1, kBack = 2 };
     // 0x8001EAA8 (`pad` null during the view transitions): fills the selection (car ids, colour, transmission, tyres).
-    Result Update(const MenuListPad* pad, uint8_t* sel, std::vector<int>& sounds, MenuVram& vram, TextCtx& c);
+    Result Update(const MenuListPad* pad, uint8_t* sel, std::vector<int>& sounds, MenuVram& vram, TextCtx& c, bool carOnly=false);
     // 0x8001F124 (without the 3D car): the carousel page and the rule into slot 2, the bars into slots 0 / 1.
     void Draw(ViewOt& ot, TextCtx& c) const;
     // The menu model's tick (0x80016624, after the views' update every field): its data (+0xF) is ready at the first tick after
@@ -214,6 +214,7 @@ public:
     void EnterGarage(int garage, bool reenter, std::span<const uint8_t> garageBlock, bool rally, uint8_t language, MenuVram& vram);
     Result UpdateGarage(const MenuListPad* pad, uint8_t* sel, std::vector<int>& sounds, MenuVram& vram, TextCtx& c);
     void DrawGarage(ViewOt& ot, TextCtx& c) const;
+    bool ToggleCockpitFilter();
 
 private:
     const ArcadeClassCars& Class() const;
@@ -249,6 +250,8 @@ private:
     std::vector<ArcGarageEntry> garageInfo_;
     MenuListWidget list_;
     int listTimer_ = 0;                           // view + 0x24 in the garage view
+    std::vector<int16_t> unfilteredOrder_;
+    int16_t unfilteredSelection_=0;
     std::vector<int16_t> order_;            // 0x800F1370: row -> car (identity)
     int garageCar_ = -1;                          // selection + 8
     std::array<int16_t, 5> garageFigures_{};      // 0x80016A7C: power, 0, torque, 0, weight

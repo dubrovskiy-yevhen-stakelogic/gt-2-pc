@@ -190,6 +190,9 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     handUpload_ = CreateBuffer(4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     modelImage_ = CreateImage({1,1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
     modelUpload_=CreateBuffer(4,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    generatedImage_=CreateImage({1,1},VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_ASPECT_COLOR_BIT);
+    generatedUpload_=CreateBuffer(4,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    *static_cast<uint32_t*>(generatedUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(modelUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(handUpload_.mapped) = 0xffffffffu; handPending_ = true;
     externalBuffer_ = CreateBuffer(sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT); // grows to the used texels
@@ -252,6 +255,10 @@ VkSceneRenderer::~VkSceneRenderer() {
     DestroyPipelineSet(menuCarPipelines_);
     DestroyImage(paintStudio_);DestroyImage(paintCourse_);DestroyBuffer(paintUpload_);DestroyBuffer(paintProbeUpload_);
     DestroyImage(nativeEnvironment_);DestroyImage(nativeEnvironmentDepth_);DestroyBuffer(nativeEnvironmentViews_);
+    for (const auto& [key, variants] : pipelineVariants_) {
+        (void)key; for (auto pipeline : variants) if (pipeline) vkDestroyPipeline(device_, pipeline, nullptr);
+    }
+    if (pipelineCache_) vkDestroyPipelineCache(device_, pipelineCache_, nullptr);
     vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
     vkDestroyDescriptorPool(device_, descPool_, nullptr);
     vkDestroyDescriptorSetLayout(device_, setLayout_, nullptr);
@@ -263,6 +270,7 @@ VkSceneRenderer::~VkSceneRenderer() {
     if (decodedSampler_) vkDestroySampler(device_, decodedSampler_, nullptr);
     DestroyImage(decodedImage_); DestroyImage(handImage_); DestroyBuffer(handUpload_);
     DestroyImage(modelImage_); DestroyBuffer(modelUpload_);
+    DestroyImage(generatedImage_);DestroyBuffer(generatedUpload_);
     DestroyBuffer(textureBuffer_);
     DestroyBuffer(externalBuffer_);
     DestroyBuffer(viewBuffer_);
@@ -656,15 +664,17 @@ void VkSceneRenderer::DestroySceneTargets() {
 
 void VkSceneRenderer::SetOptions(const RenderOptions& options) {
     if (options == options_) return;
-    vkDeviceWaitIdle(device_);
+    const bool targetsChanged = options.sceneWidth != options_.sceneWidth || options.sceneHeight != options_.sceneHeight ||
+        options.sceneScale != options_.sceneScale || ClampSamples(options.msaa) != ClampSamples(options_.msaa);
     const bool presentChanged = options.vsync != options_.vsync && !offscreen_; // no presentation of our own in the XR path
     const bool outputChanged = options.outputHeight != options_.outputHeight && !offscreen_;
+    if (targetsChanged || presentChanged || outputChanged) vkDeviceWaitIdle(device_);
     options_ = options;
     if (presentChanged || outputChanged) {
         DestroySwapchain(); // recreated with the new present mode / output size by the next Draw
         return;
     }
-    if (swapchain_ || offscreen_) CreateSceneTargets();
+    if (targetsChanged && (swapchain_ || offscreen_)) CreateSceneTargets();
     // The stereo target carries its own MSAA images and pipelines: rebuild them when the sample count changed.
     if (stereoReady_ && ClampSamples(options_.msaa) != stereoSamples_) CreateStereoTarget(stereoExtent_, stereoFormat_, stereoMultiview_);
 }
@@ -690,7 +700,7 @@ void VkSceneRenderer::DestroySwapchain() {
 void VkSceneRenderer::CreatePipeline() {
     // Binding 0: the PS1 VRAM words; binding 1: the external RGBA8 texture store (kExternalTexture); binding 2: the
     // two eyes of a stereo frame (only scene_stereo.vert reads it, the desktop shaders ignore it).
-    VkDescriptorSetLayoutBinding bindings[14]{};
+    VkDescriptorSetLayoutBinding bindings[15]{};
     for (uint32_t i = 0; i < 2; i++) {
         bindings[i].binding = i;
         bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -713,11 +723,12 @@ void VkSceneRenderer::CreatePipeline() {
     bindings[11]={11,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,nullptr};
     bindings[12]={12,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,VK_SHADER_STAGE_FRAGMENT_BIT,nullptr};
     bindings[13]={13,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,nullptr};
-    lci.bindingCount = 14;
+    bindings[14]={14,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,VK_SHADER_STAGE_FRAGMENT_BIT,nullptr};
+    lci.bindingCount = 15;
     lci.pBindings = bindings;
     Check(vkCreateDescriptorSetLayout(device_, &lci, nullptr, &setLayout_), "vkCreateDescriptorSetLayout");
 
-    const VkDescriptorPoolSize poolSizes[3] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 14}};
+    const VkDescriptorPoolSize poolSizes[3] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16}};
     VkDescriptorPoolCreateInfo dpi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     dpi.maxSets = 2;
     dpi.poolSizeCount = 3;
@@ -731,7 +742,7 @@ void VkSceneRenderer::CreatePipeline() {
     Check(vkAllocateDescriptorSets(device_, &dai, &mirrorSourceSet_), "vkAllocateDescriptorSets(mirror)");
     const VkDescriptorBufferInfo dbi[3] = {{textureBuffer_.buffer, 0, VK_WHOLE_SIZE}, {externalBuffer_.buffer, 0, VK_WHOLE_SIZE},
                                            {viewBuffer_.buffer, 0, VK_WHOLE_SIZE}};
-    VkWriteDescriptorSet writes[14]{};
+    VkWriteDescriptorSet writes[15]{};
     for (uint32_t i = 0; i < 3; i++) {
         writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[i].dstSet = descSet_;
@@ -761,13 +772,15 @@ void VkSceneRenderer::CreatePipeline() {
     const VkDescriptorBufferInfo nativeViewsInfo{nativeEnvironmentViews_.buffer,0,VK_WHOLE_SIZE};
     writes[12]=writes[3];writes[12].dstBinding=12;writes[12].pImageInfo=&nativeEnvInfo;
     writes[13]=writes[2];writes[13].dstBinding=13;writes[13].pBufferInfo=&nativeViewsInfo;
-    vkUpdateDescriptorSets(device_, 14, writes, 0, nullptr);
+    const VkDescriptorImageInfo generatedInfo{decodedSampler_,generatedImage_.view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    writes[14]=writes[3];writes[14].dstBinding=14;writes[14].pImageInfo=&generatedInfo;
+    vkUpdateDescriptorSets(device_, 15, writes, 0, nullptr);
     // The source pass must not bind its own color attachment for sampling.
     for (auto& write : writes) write.dstSet = mirrorSourceSet_;
     writes[6].pImageInfo = &handInfo;
     writes[9].pImageInfo = &studioInfo;
     writes[12].pImageInfo = &decodedInfo;
-    vkUpdateDescriptorSets(device_, 14, writes, 0, nullptr);
+    vkUpdateDescriptorSets(device_, 15, writes, 0, nullptr);
 
     VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FrameParams)};
     VkPipelineLayoutCreateInfo pli{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
@@ -787,12 +800,23 @@ void VkSceneRenderer::CreatePipeline() {
 
 void VkSceneRenderer::DestroyPipelineSet(VkPipeline set[9]) {
     for (uint32_t i = 0; i < 9; i++) {
-        if (set[i]) vkDestroyPipeline(device_, set[i], nullptr);
+        // Cached variants own these handles; changing settings only drops the binding.
         set[i] = VK_NULL_HANDLE;
     }
 }
 
-void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[9], bool stereo, uint32_t viewMask, bool cachedOnly, bool cachedHud, bool modelOnly, bool uiOnly, bool backCull, bool environmentOnly) {
+void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipeline out[9], bool stereo, uint32_t viewMask, bool cachedOnly, bool cachedHud, bool modelOnly, bool uiOnly, bool backCull, bool environmentOnly, bool worldOnly) {
+    const uint64_t key = uint64_t(stereo ? stereoFormat_ : colorFormat_) << 32 |
+        uint64_t(samples) | uint64_t(stereo) << 8 | uint64_t(viewMask) << 9 |
+        uint64_t(cachedOnly) << 13 | uint64_t(cachedHud) << 14 | uint64_t(modelOnly) << 15 |
+        uint64_t(uiOnly) << 16 | uint64_t(backCull) << 17 | uint64_t(environmentOnly) << 18 | uint64_t(worldOnly) << 19;
+    if (auto found = pipelineVariants_.find(key); found != pipelineVariants_.end()) {
+        std::copy(found->second.begin(), found->second.end(), out); return;
+    }
+    if (!pipelineCache_) {
+        VkPipelineCacheCreateInfo info{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+        Check(vkCreatePipelineCache(device_, &info, nullptr, &pipelineCache_), "pipeline cache");
+    }
     auto makeModule = [&](const uint32_t* code, size_t bytes) {
         VkShaderModuleCreateInfo smi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
         smi.codeSize = bytes;
@@ -825,7 +849,10 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
     const VkBool32 hudSpecialization = cachedHud;
     const VkSpecializationMapEntry cacheEntry{0, 0, sizeof(VkBool32)};
     const VkSpecializationInfo cacheInfo{1, &cacheEntry, sizeof(hudSpecialization), &hudSpecialization};
-    stages[1].pSpecializationInfo = cachedOnly ? &cacheInfo : nullptr;
+    const VkBool32 worldSpecialization = worldOnly;
+    const VkSpecializationMapEntry worldEntry{1, 0, sizeof(VkBool32)};
+    const VkSpecializationInfo worldInfo{1, &worldEntry, sizeof(worldSpecialization), &worldSpecialization};
+    stages[1].pSpecializationInfo = cachedOnly ? &cacheInfo : worldOnly ? &worldInfo : nullptr;
 
     // Binding 1: the UV rectangle of each vertex's triangle (SetVertices), for the smooth texture filter.
     const VkVertexInputBindingDescription vbind[3] = {{0, sizeof(SceneVertex), VK_VERTEX_INPUT_RATE_VERTEX},
@@ -959,8 +986,9 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
         }
         // Native GS alpha stores reflectivity; it is not a sample coverage mask.
         ms.alphaToCoverageEnable = !modelOnly && i < 5 && samples != VK_SAMPLE_COUNT_1_BIT;
-        Check(vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &gpi, nullptr, &out[i]), "vkCreateGraphicsPipelines");
+        Check(vkCreateGraphicsPipelines(device_, pipelineCache_, 1, &gpi, nullptr, &out[i]), "vkCreateGraphicsPipelines");
     }
+    std::copy_n(out, 9, pipelineVariants_[key].begin());
     vkDestroyShaderModule(device_, vs, nullptr);
     vkDestroyShaderModule(device_, fs, nullptr);
     if(cachedBlendFs)vkDestroyShaderModule(device_,cachedBlendFs,nullptr);
@@ -1156,10 +1184,9 @@ void VkSceneRenderer::FlushFrameUploads() {
     deferUploads_ = false;
 }
 void VkSceneRenderer::SetVertices(uint32_t first, const std::vector<SceneVertex>& vertices) {
-    // Only the eight native model-set slots use the external-texture atlas. The paint-probe/scenery billboards and
-    // the menu composite live above them and must not run the promotion (and its per-vertex copy) every frame.
-    const uint32_t modelSetEnd = kModelSetVertexBase + 8 * kModelSetVertexStride;
-    if (first >= kModelSetVertexBase && first < modelSetEnd && !vertices.empty()) {
+    // Promote only complete uploads within the native model-set slots.
+    // Paint probes, scenery and menu composites use separate vertex ranges.
+    if (first >= kModelSetVertexBase && uint64_t(first) + vertices.size() <= kPaintProbeVertexBase && !vertices.empty()) {
         PromoteModelTextures(first,vertices); return;
     }
     SetVerticesRaw(first,vertices);
@@ -1221,6 +1248,11 @@ void VkSceneRenderer::SetVerticesRaw(uint32_t first, const std::vector<SceneVert
     for(auto it=modelRasterRuns_.begin();it!=modelRasterRuns_.end();) {
         const uint32_t start=uint32_t(it->first>>32),count=uint32_t(it->first);
         if(uint64_t(first)<uint64_t(start)+count && uint64_t(start)<uint64_t(first)+vertices.size())it=modelRasterRuns_.erase(it);else ++it;
+    }
+    for(auto it=generatedWorldRanges_.begin();it!=generatedWorldRanges_.end();) {
+        const uint32_t start=uint32_t(it->first>>32),count=uint32_t(it->first);
+        if(uint64_t(first)<uint64_t(start)+count && uint64_t(start)<uint64_t(first)+vertices.size())it=generatedWorldRanges_.erase(it);
+        else ++it;
     }
     for(auto it=modelRanges_.begin();it!=modelRanges_.end();) {
         const uint32_t start=uint32_t(it->first>>32),count=uint32_t(it->first);
@@ -1285,7 +1317,7 @@ void VkSceneRenderer::UploadExternalTexture(uint32_t firstTexel, uint32_t count,
     if (!count) return;
     EnsureExternalCapacity(firstTexel + count);
     WriteBuffer(externalBuffer_, size_t(firstTexel) * sizeof(uint32_t), rgba, size_t(count) * sizeof(uint32_t));
-    if (firstTexel>=kModelSetTexelBase) {
+    if (firstTexel>=kModelSetTexelBase && firstTexel<kGeneratedWorldTexelBase) {
         modelSourcePixels_[firstTexel].assign(rgba,rgba+count);
         modelAtlas_.Invalidate(firstTexel);
         if(const auto it=modelSourceSizes_.find(firstTexel);it!=modelSourceSizes_.end()) {
@@ -1355,7 +1387,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
         vkCmdWriteTimestamp(cmd_,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,gpuQueries_,0);
     }
     UploadHandImage();
-    UploadModelImage();
+    UploadModelImage();UploadGeneratedImage();
     UploadPaintEnvironment();UploadPaintProbe();
     UploadDecodedTextures();
 
@@ -1702,7 +1734,10 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             const float identity[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
             if(!BoundsInView(bounds,identity,item.mvp))continue;
         }
-        const bool hud = recordStereo_ && item.space == kSpaceScreen;
+        // Menu cars share the HUD projection in stereo. Their clipping must move
+        // with that plane rather than use a fixed framebuffer scissor.
+        const bool hud = recordStereo_ && (item.space == kSpaceScreen || item.space == kSpaceMenuCar ||
+                                           item.space == kSpaceMenuCarTexture);
         const bool hasClip = item.scissor[2] > item.scissor[0] && item.scissor[3] > item.scissor[1];
         const bool wantClip = hasClip && !hud;
         if (wantClip) {
@@ -1746,12 +1781,14 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             (VertexAt(item.firstVertex)->flags & kCarPaint);
         bool modelOnly=false;
         if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
-           uint64_t(item.firstVertex)+item.vertexCount<=kMaxVertices && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
+           uint64_t(item.firstVertex)+item.vertexCount<=kPaintProbeVertexBase && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
             const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
             auto [found,added]=modelRanges_.try_emplace(range,true);
             if(added)for(uint32_t v=0;v<item.vertexCount;++v){
                 const auto flags=vertexFlags_.at(size_t(item.firstVertex)+v);
-                if((flags & kTextured) && !(flags & kModelAtlasTexture)){found->second=false;break;}
+                // The compact shader supports masked atlas mirrors only.
+                // Untextured authored glass uses the general mirror UV path.
+                if(((flags & kMirrorTexture) && !(flags & kModelAtlasTexture)) || ((flags & kTextured) && !(flags & kModelAtlasTexture))){found->second=false;break;}
             }
             modelOnly=found->second;
         }
@@ -1769,10 +1806,29 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         constexpr uint32_t uiFlags=kTextured|kRawTexture|kOverlay|kSemiTransparent|kCullBack|(3u<<kNearTierShift)|
             kIntegerModulate|kClampTextureRect|kHdUi|kSmoothUi|kUiMap|kReconstructedUi|kNearestUi|(3u<<8);
         if(uiOnly)for(uint32_t v=0;v<item.vertexCount;++v)if(vertexFlags_.at(size_t(item.firstVertex)+v) & ~uiFlags){uiOnly=false;break;}
+        // Generated world materials use the general shader, but must retain the
+        // same peripheral shading rate as original track textures. Never apply
+        // this to screen UI, mirrors, or mixed model ranges.
+        bool generatedWorld=false;
+        if(recordStereo_ && !recordStereo2D_ && !recordMirror_ && i<sceneItems && !hud &&
+           !std::getenv("GT2_AUDIT_UNFOVEATED_GENERATED")) {
+            const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
+            auto [found,added]=generatedWorldRanges_.try_emplace(range,true);
+            if(added)for(uint32_t v=0;v<item.vertexCount;++v) {
+                const auto flags=vertexFlags_.at(size_t(item.firstVertex)+v);
+                constexpr uint32_t allowed=kTextured|kRawTexture|kCarPaint|kExternalTexture|
+                    (3u<<8)|kSemiTransparent|kCullBack|(3u<<kNearTierShift)|
+                    kGeneratedMipTexture|kClampTextureRect|kModelClampU|kModelClampV;
+                if((flags & ~allowed) || ((flags & kExternalTexture) && !(flags & kGeneratedMipTexture))) {
+                    found->second=false;break;
+                }
+            }
+            generatedWorld=found->second;
+        }
         const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0;
-        const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);
+        const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (generatedWorld && !cached ? 96 : uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);
         if (pipelineKey != boundPipeline) {
-            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : recordStereo2D_ ? (hud ? stereo2dCachedHudPipelines_[which] : stereo2dPipelines_[which]) : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
+            vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, generatedWorld && !cached ? stereoWorldPipelines_[which] : uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : recordStereo2D_ ? (hud ? stereo2dCachedHudPipelines_[which] : stereo2dPipelines_[which]) : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
             const float k = which == 0 ? 0.5f : 0.25f;
             const float constants[4] = {k, k, k, 1.0f};
             vkCmdSetBlendConstants(cmd_, constants);
@@ -1781,7 +1837,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (recordStereo_ && !recordMirror_ && context_.ShadingRate() && cmdSetShadingRate_) {
             const bool coarse = item.softParticle && which == 1 && item.stpPass == 2 &&
                                 (softParticleRateSamples_ & stereoSamples_) != 0;
-            const int rate = coarse ? 2 : ((cached || modelOnly) && !hud ? 1 : 0);
+            const int rate = coarse ? 2 : ((cached || modelOnly || generatedWorld) && !hud ? 1 : 0);
             if (rate != boundShadingRate) {
                 const VkExtent2D size{coarse ? 2u : 1u, coarse ? 2u : 1u};
                 const VkFragmentShadingRateCombinerOpKHR ops[2] = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
@@ -1967,7 +2023,7 @@ void VkSceneRenderer::BakePaintEnvironment(const std::array<std::vector<DrawItem
     Check(vkResetFences(device_,1,&fence_),"vkResetFences(paint)");
     Check(vkResetCommandBuffer(cmd_,0),"vkResetCommandBuffer(paint)");
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};Check(vkBeginCommandBuffer(cmd_,&begin),"vkBeginCommandBuffer(paint)");
-    UploadHandImage();UploadModelImage();UploadDecodedTextures();UploadPaintEnvironment();
+    UploadHandImage();UploadModelImage();UploadGeneratedImage();UploadDecodedTextures();UploadPaintEnvironment();
     auto barrier=[&](VkImageLayout from,VkImageLayout to,VkAccessFlags src,VkAccessFlags dst,uint32_t mip,uint32_t count) {
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};b.image=paintCourse_.image;
         b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
@@ -2269,6 +2325,8 @@ void VkSceneRenderer::SaveReadback(const std::string& path, VkExtent2D extent, V
 
 void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, bool multiview) {
     if (extent.width == 0 || extent.height == 0) throw std::runtime_error("CreateStereoTarget: empty extent");
+    if (stereoReady_ && extent.width == stereoExtent_.width && extent.height == stereoExtent_.height &&
+        format == stereoFormat_ && multiview == stereoMultiview_ && ClampSamples(options_.msaa) == stereoSamples_) return;
     vkDeviceWaitIdle(device_);
     DestroyStereoTarget();
     stereoExtent_ = extent;
@@ -2292,6 +2350,7 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
     CreatePipelineSet(stereoSamples_, stereoPipelines_, true, multiview ? 0x3u : 0u);
+    CreatePipelineSet(stereoSamples_, stereoWorldPipelines_, true, multiview ? 0x3u : 0u, false,false,false,false,false,false,true);
     DestroyPipelineSet(stereo2dPipelines_);
     DestroyPipelineSet(stereo2dCachedHudPipelines_);
     CreatePipelineSet(VK_SAMPLE_COUNT_1_BIT, stereo2dPipelines_, true, multiview ? 0x3u : 0u);
@@ -2412,7 +2471,7 @@ void VkSceneRenderer::DrawStereo(const std::vector<DrawItem>& items, const std::
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     Check(vkBeginCommandBuffer(cmd_, &bi), "vkBeginCommandBuffer");
     UploadHandImage();
-    UploadModelImage();
+    UploadModelImage();UploadGeneratedImage();
     UploadPaintEnvironment();UploadPaintProbe();
     UploadDecodedTextures();
     UploadRateImage();

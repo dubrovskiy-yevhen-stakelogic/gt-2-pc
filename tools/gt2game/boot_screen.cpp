@@ -1,4 +1,6 @@
 #include "boot_screen.h"
+#include "gt2formats/model_set_preload.h"
+#include "platform/os/paths.h"
 #include "pc_overlay.h"
 #include "movie_player.h"
 #include "gt2formats/hd_media.h"
@@ -13,6 +15,8 @@
 
 namespace gt2game {
 bool PlayBootScreens(GameWindow& window, const gt2::DiscImage& disc, bool sound) {
+    if (OverlayGt4ModelSet()) gt2::StartModelSetPreload(gt2::gt4ModelSetRoot,
+        gt2::os::DataRoot() / "gt4-preload-recent.txt");
     if (!VrMode() && !ConsoleStartupHandled() && PlayStationIntroEnabled()) {
         const auto startup = gt2::hd::StartupMovie();
         if (!startup.empty()) {

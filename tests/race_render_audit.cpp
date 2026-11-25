@@ -21,12 +21,15 @@ int main(int argc,char** argv) {try {
     const auto rel=output.lexically_relative(std::filesystem::absolute("work"));
     if(rel.empty() || *rel.begin()=="..")throw std::runtime_error("output must be under work");
     std::filesystem::create_directories(output);
+    if(const auto* generatedRoot=std::getenv("GT2_AUDIT_GENERATED_ROOT")) {
+        gt2::generated::root=generatedRoot;gt2::generated::SetEnabled(true);
+    }
     gt2::DiscImage disc(argv[1]);gt2::GtfsVolume vol(disc);
     gt2::gt4ModelSetRoot=argv[2];gt2::gt4ModelSetEnabled=true;
     Device device;VkContext context(device.existing);
     VkSceneRenderer renderer(context,{512,512},VK_FORMAT_R8G8B8A8_UNORM);
     RenderOptions options;options.msaa=2;options.smoothTextures=true;renderer.SetOptions(options);
-    renderer.EnableDecodedTextures(true);renderer.SetFoveation(2);
+    renderer.EnableDecodedTextures(true);renderer.SetFoveation(std::getenv("GT2_AUDIT_FOVEATION")?std::atoi(std::getenv("GT2_AUDIT_FOVEATION")):2);
     const float renderScale=std::getenv("GT2_AUDIT_RENDER_SCALE")?std::strtof(std::getenv("GT2_AUDIT_RENDER_SCALE"),nullptr):1.f;
     if(renderScale<.5f || renderScale>2.f)throw std::runtime_error("render scale out of range");
     renderer.CreateStereoTarget({uint32_t(2184*renderScale),uint32_t(2288*renderScale)},VK_FORMAT_R8G8B8A8_UNORM,true);
@@ -75,10 +78,17 @@ int main(int argc,char** argv) {try {
     for(int slot:slots)if(slot<0)throw std::runtime_error("race load failed");
     if(!assets.UsesGt4(slots[0]))throw std::runtime_error("MGF GT4 load failed");
     ProceduralCockpit cockpit(renderer);
-    std::ofstream csv(output/"timings.csv");csv<<"mode,chunk,repeat,gpu_ms,wait_ms,draws,vertices,cached,uncached,environment_gpu_ms\n";
+    std::ofstream csv(output/"timings.csv");csv<<"mode,chunk,repeat,gpu_ms,wait_ms,draws,vertices,cached,uncached,environment_gpu_ms,generated_mask,gpu_hz,reference\n";
     bool failed=false;
     const int repeats=std::getenv("GT2_AUDIT_REPEATS")?std::atoi(std::getenv("GT2_AUDIT_REPEATS")):12;
-    for(const std::string mode:{"cockpit-last","cockpit-first","chase"})for(size_t ci=0;ci<track.chunks.size();ci+=8) {
+    const size_t chunkStep=std::getenv("GT2_AUDIT_CHUNK_STEP")?size_t(std::max(1,std::atoi(std::getenv("GT2_AUDIT_CHUNK_STEP")))):8;
+    const bool sweep=std::getenv("GT2_AUDIT_MASK_SWEEP")!=nullptr;
+    if(const auto* mask=std::getenv("GT2_AUDIT_MASK")){gt2::generated::categories=std::atoi(mask);gt2::generated::SetEnabled(gt2::generated::categories!=0);}
+    const std::vector<unsigned> masks=sweep?std::vector<unsigned>{0,127,1,2,4,8,16,32,64,127,0}:std::vector<unsigned>{gt2::generated::ActiveMask()};
+    const size_t maxChunks=std::getenv("GT2_AUDIT_MAX_CHUNKS")?size_t(std::max(1,std::atoi(std::getenv("GT2_AUDIT_MAX_CHUNKS")))):track.chunks.size();
+    for(const std::string mode:{"cockpit-last","cockpit-first","chase"})for(size_t ci=0;ci<track.chunks.size()&&ci/chunkStep<maxChunks;ci+=chunkStep)for(unsigned mask:masks) {
+        if(const auto* only=std::getenv("GT2_AUDIT_MODE");only && mode!=only)continue;
+        if(sweep){gt2::generated::categories=mask;gt2::generated::SetEnabled(mask!=0);}
         const auto& chunk=track.chunks[ci];
         const float yaw=std::atan2(float(chunk.direction[0]),-float(chunk.direction[2]));
         std::array<float,16> model{};model[0]=model[10]=std::cos(yaw);model[2]=-std::sin(yaw);model[8]=std::sin(yaw);model[5]=model[15]=1;
@@ -120,13 +130,25 @@ int main(int argc,char** argv) {try {
         const int pace=std::getenv("GT2_AUDIT_FRAME_US")?std::atoi(std::getenv("GT2_AUDIT_FRAME_US")):0;
         for(int r=0;r<repeats;++r) {
             if(pace>0) {std::this_thread::sleep_until(frameTime);frameTime+=std::chrono::microseconds(pace);}
+            const bool reference=std::getenv("GT2_AUDIT_AB") && ((r/48)%4==0 || (r/48)%4==3);
+            if(std::getenv("GT2_AUDIT_AB")) {
+#ifdef _WIN32
+                _putenv_s("GT2_AUDIT_UNFOVEATED_GENERATED",reference?"1":"");
+#else
+                if(reference)setenv("GT2_AUDIT_UNFOVEATED_GENERATED","1",1);else unsetenv("GT2_AUDIT_UNFOVEATED_GENERATED");
+#endif
+            }
             const auto start=std::chrono::steady_clock::now();
             const bool capture=r==repeats-1 && !std::getenv("GT2_AUDIT_NO_CAPTURE");
             if(!std::getenv("GT2_AUDIT_STATIC_ENV"))assets.UpdatePaintProbe({model[12],model[13]+.8f,model[14]});
-            renderer.DrawStereo(items,capture?(output/(mode+"-"+std::to_string(ci)+".png")).string():"",items.size());renderer.WaitFrame();
+            renderer.DrawStereo(items,capture?(output/(mode+"-"+std::to_string(ci)+"-mask"+std::to_string(gt2::generated::ActiveMask())+".png")).string():"",items.size());renderer.WaitFrame();
             const double wait=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
             size_t vertices=0;for(const auto& item:items)vertices+=item.vertexCount;
-            csv<<mode<<','<<ci<<','<<r<<','<<renderer.GpuMilliseconds()<<','<<wait<<','<<items.size()<<','<<vertices<<','<<renderer.CachedMaterials()<<','<<renderer.UncachedMaterials()<<','<<renderer.EnvironmentGpuMilliseconds()<<'\n';
+            uint64_t gpuHz=0;
+#ifdef __ANDROID__
+            std::ifstream("/sys/class/kgsl/kgsl-3d0/gpuclk")>>gpuHz;
+#endif
+            csv<<mode<<','<<ci<<','<<r<<','<<renderer.GpuMilliseconds()<<','<<wait<<','<<items.size()<<','<<vertices<<','<<renderer.CachedMaterials()<<','<<renderer.UncachedMaterials()<<','<<renderer.EnvironmentGpuMilliseconds()<<','<<gt2::generated::ActiveMask()<<','<<gpuHz<<','<<reference<<'\n';
             if(r>2 && !capture && (wait>100 || renderer.GpuMilliseconds()<0))failed=true;
         }
     }

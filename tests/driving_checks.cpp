@@ -1,4 +1,5 @@
 #include "platform/input/keyboard_bindings.h"
+#include "../tools/gt2game/cockpit_filter_shortcut.h"
 #include "platform/xr/vr_driving.h"
 #include "vr_input_merge_checks.h"
 #include "platform/xr/vr_controls.h"
@@ -11,6 +12,16 @@ static int checks=0;
 void Check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);++checks;}
 int main(){try{
     VrInputMergeChecks(Check);
+    {
+        using namespace gt2::input::ps1;
+        Check(gt2game::CockpitFilterPressed(kL3,kL3),"desktop L3 must filter garage");
+        Check(gt2game::CockpitFilterPressed(kL3|kSelect,kL3|kSelect),"Quest L3 Select alias must filter garage");
+        Check(!gt2game::CockpitFilterPressed(0,kL3|kSelect),"held L3 must not toggle repeatedly");
+        Check(!gt2game::CockpitFilterPressed(kSelect,kSelect),"Select alone must not filter");
+        Check(!gt2game::CockpitFilterPressed(kL3,kL3|kSelect|kStart),"menu chord must not filter");
+        Check(!gt2game::CockpitFilterPressed(kL3,kL3|kR3),"both sticks must not filter");
+
+    }
     {
         DrivingSettings anchored;anchored.mode=1;
         anchored.cockpitWheelCenter=std::array<float,3>{.12f,-.55f,-.26f};

@@ -206,6 +206,7 @@ class PopupList {
 public:
     virtual ~PopupList() = default;
     virtual void Reset() = 0;                                                              // 0x80020490 / 0x800209B0
+    virtual bool ToggleCockpitFilter() { return false; }
     virtual int Count() const = 0;
     virtual void Load(const MenuPage& page, const MenuItem& item, bool keepSelection) = 0; // 0x800204EC / 0x80020A0C
     virtual int Update(const PadState* pad, bool active) = 0;                              // 0x8002055C / 0x80020A94
@@ -247,6 +248,7 @@ public:
     void Update(const PadState& pad);
 
     const MenuPage& Page() const { return page_; }
+    bool ToggleCockpitFilter() { return popup_==1 && garageList_ && garageList_->ToggleCockpitFilter(); }
     uint32_t PageId() const { return pageId_; }
     uint32_t BackTarget() const { return back_; }
     const Cursor& CursorState() const { return cursor_; }

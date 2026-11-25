@@ -80,6 +80,8 @@ struct PanelItem {
     int16_t height = -1;    // +2 (< 1 = the list's row height)
     int32_t result = 0;     // +0x10
     PanelSprite sprite;     // +0xC
+    std::string label;
+    const HudFont* labelFont = nullptr;
     // panel object
     int16_t pulse = 0;      // +0 (template +2)
     int16_t steps = 0;      // +2 (template +4): reveal steps; the selected pulse runs steps .. steps + pulse
@@ -135,7 +137,7 @@ class ArcadeGuestLoad;
 class ArcadeMenus {
 public:
     // kEnding: ENDING CREDITS chose a row: the top level plays its ending movie (member 5), then the title.
-    enum Outcome : uint8_t { kStay, kRace, kTitle, kEnding };
+    enum Outcome : uint8_t { kStay, kRace, kTitle, kEnding, kMultiplayer };
 
     // `career` = the career block (0x7C9C bytes: +0 language, +3 / +6 laps, the unlock state).
     ArcadeMenus(const ArcadeMenuAssets& assets, const ArcadeData& data, const CarInfoDirectory& cars, std::span<const uint8_t> career);
@@ -184,6 +186,7 @@ public:
     const ArcadeCarPage& CarPage() const { return *carPage_; } // the car camera / projection / floor (arcade_car_page.h)
     // The 2PLAYER BATTLE page while it is on screen (its two 3D cars: arcade_battle.h CarShown / Projection / Floor), else null.
     const ArcadeBattlePage* BattleShown() const;
+    bool ToggleCockpitFilter();
     ArcadeView Current() const { return stack_.empty() ? ArcadeView::kRoot : stack_.back(); }
     // The menus' VRAM (the assets' + the name logos the car page uploaded); the version changes with every upload.
     const MenuVram& Vram() const { return vram_; }

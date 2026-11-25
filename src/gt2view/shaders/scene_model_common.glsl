@@ -14,9 +14,8 @@ layout(location=10) in vec3 inPaintView;
 layout(set=0,binding=6) uniform sampler2D rearView;
 layout(set=0,binding=7) uniform sampler2D modelAtlas;
 layout(location=0) out vec4 outColor;
-#ifndef GT2_MODEL_GLASS_ONLY
 #include "paint_clearcoat.glsl"
-#endif
+#include "authored_glass.glsl"
 vec3 cabinColor(vec3 color) {
     if ((inFlags & 536870912u)!=0u) return (inFlags & 67108864u)!=0u ? vec3(0,1,0) : vec3(.055,.060,.067);
     if ((inFlags & 67108864u)!=0u) return gl_FrontFacing ? vec3(1,0,1) : vec3(0,1,0);
@@ -55,6 +54,7 @@ void shadeModel() {
     if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
     if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
+    if(authoredGlazing()){outColor=authoredGlass(c);return;}
 #ifdef GT2_MODEL_GLASS_ONLY
     outColor=vec4(cabinColor(c.rgb*inColor),c.a);
 #else

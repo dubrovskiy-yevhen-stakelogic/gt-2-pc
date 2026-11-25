@@ -36,6 +36,7 @@
 // What the frame does NOT do natively yet, and why:
 //   - the sound / vibration hooks (0x800156B8, the block at the end of 0x800133F0);
 //   - the smoke / dust particle spawns of 0x800133F0 (renderer-side effect).
+namespace gt2::net { class StateCodec; }
 namespace gt2::sim {
 
 // ---------------------------------------------------------------- constants of the executable / overlay
@@ -278,7 +279,39 @@ struct CarTelemetry {
 };
 
 class RaceSim {
+    friend class gt2::net::StateCodec;
 public:
+    RaceSim() = default;
+    RaceSim(const RaceSim&) = delete;
+    RaceSim& operator=(const RaceSim&) = delete;
+    RaceSim(RaceSim&&) = delete;
+    RaceSim& operator=(RaceSim&&) = delete;
+
+    // Opaque, in-process checkpoint of a normal race. Never send its object representation
+    // over the network. Checkpoints belong to one Setup invocation and retain all scratch
+    // state, including contact history and native wheel requests.
+    class Checkpoint {
+        friend class RaceSim;
+        friend class gt2::net::StateCodec;
+        std::shared_ptr<const uint8_t> setup;
+        std::vector<Car> cars;
+        CarContactState contact{};
+        DriveStepWork work{};
+        std::array<GearRequest, kMaxCars> requests{};
+        std::array<std::array<int32_t, 4>, kMaxCars> deltas{};
+        std::vector<uint8_t> scratch;
+        RaceShellState shell{};
+        std::array<int8_t, kMaxCars> order{};
+        DrivetrainGlobals drivetrain{};
+        bool taskOver = false;
+    };
+    Checkpoint CaptureCheckpoint() const;
+    void RestoreCheckpoint(const Checkpoint& checkpoint);
+    // Session-owned normal circuit races: no legacy two-pad result ownership, no
+    // catch-up advantage, and the same digital input tuning for every human car.
+    // Call before taking checkpoints; cars stay in the original grid order.
+    void ConfigureNetworkDrivers(uint8_t humanMask);
+
     // Sets the race up: cars in the given slots with the given parameter records (mutated by the setup, like the
     // original's), then the race shell (RaceShellOptions: laps, start countdown). `extras` must outlive the
     // object. Throws on inconsistent inputs.
@@ -381,6 +414,8 @@ private:
     std::array<uint16_t, 16> pedalTable_{};
     Car ghostDisplay_{};                       // car 1 as 0x800133F0 draws it (the blended pose of 0x8003F2F0)
     bool ghostDisplayValid_ = false;
+    std::shared_ptr<const uint8_t> setupIdentity_;
+    bool networkDrivers_ = false;
 };
 
 } // namespace gt2::sim

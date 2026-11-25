@@ -1,5 +1,8 @@
 #include "gt2view/hud.h"
 
+#include "gt2formats/generated_world.h"
+#include "gt2formats/png_reader.h"
+#include <cstring>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -47,6 +50,29 @@ Hud::Hud(SceneRenderer& renderer, const gt2::GtfsVolume& vol, const gt2::GuestIm
     : renderer_(renderer), vol_(vol), font_(gt2::LoadRaceFont(vol, exe)), text_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kSmallFont))),
       large_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kLargeFont))), start_(gt2::LoadHudFont(exe, exe.Sim(gt2::HudFont::kStartFont))),
       sheet_(gt2::LoadHudSheet(vol)), strings_(gt2::LoadHudStrings(vol)), tables_(gt2::LoadHudTables(raceOverlay)), block_(size_t(1024) * 512, 0) {
+    const auto unitsPath = gt2::generated::root / "_hud" / "speed-units.png";
+    if (std::filesystem::is_regular_file(unitsPath)) {
+        try {
+            const auto atlas = gt2::ReadPngFile(unitsPath.string());
+            if (atlas.width == 128 && atlas.height == 128) {
+                std::vector<uint32_t> pixels(128 * 128);
+                std::memcpy(pixels.data(), atlas.rgba.data(), pixels.size() * sizeof(uint32_t));
+                renderer_.UploadExternalTexture(SceneRenderer::kGeneratedHudBase, uint32_t(pixels.size()), pixels.data());
+                haveGeneratedUnits_ = true;
+            }
+        } catch (const std::exception& e) { std::fprintf(stderr,"HUD artwork: %s\n",e.what()); }
+    }
+    const auto artPath = gt2::generated::root / "_hud" / "race-hud.png";
+    if (std::filesystem::is_regular_file(artPath)) {
+        try {
+            const auto image=gt2::ReadPngFile(artPath.string());
+            if (image.width==1024 && image.height==512) {
+                artAtlas_.resize(1024*256);
+                std::memcpy(artAtlas_.data(),image.rgba.data(),artAtlas_.size()*sizeof(uint32_t));
+                renderer_.UploadExternalTexture(SceneRenderer::kRaceHudTexelBase,uint32_t(artAtlas_.size()),artAtlas_.data());
+            }
+        } catch(const std::exception& e) { std::fprintf(stderr,"Race HUD: %s\n",e.what()); }
+    }
     strings_.base = exe.Sim(gt2::HudStrings::kBase); // the race text copy of the executable's build
     try { // 0x8002D20C: the 5 bytes at 0x8002F2E8 copied as the text of a record without a speed
         for (uint32_t a = raceOverlay.Sim(0x8002F2E8u), k = 0; k < 5 && raceOverlay.Get<uint8_t>(a + k) != 0; k++) noRecordSpeed_.push_back(char(raceOverlay.Get<uint8_t>(a + k)));
@@ -115,6 +141,7 @@ void Hud::UseCourse(const std::string& courseName) {
     try {
         map_ = gt2::LoadCourseMap(vol_, courseName);
         haveMap_ = true;
+        UploadArtMap();
     } catch (const std::exception& e) {
         std::printf("hud: no course map for %s (%s)\n", courseName.c_str(), e.what());
         haveMap_ = false;
@@ -206,18 +233,69 @@ void Hud::Mode(uint16_t tpage) {
     Packet({c});
 }
 
+bool Hud::UseArt() const {
+    return !artAtlas_.empty() && (gt2::generated::ActiveMask() & (1u << gt2::generated::Hud));
+}
+
+Hud::ArtRect Hud::Letter(unsigned ch) {
+    if (ch<33 || ch>126) return {};
+    const unsigned index=ch-32;
+    return {int(index%16)*32+1,int(index/16)*32+1,30,30};
+}
+
+void Hud::UploadArtMap() {
+    if (artAtlas_.empty()) return;
+    // The silhouette and car coordinates both come from the course. Reconstruct the
+    // two iso-contours (outer keyline and inner route) on the HD sampling grid.
+    auto sample=[&](int x,int y) {
+        x=std::clamp(x,0,95); y=std::clamp(y,0,95);
+        return map_.clut[(map_.words[y*24+x/4]>>(4*(x%4)))&15];
+    };
+    for (int y=0;y<256;y++) for (int x=0;x<256;x++) {
+        const float u=(x+.5f)*96/256-.5f,v=(y+.5f)*96/256-.5f;
+        const int ix=int(std::floor(u)),iy=int(std::floor(v));
+        const float fx=u-ix,fy=v-iy;
+        float coverage=0, light=0;
+        for(int dy=0;dy<2;++dy) for(int dx=0;dx<2;++dx) {
+            const float weight=(dx?fx:1-fx)*(dy?fy:1-fy);
+            const auto word=sample(ix+dx,iy+dy);
+            if(word) coverage+=weight;
+            light+=weight*float(word&31)/31;
+        }
+        const unsigned value=unsigned(235*std::clamp((light-.28f)*3,0.f,1.f));
+        artAtlas_[y*1024+768+x]=(coverage>.40f?0xff000000u:0u)|value*0x010101u;
+    }
+    renderer_.UploadExternalTexture(SceneRenderer::kRaceHudTexelBase,uint32_t(artAtlas_.size()),artAtlas_.data());
+}
+
 void Hud::SpriteAt(int x, int y, const gt2::HudSpriteDesc& d, uint32_t colorWord) {
     Cmd c;
     c.kind = Cmd::kSprite;
     c.x[0] = x;
     c.y[0] = y;
+    if (haveGeneratedUnits_ && (gt2::generated::ActiveMask() & (1u << gt2::generated::Hud))) {
+        if (&d == &tables_.unitKmh) c.generatedUnit = 0;
+        if (&d == &tables_.unitMph) c.generatedUnit = 1;
+    }
+    if (UseArt()) {
+        for (size_t i=0;i<tables_.badges.size();++i) if (&d==&tables_.badges[i]) {
+            c.art={int(i)*96+1,193,94,62}; c.fullColor=true;
+        }
+        for (size_t i=0;i<tables_.speedDigits.size();++i) if (&d==&tables_.speedDigits[i]) c.art=Letter('0'+unsigned(i));
+        for (size_t i=0;i<tables_.strip.size();++i) if (&d==&tables_.strip[i]) c.art=Letter("0123456789R/"[i]);
+        for (size_t i=0;i<tyreSprites_.size();++i) if (&d==&tyreSprites_[i])
+            c.art=(i==0 || i==3)?ArtRect{641,194,28,58}:ArtRect{676,194,25,57};
+        c.fitInk=c.art.w!=0;
+        if (&d==&tables_.turbo[0]) {c.art={640,0,128,128};c.fullColor=true;c.semi=false;}
+        if (&d==&tables_.turbo[1]) return; // integrated backplate on the HD turbo face
+    }
     c.u = d.u;
     c.v = d.v;
     c.w = d.w;
     c.h = d.h;
     c.clut = d.clut;
     c.color[0] = colorWord & 0xFFFFFF;
-    c.semi = (colorWord & kSemi) != 0;
+    c.semi = (colorWord & kSemi) != 0 && !c.fullColor;
     Packet({c});
 }
 
@@ -318,6 +396,7 @@ void Hud::Glyphs(const std::vector<gt2::HudFontSprite>& sprites, uint32_t colorW
         c.kind = Cmd::kSprite;
         c.x[0] = s.x;
         c.y[0] = s.y;
+        if (UseArt()) { c.art=Letter(s.character); c.fitInk=c.art.w!=0; }
         c.u = s.u;
         c.v = s.v;
         c.w = s.w;
@@ -468,10 +547,26 @@ void Hud::CourseMapPanel(const HudFrame& f, int x, int y) {
         if (!c.present) { dots.push_back({-1, -1}); continue; }
         dots.push_back({x + ((int(c.x) * 163) >> 12) + 48, y + ((int(c.z) * 163) >> 12) + 48});
     }
-    for (size_t i = 0; i < dots.size(); i++)
-        if (dots[i].first >= 0) Tile(dots[i].first - 1, dots[i].second - 1, 2, 2, int(i) == f.mapHighlight ? 0xFFu : 0xFF00u);
-    for (size_t i = 0; i < dots.size(); i++)
-        if (dots[i].first >= 0) Tile(dots[i].first - 2, dots[i].second - 2, 4, 4, 0);
+    for (size_t i = 0; i < dots.size(); ++i) {
+        const auto [cx, cy] = dots[i];
+        if (cx < 0) continue;
+        const unsigned color = int(i) == f.mapHighlight ? 0xFFu : 0xFF00u;
+        if (UseArt()) {
+            Cmd dot;
+            dot.kind = Cmd::kSprite;
+            dot.x[0] = cx - 2;
+            dot.y[0] = cy - 2;
+            dot.w = dot.h = 4;
+            dot.color[0] = color;
+            dot.art = {705, 194, 27, 27};
+            Packet({dot});
+        } else {
+            Tile(cx - 1, cy - 1, 2, 2, color);
+        }
+    }
+    if (!UseArt())
+        for (const auto& dot : dots)
+            if (dot.first >= 0) Tile(dot.first - 2, dot.second - 2, 4, 4, 0);
     // 0x80080450: one packet {draw mode 9 (the map's page (576, 0), 4-bit), sprite 96 x 96 uv (0, 144) CLUT 0x7F17}
     Cmd mode;
     mode.kind = Cmd::kMode;
@@ -480,6 +575,7 @@ void Hud::CourseMapPanel(const HudFrame& f, int x, int y) {
     c.kind = Cmd::kSprite;
     c.x[0] = x;
     c.y[0] = y;
+    if (UseArt()) {c.art={768,0,256,256}; c.fullColor=true;}
     c.u = 0;
     c.v = 0x90;
     c.w = c.h = 0x60;
@@ -495,7 +591,52 @@ void Hud::Tachometer(const HudFrame& f, int x, int y) {
     const int segments = thousands * 4;
     const int grey = int(int16_t(f.redlineRpm)) / 250;
     const gt2::HudSpriteDesc& face = tables_.faces[size_t(std::clamp(f.faceSlot, 0, int(tables_.faces.size()) - 1))]; // car + 0x880 (0x8002BD84: the entry)
-    SpriteCentred(x, y, face, kFace);
+    const bool generatedDial=UseArt() && thousands > 0;
+    auto dialSprite=[&](ArtRect art) {
+        Cmd cmd;
+        cmd.w=face.w; cmd.h=face.h; cmd.x[0]=x-face.w/2; cmd.y[0]=y-face.h/2;
+        cmd.art=art; cmd.fullColor=true;
+        Packet({cmd});
+    };
+    if (generatedDial) {
+        // These marks follow the needle's exact sweep. Submit subpixel corners so
+        // the rasterizer resolves each stroke at the current display resolution.
+        for (int i = 0; i <= segments; ++i) {
+            const float angle = (1274.f + 2412.f * i / segments) * (6.28318530718f / 4096.f);
+            const float dx = std::cos(angle), dy = std::sin(angle);
+            const bool major = i % 4 == 0;
+            const float outer = 38.7f, inner = major ? 33.0f : 35.5f;
+            const float halfWidth = major ? .52f : .34f;
+            Cmd tick;
+            tick.kind = Cmd::kPoly;
+            tick.subpixel = true;
+            for (int k = 0; k < 4; ++k) {
+                const float radius = k < 2 ? outer : inner;
+                const float offset = k % 2 ? halfWidth : -halfWidth;
+                tick.fx[k] = x + radius * dx - offset * dy;
+                tick.x[k] = int(std::lround(tick.fx[k]));
+                tick.fy[k] = y + radius * dy + offset * dx;
+                tick.y[k] = int(std::lround(tick.fy[k]));
+                tick.color[k] = 0xFFFFFF;
+            }
+            Packet({tick});
+            if (major && (thousands <= 10 || i % 8 == 0 || i == segments)) {
+                const std::string label = std::to_string(i / 4);
+                for (size_t digit = 0; digit < label.size(); ++digit) {
+                    Cmd number;
+                    number.art = Letter(label[digit]);
+                    number.w = 3;
+                    number.h = 5;
+                    number.x[0] = x + int(std::lround(28.5f * dx)) - 2 * int(label.size()) + 4 * int(digit);
+                    number.y[0] = y + int(std::lround(28.5f * dy - 2.5f));
+                    number.color[0] = 0x808080;
+                    Packet({number});
+                }
+            }
+        }
+    } else {
+        SpriteCentred(x, y, face, kFace);
+    }
     Mode(uint16_t(face.tpage | 0x20));
     auto spoke = [&](int i, int& ox, int& oy, int& ix, int& iy) {
         const int angle = int(int16_t(uint16_t((i * 2412) / std::max(segments, 1) + 1274)));
@@ -512,6 +653,7 @@ void Hud::Tachometer(const HudFrame& f, int x, int y) {
         spoke(i + 1, xs[2], ys[2], xs[3], ys[3]);
         PolyF4(xs, ys, color);
     }
+    if (generatedDial) dialSprite({512,0,128,128});
     Mode(0);
 }
 
@@ -1048,6 +1190,46 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
                     q.textured = true;
                     q.page = uint32_t((tpage & 0xF) * 64) | ((kRowBase + uint32_t(((tpage >> 4) & 1) * 256)) << 16);
                     q.clut = uint32_t((c.clut & 0x3F) * 16) | ((kRowBase + uint32_t(c.clut >> 6)) << 16);
+                    if (c.art.w) {
+                        q.generated=true;
+                        q.page=SceneRenderer::kRaceHudTexelBase;
+                        q.clut=1024u|(256u<<16);
+                        ArtRect bounds{0,0,c.w,c.h};
+                        if (c.fitInk) {
+                            const std::array<int,8> key{int(tpage&31),c.clut,c.u,c.v,c.w,c.h,uploadedDial_,uploadedDial2_};
+                            auto [it,added]=inkBounds_.try_emplace(key,bounds);
+                            if (added) {
+                                int l=c.w,r=0,t=c.h,b=0;
+                                for(int y=0;y<c.h;++y) for(int x=0;x<c.w;++x) {
+                                    int u=(c.u+x)&255,v=(c.v+y)&255;
+                                    auto word=block_[(((tpage>>4)&1)*256+v)*1024+(tpage&15)*64+u/4];
+                                    const int pal=((c.clut>>6)*1024+(c.clut&63)*16+((word>>(4*(u%4)))&15))%int(block_.size());
+                                    if (!block_[pal]) continue;
+                                    l=std::min(l,x); r=std::max(r,x+1); t=std::min(t,y); b=std::max(b,y+1);
+                                }
+                                if(r>l && b>t) it->second={l,t,r-l,b-t};
+                            }
+                            bounds=it->second;
+                        }
+                        for(int k=0;k<4;++k) {
+                            const bool right=k==1 || k==2, bottom=k>=2;
+                            q.x[k]=float(c.x[0]+bounds.x+(right?bounds.w:0));
+                            q.y[k]=float(c.y[0]+bounds.y+(bottom?bounds.h:0));
+                            q.u[k]=float(c.art.x)+(right?c.art.w-.5f:.5f);
+                            q.v[k]=float(c.art.y)+(bottom?c.art.h-.5f:.5f);
+                            for(auto& channel:q.color[k]) channel=c.fullColor?255:uint8_t(std::min(255,2*int(channel)));
+                        }
+                    }
+                    if (c.generatedUnit >= 0) {
+                        q.generated = true;
+                        q.page = SceneRenderer::kGeneratedHudBase + uint32_t(c.generatedUnit) * 128 * 64;
+                        q.clut = 128u | (64u << 16);
+                        for (int k = 0; k < 4; ++k) {
+                            q.u[k] = (k == 1 || k == 2) ? 128.f : 0.f;
+                            q.v[k] = k >= 2 ? 64.f : 0.f;
+                            q.color[k] = {255,255,255};
+                        }
+                    }
                 } else {
                     std::fill(q.u, q.u + 4, 0.0f);
                     std::fill(q.v, q.v + 4, 0.0f);
@@ -1086,6 +1268,7 @@ void Hud::Emit(float windowAspect, std::vector<DrawItem>& items) {
             v.flags = q.textured ? kTextured | kClampTextureRect : 0u; // 4-bit pages: depth bits 8-9 = 0
             if(q.textured && q.page == (uint32_t(gt2::CourseMap::kVramX) | (kRowBase << 16)) &&
                q.clut == (uint32_t(gt2::CourseMap::kClutX) | ((kRowBase+gt2::CourseMap::kClutY)<<16))) v.flags |= kUiMap;
+            if (q.generated) v.flags = kTextured | kExternalTexture | kModelClampU | kModelClampV;
             vertices.push_back(v);
         }
     }

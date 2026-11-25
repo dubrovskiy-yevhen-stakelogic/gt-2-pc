@@ -27,21 +27,21 @@ void AddVertex(std::vector<SceneVertex>& v, float x, float y, float z, const flo
 }
 
 struct Frame {
-    std::vector<uint8_t> eye; // the left eye, RGBA8
+    std::vector<uint8_t> eye; // both eyes, consecutive RGBA8 layers
     size_t width = 0, height = 0;
     uint8_t At(size_t x, size_t y, int c) const { return eye[(y * width + x) * 4 + size_t(c)]; }
 };
 
 Frame Render(VkSceneRenderer& renderer, const std::vector<DrawItem>& items, size_t sceneItems,
-             const VkExtent2D extent, uint32_t samples) {
+             const VkExtent2D extent, uint32_t samples, bool multiview = true) {
     RenderOptions options;
     options.msaa = samples;
     renderer.SetOptions(options);
-    renderer.CreateStereoTarget(extent, VK_FORMAT_R8G8B8A8_UNORM, true);
+    renderer.CreateStereoTarget(extent, VK_FORMAT_R8G8B8A8_UNORM, multiview);
     const auto both = renderer.CaptureStereoForAudit(items, sceneItems);
     Frame f;
     f.width = extent.width; f.height = extent.height;
-    f.eye.assign(both.begin(), both.begin() + std::ptrdiff_t(size_t(extent.width) * extent.height * 4));
+    f.eye = both;
     return f;
 }
 
@@ -191,11 +191,43 @@ int main() {
             Render(renderer, items, 2, extent, 4);
             std::printf("msaa_2d_audit: foveated stereo frame rendered (%s)\n",
                         context.DynamicRendering() ? "dynamic rendering" : "render passes");
+            renderer.SetFoveation(0); // Back to the default so the pipeline-reuse check below starts from a known state.
         }
+        // A menu car uses the same HUD plane as screen items, including the clip rectangle.
+        // Shift that plane like a moving head: a framebuffer scissor must not cut the car.
+        items[2].scissor[0] = .4f; items[2].scissor[1] = .4f;
+        items[2].scissor[2] = .7f; items[2].scissor[3] = .7f;
+        for (bool multiview : {false, true}) for (uint32_t samples : {1u, 4u, 8u}) {
+            for (float shift : {-.35f, .25f}) {
+                views.hudVP[0][12] = shift; views.hudVP[1][12] = -shift;
+                views.hudVP[0][13] = .15f; views.hudVP[1][13] = -.15f;
+                renderer.SetStereoViews(views);
+                items[2].space = kSpaceScreen;
+                const Frame reference = Render(renderer, items, 2, extent, samples, multiview);
+                items[2].space = kSpaceMenuCar;
+                const Frame car = Render(renderer, items, 2, extent, samples, multiview);
+                const size_t changed = CountDifferences(reference, car, 0, 0, int(extent.width), int(extent.height * 2));
+                if (changed != 0) throw std::runtime_error("menu car HUD clipping differs from screen clipping: " + std::to_string(changed));
+            }
+        }
+        const auto variants = renderer.CachedPipelineVariantsForAudit();
+        for (uint32_t samples : {1u, 4u, 8u, 4u, 1u}) {
+            Render(renderer, items, 2, extent, samples, true);
+            if (renderer.CachedPipelineVariantsForAudit() != variants)
+                throw std::runtime_error("revisited MSAA setting compiled pipelines again");
+        }
+        const auto target = renderer.StereoImage();
+        auto options = renderer.Options(); options.smoothTextures = !options.smoothTextures;
+        renderer.SetOptions(options);
+        renderer.CreateStereoTarget(extent, VK_FORMAT_R8G8B8A8_UNORM, true);
+        if (renderer.StereoImage() != target || renderer.CachedPipelineVariantsForAudit() != variants)
+            throw std::runtime_error("unchanged target or texture filter recreated stereo resources");
+        std::puts("PASS: repeated MSAA switches reuse pipelines; texture filtering retains stereo targets");
+        std::puts("PASS: menu-car clipping follows the HUD plane in both stereo modes at 1x/4x/8x");
         std::puts("PASS: MSAA affects the 3D scene and leaves the 2D HUD untouched");
         return 0;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "FAIL: %s\n", e.what());
-        return 1;
+        std::fprintf(stderr, "msaa_2d_audit FAILED: %s\n", e.what());
+        return 1; // Rendering/setup errors must never silently pass the regression audit.
     }
 }

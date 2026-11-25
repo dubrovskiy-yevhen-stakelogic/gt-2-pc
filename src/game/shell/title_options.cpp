@@ -195,7 +195,12 @@ PcSettings PcSettings::Load(const std::string& path) {
         const std::string key = line.substr(0, eq);
         const int v = std::atoi(line.c_str() + eq + 1);
         if (key == "units") s.metric = line.substr(eq + 1) == "kmh";
-        else if (key == "power_units") s.powerMetric = line.substr(eq + 1) == "ps";
+        else if (key == "power_units_mode") {
+            const std::string unit = line.substr(eq + 1);
+            s.powerUnits = unit == "ps" ? gt2::PowerUnits::kPs : unit == "hp" ? gt2::PowerUnits::kHp : gt2::PowerUnits::kAuto;
+        } else if (key == "power_units" && line.substr(eq + 1) == "ps") {
+            s.powerUnits = gt2::PowerUnits::kPs; // the old key's hp was its default: Auto now follows the disc
+        }
         else if (key == "music_volume") s.options.musicVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "sfx_volume") s.options.sfxVolume = uint8_t(v), s.haveCareerOptions = true;
         else if (key == "course_map") s.options.courseMap = v != 0;
@@ -226,7 +231,7 @@ void PcSettings::Save(const std::string& path) const {
     std::ostringstream o;
     o << "# gt2game settings (written by the title's options; the career save keeps the original options too)\n";
     o << "units=" << (metric ? "kmh" : "mph") << "\n";
-    o << "power_units=" << (powerMetric ? "ps" : "hp") << "\n";
+    o << "power_units_mode=" << (powerUnits == gt2::PowerUnits::kPs ? "ps" : powerUnits == gt2::PowerUnits::kHp ? "hp" : "auto") << "\n";
     o << "music_volume=" << int(options.musicVolume) << "\n";
     o << "sfx_volume=" << int(options.sfxVolume) << "\n";
     o << "course_map=" << int(options.courseMap) << "\n";

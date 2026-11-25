@@ -17,6 +17,8 @@ gt2_picker() {
     gt2_image="$(kdialog --title 'GT2 - select disc image' --getopenfilename "$HOME" '*.bin *.BIN *.iso *.ISO|PlayStation disc image (*.bin, *.iso)')"
     gt2_status="$?"
     if [ "$gt2_status" -eq 1 ]; then return 1; fi
+    # Steam Stop sends SIGINT/SIGTERM; these are intentional exits.
+    case "$gt2_status" in 130|143) exit 0 ;; esac
     [ "$gt2_status" -eq 0 ] || gt2_error 'The file picker failed to return a disc image.'
     [ -n "$gt2_image" ] || gt2_error 'The file picker returned an empty path.'
     case "$gt2_image" in /*) ;; *) gt2_error 'The file picker did not return a local absolute path.' ;; esac
@@ -39,6 +41,8 @@ while :; do
         gt2_image=''
         continue
     fi
+    # Steam Stop sends SIGINT/SIGTERM; these are intentional exits.
+    case "$gt2_status" in 130|143) exit 0 ;; esac
     [ "$gt2_status" -eq 0 ] || gt2_error "GT2 returned error $gt2_status. See ~/.var/app/io.github.gt2pc.GT2/data/GT2/gt2game.log."
     exit 0
 done

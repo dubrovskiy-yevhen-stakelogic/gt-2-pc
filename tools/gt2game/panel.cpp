@@ -1,9 +1,12 @@
+#include "game/arcade/arcade_menus.h"
+#include "game/shell/title_draw.h"
 // The race flow's 2D layers (see panel.h).
 #include "panel.h"
 
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -14,6 +17,7 @@
 #include "game/career/championship.h"
 #include "gt2export/png_writer.h"
 #include "gt2formats/car_info.h"
+#include "gt2formats/course_map.h"
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2vfs/disc_image.h"
@@ -36,7 +40,11 @@ Panels::Panels(gt2view::SceneRenderer& renderer, const gt2::DiscImage& disc, con
       settingsAssets_(arcade_ ? licenceAssets_ : MenuAssetsOf(disc, vol, gt2::RaceMenuAssets::Pictures::kSettings)), renderer_(renderer), vol_(vol), disc_(disc) {
     // One console image: the race overlay's areas (x 384..575) and the menus' font page (tpage 10 = x 640..703).
     vram_ = overlayAssets_.vram;
-    if (arcade_) { // no GT-mode menu font on this disc's flow: our own panels (DrawMenu / Text) draw nothing
+    if (arcade_) {
+        const auto assets = gt2::arcade::ArcadeMenuAssets::Load(disc, vol);
+        arcadeFont_ = assets.fonts[2];
+        for (int y = 256; y < 512; ++y)
+            for (int x = 896; x < 960; ++x) vram_[size_t(y)*1024+x] = assets.vram.Word(x,y);
         Upload();
         return;
     }
@@ -136,7 +144,12 @@ std::u16string Printable(const std::string& text) {
 constexpr int kColonWidth = 6;
 
 int Panels::Text(int x, int y, const std::string& text, uint32_t colour) {
-    if (arcade_) return 0; // no menu font (see the constructor)
+    if (arcade_) {
+        gt2::MenuOtSlot ot;
+        const int width = gt2::shell::AddText(ot, arcadeFont_, text, x, y + 18, 1, colour, 0);
+        ot.Emit(prims_);
+        return width;
+    }
     gt2::MenuTextWriter w(fonts_, prims_);
     int width = 0;
     size_t at = 0;
@@ -154,8 +167,88 @@ int Panels::Text(int x, int y, const std::string& text, uint32_t colour) {
     return width;
 }
 
+void Panels::EmoteIcon(int x,int y,int scale,uint8_t emote) {
+    if(emote<1||emote>6)return;
+    auto rgb=[](int red,int green,int blue){return uint32_t(red|(green<<8)|(blue<<16));};
+    auto ellipse=[&](float cx,float cy,float rx,float ry,uint32_t color) {
+        const int top=int(std::floor((cy-ry)*scale)),bottom=int(std::ceil((cy+ry)*scale));
+        for(int row=top;row<bottom;++row){const float dy=((float(row)+.5f)/scale-cy)/ry;
+            if(std::abs(dy)>=1)continue;const float half=rx*std::sqrt(1-dy*dy)*scale;
+            const int left=int(std::ceil(cx*scale-half)),right=int(std::floor(cx*scale+half));
+            if(right>=left)Box(x+left,y+row,right-left+1,1,color);
+        }
+    };
+    const uint32_t ink=rgb(74,42,20);
+    if(emote==6) {
+        ellipse(5.1f,5.5f,3.8f,3.8f,rgb(246,63,103));ellipse(10.9f,5.5f,3.8f,3.8f,rgb(246,63,103));
+        for(int row=6*scale;row<15*scale;++row){int half=int((15*scale-row)*.76f);Box(x+8*scale-half,y+row,half*2+1,1,rgb(246,63,103));}
+        ellipse(4.4f,4.3f,.8f,1.3f,rgb(255,164,181));return;
+    }
+    ellipse(8,8.5f,7.8f,7.5f,rgb(141,90,21));
+    for(int row=0;row<15*scale;++row){float dy=(float(row)+.5f)/scale-7.5f;
+        const float half=std::sqrt(std::max(0.f,56.25f-dy*dy))*scale;
+        const int left=int(std::ceil(8*scale-half)),right=int(std::floor(8*scale+half));
+        const float t=float(row)/(15*scale);
+        Box(x+left,y+row,right-left+1,1,rgb(255,int(222-48*t),int(81-44*t)));
+    }
+    ellipse(5,3.2f,2.5f,.7f,rgb(255,235,141));
+    ellipse(4.8f,6,1,1.4f,ink);ellipse(11.2f,6,1,1.4f,ink);
+    ellipse(4.55f,5.6f,.3f,.35f,rgb(255,255,244));ellipse(10.95f,5.6f,.3f,.35f,rgb(255,255,244));
+    if(emote==1||emote==4||emote==5) {
+        for(int i=0;i<=16;++i){float px=4+float(i)*.5f;float curve=1-(px-8)*(px-8)/16;
+            ellipse(px,(emote==1?10+2*curve:12-1.5f*curve),.4f,.4f,ink);}
+    }
+    if(emote==2){ellipse(8,10.8f,3.6f,2.7f,ink);ellipse(8,9.5f,2.6f,.7f,rgb(255,253,239));ellipse(8,12,1.7f,.7f,rgb(236,111,111));}
+    if(emote==3)ellipse(8,11,1.6f,2.1f,ink);
+    if(emote==4){ellipse(3.3f,9.1f,.75f,2.4f,rgb(70,171,242));ellipse(12.7f,9.1f,.75f,2.4f,rgb(70,171,242));ellipse(8,12,1.5f,.8f,ink);}
+    if(emote==5)for(int i=0;i<8;++i){float t=float(i)/8;ellipse(3.4f+3*t,3.7f+1.2f*t,.45f,.35f,ink);ellipse(12.6f-3*t,3.7f+1.2f*t,.45f,.35f,ink);}
+}
+void Panels::CoursePreview(const std::string& course,int x,int y,int w,int h) {
+    if(previewCourse_!=course){
+        previewCourse_=course;previewValid_=false;
+        try {
+            const auto pic=gt2::LoadCoursePicture(vol_,course);
+            if(pic.words!=47||pic.rows!=200||pic.clut.size()!=16)throw std::runtime_error("invalid course preview dimensions");
+            std::copy(pic.clut.begin(),pic.clut.end(),vram_.begin()+256*1024);
+            for(size_t row=0;row<pic.rows;++row)std::copy_n(pic.image.begin()+row*pic.words,pic.words,vram_.begin()+(257+row)*1024);
+            Upload();previewValid_=true;
+        }catch(const std::exception& ex){std::fprintf(stderr,"course preview %s: %s\n",course.c_str(),ex.what());}
+    }
+    if(!previewValid_){TextCentre(x+w/2,y+h/2,"No preview");return;}
+    gt2::MenuPrim p;p.kind=gt2::MenuPrim::kPolyFT4;p.tpage=0x10;p.clut=0x4000;
+    for(int i=0;i<4;++i){p.x[i]=int16_t(x+(i&1?w:0));p.y[i]=int16_t(y+(i&2?h:0));p.tu[i]=uint8_t(i&1?188:0);p.tv[i]=uint8_t(i&2?201:1);}
+    prims_.push_back(p);
+}
+void Panels::EmoteWheel(int selected) {
+    emoteWheelFrame_=true;
+    // Seven rounded annular sectors, including an empty cancel choice, with empty space in the centre.
+    for(int sector=0;sector<7;++sector)for(int segment=0;segment<12;++segment) {
+        const float start=float(sector)*.8975979f-.425f;
+        const float angle[4]={start+float(segment)*.85f/12,start+float(segment+1)*.85f/12,start+float(segment)*.85f/12,start+float(segment+1)*.85f/12};
+        gt2::MenuPrim p;p.kind=gt2::MenuPrim::kPolyF4;p.semi=true;
+        p.colour[0]=sector==selected?0x9c7037:0x30251b;
+        for(int k=0;k<4;++k){float radius=k<2?80.f:140.f;p.x[k]=int16_t(std::lround(256+std::sin(angle[k])*radius));p.y[k]=int16_t(std::lround(230-std::cos(angle[k])*radius));}
+        prims_.push_back(p);
+    }
+    static constexpr const char* names[]={"Cancel","Joy","Laugh","Wow","Cry","Angry","Love"};
+    for(int i=1;i<7;++i){const float angle=float(i)*.8975979f;EmoteIcon(int(std::lround(256+110*std::sin(angle)))-24,int(std::lround(230-110*std::cos(angle)))-24,3,uint8_t(i));}
+    TextCentre(256,212,names[std::clamp(selected,0,6)]);
+    TextCentre(256,236,"L3 / A / Cross / Enter: confirm");
+    TextCentre(256,385,"Left stick: choose. Empty: cancel.");
+}
+
+void Panels::WorldLabel(const std::string& text,size_t slot,const float* matrix,std::vector<gt2view::DrawItem>& items,uint8_t emote) {
+    if(slot>=6)return;
+    prims_.clear();const auto label=text.substr(0,23);TextCentre(256,230,label);
+    if(emote)EmoteIcon(264+Width(label)/2,226,2,emote);
+    const auto first=items.size();
+    view_.BuildRange(prims_,512,480,4.0f/3.0f,gt2view::SceneRendererState::kNameTagVertexBase+uint32_t(slot)*1536,1536,items);
+    for(size_t i=first;i<items.size();++i){std::copy(matrix,matrix+16,items[i].mvp);items[i].space=gt2view::kSpaceWorld;}
+    prims_.clear();
+}
+
 int Panels::Width(const std::string& text) const {
-    if (arcade_) return 0;
+    if (arcade_) return arcadeFont_.TextWidth(text, 1);
     std::vector<gt2::MenuPrim> none;
     gt2::MenuTextWriter w(fonts_, none);
     int width = 0;
@@ -171,7 +264,6 @@ int Panels::TextCentre(int centre, int y, const std::string& text, uint32_t colo
 void Panels::DrawMenu(const Menu& m, int top) {
     // The arcade flow has no such panels: its race starts at once and the race-end display's X goes on to the replay
     // (arcade_disc.md 17.1); the fields in which the flow passes ours (arcade_mode.cpp) show the race alone.
-    if (arcade_) return;
     const int lines = int(m.lines.size() + m.items.size() + m.footer.size()) + (m.title.empty() ? 0 : 2) + (m.items.empty() ? 0 : 1) + (m.footer.empty() ? 0 : 1);
     const int height = lines * kLine + 24;
     const int left = (gt2::MenuCanvas::kWidth - m.width) / 2;
@@ -243,7 +335,8 @@ void Panels::Append(float windowAspect, std::vector<gt2view::DrawItem>& items) {
         return;
     }
     view_.BuildOverlay(overlay_, windowAspect, items);
-    view_.Build(prims_, windowAspect, items);
+    if(emoteWheelFrame_)view_.BuildRange(prims_,512,480,windowAspect,gt2view::SceneRendererState::kEmoteWheelVertexBase,16384,items);
+    else view_.Build(prims_, windowAspect, items);
 }
 
 // ---------------------------------------------------------------- --race-screen-check

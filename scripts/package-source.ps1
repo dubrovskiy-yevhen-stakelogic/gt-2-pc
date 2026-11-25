@@ -5,7 +5,7 @@ $project = Get-Content -LiteralPath (Join-Path $repo 'CMakeLists.txt') -Raw
 if ($project -notmatch 'project\(gt2pc VERSION ([0-9]+\.[0-9]+\.[0-9]+) ') { throw 'Cannot determine source version.' }
 $sourceVersion = $Matches[1]
 if (!$Output) { $Output = Join-Path $repo "dist/GT2-source-$sourceVersion" }
-& (Join-Path $PSScriptRoot 'audit-source.ps1') -Repo $repo -FileSystem:$FileSystem
+& (Join-Path $PSScriptRoot 'audit-source.ps1') -Repo $repo -FileSystem:$FileSystem -Tracked:(!$FileSystem)
 $Output = [IO.Path]::GetFullPath($Output)
 if (Test-Path -LiteralPath $Output) { throw 'The source output folder already exists. Choose a new folder.' }
 Push-Location $repo
@@ -28,7 +28,7 @@ try {
         $hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($hash -ne (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash) { throw "Source copy mismatch: $file" }
         $entry = [ordered]@{path=$file;sha256=$hash}
-        if ([IO.Path]::GetExtension($file) -notin @('.png', '.uxrh')) {
+        if ([IO.Path]::GetExtension($file) -notin @('.png', '.uxrh', '.glb')) {
             $bytes = [IO.File]::ReadAllBytes($destination)
             $utf8 = [Text.UTF8Encoding]::new($false, $true)
             $text = $utf8.GetString($bytes).Replace("`r`n", "`n")
