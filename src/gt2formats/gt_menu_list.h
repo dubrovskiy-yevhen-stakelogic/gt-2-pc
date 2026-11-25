@@ -242,6 +242,7 @@ public:
 
     // The chosen used car (0x80020BDC / 0x80020C00 / 0x80020C24 read the row of the widget's selection).
     MenuUsedCarRow ChosenUsedCar() const;
+    bool ToggleCockpitFilter();
 
     const MenuListKind kind;
     int16_t count = 0;                 // list +0
@@ -257,6 +258,8 @@ public:
     std::function<void(int garageIndex)> moveToTop; // 0x8001EF10(garage, index, 0)
 
 private:
+    std::vector<int16_t> cockpitRows_;
+    int16_t unfilteredSelection_=0;
     int32_t RowCallback(int command, const MenuListWidget& w, int row, const MenuListRowDraw* draw);
     const MenuAssets& assets_;
     const MenuListNames& names_;

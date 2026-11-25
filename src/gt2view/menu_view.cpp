@@ -396,6 +396,9 @@ void MenuCarView::Append(std::vector<DrawItem>& items, const gt2::menu::MenuCarP
 void MenuCarView::AppendSlot(std::vector<DrawItem>& items, int slot, int32_t lift, const gt2::menu::MenuCarProjection& projection, int paint, float windowAspect,
                              bool squarePixels) {
     if (slot < 0 || !Assets()) return;
+    // A finished race must not leave the course environment active in the studio.
+    renderer_.ClearPaintProbes();
+    renderer_.SetNativeSceneLighting(NativeSceneLighting{});
     const gt2::menu::MenuCarLinearView L = gt2::menu::MenuCarLinear(projection);
     Assets()->SetGt4Enabled(gt2::gt4ModelSetEnabled);
     float asx = 1, asy = 1;

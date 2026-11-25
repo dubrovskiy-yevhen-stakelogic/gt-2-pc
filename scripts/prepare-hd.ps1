@@ -58,7 +58,7 @@ function Fetch([string]$Url, [string]$Hash, [string]$Name, [string]$ArchiveMembe
     return $folder
 }
 function Publish([string]$Source, [string]$Destination) {
-    # All sources are staging paths below this task's cache; destinations stay inside Runtime.
+    # All sources are staging paths inside the preparation cache; destinations stay inside Runtime.
     $sourceFull = [IO.Path]::GetFullPath($Source)
     $destFull = [IO.Path]::GetFullPath($Destination)
     if (!$sourceFull.StartsWith($Cache.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase) -or

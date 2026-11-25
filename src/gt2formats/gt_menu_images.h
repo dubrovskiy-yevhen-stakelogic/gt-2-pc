@@ -130,6 +130,7 @@ struct MenuPrim {
     // Drawing area of a separate draw environment (E3 / E4, inclusive; clipX1 < clipX0 = the whole frame): polygons,
     // lines and tiles are clipped to it (the menus' car view: 0x8008034C with the viewport).
     int16_t clipX0 = 0, clipY0 = 0, clipX1 = -1, clipY1 = -1;
+    int8_t titleLabel = -1; // English main-title artwork, indexed by action.
     bool Clipped(int px, int py) const { return clipX1 >= clipX0 && (px < clipX0 || px > clipX1 || py < clipY0 || py > clipY1); }
 };
 

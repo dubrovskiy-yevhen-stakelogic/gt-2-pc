@@ -78,9 +78,13 @@ struct KnownMod {
     const char* exeSha1 = "";  // lower-case hex
     const char* name = "";
     const ExeProfile* base = nullptr;
+    bool gt2Plus = false;      // GT2+ Complete: its executable fixes (the turbo-section check) are part of the disc
 };
 std::span<const KnownMod> KnownMods();
 const KnownMod* FindMod(std::string_view exeSha1);
+// The disc is GT2+ Complete (its registered executable): behaviours the mod changes belong to it alone, never to
+// retail or data-only mods such as A-Spec (docs/MOD-SUPPORT.md).
+bool IsGt2Plus(const GuestImage& exe);
 // The profile of an executable image (GuestImage::fileSha1, set by LoadExeImage); throws for an unknown build.
 const ExeProfile& ProfileOf(const GuestImage& exe);
 // The profile of a disc (its executable's SHA-1); throws for an unknown build.

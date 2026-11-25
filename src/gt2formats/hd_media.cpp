@@ -1,4 +1,5 @@
 #include "gt2formats/hd_media.h"
+#include "gt2formats/generated_world.h"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -108,6 +109,7 @@ std::string StartupMovie() {
 }
 uint64_t Generation() { return generation; }
 void SetRoot(const std::string& discPath,const std::string& exeSha1) {
+    generated::SetRoot(discPath);
     ++generation; root.clear();auto p=std::filesystem::path(discPath);if(!std::filesystem::is_directory(p)) p=p.parent_path();
     p/="hd";std::ifstream stamp(p/"profile.txt");std::string actual;stamp>>actual;if(actual==exeSha1) root=p;
 }

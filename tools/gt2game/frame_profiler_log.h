@@ -11,7 +11,7 @@ struct ProfilerFrame {
     double now = 0, waitMs = -1, buildMs = -1, submitMs = -1, endMs = -1, previousGpuMs = -1;
     unsigned draws = 0, sceneDraws = 0, mirrorDraws = 0, vertices = 0;
     unsigned cached = 0, uncached = 0, tested = 0, culled = 0;
-    unsigned width = 0, height = 0, msaa = 1;
+    unsigned width = 0, height = 0, msaa = 1, requestedMsaa = 1, generatedMask = 0;
     int stereo = 0, overlay = 0, foveation = 0, refresh = 0, drawDistance = 0;
     int cockpit = 0, mirror = 0, smooth = 0, hd = 0;
     int cockpitMirror = 1, cockpitMirrorScale = 100;
@@ -48,7 +48,7 @@ public:
                    "app_fps,avg_frame_ms,max_frame_ms,low_1pct_fps,recent_max_ms,draws,scene_draws,mirror_source_draws,vertices,"
                    "cached_materials,uncached_materials,cull_tested,cull_rejected,width,height,msaa,stereo,overlay,"
                    "foveation,refresh_requested_hz,draw_distance,cockpit_enabled,mirror_enabled,smooth,hd,"
-                   "cockpit_mirror_enabled,cockpit_mirror_scale\n", file_);
+                   "cockpit_mirror_enabled,cockpit_mirror_scale,msaa_requested,generated_mask\n", file_);
         if (std::fflush(file_) != 0) { Fail(); return; }
         std::printf("profiler: recording %s\n", path_.string().c_str());
         rows_ = 0; start_ = last_ = flushed_ = -1;
@@ -61,13 +61,13 @@ public:
         last_ = f.now;
         const int result = std::fprintf(file_,
             "%llu,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
-            "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%u,%u\n",
             static_cast<unsigned long long>(rows_++), (f.now-start_)*1000, interval,
             f.waitMs, f.buildMs, f.submitMs, f.endMs, f.previousGpuMs,
             stats.fps, stats.frameMs, stats.maxMs, stats.lowFps, stats.recentMaxMs,
             f.draws, f.sceneDraws, f.mirrorDraws, f.vertices, f.cached, f.uncached, f.tested, f.culled,
             f.width, f.height, f.msaa, f.stereo, f.overlay, f.foveation, f.refresh, f.drawDistance,
-            f.cockpit, f.mirror, f.smooth, f.hd, f.cockpitMirror, f.cockpitMirrorScale);
+            f.cockpit, f.mirror, f.smooth, f.hd, f.cockpitMirror, f.cockpitMirrorScale, f.requestedMsaa, f.generatedMask);
         if (result < 0 || std::ferror(file_)) { Fail(); return; }
         // Keep at most one second of buffered data without a per-frame flush.
         if (f.now-flushed_ >= 1) {

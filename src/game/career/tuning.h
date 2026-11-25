@@ -32,9 +32,11 @@ int32_t SearchRowById(const CarParamTables& t, size_t table, uint32_t id);
 // the 0xFF fill of 0x80015404) or a single-row kind (steering, chassis, engine, drivetrain) has a stage != 0 (the
 // original then reads past the slot).
 CarConfig SheetRowsConfig(const TuneSheet& s, int32_t frontTyreStage, int32_t rearTyreStage);
-// 0x8005F7C8, with GT2+'s fix: a car whose only turbo kit is the stock one (stage 0) still has a Turbo section.
-// The NA dummy occupies slot 0 with row 0, so a valid kit is a positive row index.
-bool HasTurboKit(const TuneSheet& s);
+// 0x8005F7C8: the car has a Turbo section on the pre-race Change Parts page. Retail reads the upgrade slots
+// (stage 1..4) only, so a car whose only turbo kit is the stock one (stage 0) has none; GT2+'s fix
+// (w8_settings_menu_fix) counts the stock kit too (`stockKitCounts`). The NA dummy occupies slot 0 with row 0, so a
+// valid kit is a positive row index.
+bool HasTurboKit(const TuneSheet& s, bool stockKitCounts);
 
 // 0x8005F410 + 0x80077214 on the sheet: the record of its selected rows and its configuration's settings (no model
 // dimensions: lengths 0, tracks of the racing-modification row).

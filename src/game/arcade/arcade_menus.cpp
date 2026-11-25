@@ -174,6 +174,13 @@ void PanelItemDraw(const PanelItem& p, MenuOtSlot& ot) {
             bright = bright + ((int(p.target) - bright) * (steps - k)) / steps;
         }
     }
+    if (p.labelFont && !p.label.empty()) {
+        const uint32_t grey = uint32_t(bright) * 0x010101u;
+        shell::AddText(ot, *p.labelFont, p.label, x, y + 6, 1, grey, 0, shell::TextAlign::kCentre);
+        const auto& s = p.sprite;
+        AddScaledSprite(ot,x,y,s.u,s.v,s.clut,s.w,s.h,s.tpage,grey,scale);
+        return;
+    }
     if ((p.flags & 4) == 0) ghosts = false;
     const uint16_t mode = uint16_t((p.flags & 0x18) << 2);
     if (scale != 0x80) { // 0x80011D58 (semi, the page word | mode) / 0x80011C2C, no E1
@@ -563,13 +570,41 @@ ArcadeMenus::ArcadeMenus(const ArcadeMenuAssets& assets, const ArcadeData& data,
     : a_(assets), data_(data), cars_(cars), career_(career.begin(), career.end()) {
     if (career_.size() < 0x7C9C) throw std::invalid_argument("arcade menus: the career block is shorter than 0x7C9C bytes");
     const GuestImage& o = a_.data.ovl2;
+    vram_ = a_.vram;
     mode_ = PanelList::Read(o, kModeList);
+#ifndef __EMSCRIPTEN__
+    if (mode_.items.size() < 2) throw std::logic_error("arcade menu: missing 2 Player tile");
+    PanelItem multiplayer = mode_.items[1];
+    multiplayer.result = 4;
+    multiplayer.label = "MULTIPLAYER";
+    multiplayer.labelFont = &a_.fonts[1];
+    // Derive the new tile from 2 Player's blue artwork. Replace its baked label
+    // with the unlettered lower background band; leave the frame and edges intact.
+    const PanelSprite original = multiplayer.sprite;
+    std::vector<uint8_t> tile(size_t(original.w)*original.h*2);
+    for (int y=0; y<original.h; ++y) for (int x=0; x<original.w; ++x) {
+        const int sourceY = y >= 12 && y < original.h-12 && x >= 22 && x < original.w-22
+            ? int(original.h)-12 + (y%8) : y;
+        const auto pixel = a_.vram.Sample(original.tpage, original.clut,
+            uint8_t(original.u+x), uint8_t(original.v+sourceY));
+        const size_t at=(size_t(y)*original.w+x)*2;
+        tile[at]=uint8_t(pixel); tile[at+1]=uint8_t(pixel>>8);
+    }
+    vram_.Upload(0,256,original.w,original.h,tile);
+    multiplayer.sprite.tpage=0x110; multiplayer.sprite.u=multiplayer.sprite.v=0;
+
+    mode_.items.insert(mode_.items.begin() + 2, multiplayer);
+    ++mode_.count;
+    mode_.visible = mode_.count;
+    mode_.width = int16_t(mode_.width*3/4);
+    mode_.y = 104; mode_.rowHeight = 60; mode_.gap = 8;
+    for (auto& item : mode_.items) { item.scale = 96; item.height = 60; }
+#endif
     game_ = PanelList::Read(o, kGameList);
     level_ = PanelList::Read(o, kLevelList);
     class_ = PanelList::Read(o, kClassList);
     rally_ = PanelList::Read(o, kRallyList);
     carColour_ = o.Get<uint32_t>(kViewCar + 0x0C);
-    vram_ = a_.vram;
     guestGarage_.assign(kGarageStride, 0); // RAM 0x801D0FDC: empty until LOAD GUEST GARAGE
     carPage_ = std::make_unique<ArcadeCarPage>(a_, data_, cars_);
     battlePage_ = std::make_unique<ArcadeBattlePage>(a_, data_, cars_);
@@ -684,7 +719,7 @@ void ArcadeMenus::InitView(ArcadeView v, bool reenter) {
     case ArcadeView::kMode: { // 0x8001D640
         viewTimer_[vi] = kViewDelay;
         mode_.Init();
-        mode_.selected = int8_t(reenter ? viewChoice_[vi] : (cursorMode_ > 3 ? 0 : cursorMode_));
+        mode_.selected = int8_t(reenter ? viewChoice_[vi] : (cursorMode_ >= mode_.count ? 0 : cursorMode_));
         return;
     }
     case ArcadeView::kGame: // 0x8001D868
@@ -811,12 +846,13 @@ int ArcadeMenus::UpdateView(ArcadeView v, const MenuListPad* pad) {
         const int32_t r = listResult(mode_);
         if (r == -1) return 2;
         if (r < 0) return 0;
-        cursorMode_ = int8_t(r);
+        if (r == 4) { sounds.push_back(3); return 5; }
+        cursorMode_ = mode_.selected;
         const uint8_t laps = r == 1 ? career_[6] : career_[3];
         sel[Sel::kLaps] = laps, sel[Sel::kLaps + 1] = 0;
         sounds.push_back(3);
         mode_.Close();
-        viewChoice_[vi] = r;
+        viewChoice_[vi] = mode_.selected;
         if (r == 0) {
             Push(ArcadeView::kGame);
         } else if (r == 2) { // BONUS ITEMS 0x800525C8
@@ -1013,11 +1049,15 @@ ArcadeMenus::Outcome ArcadeMenus::Update(const MenuListPad& pad, const MenuListP
         Pop();
     } else if (r == 3) {
         return kRace;
+    } else if (r == 5) {
+        return kMultiplayer;
     } else if (r == 4) {
         return kTitle;
     }
     return kStay;
 }
+
+bool ArcadeMenus::ToggleCockpitFilter(){return Current()==ArcadeView::kGarage && carPage_ && carPage_->ToggleCockpitFilter();}
 
 bool ArcadeMenus::ApplyRaceResult(std::span<const uint8_t> raceBlock, int32_t place) { return ApplyArcadeRaceResult(career_, raceBlock, place); }
 

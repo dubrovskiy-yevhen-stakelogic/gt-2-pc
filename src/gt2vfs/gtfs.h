@@ -19,7 +19,8 @@ struct GtfsEntry {
 // GT2.VOL ("GTFS") read directly from the user's disc image. Layout: docs in tools/Gt2Vol/GtfsVolume.cs.
 class GtfsVolume {
 public:
-    explicit GtfsVolume(const DiscImage& disc);
+    enum class Source { Installed, DiscOnly };
+    explicit GtfsVolume(const DiscImage& disc, Source source = Source::Installed);
 
     const std::vector<GtfsEntry>& Files() const { return files_; }
     const GtfsEntry* Find(const std::string& path) const;
@@ -34,6 +35,7 @@ public:
 
 private:
     const DiscImage& disc_;
+    Source source_;
     IsoFile vol_;
     std::vector<GtfsEntry> files_;
     // Optional native catalogue expansion. Original VOL entries and file indices stay intact.

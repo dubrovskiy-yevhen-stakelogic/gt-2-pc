@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 
+from authored_cockpit_pack import attach as attach_cockpits
 from gt4_iso import inventory, read_at
 from gt4_mesh import convert
 from import_gt4_models import extract, build_tool, TOOL_COMMIT
@@ -303,6 +304,7 @@ def main():
     script('build_gt4_wheels.py',['--specdb',stage/'specdb-json','--alignment',stage/'native/report.json',
         '--showroom',stage/'showroom.json','--output',stage/'native/native-v16/wheels.json'],logs/'wheels.log')
     shutil.copytree(stage/'native/native-v16',pack/'native-v16')
+    attach_cockpits(pack)
     interiors = read(pack/'native-v16/interiors.json')['cars']
     authored = sum(bool({**entry,**interiors.get(car,{})}.get('nativeInterior')) for car,entry in manifest['cars'].items())
     if not args.models and (len(manifest['cars']) != 1110 or authored != 89):

@@ -2,6 +2,8 @@
 #define NOMINMAX
 #endif
 #include "gt2formats/model_set.h"
+#include "gt2formats/model_set_preload.h"
+#include <thread>
 #include "game/shell/shared_vr_settings.h"
 #include "gt2view/model_texture_atlas.h"
 #include "gt2view/gt4_cabin_geometry.h"
@@ -351,6 +353,49 @@ int main() {try {
         const auto separated=gt2::ModelSet(dir).Read("an16n");
         Check(separated.exterior.TriangleCount()==1 && separated.exterior.primitives[0].material==0);
         Check(separated.cockpit.TriangleCount()==1 && separated.cockpit.primitives[0].material==3);
+        gt2::StartModelSetPreload(dir, dir/"recent.txt", {"an16n"});
+        std::unique_ptr<gt2::ModelSetCar> prepared;
+        const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(!prepared && std::chrono::steady_clock::now()<deadline) {
+            prepared=gt2::CopyPreloadedModel(dir,"an16n");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        Check(prepared && prepared->exterior.TriangleCount()==separated.exterior.TriangleCount() &&
+              prepared->cockpit.TriangleCount()==separated.cockpit.TriangleCount());
+        prepared->exterior.primitives.clear();
+        const auto preparedAgain=gt2::CopyPreloadedModel(dir,"an16n");
+        Check(preparedAgain && preparedAgain->exterior.TriangleCount()==separated.exterior.TriangleCount()); // preview cannot consume/mutate race source
+        gt2::RememberModelSetCar(dir,"an16n");
+        gt2::StopModelSetPreload();
+        gt2::StartModelSetPreload(dir,dir/"recent.txt");
+        prepared.reset();
+        const auto secondDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(!prepared && std::chrono::steady_clock::now()<secondDeadline) {
+            prepared=gt2::CopyPreloadedModel(dir,"an16n");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        Check(bool(prepared)); // next startup uses remembered cars without an explicit priority
+        Check(!gt2::CopyPreloadedModel(dir/"other","an16n"));
+        gt2::StopModelSetPreload();
+        // The authored overlay must be decoded in the same bounded worker, but
+        // never returned as a native GT4 car. Preview copies cannot consume it.
+        fs::create_directories(dir/"authored/an16n");
+        fs::copy_file(dir/"mesh.gltf",dir/"authored/an16n/mesh.gltf");
+        fs::copy_file(dir/"mesh.bin",dir/"authored/an16n/mesh.bin");
+        std::ofstream(dir/"authored/an16n/manifest.json")<<R"({"format":"gt2-authored-car","version":1,"car":"an16n","mesh":"mesh.gltf"})";
+        gt2::StartModelSetPreload(dir,dir/"recent.txt",{"an16n"});
+        std::unique_ptr<gt2::GltfMesh> authored;
+        const auto authoredDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(!authored && std::chrono::steady_clock::now()<authoredDeadline) {
+            authored=gt2::CopyPreloadedAuthoredMesh(dir,"an16n");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        Check(authored && authored->TriangleCount()==1);
+        Check(!gt2::CopyPreloadedModel(dir,"an16n"));
+        authored->primitives.clear();
+        Check(gt2::CopyPreloadedAuthoredMesh(dir,"an16n")->TriangleCount()==1);
+        Check(!gt2::CopyPreloadedAuthoredMesh(dir/"other","an16n"));
+        gt2::StopModelSetPreload();
         gt2::json::WriteFile((dir/"native-v16/body.gltf").string(),attachmentMesh);
         std::ofstream(dir/"native-v16/interiors.json")<<R"({"format":"gt4-native-interiors","version":1,"cars":{"an16n":{"mesh":"wrong-body.gltf","nativeInterior":true,"openTop":true}}})";
         Reject([&]{gt2::ModelSet(dir).HasNativeInterior("an16n");});

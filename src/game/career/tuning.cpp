@@ -703,8 +703,8 @@ void ResetSetting(GarageBlock& g, int32_t index, int32_t setting, const CareerDa
     StoreSettings(g.cars[index], *sheet, d.tables, scratch);
 }
 
-bool HasTurboKit(const TuneSheet& s) {
-    for (int stage = 0; stage < 5; stage++)
+bool HasTurboKit(const TuneSheet& s, bool stockKitCounts) {
+    for (int stage = stockKitCounts ? 0 : 1; stage < 5; stage++)
         if (int32_t(s.turboKitRow[stage]) > 0) return true;
     return false;
 }

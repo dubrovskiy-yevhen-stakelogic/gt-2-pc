@@ -27,7 +27,9 @@ constexpr int kInsert = 0x2D;   // VK_INSERT
 constexpr int kDelete = 0x2E;   // VK_DELETE    (Square)
 constexpr int kF1 = 0x70;       // VK_F1
 constexpr int kF5 = 0x74;       // VK_F5
+constexpr int kF7 = 0x76;       // VK_F7
 constexpr int kF8 = 0x77;       // VK_F8
+constexpr int kF9 = 0x78;       // VK_F9
 constexpr int kF10 = 0x79;      // VK_F10
 constexpr int kF12 = 0x7B;      // VK_F12
 

@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true"/>
     <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="true"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application android:allowBackup="false" android:label="GT2 VR" android:hasCode="true">
         <meta-data android:name="com.oculus.supportedDevices" android:value="quest3|quest3s"/>
         <activity android:name=".GT2Activity" android:exported="true" android:launchMode="singleTask"

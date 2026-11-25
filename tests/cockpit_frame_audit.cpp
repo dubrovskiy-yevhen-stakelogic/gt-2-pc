@@ -2,6 +2,7 @@
 #include "car_audit_catalogue.h"
 #include "cockpit_structure_audit.h"
 #include "gt2view/scene_assets.h"
+#include "gt2view/steering_wheel.h"
 #include "gt2export/png_writer.h"
 #include "../tools/gt2game/cockpit_camera.h"
 #include <fstream>
@@ -18,9 +19,32 @@ int main(int argc,char** argv){try {
     const auto ids=AuditCarCatalogue(vol,argc,argv);gt2::ModelSet pack(gt2::gt4ModelSetRoot);
     constexpr uint32_t size=512;Device device;VkContext context(device.existing);
     VkSceneRenderer renderer(context,{size,size},VK_FORMAT_R8G8B8A8_UNORM);
+    RenderOptions options;options.msaa=2;options.smoothTextures=true;renderer.SetOptions(options);
     renderer.EnableDecodedTextures(true);renderer.CreateStereoTarget({size,size},VK_FORMAT_R8G8B8A8_UNORM,true);
     const float identity[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
     size_t paths=0,failures=0;
+    {
+        std::cerr<<"wheel build\n";
+        const auto wheel=BuildSteeringWheel(renderer,.4f);
+        renderer.SetVertices(500000,wheel);
+        renderer.SetHandVertices(0,wheel);
+        renderer.SetHandVertices(18432,wheel);
+        StereoViews views;
+        for(int e=0;e<2;++e){const auto vp=View({e?.032f:-.032f,0,1.5f},0,0);std::copy(vp.begin(),vp.end(),views.worldVP[e]);}
+        renderer.SetStereoViews(views);std::fill_n(renderer.clearColor,3,.4f);
+        DrawItem item;std::copy_n(identity,16,item.mvp);item.vertexCount=uint32_t(wheel.size());item.space=kSpaceWorld;
+        item.firstVertex=500000;
+        std::cerr<<"wheel reference\n";
+        const auto reference=renderer.CaptureStereoForAudit({item},1);
+        size_t visible=0;for(size_t i=0;i<reference.size();i+=4)visible+=reference[i]<80;
+        if(visible<1000)throw std::runtime_error("wheel raster reference is empty");
+        for(uint32_t offset:{0u,18432u}) {
+            item.firstVertex=SceneRenderer::kVrDrivingVertexBase+offset;
+            std::cerr<<"wheel reserved "<<offset<<"\n";
+            const auto actual=renderer.CaptureStereoForAudit({item},1);
+            if(actual!=reference)throw std::runtime_error("reserved wheel range differs from external-texture reference");
+        }
+    }
     // Intersecting inner/outer shell faces must not expose the back of the
     // dark inner shell outside. Retaining backfaces reproduces the black patch.
     auto layerImage=[&](bool culled){
@@ -73,18 +97,18 @@ int main(int argc,char** argv){try {
         failures+=failed;++paths;csv<<id<<','<<(native?"gt4":"gt2")<<','<<loss<<','<<assets.Gt4VertexCount(slot)<<','<<structure.roofSamples<<','<<structure.roofMissing<<','<<structure.pillarSamples<<','<<structure.pillarMissing<<','<<structure.mountSamples<<','<<structure.mountMissing<<'\n';csv.flush();
         if(!failed && !std::getenv("GT2_AUDIT_CAPTURE"))continue;
         ProceduralCockpit furniture(renderer);
-        for(int pose=0;pose<8;++pose){
-            const bool exterior=pose>=4;
-            const float yaw=exterior?float((pose-4)*90):float(pose<2?-55:55);
+        for(int pose=0;pose<11;++pose){
+            const bool exterior=pose>=4 && pose<8;
+            const float yaw=pose>=8?0.f:exterior?float((pose-4)*90):float(pose<2?-55:55);
             auto eye=fit.eye;
             gt2::camera::CameraProjection camera{};gt2game::PlaceCockpitEye(camera,identity,fit,{});std::copy_n(camera.eye,3,eye.begin());
             if(exterior){const float a=yaw*3.14159265f/180;eye={-std::sin(a)*2.5f,fit.roofY+.65f,std::cos(a)*2.5f};}
-            else if(pose%2)eye[1]+=.2f;
-            StereoViews views;for(int e=0;e<2;++e){auto at=eye;at[0]+=e?.032f:-.032f;const auto vp=View(at,yaw,exterior?-20.f:0.f);std::copy(vp.begin(),vp.end(),views.worldVP[e]);}renderer.SetStereoViews(views);
+            else if(pose<8 && pose%2)eye[1]+=.2f;
+            StereoViews views;for(int e=0;e<2;++e){auto at=eye;at[0]+=e?.032f:-.032f;const auto vp=View(at,yaw,(exterior||pose>=8)?-20.f:0.f);std::copy(vp.begin(),vp.end(),views.worldVP[e]);}renderer.SetStereoViews(views);
             std::fill_n(renderer.clearColor,3,.65f);
             std::vector<DrawItem> items;
             if(exterior)assets.AppendCarItems(items,slot,identity,0,0,true);
-            else {assets.AppendCockpitBodyItems(items,slot,identity,0);furniture.Append(items,fit,identity,0,0,0,1,false,0,gt2game::CockpitSeatBack({}),nullptr,!assets.HasNativeGt4Interior(slot));assets.AppendSideMirrorItems(items,slot,identity);}
+            else {assets.AppendCockpitBodyItems(items,slot,identity,0,nullptr,false,std::getenv("GT2_AUDIT_BRAKE")?1u:0u);furniture.Append(items,fit,identity,pose>=8?float(pose-9)*.65f:0.f,0,0,1,pose>=8,0,gt2game::CockpitSeatBack({}),nullptr,!assets.HasNativeGt4Interior(slot));assets.AppendSideMirrorItems(items,slot,identity);}
             for(auto& d:items)d.space=kSpaceWorld;SortModelTransparency(items);
             const auto frame=renderer.CaptureStereoForAudit(items,items.size());
             if(pose==4 && std::getenv("GT2_AUDIT_SAVE_CAPTURE")) {

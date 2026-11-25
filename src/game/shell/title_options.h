@@ -26,6 +26,7 @@
 #include "game/career/career_state.h"
 #include "gt2formats/gt_menu_list.h"
 #include "gt2formats/overlay_data.h"
+#include "gt2formats/units.h"
 
 namespace gt2::shell {
 
@@ -144,7 +145,7 @@ struct VrSettings {
 
 struct PcSettings {
     bool metric = true;          // km/h instead of mph
-    bool powerMetric = false;    // PS instead of the US build's hp (GT2+ metric-horsepower behaviour)
+    gt2::PowerUnits powerUnits = gt2::PowerUnits::kAuto; // hp / PS; Auto follows the disc (GT2+ shows PS)
     bool haveCareerOptions = false;
     GameOptions options;
     GraphicsSettings graphics;

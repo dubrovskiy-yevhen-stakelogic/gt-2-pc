@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import json
 from types import SimpleNamespace
+from gt4_pack_install_checks import bundle as full_fixture
 
 spec = importlib.util.spec_from_file_location('quest_gt4_bundle', Path(__file__).resolve().parents[1]/'scripts/package-quest-gt4.py')
 bundle = importlib.util.module_from_spec(spec)
@@ -16,22 +17,31 @@ spec.loader.exec_module(bundle)
 class BundleChecks(unittest.TestCase):
     def test_selected_interior_metadata_is_packaged_and_bound(self):
         with tempfile.TemporaryDirectory() as root:
-            root=Path(root);pack=root/'pack';native=root/'native';pack.mkdir();native.mkdir()
-            def write(path,value):path.write_text(json.dumps(value))
-            write(pack/'manifest.json',{'format':'gt2-model-set','version':1,'id':'gt4','cars':{'car':{}}})
-            write(native/'manifest.json',{'format':'gt4-native-overlay','version':1,'cars':{'car':'body.gltf'}})
-            write(native/'wheels.json',{})
-            write(native/'body.gltf',{'buffers':[],'images':[]})
-            write(native/'paints.json.gz',{'colors':[]})
-            # document() treats .gz as gzip; this fixture uses the real encoding.
-            import gzip
-            (native/'paints.json.gz').write_bytes(gzip.compress(b'{"colors":[]}'))
-            cabins={'format':'gt4-native-interiors','version':1,'cars':{'car':{'mesh':'body.gltf','nativeInterior':True,'openTop':False}}}
-            write(native/'interiors.json',cabins)
+            root=Path(root);full_fixture(root/'fixture.tar')
+            with tarfile.open(root/'fixture.tar') as archive:
+                files={m.name:archive.extractfile(m).read() for m in archive if m.name!='modelsets/gt4/quest-install.sha256'}
+            # Include all reviewed family IDs while retaining the complete 1110-car contract.
+            rename=dict(zip([f'z{i:04d}' for i in range(5)],['nn32n','nr02n','nr32n','nv12n','nv22n']))
+            for name,raw in list(files.items()):
+                if name.endswith('.json'):
+                    value=json.loads(raw)
+                    if isinstance(value.get('cars'),dict):value['cars']={rename.get(k,k):v for k,v in value['cars'].items()}
+                    elif isinstance(value.get('cars'),list):
+                        for car in value['cars']:car['id']=rename.get(car['id'],car['id'])
+                    files[name]=json.dumps(value).encode()
+            for name,raw in files.items():
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(raw)
+            pack=root/'modelsets/gt4';native=pack/'native-v16'
             args=SimpleNamespace(pack=pack,native=native,arcade_expansion=None,simulation_expansion=None,output=root/'models.tar')
             bundle.build(args)
-            with tarfile.open(args.output) as archive:self.assertIn('modelsets/gt4/native-v16/interiors.json',archive.getnames())
-            cabins['cars']['car']['mesh']='other.gltf';write(native/'interiors.json',cabins);args.output=root/'bad.tar'
+            with tarfile.open(args.output) as archive:
+                names=archive.getnames()
+                self.assertIn('modelsets/gt4/native-v16/interiors.json',names)
+                self.assertEqual(sum(n.startswith('modelsets/gt4/authored/') and n.endswith('/manifest.json') for n in names),12)
+                for name in names:
+                    if name.startswith('modelsets/gt4/authored/') and name.endswith('.glb'):bundle.validate_glb(archive.extractfile(name).read())
+            cabins=json.loads((native/'interiors.json').read_text());cabins['cars']['nn32n']['mesh']='other.gltf'
+            (native/'interiors.json').write_text(json.dumps(cabins));args.output=root/'bad.tar'
             with self.assertRaisesRegex(ValueError,'Interior source differs'):bundle.build(args)
 
     def archive(self, root, extra=None, corrupt=False):
@@ -53,7 +63,7 @@ class BundleChecks(unittest.TestCase):
 
     def test_valid_inventory(self):
         with tempfile.TemporaryDirectory() as root:
-            bundle.verify(self.archive(root))
+            path=Path(root)/'valid.tar';full_fixture(path);bundle.verify(path)
 
     def test_payload_corruption(self):
         with tempfile.TemporaryDirectory() as root:

@@ -7,6 +7,7 @@
 *.raw2352
 *.png
 !third_party/vrhands/BigHandsAlbedo.png
+!third_party/vrhands/BigGlovesTechnicalTex_A.png
 !docs/images/cockpit-0.5.0.png
 !docs/images/gt4-cars-0.9.0.png
 *.prims.txt
@@ -109,4 +110,19 @@ __pycache__/
 build_macos/
 .DS_Store
 
+# Reviewed cockpit family, explicitly validated by authored_cockpit_pack.py
+!assets/cockpits/r32/
+!assets/cockpits/r32/**
+
+# Art authoring lives outside the public source kit
+/tools/worldpacks/
+/scripts/install-local-visuals.py
+*.prompt.txt
+
 !docs/images/mod-datasets-picker.png
+
+# Reviewed README gameplay screenshots.
+!docs/images/multiplayer-1.0.0.png
+!docs/images/cockpit-1.0.0.png
+!docs/images/seattle-original-1.0.0.png
+!docs/images/seattle-hd-1.0.0.png

@@ -76,7 +76,7 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
         r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
         break;
-    case 10: r = {"Power Units", {"hp", "PS"}, pc.powerMetric ? 1 : 0}; break;
+    case 10: r = {"Power Units", {"Auto", "hp", "PS"}, int(pc.powerUnits)}; break;
     default: {
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
         r = {"Preset", {"Vanilla", "Custom", "Modern"}, vanilla ? 0 : modern ? 2 : 1};
@@ -108,10 +108,10 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 7: g.affine = index == 1; break;
     case 8: g.maxDetail = index == 1; break;
     case 9: g.drawDistance = kPcDistances[index]; break;
-    case 10: pc.powerMetric = index == 1; break;
+    case 10: pc.powerUnits = gt2::PowerUnits(index); break;
     default: g = index == 0 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern(); break;
     }
-    return !(before.metric == pc.metric && before.powerMetric == pc.powerMetric && before.graphics == pc.graphics);
+    return !(before.metric == pc.metric && before.powerUnits == pc.powerUnits && before.graphics == pc.graphics);
 }
 
 // 0x8006C5DC / 0x8006CD04 in the settled state: the text object of the button bars. Per character: a space or a digit

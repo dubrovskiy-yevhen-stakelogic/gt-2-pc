@@ -42,8 +42,8 @@ bool g_combinedArcade = false;
 const KnownMod kKnownMods[] = {
     // GT2+ Complete NTSC-U v1.2 beta 7 (xdelta applied to the clean US Simulation v1.2 disc): the executable differs
     // from SCUS_944.88 in the turbo-section check and the two save-ID strings only.
-    {"9d733c40f91b7ff5c6b4e4141ce3ebf8f4f5bde1", "GT2+ Complete (NTSC-U Simulation v1.2)", &kProfiles[0]},
-    {"85aa2586fb8692a0e9830a1cd63ba6017a6f85d2", "GT2+ Complete (NTSC-U Arcade v1.1)", &kProfiles[4]},
+    {"9d733c40f91b7ff5c6b4e4141ce3ebf8f4f5bde1", "GT2+ Complete (NTSC-U Simulation v1.2)", &kProfiles[0], true},
+    {"85aa2586fb8692a0e9830a1cd63ba6017a6f85d2", "GT2+ Complete (NTSC-U Arcade v1.1)", &kProfiles[4], true},
 };
 
 std::string Hex(uint32_t v) {
@@ -91,6 +91,11 @@ const KnownMod* FindMod(std::string_view exeSha1) {
     for (const KnownMod& m : kKnownMods)
         if (exeSha1 == m.exeSha1) return &m;
     return nullptr;
+}
+
+bool IsGt2Plus(const GuestImage& exe) {
+    const KnownMod* mod = FindMod(exe.fileSha1);
+    return mod && mod->gt2Plus;
 }
 
 const ExeProfile* FindProfile(std::string_view exeSha1) {

@@ -1,5 +1,6 @@
+#include "../scene_vertex_layout.h"
 layout(set=0,binding=13) uniform NativeEnvironmentViews {mat4 camera[3];vec4 enabled;vec4 lightDirection;vec4 lightAmbient;vec4 lightDiffuse;vec4 lightSpecular;vec4 stockSky;} nativeViews;
-// CAR4 VU routines reconstructed in the user's gt4-pc renderer. No generic PBR
+// CAR4 VU routines reconstructed in the gt4-pc renderer. No generic PBR
 // tint or guessed whole-body reflection weight participates in these passes.
 layout(std430,set=0,binding=10) readonly buffer NativeVertices { vec4 entries[]; } nativeVertices;
 layout(std430,set=0,binding=11) readonly buffer NativeMaterials { vec4 rows[]; } nativeMaterials;
@@ -33,7 +34,7 @@ mat3 nativeModelBasis() {
     return mat3(1)+2.0*q.w*crossX+2.0*crossX*crossX;
 }
 void nativeVertex(vec3 normal,vec3 incident,vec3 reflectionIncident,mat3 sphereBasis,mat3 environmentBasis) {
-    vec4 a=nativeVertices.entries[gl_VertexIndex-1228800];
+    vec4 a=nativeVertices.entries[gl_VertexIndex-GT2_NATIVE_MODEL_VERTEX_BASE];
     uint packed=floatBitsToUint(a.w),m=packed & 65535u;
     outNativeEnvironmentBasis=environmentBasis;
     outNativeMaterial=m;outNativeAlpha=float(packed>>16)*(2.0/65535.0);

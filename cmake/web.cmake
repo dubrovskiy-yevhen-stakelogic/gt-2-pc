@@ -6,7 +6,7 @@ add_custom_command(OUTPUT "${GT2_WEB_GENERATED}/web_shaders.h"
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/web-shaders.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders" "${GT2_WEB_GENERATED}/web_shaders.h"
   DEPENDS scripts/web-shaders.py src/gt2view/shaders/scene.vert
-    src/gt2view/shaders/scene.frag src/gt2view/shaders/texture_mips.glsl VERBATIM)
+    src/gt2view/shaders/scene.frag src/gt2view/shaders/texture_mips.glsl src/gt2view/shaders/authored_glass.glsl VERBATIM)
 add_library(gt2webgl STATIC src/gt2view/webgl_scene_renderer.cpp
   src/gt2view/hd_ui.cpp src/gt2view/hud.cpp src/gt2view/particles.cpp
   src/gt2view/procedural_cockpit.cpp src/gt2view/glow.cpp src/gt2view/menu_view.cpp
@@ -24,6 +24,7 @@ target_include_directories(gt2flatcamera PUBLIC src)
 # Like macOS, use the existing product entry point and every common game screen.
 file(GLOB GT2GAME_CPP CONFIGURE_DEPENDS tools/gt2game/*.cpp)
 list(FILTER GT2GAME_CPP EXCLUDE REGEX "/game_window_(win32|xr|android|sdl)\\.cpp$")
+list(FILTER GT2GAME_CPP EXCLUDE REGEX "/network_(check|setup)\\.cpp$")
 add_executable(gt2web ${GT2GAME_CPP} ${GT2_DEV_DUMP_SOURCES})
 target_link_libraries(gt2web PRIVATE gt2vfs gt2formats gt2export gt2gamelib gt2audio
   gt2career gt2menu gt2shell gt2screens gt2camera gt2arcade gt2webgl
