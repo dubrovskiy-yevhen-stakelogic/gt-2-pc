@@ -2,7 +2,7 @@
 // same atlas, alpha masks and clearcoat, without its dependent buffer reads.
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; float farClip; uint reserved; vec4 hudClip;
+    uint space; uint eye; float farClip; uint mirrorView; vec4 hudClip;
 } pc;
 layout(location=0) in vec2 inTexel;
 layout(location=1) in vec3 inColor;
@@ -61,7 +61,7 @@ void shadeModel() {
     outColor=vec4(cabinColor(c.rgb*inColor),c.a);
 #else
     if ((inFlags & 268435456u)!=0u) {
-        if (!gl_FrontFacing) discard;
+        if (!gl_FrontFacing && pc.mirrorView == 0u) discard;
         outColor=vec4(paintClearcoat(c.rgb,inColor,inPaintView,pc.space==0u),1);
     } else outColor=vec4(cabinColor(c.rgb*inColor),(inFlags & 32u)!=0u?c.a:1.0);
 #endif

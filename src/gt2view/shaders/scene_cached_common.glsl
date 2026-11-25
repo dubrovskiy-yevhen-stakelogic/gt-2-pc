@@ -2,7 +2,7 @@
 layout(constant_id = 0) const bool cachedHud = false;
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; float farClip; uint reserved; vec4 hudClip;
+    uint space; uint eye; float farClip; uint mirrorView; vec4 hudClip;
 } pc;
 layout(location = 0) in vec2 inTexel;
 layout(location = 1) in vec3 inColor;
@@ -85,7 +85,7 @@ void shadeScene() {
         return;
     }
     if (cachedHud && pc.hudClip.z > pc.hudClip.x && (any(lessThan(inScreen.xy / inScreen.z, pc.hudClip.xy)) || any(greaterThan(inScreen.xy / inScreen.z, pc.hudClip.zw)))) discard;
-    if ((inFlags & 2048u) != 0u && !gl_FrontFacing) discard;
+    if ((inFlags & 2048u) != 0u && ((pc.mirrorView != 0u) == gl_FrontFacing)) discard;
     bool affine = (pc.options & 2u) != 0u;
     vec2 uv = affine ? inTexel + clamp(inTexelAffine - inTexel, vec2(-4), vec2(4)) : inTexel;
     vec3 color = affine ? inColorAffine : inColor;

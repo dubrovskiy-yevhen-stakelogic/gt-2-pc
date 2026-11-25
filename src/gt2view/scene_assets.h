@@ -532,6 +532,9 @@ public:
         const Track& track = *track_;
         const int camera = cameraChunk >= 0 && size_t(cameraChunk) < track.chunks.size() ? cameraChunk : NearestChunk(eye);
         std::vector<uint16_t> entries = track.chunks[size_t(camera)].renderList;
+        std::vector<bool> authoredVisible(track.chunks.size(), false);
+        for (uint16_t e : entries)
+            if ((e & 0x3FFF) < authoredVisible.size() && (e >> 14) <= 2) authoredVisible[e & 0x3FFF] = true;
         if (entries.empty())
             for (size_t i = 0; i < track.chunks.size(); i++) entries.push_back(uint16_t(i));
         if (extendDistance != 0.0f) ExtendTrackEntries(entries, track, eye, extendDistance, 1);
@@ -544,7 +547,12 @@ public:
             // extent, and the renderer's mirror far clip enforces that metre value.
             const float distance = extendDistance == 0.0f ? ChunkDistanceKey(chunk, eye) : ChunkNearestDistance(chunk, eye, 1);
             if (distance > maxDistance) continue;
-            const ShapeRanges& r = extendedChunkRanges_[index];
+            // Authored chunks use the full detailed road, like the main view. Only chunks added by a metre setting use
+            // the masked-wall copy, so the mirror never loses road/ground polygons that the authored list draws.
+            const bool masked = extendDistance != 0.0f && !authoredVisible[index] &&
+                std::any_of(wallConflicts_[index].begin(), wallConflicts_[index].end(),
+                            [&](size_t other) { return authoredVisible[other]; });
+            const ShapeRanges& r = masked ? extendedChunkRanges_[index] : chunkRanges_[index];
             DrawItem item;
             std::copy(vp, vp + 16, item.mvp);
             std::copy(scissor, scissor + 4, item.scissor);

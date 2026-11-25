@@ -183,7 +183,7 @@ struct FrameParams {
     uint32_t space = kSpaceScreen; // DrawItem::space (the stereo shader; the desktop shader does not declare it)
     uint32_t eye = 0;              // the two-pass stereo path's array layer
     float farClip = 0.0f;          // world metres; 0 = no distance clip (the sky is always exempt)
-    uint32_t padding = 0;
+    uint32_t mirrorView = 0;       // mirror items invert the PS1 NCLIP front-face test
     float hudClip[4] = {};
     std::array<float,4> nativeModelRotation{0,0,0,1};
 };

@@ -51,7 +51,7 @@ layout(push_constant) uniform Push {
     uint space;
     uint eye;
     float farClip;
-    uint reserved;
+    uint mirrorView;
     vec4 hudClip;
 #ifdef GT2_WEBGL
 };

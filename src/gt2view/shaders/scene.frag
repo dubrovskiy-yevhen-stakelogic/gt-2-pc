@@ -54,7 +54,7 @@ layout(push_constant) uniform Push {
     uint space;
     uint eye;
     float farClip;
-    uint reserved;
+    uint mirrorView;
     vec4 hudClip;
 #ifdef GT2_WEBGL
     vec4 nativeModelRotation; // Match the vertex-stage uniform struct for WebGL linking.
@@ -424,7 +424,7 @@ void shadeScene() {
         color = inColorAffine;
 #endif
     }
-    if ((inFlags & 2048u) != 0u && !gl_FrontFacing) discard; // kCullBack: the original's NCLIP test
+    if ((inFlags & 2048u) != 0u && ((pc.mirrorView != 0u) == gl_FrontFacing)) discard; // kCullBack: the original's NCLIP test
     if ((inFlags & 1u) == 0u) {
         if (pc.stpPass == 1u) discard; // untextured semi-transparent: blended pass only
         outColor = vec4(cabinColor(color), 1.0);

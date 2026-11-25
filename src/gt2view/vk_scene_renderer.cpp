@@ -1308,6 +1308,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
+        params.mirrorView = (recordMirror_ || item.mirrorView) ? 1u : 0u;
         // Camera and mirror Draw Distance are separate; the cockpit mirror pass is always the mirror's own range, and a
         // mirror overlaid in the main pass carries DrawItem::mirrorView. The sky sits at infinity and the paint-probe
         // environment capture keeps its own range.
