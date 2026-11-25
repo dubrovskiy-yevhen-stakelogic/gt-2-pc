@@ -14,7 +14,7 @@ void FrameProfilerLogChecks(Check check) {
     };
     gt2game::FrameProfilerLog log;
     gt2game::ProfilerFrame frame; frame.now = 10; frame.previousGpuMs = 7.5; frame.mirrorDraws = 43;
-    frame.cockpitMirror = 0; frame.cockpitMirrorScale = 25;
+    frame.cockpitMirror = 0; frame.cockpitMirrorScale = 25; frame.requestedMsaa = 8; frame.msaa = 4; frame.generatedMask = 65;
     gt2game::FrameProfiler stats;
     log.SetEnabled(false, root); log.Record(frame, stats);
     check(!fs::exists(root), "disabled profiler creates no file or directory");
@@ -26,8 +26,8 @@ void FrameProfilerLogChecks(Check check) {
     check(std::count(contents.begin(), contents.end(), '\n') == 3, "active log flushes within one second");
     check(contents.find("gpu_previous_ms") != std::string::npos && contents.find("7.500") != std::string::npos,
           "CSV identifies delayed GPU timing and records measured values");
-    check(contents.find("cockpit_mirror_enabled,cockpit_mirror_scale\n") != std::string::npos &&
-          contents.find(",0,25\n") != std::string::npos,
+    check(contents.find("cockpit_mirror_enabled,cockpit_mirror_scale,msaa_requested,generated_mask\n") != std::string::npos &&
+          contents.find(",0,25,8,65\n") != std::string::npos,
           "CSV records cockpit mirror preferences separately from the HUD master setting");
     frame.now = 11.2; log.Record(frame, stats); log.SetEnabled(false);
     contents = read(first);

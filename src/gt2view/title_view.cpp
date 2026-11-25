@@ -1,11 +1,27 @@
 #include "gt2view/title_view.h"
 #include "gt2view/hd_picture.h"
 
+#include "gt2formats/generated_world.h"
+#include "gt2formats/png_reader.h"
+#include <cstdio>
+#include <cstring>
 #include <algorithm>
 
 namespace gt2view {
 
 void TitleView::UploadVram(const gt2::MenuVram& vram) {
+    const auto path = gt2::generated::root / "_hud" / "title-labels.png";
+    if (!haveTitleLabels_ && std::filesystem::is_regular_file(path)) {
+        try {
+            const auto image = gt2::ReadPngFile(path.string());
+            if (image.width == 1024 && image.height == 256) {
+                std::vector<uint32_t> pixels(1024 * 256);
+                std::memcpy(pixels.data(), image.rgba.data(), image.rgba.size());
+                renderer_.UploadExternalTexture(SceneRenderer::kTitleLabelBase, uint32_t(pixels.size()), pixels.data());
+                haveTitleLabels_ = true;
+            }
+        } catch (const std::exception& error) { std::fprintf(stderr, "Title lettering: %s\n", error.what()); }
+    }
     renderer_.UploadVram(rowBase_, gt2::MenuVram::kHeight, vram.Words().data());
     if (hdGeneration_ != gt2::hd::Generation() || hdPictureRevision_ != renderer_.HdPictureRevision()) {
         hdGeneration_ = gt2::hd::Generation();
@@ -49,6 +65,20 @@ void TitleView::Emit(const gt2::MenuPrim& p, int frameWidth) {
             q.page=SceneRenderer::kHdMenuTexelBase; q.clut=hdSize_; q.flags=kTextured|kExternalTexture;
         }
 
+        if (p.titleLabel >= 0 && p.titleLabel < 6 && haveTitleLabels_ && gt2::generated::Enabled()) {
+            const int left = (p.titleLabel % 2) * 512, top = (p.titleLabel / 2) * 84;
+            for (int k = 0; k < 4; ++k) {
+                q.u[k] = float(left) + (k == 1 || k == 2 ? 511.5f : .5f);
+                q.v[k] = float(top) + (k >= 2 ? 83.5f : .5f);
+                for (float& channel : q.colour[k]) channel *= 255.f / 128.f;
+            }
+            q.page = SceneRenderer::kTitleLabelBase;
+            q.clut = 1024u | (256u << 16);
+            q.flags = kTextured | kExternalTexture;
+            q.blend = p.semi ? mode : kBlendOpaque;
+            quads_.push_back(q);
+            return;
+        }
         if (p.semi) { // PS1: only the texels with the STP bit blend
             q.stpPass = 1;
             quads_.push_back(q);

@@ -334,7 +334,7 @@ int main(int argc, char** argv) {
         g.window = hwnd;
         UpdateTitle();
         // GT2_NO_FOCUS=1 (automated runs): show without taking the foreground.
-        // Dev tool: never take the foreground (the user keeps working while runs happen); GT2_FOCUS=1 restores activation.
+        // Keep diagnostic windows inactive; GT2_FOCUS=1 enables activation.
         ShowWindow(hwnd, std::getenv("GT2_FOCUS") ? SW_SHOW : SW_SHOWNOACTIVATE);
 
         int frame = 0;

@@ -27,7 +27,11 @@ registry (one line) rather than changing the loader.
   bytes of display code. Its data changes are read normally.
 
 The mod also changes two executable behaviours: a turbo-section check and metric horsepower. Image support does
-not depend on them; the port's gameplay options for those changes are tracked separately.
+not depend on them. A behaviour a mod changes is keyed to that mod's executable and never applied to every disc:
+both follow the disc by default (`AUTO`), so a GT2+ file gets the stock-turbo Turbo section and PS power figures
+while retail and A-Spec keep the stock menu and hp. The F10 menu overrides each one: **Options and cheats → Turbo
+section fix** (`AUTO` / `ON` / `OFF`) and **HUD elements → Power units** (`AUTO` / `hp` / `PS`). Power figures stay
+display-only; simulation and saves remain in PS. The title PC SETTINGS Power Units row offers the same three values.
 
 GT2+'s separate save file works through the executable's own card names: saves and replays are read and written as
 `BASCUS-94455GAME7C` / `BASCUS-94455REPL7C`, so vanilla and GT2+ saves coexist on one memory card. An existing

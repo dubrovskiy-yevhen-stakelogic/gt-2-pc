@@ -149,10 +149,12 @@ void RunCockpitPreview(GameWindow& window,const gt2::GtfsVolume& vol,uint32_t ca
                     {-p.up[0],-p.up[1],-p.up[2]},{p.forward[0],p.forward[1],p.forward[2]}}};
             assets.UpdateCockpitReflection(slot,kIdentity,axes);
             assets.AppendCockpitBodyItems(items,slot,mvp,uint32_t(std::max(0,paint)),nullptr,settings.steeringWheel);
+            assets.AppendAuthoredControls(items,slot,mvp,0,0,0,settings.steeringWheel);
             cockpit.Append(items,fit,mvp,0,0,0,-1,settings.steeringWheel,
                 CockpitSeatHeight(fit,settings),CockpitSeatBack(settings),nullptr,!assets.HasNativeGt4Interior(slot));
             if(settings.mirror)cockpit.AppendMirror(items,mvp,settings.mirrorScalePercent*.01f);
             if(settings.sideMirrors)assets.AppendSideMirrorItems(items,slot,mvp);
+            assets.AppendAuthoredMirrors(items,slot,mvp,settings.mirror,settings.sideMirrors);
             gt2view::SortModelTransparency(items);
             for(auto& item:items)item.space=gt2view::kSpaceWorld;
             // Clear the shared mirror target to this room's background, never a previous race's view.

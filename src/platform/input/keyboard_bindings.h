@@ -33,7 +33,7 @@ struct KeyboardBindings {
 inline bool KeyboardKeyAllowed(int key) {
     if (key == 0) return true; // unbound
     if (key == keys::kEscape || key == keys::kBack || key == keys::kReturn ||
-        key == keys::kF5 || key == keys::kF8 || key == keys::kF10 || key == 'G') return false;
+        key == keys::kF5 || key == keys::kF8 || key == keys::kF10 || key == keys::kF7 || key == keys::kF9 || key == 'G') return false;
     if ((key >= 'A' && key <= 'Z') || (key >= '0' && key <= '9') ||
         (key >= keys::kF1 && key <= keys::kF12)) return true;
     switch (key) {

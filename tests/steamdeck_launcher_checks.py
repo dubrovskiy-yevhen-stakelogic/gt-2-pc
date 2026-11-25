@@ -1,6 +1,7 @@
 """Run the desktop launch script with a fake file picker and Flatpak process."""
 from pathlib import Path
 import os
+import json
 import shutil
 import subprocess
 import tempfile
@@ -91,6 +92,11 @@ exec /bin/bash "$GT2_TEST_ROOT/$1"'''
         self.env['TEST_STATUS'] = '17'
         self.assertNotEqual(self.run_launcher(), 0)
         self.assertIn('error 17', (self.root / 'errors').read_text())
+
+class FlatpakNetworkChecks(unittest.TestCase):
+    def test_native_multiplayer_has_network_access(self):
+        manifest = json.loads((ROOT / 'tools/gt2linux/io.github.gt2pc.GT2.json').read_text())
+        self.assertIn('--share=network', manifest['finish-args'])
 
 if __name__ == '__main__':
     unittest.main()

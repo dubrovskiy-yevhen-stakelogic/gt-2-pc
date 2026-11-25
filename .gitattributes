@@ -9,3 +9,6 @@
 *.sh text eol=lf
 *.command text eol=lf
 *.py text eol=lf
+
+# Cockpit inventories hash the exact JSON bytes on every platform.
+assets/cockpits/**/*.json text eol=lf

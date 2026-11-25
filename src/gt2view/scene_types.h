@@ -1,4 +1,5 @@
 #pragma once
+#include "scene_vertex_layout.h"
 #include <span>
 #include <cstddef>
 #include <array>
@@ -80,6 +81,8 @@ constexpr uint32_t kCourseSoft = 1u << 30;
 // kIntegerModulate: textured 2D (menus) - the colour modulation in the GPU's integer form, (5-bit texel * 8-bit
 // colour) >> 7, so that the frame equals the console's (gt2view/menu_view.h).
 constexpr uint32_t kIntegerModulate = 1u << 14;
+// Only together with kExternalTexture: generated world image with independent hardware-filtered mip tiles.
+constexpr uint32_t kGeneratedMipTexture = 1u << 14;
 constexpr uint32_t kHandTexture = 1u << 16; // Dedicated hardware-filtered hand albedo.
 constexpr uint32_t kClampTextureRect = 1u << 15; // Sprite atlas edges must not sample the neighbouring image.
 
@@ -219,18 +222,21 @@ public:
     // Native menu/font and profiler occupy reserved ranges above the original scene/HUD buffers.
     static constexpr uint32_t kNativeUiVertexBase = 1 << 20, kNativeUiVertexLimit = 16384;
     static constexpr uint32_t kProfilerVertexBase = kNativeUiVertexBase + kNativeUiVertexLimit;
-    static constexpr uint32_t kVrDrivingVertexBase = kProfilerVertexBase + 8192, kVrDrivingVertexLimit = 40960;
+    static constexpr uint32_t kVrDrivingVertexBase = kProfilerVertexBase + 8192, kVrDrivingVertexLimit = 65536;
     static constexpr uint32_t kCockpitBodyVertexBase = kVrDrivingVertexBase + kVrDrivingVertexLimit;
     static constexpr uint32_t kCockpitBodyVertexStride = 8192, kCockpitBodyVertexLimit = 8 * kCockpitBodyVertexStride;
-    static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = 49152;
+    static constexpr uint32_t kCockpitVertexBase = kCockpitBodyVertexBase + kCockpitBodyVertexLimit, kCockpitVertexLimit = GT2_COCKPIT_VERTEX_LIMIT;
     static constexpr uint32_t kModelSetVertexBase = kCockpitVertexBase + kCockpitVertexLimit;
+    static_assert(kModelSetVertexBase == GT2_NATIVE_MODEL_VERTEX_BASE, "Update the shared GLSL vertex layout");
 #ifndef GT2_MODEL_SET_VERTEX_STRIDE
-#define GT2_MODEL_SET_VERTEX_STRIDE 98304
+#define GT2_MODEL_SET_VERTEX_STRIDE 131072
 #endif
     static constexpr uint32_t kModelSetVertexStride = GT2_MODEL_SET_VERTEX_STRIDE;
     static constexpr uint32_t kPaintProbeVertexBase = kModelSetVertexBase + 8 * kModelSetVertexStride;
     static constexpr uint32_t kMenuCarCompositeVertexBase = kPaintProbeVertexBase + 6 * 40000;
-    static constexpr uint32_t kMaxVertices = kMenuCarCompositeVertexBase + 6;
+    static constexpr uint32_t kNameTagVertexBase = kMenuCarCompositeVertexBase + 6;
+    static constexpr uint32_t kEmoteWheelVertexBase = kNameTagVertexBase + 6 * 1536;
+    static constexpr uint32_t kMaxVertices = kEmoteWheelVertexBase + 16384;
     static constexpr uint32_t kNativeFontRow = 2048, kNativeFontRows = 144;
     static constexpr uint32_t kMenuReflectionRow = kNativeFontRow + kNativeFontRows;
     static constexpr uint32_t kVramWidth = 1024, kVramRows = kMenuReflectionRow + 512;
@@ -239,9 +245,15 @@ public:
     static constexpr uint32_t kHdMenuTexelBase = kMovieTexelBase + 2048 * 2048;
     static constexpr uint32_t kHdUiTexelBase = kHdMenuTexelBase + 2048 * 2048;
     static constexpr uint32_t kHdUiSlots = 16, kHdUiPageTexels = 1024 * 1024 / 2;
+    // The final UI page stores the authored HUD atlas. Model addresses stay stable.
+    static constexpr uint32_t kRaceHudTexelBase = kHdUiTexelBase + (kHdUiSlots-1) * kHdUiPageTexels;
+    static constexpr uint32_t kTitleLabelBase = kRaceHudTexelBase + 1024 * 256;
     static constexpr uint32_t kModelSetTexelBase = kHdUiTexelBase + kHdUiSlots * kHdUiPageTexels;
     static constexpr uint32_t kModelSetTexelLimit = 8 * 1024 * 1024;
-    static constexpr uint32_t kExternalTexels = kModelSetTexelBase + kModelSetTexelLimit;
+    static constexpr uint32_t kGeneratedWorldTexelBase = kModelSetTexelBase + kModelSetTexelLimit;
+    static constexpr uint32_t kExternalTexels = kGeneratedWorldTexelBase + 3 * 1024 * 1024;
+    static constexpr uint32_t kGeneratedHudBase = kExternalTexels - 128 * 128;
+    static_assert(kExternalTexels * sizeof(uint32_t) <= 128u * 1024 * 1024);
 
     void ApplyHdUi(std::vector<SceneVertex>& vertices);
     virtual void UploadExternalTexture(uint32_t first, uint32_t count, const uint32_t* rgba) = 0;

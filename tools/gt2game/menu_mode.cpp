@@ -1,3 +1,4 @@
+#include "cockpit_filter_shortcut.h"
 // gt2game --menu: the GT-mode menus (src/game/menu, gt2view/menu_view). See menu_mode.h.
 #include "menu_mode.h"
 #include "cockpit_preview.h"
@@ -217,6 +218,7 @@ int RunMenuSession(GameWindow& window, const DiscImage& disc, const GtfsVolume& 
         // Leave all menu/garage caches behind. The title owns this same live save.
         if (gt2game::TakeCampaignChangeRequest()) break;
         if (!keepRunning) break;
+        if(gt2game::CockpitFilterPressed(window.PadPressed(input::ps1::kL3) ? input::ps1::kL3 : 0, window.Pad().buttons)) runtime.ToggleCockpitFilter();
         if (gt2game::CockpitPreviewRequested(window, runtime.Car().shown && runtime.PopupMode()==0)) {
             const auto selected=runtime.Car();
             const auto savedCareer=save.state;

@@ -1,9 +1,11 @@
 #include "game/arcade/expanded_garage.h"
+#include "gt2formats/authored_cockpit_catalogue.h"
 #include "game/arcade/arcade_setup.h"
 #include "game/arcade/arcade_menus.h"
 #include "game/arcade/arcade_car_page.h"
 #include "game/career/cheats.h"
 #include "gt2vfs/gtfs.h"
+#include "gt2formats/exe_profile.h"
 #include "gt2formats/car_info.h"
 #include <cstring>
 #include <filesystem>
@@ -12,12 +14,12 @@
 using namespace gt2;
 static void Check(bool ok,const char* msg){if(!ok)throw std::runtime_error(msg);}
 int main(int argc,char** argv){try {
-    if(argc!=3)throw std::runtime_error("disc output-under-work");
+    if(argc!=3&&argc!=4)throw std::runtime_error("disc output-under-work");
     const auto output=std::filesystem::absolute(argv[2]).lexically_normal();
     const auto rel=output.lexically_relative(std::filesystem::absolute("work"));
     if(rel.empty() || *rel.begin()=="..")throw std::runtime_error("output must be under work");
     std::filesystem::create_directories(output);
-    DiscImage disc(argv[1]);GtfsVolume vol(disc);
+    DiscImage disc(argv[1]);GtfsVolume vol(disc);SetActiveProfile(ProfileOf(disc));
     auto data=career::CareerData::Load(disc,vol); data.strict=false;
     auto initial=std::make_unique<career::GarageBlock>(); initial->currentCar=-1;
     career::TuneSheet sheet{};std::array<uint8_t,0x230> scratch{};
@@ -120,6 +122,22 @@ int main(int argc,char** argv){try {
     const auto filled=std::vector<uint8_t>(menus.GarageBlock(0).begin(),menus.GarageBlock(0).end());
     (void)menus.AddAllCarsToGarage();
     Check(std::equal(filled.begin(),filled.end(),menus.GarageBlock(0).begin()),"menu cheat duplicated cars");
+    if(argc==4){
+        gt4ModelSetRoot=argv[3];const auto models=AuthoredCockpitCars();Check(models.size()>1,"restored authored cockpit set missing");
+        auto filterGarage=filled;
+        int expected=-1;for(int slot=0;slot<arcade::ExpandedGarageCount(filled);++slot)
+            if(models.contains(arcade::ExpandedGarageCar(filterGarage,slot).modelId)){expected=slot;break;}
+        Check(expected>=0,"garage has no authored cockpit cars");
+        arcade::ArcadeCarPage page(menuAssets,arcadeData,cars);page.EnterGarage(0,false,filled,false,0,menuAssets.vram);
+        Check(page.ToggleCockpitFilter(),"Arcade filter did not activate");
+        std::array<uint8_t,0x1000> filteredSelection{};std::vector<int> sounds;arcade::TextCtx context;MenuListPad idle{};
+        for(int n=0;n<90;++n)page.UpdateGarage(&idle,filteredSelection.data(),sounds,menuAssets.vram,context);
+        MenuListPad choose{};choose.pressed=menu_list_pad::kCross;page.UpdateGarage(&choose,filteredSelection.data(),sounds,menuAssets.vram,context);
+        int16_t slot=-1;std::memcpy(&slot,filteredSelection.data()+arcade::Sel::kGarageSlot,2);
+        Check(slot==expected,"Arcade filter selected a different original garage slot");
+        Check(std::equal(filled.begin(),filled.end(),menus.GarageBlock(0).begin()),"Arcade filter changed garage bytes");
+        std::cout<<"Arcade cockpit filter: original slot "<<slot<<", garage bytes preserved\n";
+    }
     std::cout<<"Arcade garage passed: "<<catalogue.size()<<" cars; retail save preserved, repeat, slot > 100, reload and CRC verified\n";
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

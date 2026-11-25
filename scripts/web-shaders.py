@@ -13,7 +13,7 @@ def generate(folder):
         source = expand(folder / f'scene.{ext}')
         # Vulkan links varyings by location; GLSL ES 3.00 links them by name.
         # Map both sides to common names without renaming the fragment output.
-        names = ['Texel', 'Color', 'Page', 'Clut', 'Flags', 'TexelAffine', 'ColorAffine', 'Rect', 'Screen', 'Cache']
+        names = ['Texel', 'Color', 'Page', 'Clut', 'Flags', 'TexelAffine', 'ColorAffine', 'Rect', 'Screen', 'Cache', 'PaintView']
         prefix = 'out' if ext == 'vert' else 'in'
         aliases = '\n'.join(f'#define {prefix}{name} gt2{name}' for name in names)
         source = source.replace('#version 450', '#version 300 es\n#define GT2_WEBGL 1\n' + aliases, 1)

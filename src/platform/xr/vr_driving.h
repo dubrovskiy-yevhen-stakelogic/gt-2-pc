@@ -2,6 +2,7 @@
 #include "platform/xr/vr_rig.h"
 #include <array>
 #include <optional>
+#include <cmath>
 
 namespace gt2::vr {
 struct TrackedControllers {
@@ -18,7 +19,19 @@ struct DrivingSettings {
     int wheelHeightCm = -28, wheelDistanceCm = 38, wheelRadiusCm = 18;
     // Runtime cockpit anchor in recentered tracking metres; never persisted.
     std::optional<std::array<float,3>> cockpitWheelCenter;
+    bool authoredWheel = false;
+    std::array<float,3> cockpitWheelAxis{0,0,1};
 };
+inline std::array<std::array<float,3>,3> DrivingWheelBasis(const DrivingSettings& s) {
+    auto back=s.cockpitWheelAxis;
+    float length=std::sqrt(back[0]*back[0]+back[1]*back[1]+back[2]*back[2]);
+    if(!std::isfinite(length) || length<.001f)back={0,0,1};
+    else for(auto& v:back)v/=length;
+    std::array<float,3> right{back[2],0,-back[0]};
+    length=std::sqrt(right[0]*right[0]+right[2]*right[2]);
+    if(length<.001f)right={1,0,0};else for(auto& v:right)v/=length;
+    return {right,{back[1]*right[2]-back[2]*right[1],back[2]*right[0]-back[0]*right[2],back[0]*right[1]-back[1]*right[0]},back};
+}
 inline std::array<float,3> DrivingWheelCenter(const DrivingSettings& s) {
     return s.cockpitWheelCenter.value_or(std::array<float,3>{0,s.wheelHeightCm*.01f,-s.wheelDistanceCm*.01f});
 }

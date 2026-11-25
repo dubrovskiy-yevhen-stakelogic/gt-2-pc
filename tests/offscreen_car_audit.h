@@ -54,7 +54,12 @@ struct Device {
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR rate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
         existing.shadingRate = gt2view::ShadingRateFeatures(existing.physical, rate);
         if (existing.shadingRate) v13.pNext = &rate;
+        VkPhysicalDeviceFeatures supported{},features{};
+        vkGetPhysicalDeviceFeatures(existing.physical,&supported);
+        features.textureCompressionASTC_LDR=supported.textureCompressionASTC_LDR;
+        existing.astc=features.textureCompressionASTC_LDR!=0;
         VkDeviceCreateInfo device{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+        device.pEnabledFeatures=&features;
         device.pNext = &multiview; device.queueCreateInfoCount = 1; device.pQueueCreateInfos = &queue;
         std::vector<const char*> deviceExtensions;
         uint32_t deviceExtensionCount = 0;

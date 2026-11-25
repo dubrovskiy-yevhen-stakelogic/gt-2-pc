@@ -52,6 +52,7 @@ struct CockpitFit {
     bool headlinerValid=false;
     std::vector<std::array<std::array<float,3>,3>> liningApertures;
     bool nativeInterior = false; // Authored furniture retains its own seating and wheel placement.
+    bool frozenInterior = false; // Explicit Blender geometry/anchors; no procedural furniture or automatic eye offsets.
     bool smoothShell = false; // Imported closed body: continuous inner roof/window surrounds.
     bool authoredUpperShell = false; // Retain the source roof/pillars instead of generating a second frame.
     bool valid = false, openTop = false;

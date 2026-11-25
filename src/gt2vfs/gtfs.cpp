@@ -24,7 +24,7 @@ uint32_t ReadU32(const uint8_t* p) {
 
 } // namespace
 
-GtfsVolume::GtfsVolume(const DiscImage& disc) : disc_(disc) {
+GtfsVolume::GtfsVolume(const DiscImage& disc, Source source) : disc_(disc), source_(source) {
     auto vol = disc.FindRootFile("GT2.VOL");
     if (!vol) throw std::runtime_error("GT2.VOL not found in disc root");
     vol_ = *vol;
@@ -76,6 +76,7 @@ GtfsVolume::GtfsVolume(const DiscImage& disc) : disc_(disc) {
         throw std::runtime_error("GT2.VOL: unterminated directory");
     };
     walk(0, "", 0);
+    if (source_ == Source::DiscOnly) return;
     std::filesystem::path expansion;
     if (const char* configured = std::getenv("GT2_CAR_EXPANSION")) expansion = configured;
     else if (!disc_.DataDirectory().empty()) expansion = std::filesystem::path(disc_.DataDirectory()) / "expansions" / "gt4";
@@ -139,7 +140,7 @@ std::vector<uint8_t> GtfsVolume::Read(const GtfsEntry& e) const {
         auto data = ReadStored(e);
         return IsGzip(data) ? Gunzip(data) : data;
     }
-    if (!disc_.DataDirectory().empty()) {
+    if (source_ != Source::DiscOnly && !disc_.DataDirectory().empty()) {
         const auto path = std::filesystem::path(disc_.DataDirectory()) / "assets" / e.path;
         if (std::filesystem::is_regular_file(path)) {
             const auto size = std::filesystem::file_size(path);
