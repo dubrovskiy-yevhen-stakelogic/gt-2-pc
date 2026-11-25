@@ -153,8 +153,8 @@ bool ControllerActions::Poll(input::Ps1PadFrame& pad, float vibration, bool focu
         pad.buttons |= input::ps1::kStart;
         if (bothGrips || alternateMenu) pad.buttons |= input::ps1::kSelect;
     }
-    if (rightClick && !alternateMenu) pad.buttons |= input::ps1::kCircle; // Handbrake; grips only interact with the wheel.
-    if (leftClick && !alternateMenu) pad.buttons |= input::ps1::kSelect;
+    if (rightClick && !alternateMenu) pad.buttons |= input::ps1::kCircle | input::ps1::kR3; // Handbrake; grips only interact with the wheel.
+    if (leftClick && !alternateMenu) pad.buttons |= input::ps1::kSelect | input::ps1::kL3; // Keep the physical click identity for reserved shortcuts.
     pad.type = available ? input::kTypeAnalog : input::kTypeNone;
     return available;
 }

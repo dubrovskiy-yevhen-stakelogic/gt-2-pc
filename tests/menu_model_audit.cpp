@@ -1,10 +1,12 @@
 // Exercise the actual menu car loader, slot reuse and mono rendering path.
 #include "offscreen_car_audit.h"
 #include "gt2view/menu_view.h"
+#include "gt2view/paint_environment.h"
 #include "gt2formats/model_set.h"
 #include "gt2formats/car_model.h"
 #include "gt2formats/car_info.h"
 #include "gt2formats/hd_media.h"
+#include "gt2formats/png_reader.h"
 #include "gt2view/title_view.h"
 #include "game/arcade/arcade_car_page.h"
 #include "gt2vfs/gtfs.h"
@@ -113,6 +115,22 @@ int main(int argc,char** argv) {
                 const int paint=std::getenv("GT2_AUDIT_PAINT")?std::atoi(std::getenv("GT2_AUDIT_PAINT")):0;
                 car.Append(items,projection,paint,4.f/3,false);
                 if(items.size()==firstCar)throw std::runtime_error("menu car produced no draw items");
+                if(frame==0 && cycle==0 && !realUi && std::getenv("GT2_AUDIT_RETURN_FROM_RACE")) {
+                    const auto before=(output/(id+"-studio-before.png")).string();
+                    const auto stale=(output/(id+"-studio-stale.png")).string();
+                    const auto after=(output/(id+"-studio-after.png")).string();
+                    renderer.Draw(items,before,0);
+                    gt2view::NativeSceneLighting night;night.ambient={.02f,.02f,.02f,0};night.diffuse={0,0,0,0};night.specular={0,0,0,0};
+                    renderer.SetNativeSceneLighting(night);
+                    renderer.QueueNativeEnvironment({},gt2view::NativeEnvironmentCameras({0,0,0}));
+                    renderer.Draw(items,stale,0);
+                    items.resize(firstCar);car.Append(items,projection,paint,4.f/3,false);
+                    renderer.Draw(items,after,0);
+                    const auto reference=gt2::ReadPngFile(before).rgba;
+                    if(reference==gt2::ReadPngFile(stale).rgba)throw std::runtime_error("race lighting negative control did not change studio");
+                    if(reference!=gt2::ReadPngFile(after).rgba)throw std::runtime_error("studio did not recover after race lighting");
+                    std::cout<<id<<" studio return regression PASS\n";
+                }
                 items[firstCar].clearDepth=1; // the real car page clears depth after its UI background
                 if(frame==0 && std::getenv("GT2_AUDIT_DRAW_STAGES")){
                     for(size_t end=firstCar+1;end<=items.size();++end){
@@ -132,6 +150,19 @@ int main(int argc,char** argv) {
                 const auto shot=!std::getenv("GT2_AUDIT_NO_CAPTURE") && cycle==0 && frame%(frames/6)==0?(output/(id+"-"+std::to_string(frame)+".png")).string():std::string();
                 const auto drawStarted=std::chrono::steady_clock::now();
                 renderer.Draw(items,shot,0);
+                if(!shot.empty() && !realUi && gt2::gt4ModelSetEnabled) {
+                    const auto image=gt2::ReadPngFile(shot);
+                    size_t visible=0,clipped=0;
+                    for(size_t pixel=0;pixel<image.rgba.size();pixel+=4) {
+                        const auto* rgb=image.rgba.data()+pixel;
+                        visible+=std::max({rgb[0],rgb[1],rgb[2]})>24;
+                        clipped+=std::min({rgb[0],rgb[1],rgb[2]})>=248;
+                    }
+                    // Even white paint retains dark glazing, shaded panels and trim.
+                    // Wrong native attribute offsets turn nearly the entire body white.
+                    if(visible>100 && clipped*4>visible*3)
+                        throw std::runtime_error("GT4 menu overexposure: "+id+" in "+shot);
+                }
                 if(std::getenv("GT2_AUDIT_TIMING")) {
                     renderer.WaitFrame();
                     const double waitMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-drawStarted).count();

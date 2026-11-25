@@ -5,7 +5,7 @@
 #include <cstring>
 
 namespace gt2view {
-// Private benchmark captures contain game assets; write only to the user's chosen path.
+// Private benchmark captures contain game assets; write only to the selected output path.
 // Version 4 adds native model rotation; versions 1 through 3 remain readable.
 static_assert(sizeof(SceneVertex) == 44 && sizeof(DrawItem) == 136 && offsetof(DrawItem,cabinDepth)==112 && offsetof(DrawItem,softParticle)==116);
 void VkSceneRenderer::SaveCapture(const std::string& path, const std::vector<DrawItem>& items, size_t sceneItems) {

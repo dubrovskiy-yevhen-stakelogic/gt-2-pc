@@ -510,6 +510,7 @@ public:
     const ShellCourse& Course() const { return course_; }
     ShellHooks& Hooks() { return ctx_.hooks; }
     ShellContext& Context() { return ctx_; }
+    const ShellContext& Context() const { return ctx_; }
 
 private:
     RaceShellState state_;

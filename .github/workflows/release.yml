@@ -21,6 +21,11 @@ on:
         description: Existing release tag to upload assets to (leave empty to only keep artifacts)
         required: false
         type: string
+      macos_only:
+        description: Rebuild only macOS packages for an existing release
+        required: false
+        type: boolean
+        default: false
   release:
     types: [published]
 
@@ -42,6 +47,8 @@ jobs:
           - runner: macos-15-intel
             arch: x86_64
     env:
+      # Match the player's MoltenVK resource binding mode in offscreen tests.
+      MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS: '0'
       # Optional Developer ID signing/notarization. Without these secrets the
       # package is ad-hoc signed, as the macOS installer does for local builds.
       MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -104,6 +111,18 @@ jobs:
           cd "$RUNNER_TEMP/gt2-source"
           bash INSTALL-MACOS.command "${args[@]}"
 
+      - name: Diagnose failed macOS renderer tests
+        if: failure()
+        run: |
+          binary="$RUNNER_TEMP/gt2-source/build_macos/gt2generatedtexturechecks"
+          if [ -x "$binary" ]; then
+            source scripts/macos-env.sh
+            python3 - "$binary" <<'PY'
+          import subprocess, sys
+          subprocess.run(['lldb', '--batch', '-o', 'run', '-k', 'thread backtrace all', '--', sys.argv[1], '--mono'], timeout=180)
+          PY
+          fi
+
       - name: Collect assets
         env:
           ARCH: ${{ matrix.arch }}
@@ -137,6 +156,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   windows:
+    if: ${{ !inputs.macos_only }}
     name: Windows x64
     runs-on: windows-2022
     permissions:
@@ -261,6 +281,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   linux:
+    if: ${{ !inputs.macos_only }}
     name: Linux ${{ matrix.arch }} zip
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -295,7 +316,16 @@ jobs:
         run: |
           bash "$RUNNER_TEMP/gt2-apt-install.sh" \
             cmake ninja-build g++ pkg-config python3 zip \
-            libsdl2-dev libgtk-3-dev libvulkan-dev glslc
+            libsdl2-dev libgtk-3-dev libvulkan-dev glslc mesa-vulkan-drivers vulkan-tools
+
+      - name: Configure headless Vulkan tests
+        run: |
+          set -euo pipefail
+          driver="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)"
+          [ -n "$driver" ] || { echo "Mesa software Vulkan driver is missing"; exit 1; }
+          echo "VK_DRIVER_FILES=$driver" >> "$GITHUB_ENV"
+          echo "VK_ICD_FILENAMES=$driver" >> "$GITHUB_ENV"
+          VK_DRIVER_FILES="$driver" VK_ICD_FILENAMES="$driver" vulkaninfo --summary
 
       - name: Build and test
         run: bash scripts/build-linux.sh
@@ -338,6 +368,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   android:
+    if: ${{ !inputs.macos_only }}
     name: Android arm64 (Quest)
     outputs:
       signed: ${{ steps.sign.outputs.signed }}
@@ -471,6 +502,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   web:
+    if: ${{ !inputs.macos_only }}
     name: WebAssembly
     runs-on: ubuntu-24.04
     permissions:
@@ -541,6 +573,7 @@ jobs:
           gh release upload "$TAG" release-assets/* --clobber
 
   steamdeck:
+    if: ${{ !inputs.macos_only }}
     name: Steam Deck Flatpak
     runs-on: ubuntu-24.04
     permissions:
@@ -676,6 +709,6 @@ jobs:
           if (!$notes.Contains($url)) {
             $intro = "## Quest and PCVR`n`n[Download $($zip.Name)]($url)`n`nExtract on Windows. Quest: run INSTALL-QUEST.bat (or INSTALL.bat). PCVR: run INSTALL-PCVR.bat. The APK and disc-import tools are included; no source kit or separate APK download is needed. Supply your own game disc image.`n`n"
             [IO.File]::WriteAllText("$env:RUNNER_TEMP/vr-release-notes.md", $intro + $notes)
-            gh release edit $env:TAG --notes-file "$env:RUNNER_TEMP/vr-release-notes.md"
+            gh release edit $env:TAG --tag $env:TAG --notes-file "$env:RUNNER_TEMP/vr-release-notes.md"
             if ($LASTEXITCODE -ne 0) { throw 'Cannot update VR download instructions' }
           }

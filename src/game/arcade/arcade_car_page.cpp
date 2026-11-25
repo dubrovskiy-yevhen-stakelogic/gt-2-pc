@@ -1,3 +1,4 @@
+#include "gt2formats/authored_cockpit_catalogue.h"
 #include "game/arcade/arcade_car_page.h"
 #include "game/arcade/expanded_garage.h"
 
@@ -823,7 +824,7 @@ void ArcadeCarPage::Enter(int cls, const std::vector<uint8_t>& available, bool r
     }
 }
 
-ArcadeCarPage::Result ArcadeCarPage::Update(const MenuListPad* pad, uint8_t* sel, std::vector<int>& sounds, MenuVram& vram, TextCtx& c) { // 0x8001EAA8
+ArcadeCarPage::Result ArcadeCarPage::Update(const MenuListPad* pad, uint8_t* sel, std::vector<int>& sounds, MenuVram& vram, TextCtx& c, bool carOnly) { // 0x8001EAA8
     if (openTimer_ > 0 && --openTimer_ == 0) carousel_.Open();
     if (reopenTimer_ > 0 && --reopenTimer_ == 0) {
         settings_.Open();
@@ -936,7 +937,7 @@ ArcadeCarPage::Result ArcadeCarPage::Update(const MenuListPad* pad, uint8_t* sel
     std::memcpy(sel + Sel::kCar, &carId, 4);
     const int16_t paint = int16_t(modelPaint_);
     std::memcpy(sel + Sel::kColour, &paint, 2);
-    return result;
+    return carOnly ? kChosen : result;
 }
 
 void ArcadeCarPage::ModelTick() { // 0x80016624 after the views' update: the data at once, the model files (ours) at once
@@ -1066,6 +1067,7 @@ void ArcadeCarPage::SetGarageModel(int index) { // 0x8001634C(model, view, garag
 void ArcadeCarPage::EnterGarage(int garage, bool reenter, std::span<const uint8_t> block, bool rally, uint8_t language, MenuVram& vram) { // 0x8001F8CC
     language_ = language;
     if (!reenter) {
+        unfilteredOrder_.clear();
         garage_ = garage;
         rally_ = rally;
         garageBlock_.assign(block.begin(), block.end());
@@ -1105,6 +1107,18 @@ void ArcadeCarPage::EnterGarage(int garage, bool reenter, std::span<const uint8_
     stage_ = 2;
     logo_.Clear();
     logo_.Set(a_, vram, -1, modelCar_);
+}
+
+bool ArcadeCarPage::ToggleCockpitFilter(){
+    if(garage_<0||stage_!=0)return false;
+    if(unfilteredOrder_.empty()){
+        const auto models=AuthoredCockpitCars();std::vector<int16_t> filtered;
+        for(const auto index:order_){const auto car=std::span<const uint8_t>(garageBlock_).subspan(4+size_t(index)*kGarageCarSize,kGarageCarSize);
+            if(models.contains(U32(car,0x8C))&&(!rally_||garageInfo_.at(size_t(index)).rally))filtered.push_back(index);}
+        if(filtered.empty())return false;
+        unfilteredOrder_=order_;unfilteredSelection_=list_.selection;order_=std::move(filtered);list_.selection=0;
+    }else{order_=std::move(unfilteredOrder_);unfilteredOrder_.clear();list_.selection=std::clamp<int16_t>(unfilteredSelection_,0,int16_t(order_.size()-1));}
+    list_.count=int16_t(order_.size());list_.scroll=list_.blink=0;MenuListOpen(list_);listTimer_=0;return true;
 }
 
 int32_t GarageListRow(const GarageRowSource& g, int command, const MenuListWidget& w, int row, const MenuListRowDraw* d) { // 0x8001F50C
@@ -1309,6 +1323,7 @@ ArcadeCarPage::Result ArcadeCarPage::UpdateGarage(const MenuListPad* pad, uint8_
 void ArcadeCarPage::DrawGarage(ViewOt& ot, TextCtx& c) const { // 0x8002007C
     rowCtx_ = &c;
     MenuListDraw(list_, ot.slot[2]);
+    if(stage_==0){c.ot=&ot.slot[2];c.font=&a_.FontAt(0x801234D0u);DrawText(c,unfilteredOrder_.empty()?"L3: 3D cockpits":"L3: All cars",list_.x-116,list_.y-20,1);}
     carousel_.Draw(ot.slot[2], [&](const ArcCarousel::Item& it) { GaragePageDraw(it, ot.slot[2], c); });
     rule_.Draw(ot.slot[2]);
     transmission_.Draw(&ot.slot[0], c);

@@ -359,9 +359,7 @@ int GameMain(int argc, char** argv) {
             else throw std::runtime_error("unknown argument " + a);
         }
 
-        // An automated run (a key script, a screenshot, a comparison or check, --fast, --headless, a frame limit)
-        // shows its window without activating it, so that it does not take the keyboard from whatever the user is
-        // doing; an interactive launch activates its window as before (game_window.h SetWindowNoFocus).
+        // Preserve keyboard focus during automated runs; interactive launches activate normally.
         for (int i = 2; i < argc; i++) {
             const std::string a = argv[i];
             if (a.rfind("--", 0) != 0) continue;
@@ -425,7 +423,9 @@ int GameMain(int argc, char** argv) {
         }
         // The options of the title (PC settings file, shell::PcSettings) for the races: units, music / effects volumes.
         const shell::PcSettings pcSettings = shell::PcSettings::Load(titleOptions.settingsPath);
-        gt2::metricPower = pcSettings.powerMetric;
+        gt2::gt2PlusDisc = gt2::IsGt2Plus(exeImage);
+        gt2::powerUnits = pcSettings.powerUnits;
+        gt2::ApplyPowerUnits();
         if (pcSettings.metric) metricHud = true;
         // The race view's presentation options (race_view.h) for the standalone race and the races of the menus.
         RaceViewConfig view;

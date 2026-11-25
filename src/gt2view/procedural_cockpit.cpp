@@ -1,5 +1,6 @@
 #include "gt2view/cockpit_backing_fit.h"
 #include "gt2view/procedural_cockpit.h"
+#include "gt2view/steering_wheel.h"
 #include "gt2view/cockpit_materials.h"
 #include "gt2view/cockpit_lining_clip.h"
 #include <algorithm>
@@ -848,7 +849,7 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     const float seatCeiling=std::min(roofAt(seatZ+seatOffset_[1]+.275f),roofAt(seatZ+seatOffset_[1]+.395f));
     const float seatTop=fit.openTop?seatY+.72f:std::min(seatY+.72f,seatCeiling-.20f);
     // A high driving position needs a raised seat base. Keep the cushion
-    // within seated reach as the user raises the eye, without moving the
+    // within seated reach as the eye position rises, without moving the
     // eye, wheel, passenger seat or the surrounding floor to fit the chair.
     const float driverSeatY=std::max(seatY,eyeY+seatOffset_[0]-.825f);
     if(driverSeatY>seatY+.001f)
@@ -874,38 +875,21 @@ void ProceduralCockpit::Build(const CockpitFit& fit) {
     // Generated cabins extend the fixed wheel mount 15 cm toward the driver (+Z).
     wheelCenter_={eyeX,std::min(eyeY-.28f,originalDialY-.105f),std::max(eyeZ-.38f,dashBack+.14f)+(fit.nativeInterior ? 0.f : .15f)};
     const auto& hub=interactiveWheel_ ? steeringHub_ : wheelCenter_;
-    cabin.Beam({eyeX,dashboard-.14f,dashBack-.025f},
-               {hub[0],hub[1],hub[2]},.035f,kBlack,8);
-    Mesh wheel;
-    constexpr int rimSides=48, tubeSides=6;
-    constexpr float radius=.18f, tube=.015f;
-    for (int i=0;i<rimSides;++i) for (int j=0;j<tubeSides;++j) {
-        V points[4]{}; int at=0;
-        for (auto ij : {std::pair{i,j},std::pair{i+1,j},std::pair{i+1,j+1},std::pair{i,j+1}}) {
-            const float a=2*kPi*float(ij.first)/rimSides, b=2*kPi*float(ij.second)/tubeSides;
-            points[at++]=Polar(a,radius+tube*std::cos(b))+V{0,0,tube*std::sin(b)};
-        }
-        const V color=i==11||i==12 ? kTrim : V{.095f,.108f,.121f};
-        wheel.Quad(points[0],points[1],points[2],points[3],color);
-    }
-    for (float angle : {0.f,kPi,1.5f*kPi}) {
-        const V d=Polar(angle,1), side{-d.y,d.x,0}, z{0,0,.007f};
-        const V a=d*.035f-side*.025f,b=d*.167f-side*.014f,c=d*.167f+side*.014f,e=d*.035f+side*.025f;
-        wheel.Quad(a+z,b+z,c+z,e+z,kTrim);
-        wheel.Quad(e-z,c-z,b-z,a-z,kBlack);
-        wheel.Quad(a-z,b-z,b+z,a+z,kDash); wheel.Quad(c-z,e-z,e+z,c+z,kDash);
-    }
-    wheel.Beam({0,0,-.015f},{0,0,.024f},.048f,kBlack,12);
-    wheel.Disc({0,0,.025f},.027f,kDash,24);
-    wheel.Ring({0,0,.026f},.025f,.027f,kTrim*.70f,24);
+    // End behind the hub, aligned to the wheel normal; the column must not cross its face.
+    constexpr float columnTilt=18.f*kPi/180.f;
+    const float columnSin=std::sin(columnTilt),columnCos=std::cos(columnTilt);
+    const float columnLength=std::max(.12f,(hub[2]-dashBack)/columnCos);
+    cabin.Beam({hub[0],hub[1]-columnSin*columnLength,hub[2]-columnCos*columnLength},
+               {hub[0],hub[1]-columnSin*.045f,hub[2]-columnCos*.045f},.035f,kBlack,8);
+    Mesh wheel;wheel.vertices=BuildSteeringWheel(renderer_,.18f);
 
-    if (cabin.vertices.size()>kCabinLimit || wheel.vertices.size()>kWheelLimit)
+    if (cabin.vertices.size()>kCabinLimit || wheel.vertices.size()>18432)
         throw std::runtime_error("procedural cockpit exceeds its vertex range: "+std::to_string(cabin.vertices.size()));
     cabinCount_=uint32_t(cabin.vertices.size()); wheelCount_=uint32_t(wheel.vertices.size());
     mirrorCenter_=fit.mirror; mirrorScale_=0;
     speedometer_=fit.speedometer;
     renderer_.SetVertices(SceneRenderer::kCockpitVertexBase,cabin.vertices);
-    renderer_.SetVertices(SceneRenderer::kCockpitVertexBase+kWheelOffset,wheel.vertices);
+    renderer_.SetVertices(SceneRenderer::kVrDrivingVertexBase,wheel.vertices);
     fitKey_=fit; built_=true;
     speedStep_=rpmStep_=-1; gear_=-100;
 }
@@ -981,6 +965,11 @@ void ProceduralCockpit::Append(std::vector<DrawItem>& items, const CockpitFit& f
                                float steeringRadians, float speedKph, float rpm, int gear, bool showWheel,
                                float seatHeight, float seatBack, const std::array<float,3>* steeringHub, bool showCabin) {
     if (!fit.valid) return;
+    if(fit.frozenInterior) {
+        wheelCenter_={fit.nativeWheel[0],fit.nativeWheel[1],fit.nativeWheel[2]};
+        built_=false; // A previous generated car must not leave a generated mirror behind.
+        return;
+    }
     const std::array<float,2> seatOffset{seatHeight,seatBack};
     if (!built_ || fit!=fitKey_ || seatOffset!=seatOffset_ || bool(steeringHub)!=interactiveWheel_ ||
         (steeringHub && *steeringHub!=steeringHub_)) {
@@ -1014,7 +1003,7 @@ void ProceduralCockpit::Append(std::vector<DrawItem>& items, const CockpitFit& f
     const float c=std::cos(angle),s=std::sin(angle),ct=std::cos(tilt),st=std::sin(tilt);
     const float local[16]={c,s*ct,-s*st,0, -s,c*ct,-c*st,0, 0,st,ct,0,
                            wheelCenter_[0],wheelCenter_[1],wheelCenter_[2],1};
-    DrawItem wheel; wheel.firstVertex=SceneRenderer::kCockpitVertexBase+kWheelOffset; wheel.vertexCount=wheelCount_;
+    DrawItem wheel; wheel.firstVertex=SceneRenderer::kVrDrivingVertexBase; wheel.vertexCount=wheelCount_;
     wheel.cabinDepth=true;
     for (int col=0;col<4;++col) for (int row=0;row<4;++row) for (int k=0;k<4;++k)
         wheel.mvp[col*4+row]+=carMvp[k*4+row]*local[col*4+k];

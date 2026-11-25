@@ -1,43 +1,110 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
+### Cross-platform multiplayer
+
+- Add native online racing between Windows/PCVR, Linux/Steam Deck and Quest, entered through the new Arcade Multiplayer tile. Browse public rooms or create a named room with an optional password; no manual IP entry or invitation files are needed.
+- Support 2-6 real players, with at least two required to start. All connected players must be Ready. Hosts choose the track, laps, transmission and either a shared car or an Arcade class; players select eligible cars in the garage.
+- Offer optional bots to fill vacant places, with Easy, Normal and Hard difficulty. Support rally cars and tracks, including point-to-point races.
+- Add track-map previews and 50 layouts, with day/night and reverse variants where the disc provides them. Preserve valid car choices when changing unrelated room settings and restore road-car choices after rally.
+- Wait for every player to load before the shared camera intro and countdown. Keep Arcade menu music playing until the race begins.
+- Display player nicknames, bot labels and multiplayer results. The first human finisher starts a visible 30-second countdown; finish sooner if all human players finish.
+- Keep rooms open between races, clear readiness for the next race and show who is still racing or viewing results. Players can return to the room, choose cars and race again on another track.
+- Let hosts remove players in the lobby or during a race. Handle host succession, reconnects, kicked players and empty-room cleanup.
+- Add an emote wheel: press L3, select with the left stick, then confirm with L3 or Cross/A. Emotes appear beside player names, including for the sender. Steering and pedals remain active while using emotes or browsing the race menu.
+- Include the room directory, dedicated server and native networking dependencies in the source kit; allow multiplayer networking in the Steam Deck Flatpak.
+- Multiplayer has not had a public test yet; testing so far has been by one person using multiple devices. Bugs and connection problems may remain.
+
+### HD textures, 3D cockpits and GT4 models
+
+- Add optional drop-in HD texture packs with editable PNGs, saved category controls and original-texture fallback for missing images. Players can replace or remove individual pictures without rebuilding the game. Texture selection is available in settings.
+- Use mipmapped HD texture atlases and optional compressed Quest caches; changing replacement images invalidates their cached artwork.
+- Include authored 3D interiors for 12 Nissan Skyline GT-R/R32 catalogue entries, with camera anchors, animated instruments and mirrors. Attach the supported interiors during GT4 preparation and include their manifests and attribution in the source kit; other cars retain fitted cockpits.
+- Replace the generated steering wheel and hands with real textured 3D models: a steering wheel adapted from Marc Ed's interior and technical gloves from VRMADA's UltimateXR. Include the source attribution and licenses.
+- Improve cockpit fitting, glass rendering and steering-column placement for views inside and outside the car. Add L3 garage filtering for cars with authored interiors.
+- Reduce GT4 pack size by storing paint variants as texture deltas instead of full duplicate images, and limit imported paints to the usable GT2 colour count. Existing full-PNG packs remain supported. ([#108])
+- Prepare GT4 geometry, textures and authored interiors in the background during startup, prioritizing the career car, recent models and standard Arcade A/B/C/S cars. Reuse prepared data in menus and races.
+
+### Disc mods, saves and gameplay
+
+- Load A-Spec Simulation/Combined and GT2+ Complete NTSC-U Simulation/Arcade images directly, including US Arcade v1.1. Handle modified volume layouts, menu tables and sparse car-colour data. ([#115])
+- Keep retail and mod datasets as separate picker entries with separate saves and settings; compatible standalone and Combined images of the same mod share their memory card. Read save/replay filenames from the disc executable so GT2+ saves can coexist with retail saves. ([#119])
+- Install all prepared retail and mod datasets on Quest without replacing existing saves. Preserve the selected Combined dataset and its cards when switching Arcade/Simulation.
+- Add a Simulation car-damage switch. Record its event-time value with replays so later preference changes do not change replay behaviour. ([#70])
+- Add replay input-display front-wheel indicators and preserve their original pixel-aligned, nearest-filtered graphics. ([#72], [#92])
+- Prevent P from skipping an event race's finish and result handling. ([#82])
+- Add disc-aware GT2+ turbo-section and power-unit behaviour: Auto follows the loaded disc, with Turbo Auto/On/Off and Power Auto/hp/PS overrides. Retail and A-Spec keep stock defaults; physics and saves keep their native units. ([#116], [#127])
+
+### Menus, graphics, audio and controls
+
+- Reduce painted road-line flicker and stationary-camera shimmer, improve decoded-texture cache handling, and avoid repeated texture promotion during the start countdown. ([#95])
+
+- Prevent flickering on zero-thickness car panels such as rear wings by drawing the correct side of coincident opposite-facing polygons. ([#126])
+- Apply the saved texture filter from the first menu frame. ([#74])
+- Improve MSAA coverage for stereo HUD layers, menu cars and mirrors; keep VR menu-car clipping attached to the HUD plane. ([#75])
+- Cache unchanged 2D menu layers instead of rebuilding them, and refresh them when HD media or rendering settings change. ([#85])
+- Add Off to car reflections and apply reflection changes to already loaded cars. ([#97], integration [#98])
+- Make a positive Draw Distance a real rendering cap for road chunks, scenery, billboards and glows. ([#110])
+- Reuse Vulkan pipelines and render targets when changing graphics settings. Report the actual supported MSAA count when the requested count is clamped. Use the direct OpenXR colour path on Quest at 1x as well as multisampled settings.
 - Run on Vulkan 1.1/1.2 GPUs with a render-pass fallback (Vulkan 1.3 keeps dynamic rendering), report the loader, GPUs, available memory and chosen path with `gt2game --diagnose`, and start with a clear error on a machine without `vulkan-1.dll` instead of failing inside the loader. VR follows the same rule: a runtime that offers only Vulkan 1.1 or 1.2 gets multiview render passes, and foveation uses the extension's shading-rate attachment on that path. `GT2_VK_RENDERPASS=1` forces the fallback for testing.
 - Renderer memory follows the content: the vertex arena and native-model storage grow on demand instead of reserving 137 MiB, so scenes and menus allocate only the geometry they upload. Allocation peaks are logged, and a new vertex-arena audit covers sparse indices, growth, holes and relocation.
-- Install all prepared retail and mod datasets on Quest, including Combined discs, without replacing existing saves.
-- Keep the selected Combined dataset and its memory cards when switching between Arcade and Simulation.
+- Correct Up navigation in the disc picker. ([#79])
+- Improve settings layout with consistent row spacing, automatic pagination and room for status text. Remove the duplicate pause row, update control hints and place display timing under Graphics. ([#100], [#118])
+- Show Saved only after an actual setting change, and clear stale status messages. ([#102])
+- Group content/media options separately from graphics and put vibration under Controls. ([#105], integration [#111])
+- Add configurable keyboard driving controls, reserved-shortcut validation and consistent modifier/navigation/function-key mapping across desktop, SDL and browser builds. ([#106], integration [#111])
+- Add browser gamepad rumble where the browser exposes a vibration actuator; keep it routed to the selected controller through reconnects and identical-pad setups. ([#93], integration [#98])
+- Align the profiler's 1% low line with its FPS/GPU lines. ([#96])
+- Use the SDL audio device's actual sample rate, including 96/192 kHz, while retaining a bounded audio queue and clean error handling. ([#84])
 
-- Load A-Spec (Simulation and Combined) and GT2+ Complete (NTSC-U Simulation and Arcade) disc images directly. Modified executables whose address layout matches a stock build are registered by SHA-1; a rebuilt GT2.VOL with its last file at the final offset loads completely.
-- Support the US Arcade v1.1 disc the GT2+ Arcade patch is built on: its own generated address profile, the shifted menu text block and font descriptors, and the v1.1 Arcade menu view table.
-- Read the memory-card save and replay file names from the disc's executable, so GT2+ saves (`…7C`) coexist with the retail save on one card.
-- Tolerate A-Spec's sparse car-colour entries and unsorted solo data instead of rejecting the GT-mode menus.
-- Name each image's car-table dataset by SHA-1: retail, A-Spec and GT2+ keep separate memory cards and settings, while a combined and a standalone disc of the same mod share one card. Installed discs become separate picker entries (`simulation`, `simulation-aspec`, `simulation-plus`, …) instead of replacing each other; installs made before this change keep their paths.
+### Installation, packaging and build checks
 
-- Group content and media settings separately from graphics; keep vibration under Controls.
-- Add independent keyboard driving bindings, reject reserved shortcuts, and support modifier/navigation/function keys in SDL and web builds.
+- Reuse existing Windows data when moving from an older ZIP installation to MSI, including the legacy default folder. Preserve saves and prepared media without requiring another disc import.
+- Prepare HD media for Combined discs. ([#90])
+- Document moving an installed data folder and add the Quiver Launcher catalogue link. ([#108], [#69])
+- Package Quest and PCVR installers together in a clearly named VR archive, and keep the packaging automated for later releases.
+- Publish prebuilt Linux x86_64 and ARM64 ZIP packages. ([#113])
+- Retry transient APT/Flathub downloads and retain the workflow's download helper when building older tags. ([#66])
+- Correct macOS test targets and Windows CI Vulkan-device setup; use a Vulkan SDK release that includes the required Windows runtime. ([#114])
+- Extend regression coverage for rendering/MSAA, input, audio, model imports, mod datasets and multiplayer room/race lifecycles. Validate source exports, including the new cockpit, wheel/glove assets and attribution.
 
-- Keep browser rumble on the selected controller, including identical pads and reconnects.
-- Remove loaded car reflection passes when reflections are Off, and restore them when enabled again.
-- Refresh cached menus after HD media, texture smoothing or raster settings change.
+Thanks to **@lucianodato** for the contributions linked above. Integration PRs
+[#98] and [#111] also include the accompanying compatibility fixes.
 
-- Keep the FPS profiler's 1% low line aligned with the FPS and GPU lines.
-- Rumble supported controllers in the browser build through the Gamepad API, so pads vibrate in Chrome, Edge and Safari on macOS; Firefox exposes no vibration actuator. ([#88](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/issues/88), @lucianodato)
+[#66]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/66
+[#69]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/69
+[#70]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/70
+[#72]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/72
+[#74]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/74
+[#75]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/75
+[#79]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/79
+[#82]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/82
+[#84]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/84
+[#85]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/85
+[#90]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/90
+[#92]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/92
+[#93]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/93
+[#95]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/95
+[#96]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/96
+[#97]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/97
+[#98]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/98
+[#100]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/100
+[#102]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/102
+[#105]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/105
+[#106]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/106
+[#108]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/108
+[#110]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/110
+[#111]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/111
+[#113]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/113
+[#114]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/114
+[#115]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/115
+[#116]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/116
+[#118]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/118
+[#119]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/119
+[#126]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/126
+[#127]: https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/pull/127
 
-- Add **Off** to the GT2 car-reflection setting; the preference is shared between disc profiles and a saved `modern_car_reflections` still selects Modern.
-- Keep a 40 ms SDL audio queue at the output device's sample rate, including 96/192 kHz, and stop cleanly on resampler errors.
-
-- Latch Simulation damage when entering an event so changes to preferences cannot alter its replay. Save the native damage option with the replay, retaining GT event-table selection; changes apply when entering the next event.
-
-- Keep input HUD wheels, arrows and pedal frames on original nearest texels even when HD UI assets are available.
-
-- Reuse existing Windows game data when moving from an older ZIP installation to MSI. Detect the legacy default folder and attach an existing selected folder without reimporting discs or rebuilding HD media; retain saves.
-
-- Make a positive Draw Distance a real cap: road chunks, scenery, billboards and glows beyond it are no longer drawn, so a shorter setting costs fewer polygons instead of adding the in-range chunks on top of the original render list. The camera's own chunk still draws.
-
-### GT2+ gameplay options
-
-- Fix the pre-race Change Parts Turbo section for cars whose only turbo kit is the stock one (GT2+ `w8_settings_menu_fix`).
-- Add a **Power Units** setting (hp / PS) with GT2+ metric-horsepower behaviour. Values are display-only; simulation and saves stay in PS.
 
 ## 0.9.2 - Installation, car lights and HUD fixes
 

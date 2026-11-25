@@ -9,7 +9,11 @@ foreach(shader scene.vert scene_environment.vert scene.frag scene_cached.frag sc
     COMMAND Vulkan::glslc -O -mfmt=c -o "${out}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_cached_common.glsl"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl" VERBATIM)
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/authored_glass.glsl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_model_common.glsl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_fragment.glsl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/scene_vertex_layout.h" VERBATIM)
   list(APPEND GT2VK_SHADER_OUTPUTS "${out}")
 endforeach()
 include(cmake/stereo-shaders.cmake)
@@ -34,7 +38,7 @@ target_include_directories(gt2flatcamera PUBLIC src)
 file(GLOB GT2GAME_CPP CONFIGURE_DEPENDS tools/gt2game/*.cpp)
 list(FILTER GT2GAME_CPP EXCLUDE REGEX "/game_window_(win32|xr|android|web)\\.cpp$")
 add_executable(gt2game ${GT2GAME_CPP} ${GT2_DEV_DUMP_SOURCES})
-target_link_libraries(gt2game PRIVATE gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career
+target_link_libraries(gt2game PRIVATE gt2lan gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career
   gt2menu gt2shell gt2screens gt2camera gt2arcade gt2vk gt2inputdev gt2os gt2flatcamera SDL2::SDL2)
 find_package(Threads REQUIRED)
 target_link_libraries(gt2audio PRIVATE Threads::Threads)

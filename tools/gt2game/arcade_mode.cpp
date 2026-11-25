@@ -1,5 +1,8 @@
+#include "cockpit_filter_shortcut.h"
+#include "online_race.h"
 // gt2game on the arcade disc: title -> arcade menus -> race -> menus (arcade_mode.h).
 #include "arcade_mode.h"
+#include "gt2formats/model_set_preload.h"
 #include "cockpit_preview.h"
 #include "gt2view/cockpit_badge.h"
 
@@ -783,6 +786,15 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
     traceLoad("title assets");
     const arcade::ArcadeMenuAssets menuAssets = arcade::ArcadeMenuAssets::Load(disc, vol);
     traceLoad("menu assets");
+    if (OverlayGt4ModelSet()) {
+        std::vector<std::string> priority;
+        // Standard road classes: indices 0=S, 1=A, 2=B, 3=C; no garage/bonus substitutions.
+        for (size_t row : {size_t(1), size_t(2), size_t(3), size_t(0)})
+            for (const auto& id : menuAssets.data.classes[row].cars)
+                if (std::find(priority.begin(),priority.end(),id)==priority.end()) priority.push_back(id);
+        gt2::StartModelSetPreload(gt2::gt4ModelSetRoot, gt2::os::DataRoot()/"gt4-preload-recent.txt", priority);
+        std::printf("GT4 preload: queued %zu standard Arcade A/B/C/S cars\n",priority.size());
+    }
     const ArcadeData arcadeData = ArcadeData::Load(vol);
     traceLoad("arcade data");
     const CarInfoDirectory cars = CarInfoDirectory::Load(vol);
@@ -1137,6 +1149,7 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
             }
             break;
         case Screen::kMenus: {
+            if(gt2game::CockpitFilterPressed(window.PadPressed(input::ps1::kL3) ? input::ps1::kL3 : 0, window.Pad().buttons)) menus.ToggleCockpitFilter();
             const bool previewPage=menus.Current()==arcade::ArcadeView::kCar || menus.Current()==arcade::ArcadeView::kGarage;
             if(CockpitPreviewRequested(window,previewPage && menus.CarShown())) {
                 const uint32_t selected=menus.CarId();
@@ -1165,6 +1178,30 @@ int RunArcadeMode(const DiscImage& disc, const GtfsVolume& vol, const ArcadeMode
                 continue;
             }
             const arcade::ArcadeMenus::Outcome outcome = menus.Update(pad, &pad2);
+            if (outcome == arcade::ArcadeMenus::kMultiplayer) {
+                const auto networkOptions = titleScreens.RaceOptions(options);
+                RunLanMenu(window, disc, vol, networkOptions.view,
+                    [&] { if (sfx) sfx->Frame(); },
+                    [&](bool racing) {
+                        if (racing) sfx.reset();
+                        else {
+                            openSound();
+                            if (sfx) sfx->StartArcadeMusic(menus.Career()[0xB3]);
+                        }
+                    });
+                if (window.Closed()) return 0;
+                resetView();
+                // Preserve the buttons held when leaving Multiplayer. In particular,
+                // confirming its Back row must not confirm this tile again next frame.
+                previousHeld = 0;
+                for (int k : {gt2::keys::kUp, gt2::keys::kDown, gt2::keys::kLeft, gt2::keys::kRight,
+                              gt2::keys::kReturn, gt2::keys::kSpace, gt2::keys::kBack, gt2::keys::kEscape,
+                              int('S'), int('Q'), int('W'), gt2::keys::kDelete})
+                    if (window.Held(k)) previousHeld |= KeyBit(k);
+                previousHeld2 = GenericButtons(window.Pad2().buttons);
+                repeatTimer = repeatTimer2 = 0;
+                continue;
+            }
             if (menus.VramVersion() != menusVram) { // the car page uploaded a name logo (arc_carlogo) into the menus' VRAM
                 menusVram = menus.VramVersion();
                 uploaded = nullptr;

@@ -14,7 +14,7 @@ if ($true) {
         'LINUX-INSTALL.md', 'STEAMDECK.md', 'MACOS.md', 'MIPMAPS.md', 'PCVR.md', 'PLAYER-INSTALL.md', 'QUEST.md',
         'SAVE-TRANSFER.md', 'VALIDATION.md', 'wheel-profile-provenance.json',
         'WEB.md', 'WHEEL-PROFILES.md', 'WHEELS.md', 'GT4-CARS.md', 'RELEASE-0.9.0.md', 'RELEASE-0.9.1.md', 'RELEASE-0.9.2.md',
-        'MOD-SUPPORT.md', 'RELEASING.md')
+        'MOD-SUPPORT.md', 'RELEASING.md', 'MULTIPLAYER.md', 'NETWORK_STATE.md', 'TEXTURE-PACKS.md')
     # The root allowlist excludes runtime game data. tools/xrsim/runtime is
     # source code and must remain part of the exported simulator.
     $skipDirectory = '^(bin|obj|build[^/]*|cmake-build-.*|out|\.cxx|\.gradle|work|dist|saves|\.git|\.codex|\.agents|\.claude|\.vs|\.vscode|\.idea|__pycache__|game-decomp|recomp_out)$'
@@ -39,6 +39,8 @@ if ($true) {
             $relative = $item.FullName.Substring($root.Length + 1).Replace('\', '/')
             # Private matching decisions are an audit, not an importer input.
             if ($relative -eq 'scripts/gt4_matching_audit.json') { continue }
+            # Editable HD images ship in the separate texture pack, not source exports.
+            if ($relative.StartsWith('tools/worldpacks/') -or $relative -eq 'scripts/install-local-visuals.py' -or $relative.EndsWith('.prompt.txt')) { continue }
             # Historical reverse-engineering journals remain local. The release
             # contains buildable source and English product documentation.
             if ($relative.StartsWith('docs/research/') -or $relative.StartsWith('docs/formats/')) { continue }
@@ -50,6 +52,10 @@ if ($true) {
             }
             $files.Add($relative)
         }
+    }
+    foreach ($asset in Get-ChildItem -LiteralPath (Join-Path $root 'assets/cockpits/r32') -Recurse -File) {
+        if ($asset.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Cockpit assets must not be links' }
+        $files.Add($asset.FullName.Substring($root.Length + 1).Replace('\', '/'))
     }
     $files | Sort-Object -Unique
     return

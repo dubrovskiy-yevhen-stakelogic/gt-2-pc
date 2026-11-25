@@ -127,12 +127,12 @@ public:
                         const size_t at = y * 256 + x;
                         const uint32_t center = source[at];
                         if ((center >> 24) != 0xff) continue;
-                        bool near = painted(center);
-                        for (int dy = -1; dy <= 1 && !near; ++dy) for (int dx = -1; dx <= 1; ++dx) {
+                        bool nearPaint = painted(center);
+                        for (int dy = -1; dy <= 1 && !nearPaint; ++dy) for (int dx = -1; dx <= 1; ++dx) {
                             const int nx = int(x) + dx, ny = int(y) + dy;
-                            if (nx >= 0 && nx < 256 && ny >= 0 && ny < 256 && painted(source[size_t(ny) * 256 + nx])) { near = true; break; }
+                            if (nx >= 0 && nx < 256 && ny >= 0 && ny < 256 && painted(source[size_t(ny) * 256 + nx])) { nearPaint = true; break; }
                         }
-                        if (!near) continue;
+                        if (!nearPaint) continue;
                         uint32_t r = 0, g = 0, b = 0, count = 0;
                         for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {
                             const int nx = int(x) + dx, ny = int(y) + dy;

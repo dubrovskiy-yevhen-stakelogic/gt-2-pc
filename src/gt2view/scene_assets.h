@@ -1,5 +1,6 @@
 #include "gt2view/source_surface167.h"
 #pragma once
+#include "gt2view/generated_world.h"
 #include "native_cockpit_fit.h"
 #include "gt2view/cockpit_headliner.h"
 #include "gt2view/course_surface.h"
@@ -16,6 +17,7 @@
 #include "gt2view/gt4_cockpit_furniture.h"
 #include "gt2view/gt4_cockpit_caps.h"
 #include "gt2view/side_mirror_fit.h"
+#include "gt2view/authored_car.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -36,6 +38,7 @@
 #include "gt2formats/gltf_reader.h"
 #include "gt2formats/model_set.h"
 #include "gt2formats/paint_delta.h"
+#include "gt2formats/model_set_preload.h"
 #include "gt2formats/sha1.h"
 #include "gt2formats/psx_vram.h"
 #include "gt2formats/sponsor_boards.h"
@@ -84,6 +87,10 @@ public:
     }
     bool UsesGt4(int slot) const { return slot >= 0 && size_t(slot) < gt4Cars_.size() && (gt4Enabled_ || gt4Cars_[size_t(slot)].required) && gt4Cars_[size_t(slot)].count != 0; }
     bool HasNativeGt4Interior(int slot) const { return UsesGt4(slot) && gt4Cars_[size_t(slot)].nativeInterior; }
+    bool HasAuthoredCar(int slot) const { return UsesGt4(slot) && gt4Cars_[size_t(slot)].cockpit.frozenInterior; }
+    std::array<float,3> AuthoredWheelAxis(int slot) const {
+        return HasAuthoredCar(slot)?gt4Cars_[size_t(slot)].authoredControls[0].axis:std::array<float,3>{0,0,1};
+    }
     uint32_t Gt4ExteriorVertices(int slot) const { return UsesGt4(slot)?gt4Cars_[size_t(slot)].count:0; }
     uint32_t Gt4CockpitVertices(int slot) const { return UsesGt4(slot)?gt4Cars_[size_t(slot)].cockpitCount:0; }
     uint32_t Gt4ReflectionVertices(int slot) const { return UsesGt4(slot)?gt4Cars_[size_t(slot)].reflectionCount:0; }
@@ -118,8 +125,11 @@ public:
         trackName_ = name;
         courseNight_=sources && (sources->courseFlags & 1);
         PsxVram vram;
-        if (sources) vram.LoadTimPack(sources->texturePack);
-        else vram.LoadTimPack(vol_.Read("crsobj/" + name + ".trp"));
+        const auto texturePack=sources?sources->texturePack:vol_.Read("crsobj/" + name + ".trp");
+        vram.LoadTimPack(texturePack);
+        uint32_t generatedCursor=SceneRenderer::kGeneratedWorldTexelBase;
+        generatedWorld_.Load(name,texturePack,renderer_,generatedCursor);
+        generatedBackdrop_={};originalBackdrop_.clear();
 
         // Backdrop: .crsinfo entry -> bgsobj index (VOL directory order) -> .bso model + .bsp textures.
         backdropRanges_.clear();
@@ -129,7 +139,9 @@ public:
                 if (environmentMapEntry < 0) environmentMapEntry = int(EnvironmentMapEntry(sources->courseFlags));
                 if (!sources->backdrop.empty()) {
                     const Backdrop backdrop = ParseBackdrop(vol_.Read("bgsobj/" + sources->backdrop + ".bso"));
-                    vram.LoadTimPack(vol_.Read("bgsobj/" + sources->backdrop + ".bsp"));
+                    const auto skyPack=vol_.Read("bgsobj/" + sources->backdrop + ".bsp");
+                    vram.LoadTimPack(skyPack);
+                    generatedBackdrop_.Load("sky_"+sources->backdrop,skyPack,renderer_,generatedCursor);
                     BuildBackdrop(backdrop);
                     std::printf("native scene: backdrop %s (%zu polygons)\n", sources->backdrop.c_str(), backdrop.polygons.size());
                 }
@@ -144,7 +156,9 @@ public:
             if (entry >= 0) {
                 const std::string bso = BackdropNameAt(bsoPaths, BackdropIndexOf(info.entries[size_t(entry)].rest));
                 const Backdrop backdrop = ParseBackdrop(vol_.Read("bgsobj/" + bso + ".bso"));
-                vram.LoadTimPack(vol_.Read("bgsobj/" + bso + ".bsp"));
+                const auto skyPack=vol_.Read("bgsobj/" + bso + ".bsp");
+                    vram.LoadTimPack(skyPack);
+                    generatedBackdrop_.Load("sky_"+bso,skyPack,renderer_,generatedCursor);
                 BuildBackdrop(backdrop);
                 std::printf("native scene: backdrop %s (%zu polygons)\n", bso.c_str(), backdrop.polygons.size());
             }
@@ -156,6 +170,8 @@ public:
         std::vector<uint16_t> words = vram.Words();
         if (sponsors && !sponsors->empty()) {
             ApplySponsorBoards(*sponsors, words);
+            if(!generatedWorld_.BindSponsors(*sponsors,renderer_,generatedCursor))
+                generatedWorld_.KeepLiveUploads(vram.Words(),words);
             size_t logos = 0;
             for (const SponsorUpload& u : *sponsors) logos += u.logo >= 0 ? 1 : 0;
             std::printf("native scene: sponsor boards: %zu slots, %zu logos\n", sponsors->size(), logos);
@@ -288,6 +304,21 @@ public:
     // render-list chunks' masks (the level of detail the original picks, or the most detailed with `maxDetail`), plus their billboards. Opaque items go to `opaque`; the blended parts of semi-transparent
     // polygons to `blended`, back to front. `vp` = view-projection (column-major, world metres).
     void AppendTrackItems(std::vector<DrawItem>& opaque, std::vector<DrawItem>& blended, const float* vp, const TrackView& view) {
+        if(generatedWorldActive_!=gt2::generated::ActiveMask()) {
+            generatedWorldActive_=gt2::generated::ActiveMask();
+            if(!originalCourseVertices_.empty()) {
+                generatedCourseVertices_=originalCourseVertices_;
+                if(generatedWorldActive_)generatedWorld_.Apply(generatedCourseVertices_,generatedWorldActive_);
+                renderer_.SetVertices(0,generatedCourseVertices_);
+            }
+            if(!originalBackdrop_.empty()) {
+                auto updated=originalBackdrop_;
+                generatedBackdrop_.Apply(updated,generatedWorldActive_);
+                renderer_.SetVertices(kBackdropVertexBase,updated);
+            }
+            billboardUploads_.clear();
+            renderer_.ClearPaintProbes();paintProbeEyes_.clear();
+        }
         stats_ = {};
         if (!track_) return;
         const Track& track = *track_;
@@ -466,6 +497,7 @@ public:
             boardRanges[l] = {billboardBase_ + uint32_t(all.size()), uint32_t(boards[l].size())};
             all.insert(all.end(), boards[l].begin(), boards[l].end());
         }
+        if(generatedWorldActive_)generatedWorld_.Apply(all,generatedWorldActive_);
         if(!all.empty() && billboardBase_>=SceneRenderer::kPaintProbeVertexBase) {
             auto& previous=billboardUploads_[billboardBase_];
             if(previous.size()!=all.size() || std::memcmp(previous.data(),all.data(),all.size()*sizeof(SceneVertex))) {
@@ -679,7 +711,8 @@ public:
         gt4Cars_[slot].required = vol_.IsExpansionAsset("carobj/" + id + ".cdo");
         slots_.back().shadowHeight = CarShadowHeight(slots_.back().model);
         slots_.back().cockpit = FitCockpit(slots_.back().model);
-        if (slots_.back().cockpit.valid && loadCockpit_) {
+        if (slots_.back().cockpit.valid && loadCockpit_ &&
+            !(gt4Enabled_ && std::filesystem::is_regular_file(AuthoredCarManifest(id)))) {
             const auto body = BuildCockpitBody(slots_.back().model, slots_.back().texture, slots_.back().cockpit,
                 !(std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_REMOVE_STRUCTURE")));
             FitCockpitSideSills(slots_.back().cockpit,body.windowOpenings);
@@ -1033,6 +1066,20 @@ public:
             std::copy(shadowMvp ? shadowMvp : mvp, (shadowMvp ? shadowMvp : mvp) + 16, shadow.mvp);
             items.push_back(shadow);
         }
+        if(body && HasAuthoredCar(slot)) {
+            // Authored geometry includes mutually exclusive native lamp states.
+            // Submit explicit ranges so the exterior cannot draw all states at once.
+            const auto& car=gt4Cars_[size_t(slot)];
+            const uint32_t state=(brakeLit?1u:0u)+(courseNight_?2u:0u);
+            for(const auto& range:car.authoredRanges) {
+                if(range.lampStates && !(range.lampStates & (1u<<state)))continue;
+                DrawItem item;item.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+(range.mirror>=0?range.fallbackFirst:range.glazing?range.exteriorFirst:range.first);
+                item.vertexCount=range.count;item.blend=range.alpha?kBlendAlpha:kBlendOpaque;item.stpPass=range.alpha?3u:0u;
+                std::copy_n(mvp,16,item.mvp);items.push_back(item);
+            }
+            AppendCarWheels(items,slot,mvp,paint,wheelModels,brakeLit);
+            body=false;
+        }
         if (body) {
             DrawItem item;
             item.firstVertex = base;
@@ -1096,7 +1143,7 @@ public:
                     const float rest[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, s.wheelCentres[w][0], s.wheelCentres[w][1], s.wheelCentres[w][2], 1};
                     std::copy_n(rest,16,model);
                     if (wheelModels) std::copy((*wheelModels)[w].begin(), (*wheelModels)[w].end(), model);
-                    if (UsesGt4(slot)) {
+                    if (UsesGt4(slot) && !HasAuthoredCar(slot)) {
                         const auto& car=gt4Cars_[size_t(slot)];
                         if(!wheelModels && car.nativeWheelPose)
                             for(size_t c=0;c<3;++c)for(size_t r=0;r<3;++r)
@@ -1284,6 +1331,35 @@ public:
         item.cabinDepth=true;
         std::copy(mvp,mvp+16,item.mvp);
         items.push_back(item);
+    }
+
+    void AppendAuthoredMirrors(std::vector<DrawItem>& items,int slot,const float* mvp,bool center=true,bool sides=true) const {
+        if(!HasAuthoredCar(slot))return;
+        for(const auto& range:gt4Cars_[size_t(slot)].authoredRanges){
+            if(range.mirror<0 || (range.mirror==0?!center:!sides))continue;
+            DrawItem item;item.cabinDepth=true;
+            item.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+range.first;
+            item.vertexCount=range.count;std::copy_n(mvp,16,item.mvp);items.push_back(item);
+        }
+    }
+
+    void AppendAuthoredControls(std::vector<DrawItem>& items,int slot,const float* mvp,
+                                float steering,float speed,float rpm,bool showWheel=true) const {
+        if(!HasAuthoredCar(slot))return;
+        const auto& car=gt4Cars_[size_t(slot)];
+        const std::array<float,3> values{steering,speed,rpm};
+        for(const auto& range:car.authoredRanges) {
+            if(range.control<0 || (range.control==0 && !showWheel))continue;
+            const size_t index=size_t(range.control);const auto& control=car.authoredControls[index];
+            const float value=std::isfinite(values[index])?values[index]:0;
+            const float angle=index?std::clamp(value/control.maximum,0.f,1.f)*control.sweep:value;
+            const auto local=AuthoredControlMatrix(control,angle);
+            DrawItem item;item.cabinDepth=true;item.blend=range.alpha?kBlendAlpha:kBlendOpaque;item.stpPass=range.alpha?3u:0u;
+            item.firstVertex=SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride+range.first;
+            item.vertexCount=range.count;
+            for(size_t c=0;c<4;++c)for(size_t r=0;r<4;++r)for(size_t k=0;k<4;++k)item.mvp[c*4+r]+=mvp[k*4+r]*local[c*4+k];
+            items.push_back(item);
+        }
     }
 
     // The original body with transparent glazing and an interior roof lining.
@@ -1571,6 +1647,8 @@ private:
         uint32_t surfaceReflectionCount=0,cockpitSurfaceReflectionCount=0;
         struct CabinRange {uint32_t first,count;bool alpha,steering;};
         std::vector<CabinRange> cabinRanges;
+        std::vector<AuthoredRange> authoredRanges;
+        std::array<AuthoredControl,3> authoredControls;
         bool attempted = false, nativeInterior = false, required = false;
         CockpitFit cockpit;
         double removedArea = 0;
@@ -1655,18 +1733,64 @@ private:
             NativeMaterials(state.nativeMaterials,&state.nativePaintMaterials.at(selected)));
         state.selectedPaint=selected;
     }
+    void LoadAuthoredCar(int slot,const std::filesystem::path& manifest) {
+        auto& state=gt4Cars_.at(size_t(slot));
+        auto prepared=std::getenv("GT2_AUTHORED_CAR_SET")?nullptr:CopyPreloadedAuthoredMesh(gt4ModelSetRoot,state.sourceId);
+        const auto car=ReadAuthoredCar(manifest,state.sourceId,std::move(prepared));
+        RememberModelSetCar(gt4ModelSetRoot,state.sourceId);
+        if(car.mesh.TriangleCount()*3>SceneRenderer::kModelSetVertexStride)
+            throw std::runtime_error("authored car exceeds vertex budget; export a simplified game LOD");
+        auto cache=gt4Images_;uint32_t cursor=gt4TexelsUsed_;
+        struct Upload {uint32_t base;std::vector<uint32_t> texels;};
+        std::vector<Upload> uploads;std::vector<uint32_t> pages;
+        for(const auto& im:car.mesh.images) {
+            if(im.width<=0 || im.height<=0 || im.width>4096 || im.height>4096 || im.rgba.size()!=size_t(im.width)*im.height*4)
+                throw std::runtime_error("authored car: invalid image");
+            const auto key=std::to_string(im.width)+":"+std::to_string(im.height)+":"+Sha1Hex(im.rgba);
+            if(const auto it=cache.find(key);it!=cache.end()){pages.push_back(it->second);continue;}
+            const auto count=uint32_t(im.width)*uint32_t(im.height);
+            if(uint64_t(cursor)+count>SceneRenderer::kModelSetTexelLimit)throw std::runtime_error("authored car: texture budget exhausted");
+            Upload upload{SceneRenderer::kModelSetTexelBase+cursor,{}};upload.texels.resize(count);
+            for(size_t i=0;i<count;++i){const auto* p=&im.rgba[i*4];upload.texels[i]=uint32_t(p[0])|uint32_t(p[1])<<8|uint32_t(p[2])<<16|uint32_t(p[3])<<24;}
+            pages.push_back(upload.base);cache.emplace(key,upload.base);cursor+=count;uploads.push_back(std::move(upload));
+        }
+        const auto geometry=BuildAuthoredGeometry(car,pages);
+        if(geometry.vertices.size()>SceneRenderer::kModelSetVertexStride)
+            throw std::runtime_error("authored car including exterior glass exceeds vertex budget");
+        // Exterior and cockpit share this immutable range. Only explicit controls
+        // receive per-draw matrices; no cuts, refitting, generated liners or seats.
+        for(const auto& upload:uploads)renderer_.UploadExternalTexture(upload.base,uint32_t(upload.texels.size()),upload.texels.data());
+        renderer_.SetVertices(SceneRenderer::kModelSetVertexBase+uint32_t(slot)*SceneRenderer::kModelSetVertexStride,geometry.vertices);
+        gt4TexelsUsed_=cursor;gt4Images_=std::move(cache);
+        state.count=state.cockpitCount=state.totalVertices=uint32_t(geometry.vertices.size());
+        state.opaqueCount=state.cockpitOpaqueCount=geometry.opaqueCount;
+        state.glass=state.cockpitGlass=geometry.opaqueCount<geometry.vertices.size();
+        state.nativeInterior=true;state.cockpit=car.fit;state.authoredControls=car.controls;state.authoredRanges=geometry.ranges;
+        for(const auto& range:geometry.ranges)if(range.control<0) {
+            if(range.lampStates)state.cabinLamps.push_back({range.first,range.count,range.lampStates,range.alpha?kBlendAlpha:kBlendOpaque});
+            else state.cabinRanges.push_back({range.mirror>=0?range.fallbackFirst:range.first,range.count,range.alpha,false});
+        }
+        std::printf("Authored car: %s, %u immutable vertices, explicit eye %.3f %.3f %.3f, no procedural fitting\n",
+            state.sourceId.c_str(),state.count,car.fit.eye[0],car.fit.eye[1],car.fit.eye[2]);
+    }
+
     void LoadGt4(int slot) {
         const bool feedbackLegacy=std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_LEGACY_FEEDBACK");
         const bool remnantsLegacy=std::getenv("GT2_AUDIT_COCKPIT") && std::getenv("GT2_AUDIT_LEGACY_REMNANTS");
         auto& state = gt4Cars_[size_t(slot)];
         if (state.attempted || state.sourceId.empty() || (!state.required && slots_[size_t(slot)].id.starts_with("ghost:"))) return;
         state.attempted = true;
+        const auto authored=AuthoredCarManifest(state.sourceId);
+        if(std::filesystem::is_regular_file(authored)) {LoadAuthoredCar(slot,authored);return;}
         try {
             if (!gt4Set_.Has(state.sourceId)) {
                 if (state.required) throw std::runtime_error("required GT4 expansion model is missing");
                 return;
             }
-            auto car = gt4Set_.Read(state.sourceId,loadCockpit_);
+            auto prepared = CopyPreloadedModel(gt4ModelSetRoot, state.sourceId);
+            auto car = prepared ? std::move(*prepared) : gt4Set_.Read(state.sourceId,loadCockpit_);
+            if (!loadCockpit_) car.cockpit = {};
+            RememberModelSetCar(gt4ModelSetRoot, state.sourceId);
             ApplyNativeBodyPose(car);
             // Some GT4 bodies put all clearcoat in a separate environment
             // branch and leave diffuse MTL Ks at zero. Keep a soft clearcoat
@@ -3431,6 +3555,8 @@ private:
         };
         for (size_t ci = 0; ci < track.chunks.size(); ci++) {
             const auto& chunk=track.chunks[ci];auto& masked=maskedPolygons[ci];masked=maskedWalls.Classify(track,ci,&wallConflicts_[ci]);
+            // Do not fill the city/viaduct gap with guessed ground planes:
+            // those planes crossed the drivable road at seatt_s chunks 31-39.
             emitShape(ci, track.chunks[ci], track.chunks[ci].road);
             flush(chunkRanges_[ci]);
             extendedChunkRanges_[ci]=chunkRanges_[ci];
@@ -3578,7 +3704,13 @@ private:
             emitShape(seamUvs.size(), track.chunks[ci], track.chunks[ci].surround);
             flush(mirrorRanges_[ci]);
         }
-        renderer_.SetVertices(0, vertices);
+        originalCourseVertices_.clear();generatedCourseVertices_.clear();
+        generatedWorldActive_=gt2::generated::ActiveMask();
+        if(!generatedWorld_.Empty()) {
+            originalCourseVertices_=vertices;
+            if(generatedWorldActive_)generatedWorld_.Apply(vertices,generatedWorldActive_);
+        }
+        renderer_.SetVertices(0,vertices);
         courseVertexCount_=vertices.size();
         std::printf("native scene: course polygon check: %zu polygons, %zu whose triangles do not cover the polygon's area\n", checked, mismatched);
         std::printf("native scene: course, %zu chunk + %zu scenery-model vertices (%zu chunks, %zu models, %zu instances)\n", chunkVertices,
@@ -3758,6 +3890,7 @@ private:
                 const size_t slot = p.IsQuad() ? kPacketSlot[i] : i;
                 for (int k = 0; k < 3; k++) o.color[k] = p.color[slot][size_t(k)] / 255.0f;
                 if (p.IsTextured()) SetTexture(o, p.tpage, p.clut, p.u[slot], p.v[slot]);
+                if (p.IsSemiTransparent()) o.flags |= kSemiTransparent;
                 return o;
             };
             static constexpr size_t kQuad[6] = {0, 1, 3, 1, 2, 3}, kTri[3] = {0, 1, 2}; // the PS1's split, as in BuildCourse
@@ -3772,6 +3905,10 @@ private:
             first += uint32_t(lists[mode].size());
         }
         if (all.size() > kBackdropVertexLimit) throw std::runtime_error("backdrop: too many vertices");
+        if(!generatedBackdrop_.Empty()) {
+            originalBackdrop_=all;
+            generatedBackdrop_.Apply(all,gt2::generated::ActiveMask());
+        }
         renderer_.SetVertices(kBackdropVertexBase, all);
     }
 
@@ -3810,6 +3947,11 @@ private:
     std::array<float, 3> groundColor_{0.2f, 0.45f, 0.69f};
     int overlayWidth_ = 0, overlayHeight_ = 0;
     float overlayAspect_ = 0;
+    GeneratedWorld generatedWorld_;
+    std::vector<SceneVertex> originalCourseVertices_,generatedCourseVertices_;
+    unsigned generatedWorldActive_=0;
+    GeneratedWorld generatedBackdrop_;
+    std::vector<SceneVertex> originalBackdrop_;
     uint32_t externalTexelsUsed_ = 0; // allocation cursor of the renderer's external texture store
 };
 

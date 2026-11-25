@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 #include <atomic>
 #include <cerrno>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -204,6 +205,8 @@ int main(int argc, char** argv) {
             gdk_display_flush(gdk_display_get_default());
             const int result = Run(args);
             if (result == gt2linux::kImportDiscExitCode) { importing = true; continue; }
+            // Steam Stop is an intentional termination, not a crash dialog.
+            if (result == 128 + SIGINT || result == 128 + SIGTERM) return 0;
             if (result != 0) Message("GT2 exited with error " + std::to_string(result) + ". Log: " + (root / "gt2game.log").string());
             return result;
         }

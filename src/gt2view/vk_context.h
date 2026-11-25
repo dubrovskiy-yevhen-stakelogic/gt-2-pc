@@ -98,6 +98,7 @@ public:
         // renderer uses render passes. Both default to the fallback that always works, never to an assumed feature.
         bool dynamicRendering = false;
         bool multiview = false;
+        bool astc = false;
     };
 
     // The window path (Windows): a Vulkan 1.1+ instance with the surface extensions, the surface of `window`
@@ -120,6 +121,7 @@ public:
     // False on a Vulkan 1.1/1.2 device: the renderer then uses render passes (discussion #77).
     bool DynamicRendering() const { return dynamicRendering_; }
     bool Multiview() const { return multiview_; }
+    bool AstcTextures() const { return astc_; }
 
     // The window's client size, for a surface that does not report its own extent. False without a window.
     bool WindowExtent(VkExtent2D& extent) const;
@@ -136,6 +138,7 @@ private:
     bool shadingRate_ = false; // false for Existing: destroy nothing
     bool dynamicRendering_ = false;
     bool multiview_ = false;
+    bool astc_ = false;
 };
 
 } // namespace gt2view

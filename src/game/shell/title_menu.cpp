@@ -47,6 +47,8 @@ TitleMenu::TitleMenu(const GuestImage& ovl1, uint8_t language) {
     }
     for (int r = 0; r < rowCount_; r++)
         sprites_[size_t(r)] = spriteIndex_[size_t(r)] >= 0 ? TitleSprite::Read(ovl1, table + uint32_t(spriteIndex_[size_t(r)]) * 12) : TitleSprite{};
+    if (!combined && language == kLanguageUsa)
+        for (int r=0; r<rowCount_; ++r) rows_[size_t(r)].englishLabel=int8_t(results_[size_t(r)]);
     Reset();
 }
 
@@ -183,6 +185,7 @@ void DrawTitleRow(const TitleRowState& row, MenuOtSlot& ot, bool selected) {
         p.tpage = mode; // the E1 the GPU meets right before this sprite (the one generated after it)
         p.colour[0] = rgb & 0xFFFFFF;
         p.semi = semi;
+        p.titleLabel = row.englishLabel;
         ot.Add(p);
     };
     const uint32_t brightness = row.brightness;

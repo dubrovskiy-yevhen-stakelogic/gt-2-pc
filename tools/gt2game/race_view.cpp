@@ -1,6 +1,9 @@
+#include "online_race.h"
+#include "online_controls.h"
 #include "platform/xr/vr_input_merge.h"
 // The interactive race in the game window (see race_view.h). The frame loop is the former main.cpp race loop.
 #include "race_view.h"
+#include "texture_comparison.h"
 #include "gt2view/race_road_contact.h"
 
 #include <algorithm>
@@ -8,6 +11,9 @@
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <fstream>
+#include <iomanip>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 
@@ -165,7 +171,11 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                            const RaceOptions& raceOptions, const RaceViewConfig& config, RaceFlow* flow) {
     SceneRenderer& renderer = window.Renderer();
     const std::string& trackName = data.trackName;
-    const std::string carId = data.carIds.empty() ? std::string() : data.carIds[0];
+    OnlineRace* online = config.online;
+    const size_t localCar = online ? online->LocalCar() : 0;
+    if (localCar >= carCount || (online && (flow || config.replay || config.ghostReplay || !config.replayOut.empty())))
+        throw std::invalid_argument("invalid online race presentation configuration");
+    const std::string carId = data.carIds.empty() ? std::string() : data.carIds[localCar];
     RaceViewResult result;
 
     // Race music (game/audio/race_music.h, 0x800299D8): the executable's track table; the pre-race intro raises the
@@ -192,16 +202,17 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         }
         return m;
     };
-    initRaceMusic(nullptr); // sets the intro's hold before the race is set up
+    if (!online) initRaceMusic(nullptr); // sets the intro's hold before the race is set up
 
     // The title's race options (settings.txt mirrors the career's option bytes): Chase View (+0xB0) = the physics' view
     // mode (0x801C9990, the chase cameras' lag), Camera Position / View Angle / Course Map below.
     const shell::PcSettings* settings = config.pcSettings;
     const bool haveOptions = settings && settings->haveCareerOptions;
-    if (haveOptions) data.constants.viewMode = settings->options.chaseView; // the same byte (career + 0xB0 = 0x801C9990)
+    if (haveOptions && !online) data.constants.viewMode = settings->options.chaseView; // the same byte (career + 0xB0 = 0x801C9990)
 
-    sim::RaceSim race;
-    SetupRace(race, data, carCount, raceOptions);
+    sim::RaceSim offlineRace;
+    sim::RaceSim& race = online ? online->Race() : offlineRace;
+    if (!online) SetupRace(race, data, carCount, raceOptions);
     // Replays (gt2formats/replay.h): player 1's input is recorded like the original's (0x80013EF0 -> 0x80013C90 ->
     // 0x800166CC) and the car is driven from the recorded frame; a replay (--replay, or P after the finish) runs the race
     // again from its start with a stream played back (the physics and the AI are deterministic).
@@ -210,6 +221,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     std::vector<uint8_t> replayStream = config.replay ? config.replay->stream : std::vector<uint8_t>{}; // what a replay plays
     bool replaying = config.replay != nullptr || config.ghostReplay;
     auto startInput = [&] {
+        if (online) return; // networking owns input and rollback; no legacy recorder callbacks
         if (config.ghostReplay) { // the sim reads the ring (RaceSim::Step, pad slot 2 with 0x800A951C)
             replayDriver.mode = ReplayDriver::Mode::kOff;
             replayDriver.Attach(race);
@@ -271,10 +283,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     };
     ShellLog shellLog;
     shellLog.license = raceOptions.license;
-    shellLog.Attach(race);
+    if (!online) shellLog.Attach(race);
     bool standingsPrinted = false;
     std::printf("race: %s, %zu car(s), %u lap(s), hold %u fields, player heading %d, chunk %d\n", trackName.c_str(), race.CarCount(), raceOptions.laps, race.HoldFrames(),
-                race.Telemetry(0).heading, race.CarAt(0).body.chunkIndex);
+                race.Telemetry(localCar).heading, race.CarAt(localCar).body.chunkIndex);
 
     renderer.clearColor[0] = 0.45f; renderer.clearColor[1] = 0.58f; renderer.clearColor[2] = 0.78f;
     SceneAssets assets(renderer, vol);
@@ -337,9 +349,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             const auto& body=race.CarAt(i).body;
             SceneAssets::RaceWheelGeometry geometry;
             for(size_t axle=0;axle<2;++axle) {geometry.radius[axle]=body.wheelRadius[axle]/4096.f;geometry.rideHeight[axle]=body.rideHeight[axle]/4096.f;}
-            if (i == 0 && carSlot < 0) carSlot = assets.UseCar(data.modCar ? data.mod.modelId : carId, std::string(), &area, &geometry);
+            if (i == localCar && carSlot < 0) carSlot = assets.UseCar(data.modCar ? data.mod.modelId : carId, std::string(), &area, &geometry);
             else if (const ResolvedCar* m = OpponentMod(data, i); m && !m->externalMesh) assets.UseCar(m->modelId, "race:"+std::to_string(i)+":"+data.carIds[i], &area, &geometry); // a mod AI car on a disc body: under its id
-            else if (i > 0) assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i], &area, &geometry);
+            else if (i != localCar) assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i], &area, &geometry);
         }
         if (carSlot < 0 && !(data.modCar && data.mod.externalMesh)) carSlot = assets.UseCar(data.modCar ? data.mod.modelId : carId);
         // Fitted wheels (the race load ovl0 0x80028F5C, every car: CarConfig +0x00 -> 0x800615E8 loads the carwheel/ TIM,
@@ -351,7 +363,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if ((i == 0 && data.modCar) || OpponentMod(data, i)) continue; // a mod's own wheels
                 const int file = menu::MenuWheelFile(wheelFiles, data.configs[i].word00);
                 if (file < 0) continue;
-                const int slot = i == 0 ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
+                const int slot = i == localCar ? carSlot : assets.UseCar(data.carIds[i],"race:"+std::to_string(i)+":"+data.carIds[i]);
                 if (slot < 0) continue;
                 const menu::MenuWheelTexture wheel = menu::LoadMenuWheelTexture(vol, wheelFiles.paths[size_t(file)]);
                 assets.SetCarWheelTexture(slot, wheel.image, wheel.words, wheel.rows, wheel.clut);
@@ -381,7 +393,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     for (size_t w = 0; w < 4; w++) smokeWheelZ[i][w] = int16_t(std::lround((w < 2 ? m->wheelFront[2] : m->wheelRear[2]) * 4096.0));
                     continue;
                 }
-                const int slot = i == 0 ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
+                const int slot = i == localCar ? carSlot : assets.UseCar(data.carIds[i],"race:"+std::to_string(i)+":"+data.carIds[i]);
                 if (slot >= 0)
                     for (size_t w = 0; w < 4; w++) smokeWheelZ[i][w] = assets.SlotModel(slot).wheels[w].x;
             }
@@ -409,14 +421,14 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     if (config.sound && config.shotPath.empty()) {
         try {
             std::vector<audio::CarSoundSetup> setups(data.sound.begin(), data.sound.begin() + std::ptrdiff_t(carCount));
-            for (size_t i = 0; i < setups.size(); i++) setups[i].controlClass = (i == 0 && !raceOptions.aiPlayer) ? 2 : 0;
+            for (size_t i = 0; i < setups.size(); i++) setups[i].controlClass = (i == localCar && !raceOptions.aiPlayer) ? 2 : 0;
             raceAudio = std::make_unique<audio::RaceAudio>();
             raceAudio->Load(vol, LoadExeImage(disc), LoadOverlayImage(disc, kRaceOverlayIndex), setups);
             std::string error;
             if (!config.recordAudio.empty() && !raceAudio->RecordTo(config.recordAudio)) throw std::runtime_error("cannot write " + config.recordAudio);
             if (!raceAudio->OpenDevice(error)) { std::printf("sound: no output device (%s); running silently\n", error.c_str()); raceAudio.reset(); }
-            else std::printf("sound: engine set %05u (exhaust %c%u), %zu car(s)\n", data.sound[0].soundId, data.sound[0].exhaustByte >= 4 ? 't' : 'n',
-                             unsigned(data.sound[0].exhaustByte & 3), setups.size());
+            else std::printf("sound: engine set %05u (exhaust %c%u), %zu car(s)\n", data.sound[localCar].soundId, data.sound[localCar].exhaustByte >= 4 ? 't' : 'n',
+                             unsigned(data.sound[localCar].exhaustByte & 3), setups.size());
         } catch (const std::exception& e) {
             std::printf("sound: disabled (%s)\n", e.what());
             raceAudio.reset();
@@ -438,10 +450,11 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             musicPlayer.reset();
         }
     }
-    audio::RaceMusicBytes raceMusic = initRaceMusic(&race.Shell().State()); // the shell was just set up: the load's music bytes
+    audio::RaceMusicBytes raceMusic = initRaceMusic(online ? nullptr : &race.Shell().State());
     std::printf("music: intro %d, race track %u, hold %u fields\n", int(int8_t(raceMusic.request)), unsigned(raceMusic.raceTrack), race.HoldFrames());
     // 0x80029B60 once per race frame: the shell's request bytes -> the stream driver.
     auto stepMusic = [&] {
+        if (online) { audio::UpdateRaceMusic(raceMusic, musicPlayer.get()); return; }
         sim::RaceShellState& s = race.Shell().State();
         raceMusic.loop = s.musicRequestFlag;
         raceMusic.request = s.musicRequest;
@@ -492,6 +505,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             shapes.push_back(externalMesh || id.empty() ? camera::CarShape{} : camera::CarShapeOf(ParseCarModel(vol.Read("carobj/" + id + ".cdo"))));
         }
         camera::GameCamera::Options o;
+        o.player = uint8_t(localCar);
         if (haveOptions) {
             o.cameraPosition = settings->options.cameraPosition;
             o.viewAngle = settings->options.viewAngle;
@@ -504,7 +518,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         if (config.viewAngle >= 0) o.viewAngle = uint8_t(config.viewAngle);
         if (o.cameraPosition > 2) o.cameraPosition = 0;
         if (o.viewAngle > 2) o.viewAngle = 1;
-        o.gameMode = data.constants.gameMode;
+        o.gameMode = online ? 2 : data.constants.gameMode;
         o.replay = uint8_t(data.constants.flag800A951C != 0 || replaying ? 1 : 0); // the attract race / a replay: the trackside cameras
         raceCamera.Setup(cameraConstants, data.track, replayCameras, std::move(shapes), o);
         raceCamera.SetPosition(uint8_t(selectedView == 3 ? 0 : selectedView));
@@ -578,6 +592,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     };
 
     // The flow's state.
+    camera::RaceCamera frozenCam{};
+    bool frozen = false;
     Phase phase = flow ? Phase::kPreRace : Phase::kRacing;
     int hudSubFrame = 0;
     int menuSelected = 0; // the pre-race menu's selection (startItem below)
@@ -725,6 +741,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         return false;
     };
     uint32_t enterPressedForShell = 0; // X for the shell's results wait (0x8002A700), latched until the next step
+    uint32_t onlineShiftHeld = 0;
+    bool onlineMenu = false, confirmDisconnect = false;
+    int onlineMenuSelected = 0;
+    std::vector<std::pair<uint8_t,std::string>> onlineKickTargets;
+    bool emoteWheel=false,emoteHeldPrevious=false;int emoteSelected=0;
+    struct ClearEmoteContext { GameWindow& w;~ClearEmoteContext(){w.SetOnlineEmotes(false);} } clearEmoteContext{window};
     Phase loggedPhase = Phase(-1);
     bool finishLogged = false;
     bool skipReplayLeaves = false; // ours: the skip option sends an event finish to the post-race views without the replay
@@ -799,10 +821,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         const bool cameraInterp = interp && !CameraCut(previous.camera, cam);
         camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
         const auto& fit = assets.SlotCockpitFit(carSlot);
-        const bool inCockpit = fit.valid && CockpitShown(cam, selectedView == 0, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames());
+        const bool inCockpit = fit.valid && CockpitShown(cam, selectedView == 0, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames(), uint8_t(localCar));
         if (inCockpit) {
             float model[16];
-            carRenderPose(0,carSlot,alpha,model);
+            carRenderPose(localCar,carSlot,alpha,model);
             PlaceCockpitEye(p, model, fit, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)));
         }
         for (int k = 0; k < 3; k++) {
@@ -834,11 +856,28 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         const uint64_t clockBeforePump = window.ClockRevision();
         const bool seatedCountdown=assets.SlotCockpitFit(carSlot).valid &&
             CockpitShown(raceCamera.Camera(),selectedView == 0,
-                         replaying || data.constants.flag800A951C!=0,config.oldCamera,race.HoldFrames());
-        window.SetDrivingActive(phase == Phase::kRacing && !replaying && (race.HoldFrames()==0 || seatedCountdown));
+                         replaying || data.constants.flag800A951C!=0,config.oldCamera,race.HoldFrames(),uint8_t(localCar));
+        window.SetOnlineEmotes(online && online->Active());
+        window.SetDrivingActive(phase == Phase::kRacing && !replaying && (!online || online->Active()) && (race.HoldFrames()==0 || seatedCountdown));
         if (!window.BeginFrame()) {
             result.exit = RaceExit::kClosed;
             break;
+        }
+        if (online) {
+            const auto before = online->Status().nextTick;
+            online->Poll();
+            if (online->Status().phase == net::RoomPhase::Failed || online->Status().phase == net::RoomPhase::Closed) { result.exit = RaceExit::kQuit; break; }
+            if (!online->Active()) window.Input().StopFeedback();
+            if (online->Status().nextTick != before) {
+                previous.valid = false;
+                raceCamera.Update(race, {});
+            }
+            for (const auto& event : online->TakeEvents()) {
+                if (event.kind == net::EventKind::Sound && uint32_t(event.a) == 0x800189C4u) {
+                    if (raceAudio) raceAudio->StartLight(event.b);
+                    if (event.b) { raceMusic.request = raceMusic.raceTrack; raceMusic.loop = 1; }
+                }
+            }
         }
         if (window.Field() != fieldBeforeOverlay || window.ClockRevision() != clockBeforePump) {
             lastTime = nextPresent = stepAnchor = Clock::now(); accumulator = 0;
@@ -853,7 +892,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             const auto xrAct = window.SeparateVrInput() ? input::ActuatorsOf(padObject.data(),2) : input::Actuators{};
             const input::Actuators act = input::PollPad(padObject.data(), f, padTables, padBlock.data() + input::pad_block::kCalibration,
                                                         window.PadHasMotors() ? 2 : 0);
-            window.SetPadActuators(phase == Phase::kRacing ? (window.SeparateVrInput() ? xrAct : act) : input::Actuators{});
+            window.SetPadActuators(phase == Phase::kRacing && (!online || online->Active()) ? (window.SeparateVrInput() ? xrAct : act) : input::Actuators{});
             if (f.type != padTypeLogged) {
                 padTypeLogged = f.type;
                 if (f.type != input::kTypeNone)
@@ -870,10 +909,54 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         phaseFrames = phase == autoPhase ? phaseFrames + 1 : 0;
         autoPhase = phase;
         const bool autoEnter = flow && config.autoAdvance && phaseFrames > 0 && phaseFrames % 20 == 0 &&
-                               (phase != Phase::kRacing || race.CarAt(0).body.finishFlag != 0);
+                               (phase != Phase::kRacing || race.CarAt(localCar).body.finishFlag != 0);
         if (autoEnter && phase == Phase::kPreRace && !overlayMenus) menuSelected = racedOnce ? int(preRaceItems().size()) - 1 : itemIndex("Start");
-        const bool enter = window.Pressed(keys::kReturn) || autoEnter;
-        const auto& kb = OverlayKeyboardBindings(); // the keyboard's driving map (platform/input/keyboard_bindings.h)
+        const auto& kb = OverlayKeyboardBindings();
+        bool enter = window.Pressed(keys::kReturn) || autoEnter;
+        const bool emoteHeld=window.PhysicalPadHeld(input::ps1::kL3)||window.KeyHeld('G');
+        if(online && online->Active() && !onlineMenu) {
+            if(emoteHeld && !emoteHeldPrevious) {
+                if(emoteWheel) {
+                    if(emoteSelected>0)online->SendEmote(uint8_t(emoteSelected));
+                    emoteWheel=false;
+                } else {emoteWheel=true;emoteSelected=0;}
+            }
+            if(emoteWheel && (enter || window.PadPressed(input::ps1::kCross))) {
+                if(emoteSelected>0)online->SendEmote(uint8_t(emoteSelected));
+                emoteWheel=false;enter=false;
+            }
+            if(emoteWheel) {
+                const auto& raw=window.Pad();
+                const int axis=2; // PS1 pad layout: LX, LY.
+                const float x=float(raw.analog[axis])-128.f,y=float(raw.analog[axis+1])-128.f;
+                if(x*x+y*y>1600.f) {
+                    float angle=std::atan2(x,-y);if(angle<0)angle+=6.2831853f;
+                    emoteSelected=int(std::floor(angle/.8975979f+.5f))%7;
+                }
+                for(int choice=1;choice<=6;++choice)if(window.KeyHeld('0'+choice))emoteSelected=choice;
+            }
+        } else emoteWheel=false;
+        emoteHeldPrevious=emoteHeld;
+        if (online) {
+            onlineKickTargets=online->KickTargets();
+            const bool back = window.PausePressed() || window.Pressed(keys::kEscape) ||
+                (onlineMenu && (window.Pressed(keys::kBack) || window.Pressed(keys::kSpace)));
+            if (back) { emoteWheel=false;onlineMenu = !onlineMenu; confirmDisconnect = false; onlineMenuSelected = 0; enter = false; }
+            if (onlineMenu) {
+                const int menuCount=confirmDisconnect?2:3+int(onlineKickTargets.size());
+                onlineMenuSelected=std::clamp(onlineMenuSelected,0,menuCount-1);
+                if(window.Pressed(keys::kUp))onlineMenuSelected=(onlineMenuSelected+menuCount-1)%menuCount;
+                if(window.Pressed(keys::kDown))onlineMenuSelected=(onlineMenuSelected+1)%menuCount;
+                if (enter) {
+                    if (!onlineMenuSelected) { onlineMenu = false; confirmDisconnect = false; }
+                    else if (!confirmDisconnect && onlineMenuSelected==1) {result.exit=RaceExit::kNetworkNext;break;}
+                    else if (!confirmDisconnect && onlineMenuSelected>=3) {online->Kick(onlineKickTargets[size_t(onlineMenuSelected-3)].first);onlineMenuSelected=0;}
+                    else if (!confirmDisconnect) { confirmDisconnect = true; onlineMenuSelected = 0; }
+                    else { result.exit = RaceExit::kQuit; break; }
+                }
+                enter = false;
+            }
+        }
         // ---- panels' input
         bool leave = false;
         // The race of the licence menu's Start when the selector named another test (the caller built it): no menu (0x8004E320).
@@ -1046,7 +1129,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     std::printf("race: exit from the pause menu (the event race is abandoned: back to the GT-mode menus)\n");
                     if (flow->raceEnded) { // 0x80017964 runs before it returns 7: the player's dirt
                         RaceViewResult ended;
-                        ended.playerDirt = uint16_t(int32_t(race.CarAt(0).body.dirtiness << 12) / 600000);
+                        ended.playerDirt = uint16_t(int32_t(race.CarAt(localCar).body.dirtiness << 12) / 600000);
                         flow->raceEnded(ended);
                     }
                     result.exit = RaceExit::kExited;
@@ -1057,7 +1140,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     keepRace();
                     if (flow->raceEnded) { // 0x80017964 (the race's end: the player's dirt), no result
                         RaceViewResult ended;
-                        ended.playerDirt = uint16_t(int32_t(race.CarAt(0).body.dirtiness << 12) / 600000);
+                        ended.playerDirt = uint16_t(int32_t(race.CarAt(localCar).body.dirtiness << 12) / 600000);
                         flow->raceEnded(ended);
                     }
                     if (gt2::pc::skipRaceReplays) { // ours: the menu without the replay (the state of its end)
@@ -1077,7 +1160,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 }
             }
         } else if (phase == Phase::kResult) {
-            if (window.Pressed('P') && replayDriver.stream.Frames() > 0) { // the race's replay, back to this panel afterwards
+            if (!online && window.Pressed('P') && replayDriver.stream.Frames() > 0) { // the race's replay, back to this panel afterwards
                 ReplayStream recorded = replayDriver.stream;
                 recorded.End(false);
                 writeReplay();
@@ -1098,12 +1181,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 }
             }
         } else { // racing (keyboard keys alone: the pad drives through the logical pad below; Start = the pause)
-            if (window.PausePressed() && replaying && panels) {
+            if (!online && window.PausePressed() && replaying && panels) {
                 // Start in a replay: the race overlay's pause menu 0x80029D6C / 0x80029E80 over the replay (Continue / Exit; the
                 // same function as in the race, arcade_disc.md 17.7); its Exit leaves the replay (below, Phase::kPaused).
                 phase = Phase::kPaused;
                 pauseMenu.Open();
-            } else if (window.PausePressed()) {
+            } else if (!online && window.PausePressed()) {
                 if (config.ghostReplay) { // the mode 6 replay's pause Exit: on to the post-race views
                     result.exit = RaceExit::kExited;
                     result.steps = steps;
@@ -1140,7 +1223,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             // P after the finish: the replay of the race just driven (the recorded stream from the race's start).
             // Not with a flow: the flow applies the result and starts its own replay (playLast); P here would skip
             // flow->finished and leave an empty RaceViewResult (the post-race views then report a Retire).
-            if (!flow && window.Pressed('P') && !replaying && !config.replay && race.CarAt(0).body.finishFlag != 0 && replayDriver.stream.Frames() > 0) {
+            if (!flow && window.Pressed('P') && !replaying && !config.replay && race.CarAt(localCar).body.finishFlag != 0 && replayDriver.stream.Frames() > 0) {
                 ReplayStream recorded = replayDriver.stream;
                 recorded.End(false); // 0x800167D0: the last run flushed
                 writeReplay();
@@ -1150,12 +1233,17 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 resetRace();
                 std::printf("replay: %d frames\n", recorded.Frames());
             }
-            if (window.KeyPressed(keys::kBack) && !flow) resetRace();
+            if (window.KeyPressed(keys::kBack) && !flow && !online) resetRace();
             if (window.KeyPressed(kb[input::KeyboardAction::kShiftUp])) shiftRequest = 1;
             if (window.KeyPressed(kb[input::KeyboardAction::kShiftDown])) shiftRequest = -1;
             if (enter) enterPressedForShell = 0x200; // X: the shell's results wait (0x8002A700)
         }
         if (leave) break;
+        if (online && enter) {
+            if (online->Complete()) { result.exit = RaceExit::kNetworkNext; break; }
+            online->ToggleReady();
+        }
+        if (online && window.KeyPressed(keys::kF8)) online->Reconnect();
 
         sim::PadRecord pad{}; // the keyboard: a digital record like the original's from the buttons
         pad.throttle = (window.KeyHeld(kb[input::KeyboardAction::kAccelerate]) || (config.drive && !config.shotPath.empty())) ? 1 : 0;
@@ -1190,10 +1278,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         replayDriver.pad = keyboardPad;
         if (raceAudio) {
             raceAudio->SetPaused(phase != Phase::kRacing || (replaying && replayOver()));
-            raceAudio->SetDriving(phase == Phase::kRacing && !(replaying && replayOver()));
+            raceAudio->SetDriving(phase == Phase::kRacing && !(replaying && replayOver()) && (!online || online->Active()));
         }
         if (phase != Phase::kPaused) hudSubFrame = frame & 0xF;
-        if (phase != Phase::kRacing || (replaying && replayOver())) {
+        if (online) {
+            accumulator = online->CanPredict() ? stepSeconds * 4 : 0;
+            if (!online->Active()) window.Input().Wheel().Stop();
+        } else if (phase != Phase::kRacing || (replaying && replayOver())) {
             window.Input().Wheel().Stop();
             accumulator = 0;
         } else if (highRate) { // one step on every second field of the paced clock (the display frame rate's time base)
@@ -1211,7 +1302,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         if (phase != Phase::kRacing) input::SnapshotTracker(padObject.data() + padobj::kTracker, padScratch.data());
         uint32_t padLogicalHeld = 0; // the pad's logical held buttons of the last race frame (camera look-back)
         const int stepsAtField = steps;
-        while (accumulator >= stepSeconds) {
+        while (accumulator >= stepSeconds && (!online || online->CanPredict())) {
             accumulator -= stepSeconds;
             // 0x80014BB4: player 1's logical pad of this race frame (the key table of the controller's type), merged with the
             // keyboard's (ours): buttons or-ed; a function the keyboard drives digitally in this frame drops the pad's axis.
@@ -1236,7 +1327,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                     gt2::vr::ApplyControlBindings(merged,padLogicalHeld,window.Pad(),bindings);
                     logicalPressed = padLogicalHeld & ~vrControlsHeld;
                     vrControlsHeld = padLogicalHeld;
-                    vrBrakeReverse.Apply(merged,race.CarAt(0).body.forwardSpeed / 4096.f,!activeOptions.manual && bindings.brakeReverse);
+                    vrBrakeReverse.Apply(merged,race.CarAt(localCar).body.forwardSpeed / 4096.f,!activeOptions.manual && bindings.brakeReverse);
                 }
                 if (!replaying && (!VrMode() || window.SeparateVrInput())) {
                     const auto& bindings = OverlayDesktopBindings();
@@ -1266,7 +1357,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                         vrControlsHeld=padLogicalHeld;
                     }
                     const bool reverseEnabled=bindings.brakeReverse || (window.SeparateVrInput() && OverlayControlBindings().brakeReverse);
-                    vrBrakeReverse.Apply(merged,race.CarAt(0).body.forwardSpeed / 4096.f,!activeOptions.manual && reverseEnabled);
+                    vrBrakeReverse.Apply(merged,race.CarAt(localCar).body.forwardSpeed / 4096.f,!activeOptions.manual && reverseEnabled);
                 }
                 float physicalSteer = 0;
                 if (!replaying && window.PhysicalSteering(physicalSteer)) {
@@ -1283,16 +1374,25 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if (replaying) replayButtons |= genericPressed & (0xE00u | 0x100u | 0x1010u | 0x3u);
                 if (!replaying) pad = PadOfFrame(FrameOfPad(merged), replayDriver.pedalTable);
             }
-            pads[0] = pad;
+            pads[localCar] = pad;
             replayDriver.pad.buttons &= ~(kPadShiftUp | kPadShiftDown);
             replayDriver.pad.buttons |= padLogicalHeld & (kPadShiftUp | kPadShiftDown); // the pad's shift buttons (held, as the original records them)
             if (shiftRequest > 0) replayDriver.pad.buttons |= kPadShiftUp;
             if (shiftRequest < 0) replayDriver.pad.buttons |= kPadShiftDown;
             if (!replaying) {
                 input::wheel::Apply(input::wheel::Config(), window.Input().Wheel().Current(), replayDriver.pad);
-                input::wheel::ApplyRaceTransmission(replayDriver.pad, race.CarAt(0).body.transmissionMode == 1, race.CarAt(0).body.gear);
-                wheelDrivingAids.Apply(replayDriver.pad, race.CarAt(0).body, input::wheel::Config());
-                if (replayDriver.pad.wheel) pads[0] = PadOfFrame(FrameOfPad(replayDriver.pad), replayDriver.pedalTable);
+                input::wheel::ApplyRaceTransmission(replayDriver.pad, race.CarAt(localCar).body.transmissionMode == 1, race.CarAt(localCar).body.gear);
+                wheelDrivingAids.Apply(replayDriver.pad, race.CarAt(localCar).body, input::wheel::Config());
+                if (replayDriver.pad.wheel) pads[localCar] = PadOfFrame(FrameOfPad(replayDriver.pad), replayDriver.pedalTable);
+            }
+            if (online) {
+                pads[localCar] = PadOfFrame(FrameOfPad(replayDriver.pad), replayDriver.pedalTable);
+                const uint32_t held = replayDriver.pad.buttons & (kPadShiftUp | kPadShiftDown);
+                const uint32_t edge = held & ~onlineShiftHeld;
+                onlineShiftHeld = held;
+                pads[localCar].shift = int8_t(int(bool(edge & kPadShiftUp)) - int(bool(edge & kPadShiftDown)));
+                if (shiftRequest) pads[localCar].shift = int8_t(shiftRequest);
+                if (!window.Focused() && !window.Scripted()) pads[localCar] = sim::PadRecord{.flags = 7, .brake = 4096};
             }
             if (interpolating) { // what the renderer reads of the state before this step (copies; frame_interp.h)
                 previous.valid = true;
@@ -1302,7 +1402,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 for (size_t i = 0; i < race.CarCount(); i++) previous.groundPoses[i] = race.VisualPose(i);
                 previous.camera = raceCamera.Camera();
                 previous.smoke = smoke;
-                const sim::CarBody& b = race.CarAt(0).body;
+                const sim::CarBody& b = race.CarAt(localCar).body;
                 previous.rpm = b.engineRpm;
                 previous.speedReadout = b.speedReadout;
                 previous.steerAngle = b.steerAngle;
@@ -1316,14 +1416,23 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             }
             if (particles) smoke.Update(); // 0x80016978 from BeginFrame, before the physics of the frame
             const uint32_t buttons[2] = {enterPressedForShell, enterPressedForShell};
-            race.Step(pads.data(), buttons);
-            wheelShiftHint.Tick(race.WheelDirectionBlocked(0), race.CarAt(0).body.gear, !replaying && phase == Phase::kRacing);
+            if (online) {
+                if(std::getenv("GT2_EMOTE_INPUT_AUDIT")) {
+                    const auto& p=pads[localCar];
+                    std::printf("emote-input: field %d wheel %d steer %d throttle %u brake %u shift %d handbrake %u\n",window.Field(),int(emoteWheel),p.steer,p.throttle,p.brake,int(p.shift),unsigned(p.handbrake));
+                    const auto& raw=window.RacePad();const auto& binding=OverlayDesktopBindings();
+                    std::printf("emote-raw: field %d buttons %u axes %u %u %u %u triggers %u %u steering %d custom %d\n",window.Field(),unsigned(raw.buttons),unsigned(raw.analog[0]),unsigned(raw.analog[1]),unsigned(raw.analog[2]),unsigned(raw.analog[3]),unsigned(raw.pressureR2),unsigned(raw.pressureL2),binding.steeringStick,int(OverlayDesktopCustomBindings()));
+                }
+                online->Predict(pads[localCar]);
+            }
+            else race.Step(pads.data(), buttons);
+            wheelShiftHint.Tick(race.WheelDirectionBlocked(localCar), race.CarAt(localCar).body.gear, !replaying && phase == Phase::kRacing);
             {
-                const auto& b = race.CarAt(0).body;
+                const auto& b = race.CarAt(localCar).body;
                 window.Input().Wheel().Feedback(WheelFeedbackOf(b),
                     !replaying && phase == Phase::kRacing && b.raceState == 0);
             }
-            if (!replaying) wheelTrace.Sample(window.Input().Wheel(), pads[0], race.CarAt(0).body, steps, race.WheelDirectionBlocked(0));
+            if (!replaying) wheelTrace.Sample(window.Input().Wheel(), pads[localCar], race.CarAt(localCar).body, steps, race.WheelDirectionBlocked(localCar));
             enterPressedForShell = 0;
             { // the camera after the tick (0x80015B64: 0x8003EBF0, then 0x800100F4)
                 camera::CameraPad cameraPad;
@@ -1348,7 +1457,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (particles) // 0x800133F0 per car after the physics (frame driver 0x8003EBF0)
                 for (size_t i = 0; i < race.CarCount() && i < smokeWheelZ.size(); i++) smoke.SpawnFromCar(SmokeInput(race, i, smokeWheelZ[i]));
             { // the tail of 0x800133F0 for the player's car: the motors of the next polls (vibration option: pad block + 0x2C)
-                const sim::Car& car = race.CarAt(0);
+                const sim::Car& car = race.CarAt(localCar);
                 input::VibrationSource v;
                 v.demo = data.constants.flag800A951C != 0 || replaying;
                 v.padSlot = car.padSlot;
@@ -1365,7 +1474,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             stepsSinceListener++;
             if (raceAudio && listenerValid) raceAudio->Step(race, listener, config.attractShell);
             stepMusic();
-            if (steps % 30 == 0) PrintTelemetry(race, 0, steps);
+            if (steps % 30 == 0) PrintTelemetry(race, localCar, steps);
             if (steps % 30 == 0 && window.Pad().type != input::kTypeNone) { // the controller's share (0x80013C90's frame -> the pad record)
                 const ReplayFrame& f = replayDriver.lastFrame;
                 auto s16 = [&](uint32_t o) { return int16_t(uint16_t(padObject[o] | padObject[o + 1] << 8)); };
@@ -1376,13 +1485,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (particles && steps % 30 == 0 && smoke.ActiveCount() != 0 && !flow) std::printf("tyre smoke: %zu sprites\n", smoke.ActiveCount());
             // The race is over for the player once the shell flagged the finish (body + 0x6FC); the standings
             // are printed once, the cars keep driving their cool-down lap.
-            if (!standingsPrinted && race.CarAt(0).body.finishFlag != 0) {
+            if (!online && !standingsPrinted && race.CarAt(localCar).body.finishFlag != 0) {
                 PrintStandings(race, shellLog, data.carIds);
                 standingsPrinted = true;
             }
             // The flow: the shell ended the race task (0x8002A700 after the finish and the results wait).
             if (!replaying && replayDriver.mode == ReplayDriver::Mode::kRecord && replayDriver.stream.Ended()) writeReplay(); // recorded to its end (300 / 60 fields after the finish)
-            if (flow && !replaying && race.RaceTaskOver() && race.CarAt(0).body.finishFlag != 0) {
+            if (flow && !replaying && race.RaceTaskOver() && race.CarAt(localCar).body.finishFlag != 0) {
                 const sim::RaceShellState& s = race.Shell().State();
                 result.finished = true;
                 result.steps = steps;
@@ -1406,7 +1515,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if (overlayMenus) { // 0x80017964: flag 0x800A8D68 < 2 -> M+0x240 / + 0x241 = 1, the replay at once (state 11 -> 12)
                     keepRace();
                     result.recordedStream = lastStream;
-                    result.playerDirt = uint16_t(int32_t(race.CarAt(0).body.dirtiness << 12) / 600000); // 0x800131AC -> 0x801DE8B8
+                    result.playerDirt = uint16_t(int32_t(race.CarAt(localCar).body.dirtiness << 12) / 600000); // 0x800131AC -> 0x801DE8B8
                     if (flow->raceEnded) flow->raceEnded(result);                                        // 0x80017964
                     const bool skipReplay = gt2::pc::skipRaceReplays; // ours: the menu / post-race views without the replay
                     if (flow->licenceMenu || flow->machineTest) { // the machine test: 0x80017200 after the replay (M + 0x5D1)
@@ -1453,6 +1562,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         // listener and the panels' sound tick are updated once per field, not by the in-between frames).
         std::vector<DrawItem> items;
         size_t sceneCount = 0; // items[0, sceneCount) = the 3D scene (the graphics options' scale / MSAA / textures)
+        const bool saveLocation = !vrStereo && window.KeyPressed(keys::kF7);
         auto buildFrame = [&](double alpha, bool fieldFrame) {
         input::InputCallTimer buildTimer("race scene preparation", 50);
         items.clear();
@@ -1474,7 +1584,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             return it->second;
         };
         auto carModel = [&](size_t i,float* m,int slot=-1) {
-            if(slot<0)slot=i==0?carSlot:assets.UseCar(data.carIds[i],"race:"+std::to_string(i)+":"+data.carIds[i]);
+            if(slot<0)slot=i==localCar?carSlot:assets.UseCar(data.carIds[i],"race:"+std::to_string(i)+":"+data.carIds[i]);
+            if(slot<0)throw std::runtime_error("race car render slot was not preloaded");
             const auto& pose=renderPose(i,slot);std::copy_n(pose.first.data(),16,m);
         };
         auto shadowClip = [&](size_t i, int slot, const float* viewProjection) {
@@ -1497,20 +1608,19 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         auto wheelModels = [&](size_t i,int slot) { return renderPose(i,slot).second; };
         // Camera: the original's race camera (game/camera), as updated after the last step; --old-camera: gt2game's
         // former chase / bonnet / high camera from the physics pose (debugging only).
-        const sim::CarPose pose = race.Pose(0);
+        const sim::CarPose pose = race.Pose(localCar);
         const camera::RaceCamera& camLive = raceCamera.Camera();
         // A stopped car still has a display-rate chase camera settling by subpixels, which makes one-texel painted
         // lines crawl. Hold the camera exactly while the car is stationary; head tracking and replay cameras are
         // unaffected.
-        static camera::RaceCamera frozenCam{};
-        static bool frozen = false;
-        const bool stationary = !stereoActive && !replaying && race.HoldFrames() == 0 && race.CarAt(0).body.forwardSpeed == 0;
+        const bool stationary = !stereoActive && !replaying && race.HoldFrames() == 0 && race.CarAt(localCar).body.forwardSpeed == 0;
         if (stationary) {
             if (!frozen || CameraCut(frozenCam, camLive)) { frozenCam = camLive; frozen = true; }
         } else {
             frozen = false;
         }
         const camera::RaceCamera& cam = frozen ? frozenCam : camLive;
+
         // Game mode 6: what 0x800140A4 reads for the ghost (car 1) in this frame, `c` = the pass's camera (race_shell.h CarDrawRule).
         auto ghostDrawInputs = [&](const camera::RaceCamera& c, bool mirror) {
             sim::CarDrawInputs in;
@@ -1541,12 +1651,12 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         int hiddenCar = -1;                                // camera + 0x108: the followed car is not drawn (driver view)
         assets.SetGt4Enabled(OverlayGt4ModelSet());
         const auto& cockpitFit = assets.SlotCockpitFit(carSlot);
-        const bool inCockpit = cockpitFit.valid && CockpitShown(cam, selectedView == 0, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames());
+        const bool inCockpit = cockpitFit.valid && CockpitShown(cam, selectedView == 0, replaying || data.constants.flag800A951C != 0, config.oldCamera, race.HoldFrames(), uint8_t(localCar));
         if (!config.oldCamera) {
             camera::CameraProjection p = cameraInterp ? InterpolatedProjection(previous.camera, cam, at) : camera::ProjectionOf(cam);
             if (inCockpit) {
                 float cockpitModel[16];
-                carModel(0, cockpitModel);
+                carModel(localCar, cockpitModel);
                 PlaceCockpitEye(p, cockpitModel, cockpitFit, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)), !stereoActive);
                 if (!stereoActive) FrameDesktopCockpit(p);
             }
@@ -1609,13 +1719,13 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             listener.axisSide[0] = cf.x; listener.axisSide[1] = cf.y; listener.axisSide[2] = cf.z;
             listener.inCarView = cameraMode == 1;
             listener.inCarViewAlt = false;
-            listener.focusedCar = 0;
+            listener.focusedCar = int(localCar);
             listenerEye = eye;
             listenerValid = true;
             }
         }
         if (fieldFrame) stepsSinceListener = 0;
-        carModel(0, model);
+        carModel(localCar, model);
         const std::array<std::array<float, 3>, 3> cameraAxes = stereoActive ?
             std::array<std::array<float,3>,3>{{{model[0],model[1],model[2]},{-model[4],-model[5],-model[6]},{-model[8],-model[9],-model[10]}}} :
             std::array<std::array<float,3>,3>{{{cs.x,cs.y,cs.z},{-cu.x,-cu.y,-cu.z},{cf.x,cf.y,cf.z}}}; // rows right, down, forward
@@ -1642,6 +1752,38 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             view.maxDetail = config.maxDetail || graphics.maxDetail;
             view.cameraChunk = cameraChunk;
             view.extendedDistance = float(graphics.drawDistance); // 0 = the render list only (the original)
+            if (saveLocation && fieldFrame) {
+                try {
+                    const auto dir = gt2::os::SavesDir() / "race-captures" /
+                        ("capture-" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
+                    std::filesystem::create_directories(dir.parent_path());
+                    if (!std::filesystem::create_directory(dir)) throw std::runtime_error("capture name in use");
+                    std::ofstream file;
+                    file.exceptions(std::ios::failbit | std::ios::badbit);
+                    file.open(dir / "camera.txt");
+                    file << std::setprecision(std::numeric_limits<double>::max_digits10)
+                         << "GT2-RACE-CAMERA 1\ntrack " << trackName << "\ncar " << carId
+                         << "\nstep " << steps << "\naspect " << aspect << "\nchunk " << cameraChunk
+                         << "\nprojectionDistance " << projectionDistance << "\nfullDetail " << view.fullDetail
+                         << "\nmaxDetail " << view.maxDetail << "\nextendedDistance " << view.extendedDistance
+                         << "\ngenerated " << gt2::generated::enabled << "\ncategories " << gt2::generated::categories
+                         << "\nupscale " << gt2::hd::Enabled() << "\neye " << eye.x << ' ' << eye.y << ' ' << eye.z
+                         << "\nforward " << cf.x << ' ' << cf.y << ' ' << cf.z
+                         << "\nright " << cs.x << ' ' << cs.y << ' ' << cs.z
+                         << "\ncarPosition " << model[12] << ' ' << model[13] << ' ' << model[14] << "\nworldVP";
+                    for (float value : vp) file << ' ' << value;
+                    file << '\n';
+                    file.close();
+                    std::printf("F7 camera saved: %s\n", dir.string().c_str());
+                    if (!replaying && replayDriver.stream.Frames() > 0) {
+                        ReplayStream recorded = replayDriver.stream;
+                        recorded.End(false);
+                        const auto replay = BuildReplayFile(vol, data, race.CarCount(), activeOptions, recorded);
+                        if (!WriteReplayOut((dir / "race.gmr").string(), replay, data.params.empty() ? nullptr : &data.params[0], disc))
+                            throw std::runtime_error("could not write replay");
+                    }
+                } catch (const std::exception& e) { std::fprintf(stderr, "F7 capture: %s\n", e.what()); }
+            }
             assets.AppendTrackItems(items, blended, vp, view);
         }
         AppendCourseObjects(assets, items, vp, courseObjects); // a mod course's glTF objects (mod_scene.h)
@@ -1657,35 +1799,40 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         window.SetCockpitWheelCenter(std::nullopt);
         const size_t cockpitFirst=items.size();
         if (inCockpit) {
-            const auto& body = race.CarAt(0).body;
-            const uint32_t paint = data.paints.empty() ? 0u : data.paints[0];
+            const auto& body = race.CarAt(localCar).body;
+            const uint32_t paint = data.paints.empty() ? 0u : data.paints[localCar];
             assets.UpdateCockpitReflection(carSlot, model, cameraAxes);
-            const auto seatedWheels=wheelModels(0,carSlot);
+            const auto seatedWheels=wheelModels(localCar,carSlot);
             const bool virtualWheel = vrStereo && OverlayDrivingSettings().mode == 1;
             const bool decorativeWheel=OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).steeringWheel;
             assets.AppendCockpitBodyItems(items, carSlot, carMvp, paint, &seatedWheels,virtualWheel || decorativeWheel,lastPad.brake ? 1u : 0u);
-            const bool blendInstruments = interp && !PoseJump(previous.poses[0], race.Pose(0));
+            const bool blendInstruments = interp && !PoseJump(previous.poses[localCar], race.Pose(localCar));
             const float steer = float(blendInstruments ? LerpInt(previous.steerAngle, body.steerAngle, at) : body.steerAngle);
             const float turn = body.steerLock ? std::clamp(steer / float(body.steerLock), -1.f, 1.f) : 0.f;
             const float degrees = window.Input().Wheel().Current().ready ? float(input::wheel::Config().steeringGeometry.wheelDegrees) : 360.f;
             const float rpm = float(blendInstruments ? LerpInt(previous.rpm, body.engineRpm, at) : body.engineRpm);
             const float speed = float(blendInstruments ? LerpInt(previous.speedReadout, body.speedReadout, at) : body.speedReadout) * .01609344f;
-            cockpit.Append(items, cockpitFit, carMvp, turn * degrees * .00872664626f, speed, rpm, race.WheelInNeutral(0) ? -1 : int(body.gear),
+            float authoredWheelAngle=turn * degrees * .00872664626f;
+            if(virtualWheel && assets.HasAuthoredCar(carSlot))window.PhysicalWheelAngle(authoredWheelAngle);
+            assets.AppendAuthoredControls(items,carSlot,carMvp,authoredWheelAngle,speed,rpm,decorativeWheel || virtualWheel);
+            cockpit.Append(items, cockpitFit, carMvp, turn * degrees * .00872664626f, speed, rpm, race.WheelInNeutral(localCar) ? -1 : int(body.gear),
                            OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).steeringWheel && !virtualWheel,
                            CockpitSeatHeight(cockpitFit,OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot))),
                            CockpitSeatBack(OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)), false),nullptr,
                            !assets.HasNativeGt4Interior(carSlot));
-            if (vrStereo) window.SetCockpitWheelCenter(CockpitWheelTrackingCenter(cockpit.WheelCenter(),controlsLocal));
+            if (vrStereo) window.SetCockpitWheelCenter(CockpitWheelTrackingCenter(cockpit.WheelCenter(),controlsLocal),assets.HasAuthoredCar(carSlot),
+                cockpitFit.nativeWheel[3]/std::max(.01f,VrOptionsInUse().worldScale),assets.AuthoredWheelAxis(carSlot));
         }
         const size_t cockpitLast=items.size();
-        if (hiddenCar != 0) { // reflection pass: the view-space normals need the camera frame (rows right, down, forward - the PS1 camera)
+        if (hiddenCar != int(localCar)) { // reflection pass: the view-space normals need the camera frame (rows right, down, forward - the PS1 camera)
             assets.UpdateCarReflection(carSlot, model, cameraAxes);
-            const uint32_t playerPaint = data.paints.empty() ? 0u : data.paints[0];
-            const auto playerWheels = wheelModels(0, carSlot);
-            const auto shadow = shadowClip(0, carSlot, vp);
+            const uint32_t playerPaint = data.paints.empty() ? 0u : data.paints[localCar];
+            const auto playerWheels = wheelModels(localCar, carSlot);
+            const auto shadow = shadowClip(localCar, carSlot, vp);
             assets.AppendCarItems(items, carSlot, carMvp, playerPaint, lastPad.brake ? 1u : 0u, true, &playerWheels, shadow.data()); // shadow + body + wheels + reflection
         }
-        for (size_t i = 1; i < race.CarCount() && i < data.carIds.size(); i++) { // the other cars
+        for (size_t i = 0; i < race.CarCount() && i < data.carIds.size(); i++) { // the other cars
+            if (i == localCar) continue;
             if (int(i) == hiddenCar) continue;
             bool ghostLook = false;
             if (i == 1 && race.HasGhost()) { // game mode 6: 0x800140A4's rule for the ghost (hidden / its glass look / normal)
@@ -1705,10 +1852,25 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 assets.AppendCarItems(items, slot, otherMvp, 0u, 0, false, nullptr, shadow.data());
                 continue;
             }
-            if (slot != carSlot || hiddenCar == 0) assets.UpdateCarReflection(slot, otherModel, cameraAxes); // a slot shared with a drawn player keeps the player's pass
+            if (slot != carSlot || hiddenCar == int(localCar)) assets.UpdateCarReflection(slot, otherModel, cameraAxes); // a slot shared with a drawn player keeps the player's pass
             const auto otherWheels = wheelModels(i, slot);
             const auto shadow = shadowClip(i, slot, vp);
             assets.AppendCarItems(items, slot, otherMvp, i < data.paints.size() ? data.paints[i] : 0u, race.CarAt(i).body.brake ? 1u : 0u, true, &otherWheels, shadow.data());
+        }
+        if(online && panels && online->Active()) {
+            for(size_t i=0;i<race.CarCount();++i){
+                if(i==localCar && Clock::now()>=online->Status().emoteUntil[i])continue;
+                float position[16];carModel(i,position);
+                const Vec3 centre=(i==localCar && inCockpit)?eye+cf*2.5f+cu*.35f:Vec3{position[12],position[13]+2.1f,position[14]};
+                const auto delta=centre-eye;
+                if(Dot(delta,delta)>10000.0f || Dot(delta,cf)<0.1f)continue;
+                const std::string name=online->Status().names[i].empty()?"AI":online->Status().names[i];
+                const float scale=std::clamp(std::sqrt(Dot(delta,delta))/12.0f,1.0f,4.0f);
+                float billboard[16]={cs.x*5*scale,cs.y*5*scale,cs.z*5*scale,0,-cu.x*4.6875f*scale,-cu.y*4.6875f*scale,-cu.z*4.6875f*scale,0,0,0,0,0,centre.x,centre.y,centre.z,1},clip[16];
+                const auto& status=online->Status();
+                const uint8_t emote=Clock::now()<status.emoteUntil[i]?status.emotes[i]:0;
+                Multiply(vp,billboard,clip);panels->WorldLabel(name,i,clip,items,emote);
+            }
         }
         if (particles) { // tyre smoke: camera-facing sprites of the pool (0x8002EB60), additive
             const float smokeEye[3] = {eye.x, eye.y, eye.z}, smokeRight[3] = {cs.x, cs.y, cs.z}, smokeUp[3] = {cu.x, cu.y, cu.z}, smokeForward[3] = {cf.x, cf.y, cf.z};
@@ -1781,7 +1943,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             for (size_t i = 0; i < race.CarCount() && i < data.carIds.size(); i++) {
                 if (int(i) == hiddenCar) continue;
                 if (i == 1 && race.HasGhost() && !sim::CarDrawRule(ghostDrawInputs(mirrorCam, true)).drawn) continue; // 0x800140A4 in the mirror's pass
-                const int slot = i == 0 ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
+                const int slot = i == localCar ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
                 if (slot < 0) continue;
                 float mirrorModel[16], carMirrorMvp[16];
                 carModel(i, mirrorModel, slot);
@@ -1800,6 +1962,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 const size_t surfaceFirst = items.size();
                 if(OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).mirror) cockpit.AppendMirror(items, carMvp, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).mirrorScalePercent*.01f);
                 assets.AppendSideMirrorItems(items, carSlot, carMvp, OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId, assets.UsesGt4(carSlot)).sideMirrors);
+                const auto authoredMirrorSettings=OverlayCockpitSettings(data.modCar ? data.mod.modelId : carId,assets.UsesGt4(carSlot));
+                assets.AppendAuthoredMirrors(items,carSlot,carMvp,authoredMirrorSettings.mirror,authoredMirrorSettings.sideMirrors);
                 tagSpace(items, surfaceFirst, kSpaceWorld);
             } else lateMirrorFrame = std::move(mirrorFrame);
         }
@@ -1807,9 +1971,9 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         items.insert(items.end(), lateMirrorFrame.begin(), lateMirrorFrame.end()); // 1x mirror chrome
 
         if (hud && phase != Phase::kPreRace && phase != Phase::kSettings) { // the HUD's inputs: the player's car record and the race shell (race_shell.h)
-            const sim::CarBody& body = race.CarAt(0).body; // car record + 0x2C
+            const sim::CarBody& body = race.CarAt(localCar).body; // car record + 0x2C
             const sim::RaceShellState& shell = race.Shell().State();
-            const sim::PlayerResults& results = shell.results[0];
+            const sim::PlayerResults& results = shell.results[localCar];
             // The high frame rate: the needles / readouts and the running clock between the two steps (display only).
             const uint32_t clock = interp && previous.clock <= race.RaceClock() ? uint32_t(LerpInt(int32_t(previous.clock), int32_t(race.RaceClock()), at)) : race.RaceClock();
             HudFrame hf;
@@ -1834,6 +1998,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.resultsLapNumber = results.lapNumber;
             hf.bestLapMs = results.count > 0 ? results.best.time : -1;
             hf.bestLapSpeed = results.count > 0 ? results.best.maxSpeed : 0;
+            if (online) {
+                const auto& r = online->Results()[localCar];
+                hf.totalMs = r.finishTime >= 0 ? r.finishTime : int32_t(clock / 3);
+                hf.bestLapMs = r.bestLap; hf.bestLapSpeed = 0;
+                hf.resultsLapNumber = r.laps;
+                hf.laps.clear();
+                if (r.lastLap >= 0) hf.laps.push_back(r.lastLap);
+                hf.mapHighlight = int(localCar);
+            }
             hf.recordMs = shell.courseRecord.time;
             hf.recordSpeed = shell.courseRecord.maxSpeed;
             hf.machineRecord = config.machineRecord; // sub-modes 7..9: 0x8002D20C of the career record's entry 0
@@ -1842,7 +2015,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             hf.redlineRpm = body.upshiftRpm;       // car + 0x3C2
             hf.speedReadout = interp ? LerpInt(previous.speedReadout, body.speedReadout, at) : body.speedReadout; // car + 0x6DA
             hf.gear = body.gear;                   // car + 0x644
-            hf.neutral = race.WheelInNeutral(0);
+            hf.neutral = race.WheelInNeutral(localCar);
             hf.wheelDirectionBlocked = wheelShiftHint.Visible();
             hf.clutchEngaged = body.clutchState == 1; // car + 0x645
             hf.turbo = body.boostCap;              // car + 0x154
@@ -1919,11 +2092,32 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 m.items = {flow->licence ? "Continue" : flow->continueLabel};
                 m.selected = 0;
                 panels->DrawMenu(m, 150); // below the HUD's lap / record blocks
-            } else if (race.CarAt(0).body.finishFlag != 0 && !race.RaceTaskOver()) {
+            } else if (race.CarAt(localCar).body.finishFlag != 0 && !race.RaceTaskOver()) {
                 // The race-end display while the shell waits for X (0x8002A700): 0x8002B170 from the HUD.
                 panels->Overlay(gt2::raceui::BuildRaceEndFrame(panels->OverlayAssets(), RaceEndOf(race, *flow, activeOptions)));
             }
             panels->Append(hudAspect, items);
+        }
+        if(online && panels && online->Active() && online->FinishSeconds()) {
+            panels->Clear();
+            panels->Box(115,48,282,28,0x101010,true);
+            panels->TextCentre(256,51,"Race ends in: "+std::to_string(online->FinishSeconds())+" s");
+            AppendNetworkPanel(*panels,window,hudAspect,items);
+        }
+        if(online && panels && emoteWheel) {
+            panels->Clear();panels->EmoteWheel(emoteSelected);AppendNetworkPanel(*panels,window,hudAspect,items);
+        }
+        if (online && panels && (onlineMenu || !online->Active())) {
+            panels->Clear();
+            if (onlineMenu) {
+                Panels::Menu menu; menu.title = confirmDisconnect ? "Disconnect from this room?" : "Multiplayer";
+                menu.lines = {"The race continues while this menu is open."};
+                menu.items = confirmDisconnect ? std::vector<std::string>{"Stay in room", "Disconnect"} : std::vector<std::string>{"Resume race", "Return to room", "Disconnect..."};
+                if(!confirmDisconnect)for(const auto& target:onlineKickTargets)menu.items.push_back("Kick "+target.second);
+                menu.selected = onlineMenuSelected; menu.width = 470;
+                menu.footer = {NetworkMenuHint(window)}; panels->DrawMenu(menu, 60);
+            } else online->DrawPanel(*panels,window);
+            AppendNetworkPanel(*panels,window,hudAspect,items);
         }
         }; // buildFrame
 
@@ -1937,10 +2131,20 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         if (config.interpAlpha >= 0) fieldAlpha = config.interpAlpha;
         else if (highRate && phase == Phase::kRacing) fieldAlpha = alphaAt(Clock::now() + seconds(buildEstimate));
         if (!(highRate && window.XrPaced())) buildFrame(fieldAlpha, true);
+        if (!online && !vrStereo && window.KeyPressed(keys::kF8) && gt2::generated::allowed) {
+            try {
+                CaptureTexturePair([&](const std::string& path) {
+                    buildFrame(fieldAlpha, false);
+                    renderer.Draw(items, path, sceneCount);
+                });
+            } catch (const std::exception& e) { std::fprintf(stderr, "F8 comparison: %s\n", e.what()); }
+            buildFrame(fieldAlpha, false);
+        }
+
 
         {
-            const auto telemetry = race.Telemetry(0);
-            const bool activePedals = phase == Phase::kRacing && !replaying && config.triggerPedals && AdaptivePedalStrength() > 0;
+            const auto telemetry = race.Telemetry(localCar);
+            const bool activePedals = phase == Phase::kRacing && !replaying && (!online || online->Active()) && config.triggerPedals && AdaptivePedalStrength() > 0;
             const int strength = AdaptivePedalStrength();
             // A firmer brake as pressure rises; light accelerator resistance rises with engine speed.
             const int accelerator = activePedals ? std::max(1, (2 + std::clamp(int(telemetry.rpm) / 3000, 0, 2)) * strength / 100) : 0;
@@ -1953,7 +2157,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             std::printf("race f%d: %s\n", window.Field(), kPhase[int(phase)]);
             loggedPhase = phase;
         }
-        if (flow && !finishLogged && race.CarAt(0).body.finishFlag != 0 && phase == Phase::kRacing) {
+        if (flow && !finishLogged && race.CarAt(localCar).body.finishFlag != 0 && phase == Phase::kRacing) {
             std::printf("race f%d: the player finished (the shell waits for X / Enter to end the race task)\n", window.Field());
             finishLogged = true;
         }
@@ -2049,23 +2253,24 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             window.SleepUntil(window.NextField());
             frameLog.Field(steps);
         }
+        if (online) online->SceneLoaded();
         if (config.exitFade) {
             shownItems = items;
             shownScene = sceneCount;
         }
         if (capture) {
             std::printf("wrote %s after %d steps:\n", config.shotPath.c_str(), steps);
-            PrintTelemetry(race, 0, steps);
+            PrintTelemetry(race, localCar, steps);
             const camera::RaceCamera& c = raceCamera.Camera(); // compare with the original's camera object (0x801FF97C + 0xB8)
             std::printf("camera: position %u%s, eye (%d %d %d), H %d, car (%d %d %d)\n", unsigned(c.position), c.lookBack ? " back" : "", c.view.t[0], c.view.t[1],
-                        c.view.t[2], int(c.H), race.Pose(0).worldPosition[0], race.Pose(0).worldPosition[1], race.Pose(0).worldPosition[2]);
+                        c.view.t[2], int(c.H), race.Pose(localCar).worldPosition[0], race.Pose(localCar).worldPosition[1], race.Pose(localCar).worldPosition[2]);
             result.exit = RaceExit::kShot;
             break;
         }
 
         if (frame % 30 == 0) {
-            const sim::CarTelemetry t = race.Telemetry(0);
-            const sim::CarBody& body = race.CarAt(0).body;
+            const sim::CarTelemetry t = race.Telemetry(localCar);
+            const sim::CarBody& body = race.CarAt(localCar).body;
             const int lap = body.lap - ((body.flags78D & 2) ? 1 : 0);
             const uint32_t hold = race.HoldFrames();
             char state[64];
@@ -2091,6 +2296,8 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
     writeReplay(); // --replay-out when the race was left before the recorder's end
     if (exitFade && !shownItems.empty()) PlayTitleExitFade(window, shownItems, shownScene); // the scene's resources still alive
     window.SetDrivingActive(false);
+    window.SetOnlineEmotes(false);
+    window.BlockMenuInputUntilRelease();
     return result;
 }
 

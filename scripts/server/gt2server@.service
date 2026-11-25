@@ -1,0 +1,32 @@
+[Unit]
+Description=GT2 private race room %i
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=gt2
+Group=gt2
+WorkingDirectory=/var/lib/gt2/rooms/%i
+EnvironmentFile=/etc/gt2/%i.conf
+ExecStart=/opt/gt2/bin/gt2server ${DISC} --bind 0.0.0.0 --port ${PORT} --track ${TRACK} --cars ${CARS} --players ${PLAYERS} --laps ${LAPS} --host-key /var/lib/gt2/rooms/%i/host.gt2host
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/gt2/rooms/%i
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+RestrictSUIDSGID=true
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

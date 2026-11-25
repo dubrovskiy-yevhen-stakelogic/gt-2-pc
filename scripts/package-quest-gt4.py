@@ -5,6 +5,8 @@ settings, original disc files and HD menus are never included or replaced.
 Diagnostic subsets are intentionally rejected, including model-only bundles.
 """
 import argparse
+import importlib.util
+import struct
 import gzip
 import hashlib
 import io
@@ -14,6 +16,16 @@ import posixpath
 from pathlib import Path, PurePosixPath
 import re
 import tarfile
+
+
+def validate_glb(data):
+    if len(data)<20 or data[:4]!=b'glTF' or struct.unpack_from('<II',data,4)!=(2,len(data)):
+        raise ValueError('Invalid cockpit GLB')
+    size,kind=struct.unpack_from('<II',data,12)
+    if kind!=0x4e4f534a or 20+size>len(data):raise ValueError('Invalid cockpit GLB document')
+    doc=json.loads(data[20:20+size])
+    if any('uri' in item for key in ('buffers','images') for item in doc.get(key,[])):
+        raise ValueError('Cockpit GLB must be self-contained')
 
 
 def document(path):
@@ -101,6 +113,15 @@ def validate_catalogue(names, read_bytes):
             for image in color.get('images', {}).values():
                 reference(native_root, image)
 
+    for name in names:
+        if name.startswith(root+'authored/') and name.endswith('/manifest.json'):
+            car=name.split('/')[-2];record=doc(name)
+            if car not in cars or record.get('format')!='gt2-authored-car' or record.get('car')!=car or record.get('version')!=1:
+                raise ValueError('Invalid authored cockpit mapping')
+            base=posixpath.dirname(name)
+            validate_glb(data(reference(base,record['mesh'])))
+            if not doc(base+'/attribution.json').get('license'):raise ValueError('Missing cockpit attribution')
+
 
 def verify(path):
     seen = set()
@@ -133,6 +154,9 @@ def verify(path):
 
 
 def build(args):
+    spec=importlib.util.spec_from_file_location('gt2_authored_cockpits',Path(__file__).with_name('authored_cockpit_pack.py'))
+    family=importlib.util.module_from_spec(spec);spec.loader.exec_module(family)
+    cockpit_assets=family.assets
     pack, native = args.pack.absolute(), args.native.absolute()
     manifest, overlay = document(pack/'manifest.json'), document(native/'manifest.json')
     if manifest.get('format') != 'gt2-model-set' or manifest.get('version') != 1 or manifest.get('id') != 'gt4':
@@ -155,6 +179,8 @@ def build(args):
         relative = ('native-v16/' + path.relative_to(native).as_posix()
                     if path.is_relative_to(native) else path.relative_to(native.parent).as_posix())
         add(path, 'modelsets/gt4/' + relative)
+    for relative, path in cockpit_assets().items():
+        add(path, 'modelsets/gt4/authored/' + relative)
     add(pack/'manifest.json', 'modelsets/gt4/manifest.json')
     native_asset(native/'manifest.json')
     native_asset(native/'wheels.json')

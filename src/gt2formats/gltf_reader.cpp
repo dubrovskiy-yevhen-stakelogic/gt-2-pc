@@ -352,7 +352,12 @@ struct Reader {
         if (const Value* mesh = node.Get("mesh")) {
             const Value& m = Item("meshes", mesh->AsInt());
             if (const Value* prims = m.Get("primitives"))
-                for (size_t i = 0; i < prims->Size(); i++) AddPrimitive(prims->At(i), world);
+                for (size_t i = 0; i < prims->Size(); i++) {
+                    const auto first=out.primitives.size();
+                    AddPrimitive(prims->At(i), world);
+                    for(size_t p=first;p<out.primitives.size();++p)
+                        out.primitives[p].nodeName=node.StringOr("name", "");
+                }
         }
         if (const Value* children = node.Get("children"))
             for (size_t i = 0; i < children->Size(); i++) Visit(children->At(i).AsInt(), world, depth + 1);

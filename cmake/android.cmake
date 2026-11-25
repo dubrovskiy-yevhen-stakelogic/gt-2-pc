@@ -8,7 +8,7 @@ set(GT2VK_SHADER_OUTPUTS)
 foreach(shader scene.vert scene_environment.vert scene.frag scene_cached.frag scene_cached_blend.frag scene_model.frag scene_model_diffuse.frag scene_model_glass.frag scene_ui.frag)
   set(out "${GT2VK_SHADER_DIR}/${shader}.inc")
   add_custom_command(OUTPUT "${out}" COMMAND "${GT2_GLSLC}" -O -mfmt=c -o "${out}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_model_common.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_cached_common.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_fragment.glsl" VERBATIM)
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/${shader}" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_model_common.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_cached_common.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/authored_glass.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/scene_vertex_layout.h" "${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_fragment.glsl" VERBATIM)
   list(APPEND GT2VK_SHADER_OUTPUTS "${out}")
 endforeach()
 include(cmake/stereo-shaders.cmake)
@@ -32,7 +32,7 @@ file(GLOB GT2GAME_CPP CONFIGURE_DEPENDS tools/gt2game/*.cpp)
 list(FILTER GT2GAME_CPP EXCLUDE REGEX "/(main|game_window_win32|game_window_xr|game_window_sdl|game_window_web)\\.cpp$")
 add_library(gt2game SHARED ${GT2GAME_CPP} ${GT2_DEV_DUMP_SOURCES} android/app/src/main/cpp/android_main.cpp)
 target_include_directories(gt2game PRIVATE tools/gt2game)
-target_link_libraries(gt2game PRIVATE gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career gt2menu gt2shell
+target_link_libraries(gt2game PRIVATE gt2lan gt2vfs gt2formats gt2export gt2gamelib gt2audio gt2career gt2menu gt2shell
   gt2screens gt2camera gt2arcade gt2vk gt2xr gt2inputdev gt2os gt2_native_glue android log)
 target_link_options(gt2game PRIVATE "-Wl,-u,ANativeActivity_onCreate")
 

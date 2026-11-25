@@ -6,6 +6,7 @@
   "command": "gt2launcher",
   "finish-args": [
     "--share=ipc",
+    "--share=network",
     "--socket=x11",
     "--socket=wayland",
     "--socket=pulseaudio",
@@ -30,8 +31,23 @@
       ],
       "run-tests": true,
       "test-rule": "",
-      "test-commands": ["ctest --output-on-failure"],
-      "sources": [{"type": "dir", "path": "../..", "skip": [".git", "work", "dist", "build_linux", "build_macos", ".flatpak-builder"]}]
+      "test-commands": [
+        "ctest --output-on-failure"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../..",
+          "skip": [
+            ".git",
+            "work",
+            "dist",
+            "build_linux",
+            "build_macos",
+            ".flatpak-builder"
+          ]
+        }
+      ]
     }
   ]
 }

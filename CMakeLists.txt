@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(gt2pc VERSION 0.9.2 LANGUAGES C CXX)
+project(gt2pc VERSION 1.0.0 LANGUAGES C CXX)
 configure_file(src/game/version.in.h ${CMAKE_CURRENT_BINARY_DIR}/release-version/gt2_version.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/release-version)
 option(GT2_COCKPIT_PREVIEW "Enable garage cockpit inspection" ON)
@@ -90,6 +90,7 @@ add_library(gt2formats STATIC
   src/gt2formats/track_json.cpp
   src/gt2formats/png_reader.cpp
   src/gt2formats/paint_delta.cpp
+  src/gt2formats/model_set_preload.cpp
   src/gt2formats/gltf_reader.cpp
   src/gt2formats/license_data.cpp
   src/gt2formats/gtmode_tables.cpp
@@ -171,6 +172,7 @@ add_library(gt2gamelib STATIC
   src/game/sim/ai_driver.cpp
   src/game/sim/disc_data.cpp)
 target_link_libraries(gt2gamelib PUBLIC gt2formats)
+include(cmake/network.cmake)
 
 # The game's sound (product): the ported car sound logic, the native mixer, the Windows device. Never links gt2interp.
 if(EMSCRIPTEN)
@@ -252,6 +254,8 @@ add_library(gt2arcade STATIC
   src/game/arcade/arcade_bonus.cpp
   src/game/arcade/arcade_card.cpp)
 target_link_libraries(gt2arcade PUBLIC gt2shell gt2menu gt2career gt2formats gt2screens)
+add_executable(gt2cockpitfilterchecks tests/cockpit_filter_checks.cpp)
+target_link_libraries(gt2cockpitfilterchecks PRIVATE gt2formats gt2vfs)
 add_executable(gt2arcadegaragechecks tests/arcade_garage_checks.cpp)
 target_link_libraries(gt2arcadegaragechecks PRIVATE gt2arcade)
 
@@ -307,6 +311,29 @@ endif()
 # disc-derived data (src/game/sim/disc_data.*). Not part of gt2gamelib: only the programs that opt in compile it.
 set(GT2_DEV_DUMP_SOURCES src/game/sim/dev_dump_constants.cpp)
 
+if(NOT EMSCRIPTEN)
+# The native race diagnostic never creates a window, opens audio or writes saves.
+add_executable(gt2netcheck tools/gt2netcheck/main.cpp tools/gt2game/network_check.cpp tools/gt2game/network_setup.cpp
+  tools/gt2game/race_common.cpp tools/gt2game/mods.cpp ${GT2_DEV_DUMP_SOURCES})
+target_include_directories(gt2netcheck PRIVATE tools/gt2game)
+target_link_libraries(gt2netcheck PRIVATE gt2lan gt2audio gt2export gt2input gt2career)
+add_executable(gt2server tools/gt2server/main.cpp tools/gt2game/network_setup.cpp
+  tools/gt2game/race_common.cpp tools/gt2game/mods.cpp ${GT2_DEV_DUMP_SOURCES})
+target_include_directories(gt2server PRIVATE tools/gt2game)
+target_link_libraries(gt2server PRIVATE gt2lan gt2audio gt2export gt2input gt2career)
+add_executable(gt2lobby tools/gt2lobby/main.cpp tools/gt2game/network_setup.cpp
+  tools/gt2game/race_common.cpp tools/gt2game/mods.cpp ${GT2_DEV_DUMP_SOURCES})
+target_include_directories(gt2lobby PRIVATE tools/gt2game)
+target_link_libraries(gt2lobby PRIVATE gt2lan gt2audio gt2export gt2input gt2career)
+add_executable(gt2contentcheck tools/gt2contentcheck/main.cpp tools/gt2game/network_setup.cpp
+  tools/gt2game/race_common.cpp tools/gt2game/mods.cpp ${GT2_DEV_DUMP_SOURCES})
+target_include_directories(gt2contentcheck PRIVATE tools/gt2game)
+target_link_libraries(gt2contentcheck PRIVATE gt2lan gt2audio gt2export gt2input gt2career)
+
+
+
+endif()
+
 # Differential testing of ported simulation code (src/game/sim) against the original in the interpreter.
 add_executable(gt2verify
   tools/gt2verify/main.cpp
@@ -353,7 +380,7 @@ if(Vulkan_FOUND AND Vulkan_glslc_FOUND AND WIN32)
     set(out ${GT2VK_SHADER_DIR}/${shader}.inc)
     add_custom_command(OUTPUT ${out}
       COMMAND Vulkan::glslc -O -mfmt=c -o ${out} ${src}
-      DEPENDS ${src} ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_model_common.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_cached_common.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_fragment.glsl VERBATIM)
+      DEPENDS ${src} ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_model_common.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/texture_mips.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/scene_cached_common.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/paint_clearcoat.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/authored_glass.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_vertex.glsl ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/scene_vertex_layout.h ${CMAKE_CURRENT_SOURCE_DIR}/src/gt2view/shaders/native_model_fragment.glsl VERBATIM)
     list(APPEND GT2VK_SHADER_OUTPUTS ${out})
   endforeach()
 
@@ -396,6 +423,8 @@ if(Vulkan_FOUND AND Vulkan_glslc_FOUND AND WIN32)
   # The product: native game. Must never link gt2interp (no PS1 code execution inside the game).
   add_executable(gt2game tools/gt2game/main.cpp tools/gt2game/menu_mode.cpp tools/gt2game/title_mode.cpp tools/gt2game/game_window.cpp tools/gt2game/race_common.cpp tools/gt2game/split_race.cpp
   tools/gt2game/race_view.cpp tools/gt2game/career_race.cpp tools/gt2game/panel.cpp tools/gt2game/settings_screen.cpp tools/gt2game/race_menu_check.cpp tools/gt2game/machine_test_check.cpp tools/gt2game/change_parts_check.cpp tools/gt2game/race_result_check.cpp tools/gt2game/arcade_race.cpp tools/gt2game/arcade_mode.cpp tools/gt2game/arcade_title.cpp tools/gt2game/title_attract.cpp tools/gt2game/arcade_post_race.cpp tools/gt2game/ghost_replay.cpp tools/gt2game/arcade_menu_check.cpp tools/gt2game/graphics_options.cpp tools/gt2game/frame_interp.cpp tools/gt2game/mods.cpp tools/gt2game/mod_scene.cpp tools/gt2game/movie_player.cpp ${GT2_DEV_DUMP_SOURCES})
+  target_sources(gt2game PRIVATE tools/gt2game/online_race.cpp tools/gt2game/network_setup.cpp)
+  target_link_libraries(gt2game PRIVATE gt2lan)
   target_sources(gt2game PRIVATE tools/gt2game/pc_overlay.cpp tools/gt2game/boot_screen.cpp tools/gt2game/game_main.cpp tools/gt2game/game_window_win32.cpp tools/gt2game/game_window_xr.cpp tools/gt2game/cockpit_preview.cpp)
   add_library(gt2os STATIC src/platform/os/paths_win32.cpp)
   target_include_directories(gt2os PUBLIC src)
@@ -530,6 +559,8 @@ if(BUILD_TESTING AND NOT ANDROID)
     add_test(NAME native_instance_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_instance_checks.py)
     add_test(NAME quest_import_access_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/quest_import_access_checks.py)
     add_test(NAME gt4_pack_install_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/gt4_pack_install_checks.py)
+    add_test(NAME quest_gt4_bundle_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/quest_gt4_bundle_checks.py)
+    add_test(NAME vr_package_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/vr_package_checks.py)
     if(WIN32)
       add_test(NAME windows_first_run_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_first_run_checks.py)
       add_test(NAME windows_dependency_zip_checks COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_dependency_zip_checks.py)
@@ -561,4 +592,23 @@ if(WIN32 AND BUILD_TESTING)
   add_executable(gt2cockpitbackingchecks tests/cockpit_backing_fit_checks.cpp)
   target_include_directories(gt2cockpitbackingchecks PRIVATE src src/gt2view)
   add_test(NAME cockpit_backing_checks COMMAND gt2cockpitbackingchecks)
+endif()
+
+if(BUILD_TESTING AND TARGET gt2vk AND NOT ANDROID AND NOT EMSCRIPTEN)
+  if(TARGET gt2xr)
+    add_executable(gt2authoredcaraudit tests/authored_car_audit.cpp)
+    target_link_libraries(gt2authoredcaraudit PRIVATE gt2vk gt2xr gt2formats gt2export)
+  endif()
+  add_executable(gt2authoredfitaudit tests/authored_fit_audit.cpp)
+  target_link_libraries(gt2authoredfitaudit PRIVATE gt2vk gt2formats gt2export)
+endif()
+
+if(BUILD_TESTING AND TARGET gt2vk AND NOT ANDROID AND NOT EMSCRIPTEN)
+  add_executable(gt2generatedtexturechecks tests/generated_texture_checks.cpp)
+  target_link_libraries(gt2generatedtexturechecks PRIVATE gt2vk gt2export)
+  add_test(NAME generated_texture_mono_checks COMMAND gt2generatedtexturechecks --mono)
+  # macOS ships a flat client; its virtual Intel GPU cannot render MSAA array attachments.
+  if(NOT APPLE)
+    add_test(NAME generated_texture_checks COMMAND gt2generatedtexturechecks)
+  endif()
 endif()

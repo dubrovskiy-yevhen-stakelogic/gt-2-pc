@@ -1,10 +1,75 @@
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2view/generated_astc.h"
+#include "gt2formats/sha1.h"
+#include "gt2export/png_writer.h"
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
 #include <stdexcept>
 
 namespace gt2view {
+void VkSceneRenderer::BeginGeneratedTextures(const std::string& cacheDirectory) {
+    WaitFrame();generatedAtlas_={};generatedCacheDirectory_=cacheDirectory;
+}
+void VkSceneRenderer::UploadGeneratedTexture(uint32_t first,uint32_t width,uint32_t height,const uint32_t* rgba) {
+    const auto origins=generatedAtlas_.Insert(width,height,rgba);
+    UploadExternalTexture(first,width*height,rgba);
+    UploadExternalTexture(first+width*height,uint32_t(origins.size()),origins.data());
+}
+void VkSceneRenderer::UploadGeneratedImage() {
+    if(generatedAtlas_.dirty) {
+        const auto raw=std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(generatedAtlas_.pixels.data()),generatedAtlas_.pixels.size()*4);
+        const auto hash=gt2::Sha1Hex(raw);
+        if(const char* dump=std::getenv("GT2_GENERATED_ATLAS_DUMP")) {
+            const auto path=std::filesystem::path(dump)/(hash+".png");
+            std::filesystem::create_directories(path.parent_path());
+            if(!std::filesystem::exists(path))gt2::WritePngRgba(path.string(),GeneratedMipAtlas::kSide,GeneratedMipAtlas::kSide,raw);
+        }
+        std::vector<uint8_t> compressed;
+        std::span<const uint8_t> upload=raw;
+        const char* overrideDirectory=std::getenv("GT2_GENERATED_ATLAS_CACHE");
+        const std::filesystem::path directory=overrideDirectory?overrideDirectory:generatedCacheDirectory_;
+        if(context_.AstcTextures() && !directory.empty()) {
+            std::ifstream file(directory/(hash+".astc"),std::ios::binary);
+            if(file) {
+                compressed.assign(std::istreambuf_iterator<char>(file),{});
+                try {upload=GeneratedAstcPayload(compressed,GeneratedMipAtlas::kSide);}
+                catch(const std::exception& e){std::fprintf(stderr,"%s: %s\n",e.what(),hash.c_str());compressed.clear();}
+            }
+        }
+        const bool useCompressed=!compressed.empty();
+        if(!generatedFullSize_ || generatedCompressed_!=useCompressed) {
+            DestroyImage(generatedImage_);DestroyBuffer(generatedUpload_);
+            generatedImage_=CreateImage({GeneratedMipAtlas::kSide,GeneratedMipAtlas::kSide},useCompressed?VK_FORMAT_ASTC_4x4_UNORM_BLOCK:VK_FORMAT_R8G8B8A8_UNORM,
+                VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_ASPECT_COLOR_BIT);
+            generatedUpload_=CreateBuffer(upload.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            VkDescriptorImageInfo info{decodedSampler_,generatedImage_.view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+            VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};write.dstBinding=14;write.descriptorCount=1;
+            write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&info;
+            for(auto set:{descSet_,mirrorSourceSet_}){write.dstSet=set;vkUpdateDescriptorSets(device_,1,&write,0,nullptr);}
+            generatedFullSize_=true;generatedCompressed_=useCompressed;
+        }
+        std::memcpy(generatedUpload_.mapped,upload.data(),upload.size());
+        std::printf("Generated GPU atlas %s: %s, %zu bytes\n",hash.c_str(),useCompressed?"ASTC 4x4":"RGBA8",upload.size());
+        generatedAtlas_.dirty=false;generatedPending_=true;
+    }
+    if(!generatedPending_)return;
+    VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.srcQueueFamilyIndex=barrier.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+    barrier.image=generatedImage_.image;barrier.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    barrier.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED;barrier.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;barrier.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
+    VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+    const auto side=generatedFullSize_?GeneratedMipAtlas::kSide:1u;copy.imageExtent={side,side,1};
+    vkCmdCopyBufferToImage(cmd_,generatedUpload_.buffer,generatedImage_.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+    barrier.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;barrier.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;barrier.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&barrier);
+    generatedPending_=false;
+}
 void VkSceneRenderer::ResetModelAtlasForAudit() {
     BeginModelTextures();
 }
@@ -139,7 +204,13 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
             if (uint64_t(item.firstVertex) + item.vertexCount > kMaxVertices) continue;
             if (item.firstVertex >= kVrDrivingVertexBase &&
                 uint64_t(item.firstVertex) + item.vertexCount <= uint64_t(kVrDrivingVertexBase) + kVrDrivingVertexLimit) {
-                cachedDraws_[draw] = 1;
+                // Interactive geometry can include the imported wheel's external
+                // RGBA texture. Only the hand/untextured path fits the cached shader.
+                const auto* driving = VertexAt(item.firstVertex);
+                bool supported = driving != nullptr;
+                for (uint32_t i = 0; supported && i < item.vertexCount; i += 3)
+                    if (driving[i].flags & kExternalTexture) supported = false;
+                cachedDraws_[draw] = supported;
                 continue;
             }
             const auto* vertices = VertexAt(item.firstVertex);

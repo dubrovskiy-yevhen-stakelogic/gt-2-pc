@@ -1,6 +1,7 @@
 // The graphics settings of the running game (see graphics_options.h).
 #include "graphics_options.h"
 #include "gt2formats/model_set.h"
+#include "gt2formats/generated_world.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -48,8 +49,8 @@ bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::Graphics
         g_graphics = p;
         for (const auto& o : g_overrides) g_graphics.Parse(o.first, o.second);
     };
-    if (a == "--vanilla") { preset(GraphicsSettings::Vanilla()); return true; }
-    if (a == "--modern") { preset(GraphicsSettings::Modern()); return true; }
+    if (a == "--vanilla") { gt2::generated::allowed=false; preset(GraphicsSettings::Vanilla()); return true; }
+    if (a == "--modern") { gt2::generated::allowed=true; preset(GraphicsSettings::Modern()); return true; }
     if (a == "--max-detail") {
         pin();
         g_graphics.Parse("scenery_detail", "max");

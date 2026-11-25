@@ -36,9 +36,11 @@ namespace gt2game {
 class GameWindow;
 class Panels;
 class SettingsScreen;
+class OnlineRace;
 
 // Presentation options of the race (command line).
 struct RaceViewConfig {
+    OnlineRace* online = nullptr;
     std::string discPath;              // for the XA music stream (MUSIC.DAT)
     bool sound = true, music = true, reverb = true;
     bool hud = true, particles = true;
@@ -94,7 +96,7 @@ struct RaceViewConfig {
 // kDemonstration: the licence menu's "Demonstration ..." was chosen (the caller plays the demo run and runs the view again).
 // kChangeTest: the licence menu's Start with another test on its selector (row 0; RaceViewResult::licenceTest): the caller
 // builds that test's race (0x8004E320 -> 0x8004C7A0 when race block + 0xC != the selector's test) and runs it at once.
-enum class RaceExit { kClosed, kQuit, kFinished, kExited, kShot, kRecorded, kDemonstration, kChangeTest };
+enum class RaceExit { kClosed, kQuit, kFinished, kExited, kShot, kRecorded, kDemonstration, kChangeTest, kNetworkNext };
 
 struct RaceViewResult {
     RaceExit exit = RaceExit::kClosed;

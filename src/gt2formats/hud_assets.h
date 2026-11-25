@@ -115,6 +115,7 @@ HudStrings LoadHudStrings(const GtfsVolume& vol, uint8_t language, uint32_t bloc
 struct HudFontSprite {
     int x = 0, y = 0, w = 0, h = 0, u = 0, v = 0;
     uint16_t tpage = 0, clut = 0; // GPU words: texture page (the draw mode the glyph packet sets) and CLUT
+    uint8_t character = 0; // plain, unaccented glyph for replacement artwork
 };
 
 class HudFont {
