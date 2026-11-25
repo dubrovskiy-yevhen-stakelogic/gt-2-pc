@@ -38,6 +38,32 @@ int main() {
         gt2linux::PublishDisc(root, "simulation-aspec", stage);
         Check(gt2linux::HasDisc(root, "simulation-aspec") && gt2linux::HasDisc(root, "simulation"),
               "a modified dataset installs beside the original");
+        // A leftover directory must not make an absent disc impossible to install.
+        fs::create_directories(root / "arcade-plus/hd");
+        std::ofstream(root / "arcade-plus/hd/custom.txt") << "keep textures";
+        gt2linux::CheckImportTarget(root, "arcade-plus");
+        fs::create_directories(stage / "assets");
+        Reject([&] { gt2linux::PublishDisc(root, "arcade-plus", stage); });
+        Check(fs::exists(root / "arcade-plus/hd/custom.txt"), "failed extraction moved existing files");
+        std::ofstream(stage / "disc.raw2352") << "recovered image";
+        gt2linux::PublishDisc(root, "arcade-plus", stage);
+        Check(gt2linux::HasDisc(root, "arcade-plus"), "incomplete install not repaired");
+        Check(fs::exists(root / "backup-incomplete-arcade-plus-1/hd/custom.txt"), "recovery lost existing files");
+        Reject([&] { gt2linux::CheckImportTarget(root, "arcade-plus"); });
+        fs::create_directories(root / "simulation-plus");
+        fs::create_directories(stage / "assets");
+        std::ofstream(stage / "disc.raw2352") << "image";
+        gt2linux::PublishDisc(root, "simulation-plus", stage);
+        Check(gt2linux::HasDisc(root, "simulation-plus"), "empty directory not repaired");
+        std::ofstream(root / "combined-plus") << "unrelated file";
+        Reject([&] { gt2linux::CheckImportTarget(root, "combined-plus"); });
+        // A failed publication restores the old directory.
+        fs::create_directories(root / "combined");
+        std::ofstream(root / "combined/keep.txt") << "keep";
+        fs::create_directories(root / "combined/stage/assets");
+        std::ofstream(root / "combined/stage/disc.raw2352") << "image";
+        Reject([&] { gt2linux::PublishDisc(root, "combined", root / "combined/stage"); });
+        Check(fs::exists(root / "combined/keep.txt"), "publication failure did not roll back");
         std::string save;
         std::getline(std::ifstream(root / "saves/card1.mcd"), save);
         Check(save == "saved career", "import changed saved game");

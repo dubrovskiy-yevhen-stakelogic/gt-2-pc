@@ -2,6 +2,12 @@
 
 ## 1.0.0
 
+### Installer update (2026-11-25)
+
+- Allow Linux and Steam Deck to recover incomplete disc installations instead of reporting an absent Arcade disc as already installed. Preserve previous files in a backup and restore them if publication fails.
+- Include the complete GT4 conversion launcher, scripts, profiles and cockpit assets in Windows and VR player packages; locate the bundled exporters in `tools`.
+- Allow the corrected Windows MSI to replace an existing installation of the same version.
+
 ### Cross-platform multiplayer
 
 - Add native online racing between Windows/PCVR, Linux/Steam Deck and Quest, entered through the new Arcade Multiplayer tile. Browse public rooms or create a named room with an optional password; no manual IP entry or invitation files are needed.

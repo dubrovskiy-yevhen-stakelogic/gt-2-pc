@@ -17,7 +17,7 @@ screenshot and the full list of 66 models with restored original interiors.
   Windows app aliases, system PATH and long-path settings do not need to be changed.
 - Direct Python commands on other platforms require Python 3.11 or later with
   Pillow and NumPy, and the .NET 8 SDK.
-- The complete release's `native/tools` directory contains the Windows native
+- The complete release's `tools` directory contains the Windows native
   exporters. Building from source instead requires CMake 3.22+, a C++20 compiler
   and the `gt4-import-tools` and `gt2tool` targets.
 
@@ -64,7 +64,7 @@ Use your actual image and runtime paths. `IMPORT-GT4-MODELS.bat` wraps the same
 pipeline with PowerShell parameters `-Iso`, `-Simulation`, `-Arcade`, `-Output`
 and `-Build`. Use `-Target Quest` or `-Target PC` to select installation explicitly;
 `-Target BundleOnly` only prepares the bundle. `-Bundle` installs an existing
-bundle without conversion. The bundled `native/tools` directory is selected automatically.
+bundle without conversion. The bundled `tools` directory is selected automatically.
 
 The output must be a new directory under this checkout's `work/`. Preparation
 keeps intermediate assets in a `.preparing` directory and only renames it after

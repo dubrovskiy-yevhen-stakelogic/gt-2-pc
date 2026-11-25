@@ -114,8 +114,7 @@ void Import(const fs::path& tools, const fs::path& root, const std::string& imag
     const auto parsed = gt2::json::Parse(info);
     std::string folder = parsed.StringOr("folder", "");
     if (folder.empty()) folder = parsed.Require("combined").AsBool() ? std::string("combined") : parsed.Require("mode").AsString();
-    if (fs::exists(fs::symlink_status(root / folder)))
-        throw std::runtime_error("This disc is already installed. Existing discs and saves were kept.");
+    gt2linux::CheckImportTarget(root, folder);
     std::string pattern = (root / ".import-XXXXXX").string();
     if (!mkdtemp(pattern.data())) throw std::runtime_error("Cannot create disc staging folder.");
     const fs::path stage(pattern);

@@ -6,7 +6,7 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="GT2" Manufacturer="GT2 PC contributors" Version="$(var.Version)"
            UpgradeCode="C331A768-AFC0-45F2-AFFE-C46F6FE9AA81" Scope="perUserOrMachine">
-    <MajorUpgrade DowngradeErrorMessage="A newer GT2 version is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer GT2 version is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
     <StandardDirectory Id="LocalAppDataFolder">

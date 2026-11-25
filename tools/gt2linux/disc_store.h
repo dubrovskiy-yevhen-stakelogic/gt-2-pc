@@ -19,6 +19,16 @@ inline bool HasAnyDisc(const std::filesystem::path& root) {
     return false;
 }
 
+inline void CheckImportTarget(const std::filesystem::path& root, const std::string& folder) {
+    const auto target = root / folder;
+    const auto status = std::filesystem::symlink_status(target);
+    if (std::filesystem::is_symlink(status) ||
+        (std::filesystem::exists(status) && !std::filesystem::is_directory(status)))
+        throw std::runtime_error("Disc destination is not a regular directory. Existing data was kept.");
+    if (HasDisc(root, folder))
+        throw std::runtime_error("This disc is already installed. Existing data was kept.");
+}
+
 inline void PublishDisc(const std::filesystem::path& root, const std::string& folder,
                         const std::filesystem::path& prepared) {
     // Install folders are "<mode>" or "<mode>-<dataset suffix>" (gt2formats/dataset.h).
@@ -29,12 +39,25 @@ inline void PublishDisc(const std::filesystem::path& root, const std::string& fo
         folder.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-") == std::string::npos;
     if (!valid) throw std::runtime_error("Unsupported disc type");
     const auto target = root / folder;
-    if (std::filesystem::exists(std::filesystem::symlink_status(target)))
-        throw std::runtime_error("This disc is already installed. Existing data was kept.");
+    CheckImportTarget(root, folder);
     if (!std::filesystem::is_regular_file(prepared / "disc.raw2352") ||
         !std::filesystem::is_directory(prepared / "assets"))
         throw std::runtime_error("Disc extraction is incomplete. Existing data was kept.");
     // The launcher holds the application lock; staging lives on this filesystem.
-    std::filesystem::rename(prepared, target);
+    // Retain incomplete installs beside the new one; never delete player files.
+    std::filesystem::path backup;
+    if (std::filesystem::exists(target)) {
+        for (unsigned i = 1;; ++i) {
+            backup = root / ("backup-incomplete-" + folder + "-" + std::to_string(i));
+            if (!std::filesystem::exists(std::filesystem::symlink_status(backup))) break;
+        }
+        std::filesystem::rename(target, backup);
+    }
+    try {
+        std::filesystem::rename(prepared, target);
+    } catch (...) {
+        if (!backup.empty()) std::filesystem::rename(backup, target);
+        throw;
+    }
 }
 }

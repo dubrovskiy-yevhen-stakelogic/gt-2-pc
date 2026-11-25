@@ -108,7 +108,7 @@ if (!$PrepareToolsOnly -and !$Bundle) {
     }
     if ([IO.Path]::GetExtension($Simulation) -eq '.iso') { throw 'Simulation means the GT2 Simulation BIN or prepared simulation folder. The GT4 ISO belongs in -Iso.' }
     if (!$Build) {
-        foreach ($folder in @('native/tools','build','build/Release','build_update','build_update/Release')) {
+        foreach ($folder in @('tools','native/tools','build','build/Release','build_update','build_update/Release')) {
             $candidate = Join-Path $gt4Repo $folder
             $missing = @('gt2tool','gt4assettool','gt4nativemetadata','gt4materialmetadata','gt4specdbexport','gt4showroomexport' | Where-Object { !(Test-Path -LiteralPath (Join-Path $candidate ($_ + '.exe'))) })
             if (!$missing.Count) { $Build = $candidate; break }
