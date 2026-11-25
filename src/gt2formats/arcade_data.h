@@ -36,7 +36,7 @@ constexpr size_t kArcadePlayerCarRowSize = 60;
 class ArcadeData {
 public:
     explicit ArcadeData(std::vector<uint8_t> gtdt);
-    static ArcadeData Load(const GtfsVolume& vol, const std::string& path = "carparam/usa_arcade_data.dat");
+    static ArcadeData Load(const GtfsVolume& vol, const std::string& path = {});
 
     const CarParamTables& Tables() const { return tables_; }
     const std::vector<std::string>& Names() const { return names_; }

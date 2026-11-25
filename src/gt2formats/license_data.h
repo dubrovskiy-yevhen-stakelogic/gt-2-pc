@@ -88,7 +88,7 @@ class LicenseData {
 public:
     // `gtdt` = the decompressed carparam/usa_license_data.dat.
     explicit LicenseData(std::vector<uint8_t> gtdt);
-    static LicenseData Load(const GtfsVolume& vol, const std::string& path = "carparam/usa_license_data.dat");
+    static LicenseData Load(const GtfsVolume& vol, const std::string& path = {});
 
     // 0x80076C74 on the name pool of table 30: the index of `name`, -1 when absent.
     int32_t NameIndex(const std::string& name) const;

@@ -44,7 +44,9 @@ LicenseData::LicenseData(std::vector<uint8_t> gtdt) : file_(gtdt), tables_(gtdt)
     }
 }
 
-LicenseData LicenseData::Load(const GtfsVolume& vol, const std::string& path) { return LicenseData(vol.Read(path)); }
+LicenseData LicenseData::Load(const GtfsVolume& vol, const std::string& path) {
+    return LicenseData(vol.Read(path.empty() ? RegionalDataPath(vol, "carparam/usa_license_data.dat", "carparam/eng_license_data.dat") : path));
+}
 
 int32_t LicenseData::NameIndex(const std::string& name) const { // 0x80076C74
     for (size_t i = 0; i < names_.size(); i++)

@@ -133,6 +133,9 @@ struct NewGameDefaults {
     std::array<std::array<uint8_t, 11>, 4> buttonTables{};
     std::array<uint8_t, 20> padConfig{};
     uint16_t courseCount = 0; // .crsinfo count (u16 at 0x801E18E0 + 6): the course records the initialiser sets
+    // Career byte +0: the language column of the EXE's file table (0 jpn, 1 usa, 2 eng, 3 fra ...). The port
+    // plays European discs with the English UI, so a European build gets 2 and a US build gets 1.
+    uint8_t language = 1;
 };
 NewGameDefaults ReadNewGameDefaults(const GuestImage& exe, uint16_t courseCount);
 NewGameDefaults ReadNewGameDefaults(const DiscImage& disc); // + the course count of the disc's .crsinfo
