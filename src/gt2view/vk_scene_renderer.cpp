@@ -1210,6 +1210,10 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             if (rect.rect.extent.width && rect.rect.extent.height) vkCmdClearAttachments(cmd_, 1, &clear, 1, &rect);
         }
         const bool mirrorCar = recordMirror_ && item.firstVertex >= kModelSetVertexBase;
+        // Car mirror-mask glass samples the HUD hand texture in the mirror source
+        // pass (the pass cannot sample its own target); that read shows up as
+        // pink reflections. The car body already carries the solid coverage.
+        if (mirrorCar && item.firstVertex < kMaxVertices && (vertexFlags_.at(size_t(item.firstVertex)) & kMirrorTexture)) continue;
         uint32_t which = item.blend==kBlendStockSurfaceEnvironment?8u:item.blend==kBlendNativeSurfaceEnvironment?7u:item.blend==kBlendNativeEnvironment?1u:item.blend < 4 ? item.blend : item.blend == kBlendAlpha ? 6u : (i >= sceneItems ? 5u : 4u);
         // Imported car body ranges can be authored in the alpha pass. In the
         // mirror that makes the whole car translucent; keep its coverage solid.

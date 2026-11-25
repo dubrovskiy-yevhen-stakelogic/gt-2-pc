@@ -357,7 +357,7 @@ void shadeScene() {
     if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
-    if (pc.mirrorView != 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
+    if (pc.mirrorView < 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
 #ifndef GT2_WEBGL
     if((inFlags & 64u)!=0u && (inFlags & (16u|4194304u))==0u){outColor=nativeModelColor(vec4(1));return;}
 #endif
@@ -377,7 +377,7 @@ void shadeScene() {
         // Keep binary native cabin aperture coverage independent of smoothing.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
-        if (pc.mirrorView == 2u) c.a = 1.0; // mirror cars are solid, not coverage cards
+        if (pc.mirrorView >= 2u) c.a = 1.0; // mirror cars are solid, not coverage cards
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;
@@ -391,7 +391,7 @@ void shadeScene() {
         if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
         if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-        if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(pc.mirrorView < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
     }
 #endif
@@ -426,7 +426,7 @@ void shadeScene() {
 #endif
     }
     if ((inFlags & 2048u) != 0u) {
-        if (pc.mirrorView == 1u) { if (gl_FrontFacing) discard; }
+        if (pc.mirrorView == 1u || pc.mirrorView == 3u) { if (gl_FrontFacing) discard; }
         else if (pc.mirrorView == 0u) { if (!gl_FrontFacing) discard; }
     } // kCullBack: the original's NCLIP test
     if ((inFlags & 1u) == 0u) {
@@ -486,10 +486,10 @@ void shadeScene() {
         // PS1 STP class, which deliberately keeps nearest source alpha.
         c=(!generatedFiltered || (inFlags&1024u)!=0u)
             ? externalTexel(ivec2(floor(texelCoord)), size) : vec4(0);
-        if (pc.mirrorView == 2u) c.a = 1.0;
+        if (pc.mirrorView >= 2u) c.a = 1.0;
 #else
         c=externalTexel(ivec2(floor(texelCoord)), size);
-        if (pc.mirrorView == 2u) c.a = 1.0;
+        if (pc.mirrorView >= 2u) c.a = 1.0;
 #endif
 #ifndef GT2_WEBGL
         if(generatedFiltered) {
@@ -544,7 +544,7 @@ void shadeScene() {
             if (wsum > 0.0) c.rgb = sum / wsum;
         }
         if((inFlags & 32768u)!=0u) c.rgb=asphaltAlbedo(c.rgb);
-        if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(pc.mirrorView < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         vec3 shaded=modelColor(c.rgb,inColor);
         if((inFlags & 832u)==768u) shaded=windowRoom(shaded,texelCoord,vec2(size));
         outColor = vec4(shaded, (inFlags & 32u)!=0u?c.a:1.0);
@@ -620,7 +620,7 @@ void main() {
     shadeScene();
     // The mirror is a reflected camera, not a translucent material. Car coverage
     // alpha would otherwise make the body see-through in the mirror target.
-    if (pc.mirrorView == 2u) outColor.a = 1.0;
+    if (pc.mirrorView >= 2u) outColor.a = 1.0;
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }

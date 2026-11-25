@@ -45,7 +45,7 @@ void shadeScene() {
     if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
-    if (pc.mirrorView != 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
+    if (pc.mirrorView < 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
     if ((inFlags & 268435456u)!=0u && (inFlags & (16u|4194304u))==0u) {
         if (!gl_FrontFacing && pc.mirrorView == 0u) discard;
 #ifndef GT2_WEBGL
@@ -61,7 +61,7 @@ void shadeScene() {
         // Same coverage rule as the general and imported-model shader paths.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
-        if (pc.mirrorView == 2u) c.a = 1.0;
+        if (pc.mirrorView >= 2u) c.a = 1.0;
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;
@@ -74,7 +74,7 @@ void shadeScene() {
         }
         if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-        if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(pc.mirrorView < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
     }
     if ((inFlags & 2097152u) != 0u) {
@@ -87,7 +87,7 @@ void shadeScene() {
     }
     if (cachedHud && pc.hudClip.z > pc.hudClip.x && (any(lessThan(inScreen.xy / inScreen.z, pc.hudClip.xy)) || any(greaterThan(inScreen.xy / inScreen.z, pc.hudClip.zw)))) discard;
     if ((inFlags & 2048u) != 0u) {
-        if (pc.mirrorView == 1u) { if (gl_FrontFacing) discard; }
+        if (pc.mirrorView == 1u || pc.mirrorView == 3u) { if (gl_FrontFacing) discard; }
         else if (pc.mirrorView == 0u) { if (!gl_FrontFacing) discard; }
     }
     bool affine = (pc.options & 2u) != 0u;
@@ -126,7 +126,7 @@ void main() {
     shadeScene();
     // The mirror is a reflected camera, not a translucent material. Car coverage
     // alpha would otherwise make the body see-through in the mirror target.
-    if (pc.mirrorView == 2u) outColor.a = 1.0;
+    if (pc.mirrorView >= 2u) outColor.a = 1.0;
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }
