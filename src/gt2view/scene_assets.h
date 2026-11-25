@@ -290,10 +290,10 @@ public:
         bool fullDetail = true;
         int cameraChunk = -1;                // the chunk whose render list is used; -1 = the chunk nearest to the eye
         bool glows = true;                   // the chunks' glow records (night / highway courses; glow.h)
-        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list only (the original); N > 0 = a hard
-        // cap at N m: only chunks whose centre and scenery instances whose origin are within N m draw (the camera's own
-        // chunk always does), with the in-range scenery at its most detailed LOD. < 0 = every chunk and authored near
-        // scenery entry, including empty distant-copy entries.
+        // Ours (graphics option "Draw Distance"): 0 = the camera chunk's render list and authored LODs (the original);
+        // N > 0 = a hard far clip at N m in the renderer, with chunks/scenery whose nearest extent reaches N added (the
+        // camera's own chunk always draws); scenery keeps its authored LOD or its farthest one past the last threshold.
+        // < 0 = every chunk and authored near scenery entry, including empty distant-copy entries.
         float extendedDistance = 0;
     };
     struct TrackStats { int cameraChunk = -1; size_t chunks = 0, instances = 0, billboards = 0; uint32_t mask = 0; };
@@ -391,8 +391,9 @@ public:
             const std::array<float, 3> centre = {float(chunk.centre[0] / 65536.0), float(chunk.centre[1] / 65536.0), float(chunk.centre[2] / 65536.0)};
             const float chunkDistance = distanceTo(centre);
             mask |= chunk.sceneryMask; // before the view test, for every entry (0x80020110)
-            // A positive Draw Distance is a hard cap; the camera's own chunk always draws (it holds the road under the car).
-            if (int(index) != camera && BeyondDrawDistance(double(chunkDistance) * chunkDistance, view.extendedDistance)) continue;
+            // A positive Draw Distance only drops chunks entirely beyond it; a chunk that reaches into the radius stays
+            // and the renderer's far clip cuts it. Never drop the camera's own chunk (the road under the car).
+            if (view.extendedDistance > 0 && int(index) != camera && ChunkNearestDistance(chunk, view.eye, 0) > view.extendedDistance) continue;
             if (view.glows) AppendChunkGlowSprites(boards[1], track, chunk, view.right.data(), down); // every drawn entry draws its glows (glow.h)
             if (view.extendedDistance >= 0 && !view.fullDetail && flags > 2) continue; // glow records only
             detailedDrawn[index]=true;
@@ -429,15 +430,18 @@ public:
             const std::array<double, 3> offset = {inst.position[0] / 65536.0 - view.eye[0], inst.position[1] / 65536.0 - view.eye[1],
                                                   inst.position[2] / 65536.0 - view.eye[2]};
             const double distanceSquared = offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2];
-            // A positive Draw Distance caps scenery too; "Scenery Detail: Max" explicitly keeps every instance.
-            if (!view.maxDetail && BeyondDrawDistance(distanceSquared, view.extendedDistance)) continue;
+            // A positive Draw Distance caps scenery too; the model radius keeps an instance whose near edge is still
+            // inside the radius. "Scenery Detail: Max" explicitly keeps every instance.
+            const double radius = SceneryInstanceRadius(track, inst);
+            if (!view.maxDetail && BeyondDrawDistance(distanceSquared, view.extendedDistance, radius)) continue;
             // Level of detail as the original picks it (0x8001F7F8 -> 0x8007AE38 / 0x8007AEF4, track.h): the camera-space
             // translation squared in quarter metres, scaled by k(h, lodDivisor), against the list's thresholds; beyond the
             // last threshold the instance is not drawn. gt2play --prims checks this rule against the original's own calls.
             const std::vector<TrackLodEntry>& lods = track.sceneryLods[inst.lodList];
+            const double effectiveDistance = std::max(0.0, std::sqrt(std::max(0.0, distanceSquared)) - radius);
             const int entry = SceneryEntry(track, inst, mask,
                 SceneryLodMeasure(SceneryCameraSpace(inst, eye, cameraAxes), SceneryLodK(projection, inst.lodDivisor)),
-                distanceSquared, view.extendedDistance, view.maxDetail);
+                effectiveDistance * effectiveDistance, view.extendedDistance, view.maxDetail);
             if (entry < 0) continue;
             const size_t modelIndex = lods[entry].model;
             const TrackSceneryModel& model = track.sceneryModels[modelIndex];
@@ -516,29 +520,35 @@ public:
     size_t CourseVertexCount() const {return courseVertexCount_;}
     size_t DroppedCourseVertices() const {return droppedCourseVertices_;}
 
-    // The rear-view mirror's course (0x8002993C -> 0x80020110 with param_3 = 1): the low-detail copies (chunk + 0x94) of
-    // the camera chunk's render-list chunks nearer than `maxDistance` metres, no scenery, no billboards; all items get the
-    // mirror's scissor rectangle (window fractions). `vp` = the mirror's clip matrix mapped into that rectangle.
+    // The rear-view mirror's course (0x8002993C -> 0x80020110 with param_3 = 1): the detailed road shapes of the
+    // camera chunk's render-list chunks that reach inside `maxDistance` metres. The car is placed on the detailed road,
+    // so the PS1's low-detail surround copies (chunk + 0x94) put a coarser surface through the car in corners. No
+    // scenery, no billboards; all items get the mirror's scissor rectangle (window fractions). `extendDistance` = the
+    // mirror Draw Distance: 0 keeps the original ~100 m list, < 0 adds every chunk, > 0 adds chunks within that radius.
+    // `vp` = the mirror's clip matrix mapped into that rectangle.
     void AppendMirrorTrackItems(std::vector<DrawItem>& opaque, std::vector<DrawItem>& blended, const float* vp, const std::array<float, 3>& eye,
-                                int cameraChunk, float maxDistance, const float scissor[4]) const {
-        if (!track_ || mirrorRanges_.size() != track_->chunks.size()) return;
+                                int cameraChunk, float maxDistance, float extendDistance, const float scissor[4]) const {
+        if (!track_ || chunkRanges_.size() != track_->chunks.size()) return;
         const Track& track = *track_;
         const int camera = cameraChunk >= 0 && size_t(cameraChunk) < track.chunks.size() ? cameraChunk : NearestChunk(eye);
         std::vector<uint16_t> entries = track.chunks[size_t(camera)].renderList;
         if (entries.empty())
             for (size_t i = 0; i < track.chunks.size(); i++) entries.push_back(uint16_t(i));
+        if (extendDistance != 0.0f) ExtendTrackEntries(entries, track, eye, extendDistance, 1);
         std::vector<std::pair<float, DrawItem>> semi;
         for (uint16_t e : entries) {
             const size_t index = e & 0x3FFF;
             if (index >= track.chunks.size()) continue;
             const TrackChunk& chunk = track.chunks[index];
-            const float dx = float(chunk.centre[0] / 65536.0) - eye[0], dy = float(chunk.centre[1] / 65536.0) - eye[1], dz = float(chunk.centre[2] / 65536.0) - eye[2];
-            const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+            // Original (extendDistance 0) uses the PS1 mirror key 0x63FFFF; a metre value uses the exact nearest
+            // extent, and the renderer's mirror far clip enforces that metre value.
+            const float distance = extendDistance == 0.0f ? ChunkDistanceKey(chunk, eye) : ChunkNearestDistance(chunk, eye, 1);
             if (distance > maxDistance) continue;
-            const ShapeRanges& r = mirrorRanges_[index];
+            const ShapeRanges& r = extendedChunkRanges_[index];
             DrawItem item;
             std::copy(vp, vp + 16, item.mvp);
             std::copy(scissor, scissor + 4, item.scissor);
+            item.mirrorView = 1;
             if (r.opaque.count) {
                 item.firstVertex = r.opaque.first;
                 item.vertexCount = r.opaque.count;
@@ -599,6 +609,7 @@ public:
         item.firstVertex = kMirrorVertexBase;
         item.vertexCount = uint32_t(backgroundCount);
         item.clearDepth = 1;
+        item.mirrorView = 1;
         background.push_back(item);
         item.clearDepth = 0;
         item.firstVertex = kMirrorVertexBase + uint32_t(backgroundCount);
@@ -3439,9 +3450,10 @@ private:
     struct ShapeRanges { Range opaque; std::array<Range, 4> semi{}; };
 
     // Static course vertices: every chunk's road shape (world metres) and every scenery model (model units, drawn
-    // per instance with SceneryInstanceMatrix). The chunks' "surround" shapes are the rear-view mirror's low-detail
-    // copies (0x8002993C -> 0x80020110 with param_3 != 0 reads chunk + 0x94 instead of the road shape at + 0xA4) and
-    // are not built: drawing them over the road was the z-fighting "second asphalt" and its large stretched quads.
+    // per instance with SceneryInstanceMatrix). The chunks' "surround" shapes are the PS1's low-detail mirror copies
+    // (0x8002993C -> 0x80020110 with param_3 != 0 reads chunk + 0x94 instead of the road shape at + 0xA4). The port
+    // draws the detailed road in the mirror too (the car is placed on it, and drawing the coarse copy over it was the
+    // z-fighting "second asphalt"), so the surround shapes are not built.
     void BuildCourse(const Track& track, std::span<const uint16_t> words) {
         droppedCourseVertices_=0;courseVertexCount_=0;paintCoverage_.Clear();
         const auto seamUvs = CourseTextureSeams(track, words);
@@ -3698,12 +3710,6 @@ private:
             }
         }
         std::printf("native scene: %zu coarse scenery polygons have detailed course replacements\n",replacedPolygons);
-        // The rear-view mirror's low-detail copies of the chunks (chunk + 0x94; 0x80020110 with param_3 != 0).
-        mirrorRanges_.assign(track.chunks.size(), {});
-        for (size_t ci = 0; ci < track.chunks.size(); ci++) {
-            emitShape(seamUvs.size(), track.chunks[ci], track.chunks[ci].surround);
-            flush(mirrorRanges_[ci]);
-        }
         originalCourseVertices_.clear();generatedCourseVertices_.clear();
         generatedWorldActive_=gt2::generated::ActiveMask();
         if(!generatedWorld_.Empty()) {
@@ -3928,7 +3934,7 @@ private:
     std::array<bool, 2> smokeOpaque_{true, true};
     std::string trackName_;
     std::unique_ptr<Track> track_;
-    std::vector<ShapeRanges> chunkRanges_, extendedChunkRanges_, modelRanges_, mirrorRanges_;
+    std::vector<ShapeRanges> chunkRanges_, extendedChunkRanges_, modelRanges_;
     std::vector<std::vector<size_t>> wallConflicts_;
     struct PolygonReplacement { Range range; std::vector<uint16_t> chunks; Range clipped{}; };
     struct InstanceReplacement {

@@ -629,7 +629,8 @@ void VkSceneRenderer::CreatePipeline() {
     for (auto& write : writes) write.dstSet = mirrorSourceSet_;
     writes[6].pImageInfo = &handInfo;
     writes[9].pImageInfo = &studioInfo;
-    writes[12].pImageInfo = &decodedInfo;
+    // The mirror may draw imported cars through the native-model pipeline: keep the car environment cube valid there.
+    writes[12].pImageInfo = &nativeEnvInfo;
     vkUpdateDescriptorSets(device_, 15, writes, 0, nullptr);
 
     VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FrameParams)};
@@ -1218,7 +1219,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
             (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
         bool modelOnly=false;
-        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
+        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kPaintProbeVertexBase && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
             const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
             auto [found,added]=modelRanges_.try_emplace(range,true);
@@ -1307,6 +1308,11 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
+        // Camera and mirror Draw Distance are separate; the cockpit mirror pass is always the mirror's own range, and a
+        // mirror overlaid in the main pass carries DrawItem::mirrorView. The sky sits at infinity and the paint-probe
+        // environment capture keeps its own range.
+        const float distance = recordMirror_ || item.mirrorView ? options_.mirrorFarClip : options_.farClip;
+        params.farClip = sceneLike && !recordNativeEnvironment_ && item.space != kSpaceSky ? distance : 0.0f;
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
         vkCmdPushConstants(cmd_, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(FrameParams), &params);

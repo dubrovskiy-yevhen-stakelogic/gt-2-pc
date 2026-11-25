@@ -53,7 +53,8 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; 0 = the PS1's nearest texel, perspective-correct)
     uint space;
     uint eye;
-    uvec2 reserved;
+    float farClip;
+    uint reserved;
     vec4 hudClip;
 #ifdef GT2_WEBGL
     vec4 nativeModelRotation; // Match the vertex-stage uniform struct for WebGL linking.
@@ -352,6 +353,8 @@ vec3 modelColor(vec3 base,vec3 color) {
 #include "authored_glass.glsl"
 
 void shadeScene() {
+    // Draw Distance: the same far clip in the main views, split screen and the rear-view mirror.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
     if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;

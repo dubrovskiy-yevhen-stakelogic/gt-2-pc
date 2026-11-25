@@ -1156,6 +1156,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     (window.Renderer().EffectiveMsaa() != uint32_t(graphics.msaa) ?
                      " (active " + std::to_string(window.Renderer().EffectiveMsaa()) + "x)" : ""),
                 "Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"),
+                "Mirror distance: " + (graphics.mirrorDrawDistance < 0 ? std::string("Entire course") : graphics.mirrorDrawDistance == 0 ? std::string("Original") : std::to_string(graphics.mirrorDrawDistance) + " m"),
                 "Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"),
                 "FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"),
                 "Foveation: " + std::string(foveation == 0 ? "Off" : foveation == 1 ? "Low" : foveation == 2 ? "Balanced" : "High"),
@@ -1172,8 +1173,8 @@ void ShowSettingsMenu(GameWindow& window) {
         if (page == 1 && !vr) {
             rows[0] = "Resolution: " + (graphics.renderHeight ? std::to_string(graphics.renderHeight) + "p" : std::to_string(graphics.renderScale) + "%");
             rows[1] = "Frame limit: " + (graphics.frameCap ? std::to_string(graphics.frameCap) + " FPS" : std::string("Display"));
-            rows[6] = std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF");
-            rows.insert(rows.begin() + 7, "Frame presentation: " + std::string(graphics.frameRate ? "Display rate" : "Original"));
+            rows[7] = std::string("VSync: ") + (graphics.vsync ? "ON" : "OFF");
+            rows.insert(rows.begin() + 8, "Frame presentation: " + std::string(graphics.frameRate ? "Display rate" : "Original"));
         }
         if (page == 2) {
             title = "GT2 VR / OPTIONS AND CHEATS";
@@ -1330,7 +1331,7 @@ void ShowSettingsMenu(GameWindow& window) {
                         window.Close(); done = true;
                     } else { page = 13; selected = 0; }
                 }
-                else if (page == 1 && (direction || selected == (!vr ? 9 : 8))) {
+                else if (page == 1 && (direction || selected == (!vr ? 10 : 9))) {
                     const int samples[] = {1,2,4,8}, distances[] = {0,250,500,1000,2000,-1};
                     const std::string prior = status;
                     const auto before = std::make_tuple(graphics, rumble, profiler, playStationIntro, gt4ModelSet, gt2::hd::Enabled(), vrScale, vrRefresh, foveation);
@@ -1357,13 +1358,14 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == 2) graphics.msaa = Cycle(graphics.msaa, samples, direction);
                     if (selected == 3) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
-                    if (selected == 4) graphics.smoothTextures = !graphics.smoothTextures;
-                    if (selected == 5) profiler = !profiler;
-                    if (vr && selected == 6) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
-                    if (!vr && selected == 6) graphics.vsync = !graphics.vsync;
-                    if (!vr && selected == 7) graphics.frameRate = !graphics.frameRate;
-                    if (selected == (!vr ? 9 : 8)) { page = 0; selected = 0; }
-                    if (selected == (!vr ? 8 : 7) && direction) {
+                    if (selected == 4) graphics.mirrorDrawDistance = Cycle(graphics.mirrorDrawDistance, distances, direction);
+                    if (selected == 5) graphics.smoothTextures = !graphics.smoothTextures;
+                    if (selected == 6) profiler = !profiler;
+                    if (vr && selected == 7) { foveation = (foveation + direction + 4) % 4; window.Renderer().SetFoveation(foveation); status = "Saved. Centre and HUD stay full resolution."; }
+                    if (!vr && selected == 7) graphics.vsync = !graphics.vsync;
+                    if (!vr && selected == 8) graphics.frameRate = !graphics.frameRate;
+                    if (selected == (!vr ? 10 : 9)) { page = 0; selected = 0; }
+                    if (selected == (!vr ? 9 : 8) && direction) {
                         if (!graphics.carReflections) { graphics.carReflections = true; graphics.modernCarReflections = false; }
                         else if (!graphics.modernCarReflections) graphics.modernCarReflections = true;
                         else { graphics.carReflections = false; graphics.modernCarReflections = false; }

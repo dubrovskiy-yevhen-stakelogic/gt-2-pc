@@ -2,7 +2,7 @@
 // same atlas, alpha masks and clearcoat, without its dependent buffer reads.
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; uvec2 reserved; vec4 hudClip;
+    uint space; uint eye; float farClip; uint reserved; vec4 hudClip;
 } pc;
 layout(location=0) in vec2 inTexel;
 layout(location=1) in vec3 inColor;
@@ -24,6 +24,8 @@ vec3 cabinColor(vec3 color) {
 }
 #include "native_model_fragment.glsl"
 void shadeModel() {
+    // Draw Distance: imported cars obey the same far clip as the course.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Stereo HUD mirrors clip in their own plane; framebuffer scissors cannot
     // follow its per-eye projection. Match the general and cached car shaders.
     if(pc.hudClip.z>pc.hudClip.x && (any(lessThan(inScreen.xy/inScreen.z,pc.hudClip.xy)) ||

@@ -795,7 +795,10 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 SceneAssets::BackdropModel(p.eye, backdropModel);
                 Multiply(vp, backdropModel, backdropMvp);
                 std::vector<DrawItem> blended;
+                const size_t skyFirst = items.size(), skyBlendedFirst = blended.size();
                 assets.AppendBackdropItems(items, blended, backdropMvp);
+                for (size_t k = skyFirst; k < items.size(); ++k) items[k].space = kSpaceSky;
+                for (size_t k = skyBlendedFirst; k < blended.size(); ++k) blended[k].space = kSpaceSky;
                 SceneAssets::TrackView tv;
                 tv.eye = {p.eye[0], p.eye[1], p.eye[2]};
                 tv.right = {p.right[0], p.right[1], p.right[2]};
@@ -808,6 +811,14 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 assets.AppendTrackItems(items, blended, vp, tv);
                 for (size_t car = 0; car < carCount; car++) {
                     if (cam.hideTarget && car == cam.target) continue; // the driver view (0x800140A4: camera + 0x108)
+                    if (graphics.drawDistance > 0 && int(car) != cam.target) {
+                        const sim::CarPose p = race.Pose(car);
+                        const int32_t carKey = sim::ApproxDistance(
+                            int32_t(uint32_t(p.worldPosition[0]) - uint32_t(cam.view.t[0])),
+                            int32_t(uint32_t(p.worldPosition[1]) - uint32_t(cam.view.t[1])),
+                            int32_t(uint32_t(p.worldPosition[2]) - uint32_t(cam.view.t[2])));
+                        if (carKey > int64_t(graphics.drawDistance) * 65536 - 1) continue;
+                    }
                     const int slot = slots[size_t(view)][car];
                     const bool blend = interp && !PoseJump(previous.poses[car], race.Pose(car));
                     float model[16], mvp[16];

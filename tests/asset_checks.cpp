@@ -272,6 +272,22 @@ void Fixtures() {
     Require(!gt2view::BeyondDrawDistance(1e10,0) && !gt2view::BeyondDrawDistance(1e10,-1),
         "original and entire-course distances are not capped");
 
+    // A numeric Draw Distance keeps a chunk whose box reaches into the radius; the far clip cuts the rest.
+    gt2::TrackChunk box;
+    box.bounds[0].x={-65536,65536,65536,-65536};box.bounds[0].z={-65536,-65536,65536,65536};
+    box.bounds[0].yLow=-65536;box.bounds[0].yHigh=65536;
+    Require(gt2view::ChunkNearestDistance(box,{0,0,0},0)==0,"a chunk under the eye is at zero distance");
+    Require(std::abs(gt2view::ChunkNearestDistance(box,{10,0,0},0)-9)<1e-4,"the chunk distance is measured to its nearest point");
+    Require(std::abs(gt2view::ChunkNearestDistance(box,{0,10,0},0)-9)<1e-4,"the chunk distance includes height");
+    Require(gt2view::ChunkNearestDistance(box,{100,0,0},1)>90,"an unauthored box falls back to the chunk centre");
+
+    // 0x80020FD8: max + mid / 2 + min / 4 of the centre components, the original's chunk distance key.
+    gt2::TrackChunk keyed;
+    Require(gt2view::ChunkDistanceKey(keyed,{0,0,0})==0,"a chunk under the eye has key zero");
+    Require(std::abs(gt2view::ChunkDistanceKey(keyed,{10,0,0})-10)<1e-4,"the key grows with the largest axis");
+    Require(std::abs(gt2view::ChunkDistanceKey(keyed,{10,10,0})-15)<1e-4,"the key uses max + mid / 2");
+    Require(std::abs(gt2view::ChunkDistanceKey(keyed,{10,10,10})-17.5)<1e-4,"the key uses max + mid / 2 + min / 4");
+
 }
 
 // Read the independent shadow header by walking the packed body sections, then

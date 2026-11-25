@@ -14,7 +14,7 @@ inline bool SharedVrKey(const std::string& key) {
     if(key.starts_with("cockpit_car_height_") || key=="race_view" || key.starts_with("vr_") || key.starts_with("pc_binding_") || key=="pc_custom_bindings" || key=="pc_brake_reverse" || key=="pc_steering_stick" || key=="gt4_model_set") return true;
     for(const char* name : {"cockpit","cockpit_wheel","cockpit_seat_height","cockpit_seat_back","cockpit_mirror","cockpit_side_mirrors","cockpit_mirror_scale","hd_assets","units","adaptive","rumble","profiler","frame_rate","frame_cap","vsync",
                            "render_scale","render_height","msaa","texture_filter","texture_mapping","scenery_detail","draw_distance",
-                           "car_reflections","modern_car_reflections"})
+                           "mirror_draw_distance","car_reflections","modern_car_reflections"})
         if(key==name) return true;
     return false;
 }

@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
         if (!ValidDiscSelection(preferred))
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
-            "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
+            "units=kmh\nframe_rate=display\ndraw_distance=all\nmirror_draw_distance=all\ntexture_filter=smooth\n", "");
         LoadOverlaySettings((saves / DescribeDiscSelection(preferred).saveMode / "settings.txt").string());
         SetWindowNoFocus(deterministic || !pickerScript.empty() || !pickerShot.empty());
         bool firstLaunch = true;

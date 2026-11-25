@@ -2,7 +2,7 @@
 layout(constant_id = 0) const bool cachedHud = false;
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; uvec2 reserved; vec4 hudClip;
+    uint space; uint eye; float farClip; uint reserved; vec4 hudClip;
 } pc;
 layout(location = 0) in vec2 inTexel;
 layout(location = 1) in vec3 inColor;
@@ -41,6 +41,8 @@ vec3 modelColor(vec3 base,vec3 color) {
 #include "authored_glass.glsl"
 
 void shadeScene() {
+    // Draw Distance: the same far clip in the main views, split screen and the rear-view mirror.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
     if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;

@@ -128,6 +128,8 @@ struct DrawItem {
     // Soft additive particles may share one shader invocation across 2x2 pixels.
     uint32_t softParticle = 0;
     std::array<float,4> nativeModelRotation{0,0,0,1};
+    // A rear-view mirror item drawn inside the main pass: uses RenderOptions::mirrorFarClip instead of farClip.
+    uint32_t mirrorView = 0;
 };
 
 // Reversed-Z band of a draw. The top band belongs to the 2D layers (HUD,
@@ -180,7 +182,8 @@ struct FrameParams {
     uint32_t options = 0; // kOption* of the scene items (RenderOptions), 0 for the 2D layers
     uint32_t space = kSpaceScreen; // DrawItem::space (the stereo shader; the desktop shader does not declare it)
     uint32_t eye = 0;              // the two-pass stereo path's array layer
-    uint32_t padding[2] = {};
+    float farClip = 0.0f;          // world metres; 0 = no distance clip (the sky is always exempt)
+    uint32_t padding = 0;
     float hudClip[4] = {};
     std::array<float,4> nativeModelRotation{0,0,0,1};
 };
@@ -210,6 +213,8 @@ struct RenderOptions {
                                  // rectangle, STP class kept); false = the PS1's nearest texel (exact)
     bool affine = false;         // screen-linear (PS1 GPU) texture / colour interpolation; false = perspective-correct
     bool vsync = true;           // FIFO presentation; false = MAILBOX (or IMMEDIATE when the surface has no MAILBOX)
+    float farClip = 0.0f;        // camera Draw Distance in metres; 0 = no clip (Original / Entire course)
+    float mirrorFarClip = 0.0f;  // the same for the central and side mirrors
     bool operator==(const RenderOptions&) const = default;
 };
 

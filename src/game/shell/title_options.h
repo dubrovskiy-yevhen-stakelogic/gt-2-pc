@@ -107,6 +107,7 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: nothing beyond N m draws;
                                            // -1: every chunk of the course
+    int mirrorDrawDistance = 0;            // the same for the central and side mirrors; 0 = the PS1's ~100 m list
     static GraphicsSettings Vanilla() {
         GraphicsSettings g;
         g.frameRate = kFrameRateOriginal;
@@ -117,7 +118,8 @@ struct GraphicsSettings {
         g.msaa = 4;
         g.smoothTextures = true;
         g.maxDetail = true;
-        g.drawDistance = 1000;
+        g.drawDistance = -1;       // the maximum preset never shortens the authored view
+        g.mirrorDrawDistance = -1;
         return g;
     }
     bool operator==(const GraphicsSettings&) const = default;

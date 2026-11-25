@@ -60,7 +60,8 @@ bool ParseGraphicsFlag(int argc, char** argv, int& i, const gt2::shell::Graphics
     static const char* const kKeys[][2] = {{"--frame-rate", "frame_rate"},       {"--frame-cap", "frame_cap"},
                                            {"--vsync", "vsync"},                 {"--render-scale", "render_scale"},
                                            {"--msaa", "msaa"}, {"--render-height", "render_height"},                   {"--texture-filter", "texture_filter"},
-                                           {"--texture-mapping", "texture_mapping"}, {"--draw-distance", "draw_distance"}};
+                                           {"--texture-mapping", "texture_mapping"}, {"--draw-distance", "draw_distance"},
+                                           {"--mirror-draw-distance", "mirror_draw_distance"}};
     for (const auto& k : kKeys)
         if (a == k[0]) {
             pin();
@@ -82,18 +83,24 @@ gt2view::RenderOptions RenderOptionsOf(const gt2::shell::GraphicsSettings& s) {
     gt2::modernCarReflections=s.modernCarReflections;
     gt2::carReflections=s.carReflections;
     o.vsync = s.vsync;
+    o.farClip = s.drawDistance > 0 ? float(s.drawDistance) : 0.0f;
+    o.mirrorFarClip = s.mirrorDrawDistance > 0 ? float(s.mirrorDrawDistance) : 0.0f;
     return o;
 }
 
 std::string DescribeGraphics(const gt2::shell::GraphicsSettings& s) {
-    char distance[32];
-    if (s.drawDistance < 0) std::snprintf(distance, sizeof(distance), "all chunks");
-    else if (s.drawDistance == 0) std::snprintf(distance, sizeof(distance), "original");
-    else std::snprintf(distance, sizeof(distance), "%d m", s.drawDistance);
-    char line[320];
-    std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, render scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s%s%s",
+    auto distanceText = [](int value, char* out, size_t size) {
+        if (value < 0) std::snprintf(out, size, "all chunks");
+        else if (value == 0) std::snprintf(out, size, "original");
+        else std::snprintf(out, size, "%d m", value);
+    };
+    char distance[32], mirrorDistance[32];
+    distanceText(s.drawDistance, distance, sizeof(distance));
+    distanceText(s.mirrorDrawDistance, mirrorDistance, sizeof(mirrorDistance));
+    char line[384];
+    std::snprintf(line, sizeof(line), "frame rate %s, cap %d, vsync %s, render scale %d%%, MSAA %dx, textures %s, mapping %s, scenery %s, draw distance %s, mirror distance %s%s%s",
                   s.frameRate == gt2::shell::GraphicsSettings::kFrameRateOriginal ? "original 30" : "display", s.frameCap, s.vsync ? "on" : "off", s.renderScale,
-                  s.msaa, s.smoothTextures ? "smooth" : "PS1 nearest", s.affine ? "affine" : "perspective", s.maxDetail ? "max" : "original", distance,
+                  s.msaa, s.smoothTextures ? "smooth" : "PS1 nearest", s.affine ? "affine" : "perspective", s.maxDetail ? "max" : "original", distance, mirrorDistance,
                   s == gt2::shell::GraphicsSettings::Vanilla() ? " (vanilla)" : "", g_pinned ? " [command line]" : "");
     return std::string(line) + (s.renderHeight ? "; fixed scene " + std::to_string(s.renderHeight * 16 / 9) + "x" + std::to_string(s.renderHeight) : "");
 }

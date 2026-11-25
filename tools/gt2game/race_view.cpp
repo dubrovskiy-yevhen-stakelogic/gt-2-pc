@@ -1834,6 +1834,16 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
         for (size_t i = 0; i < race.CarCount() && i < data.carIds.size(); i++) { // the other cars
             if (i == localCar) continue;
             if (int(i) == hiddenCar) continue;
+            // Camera Draw Distance: the original car pass measures with ApproxDistance (0x800140A4); the followed car
+            // always stays so a trackside replay does not lose its subject.
+            if (graphics.drawDistance > 0 && int(i) != cam.target) {
+                const sim::CarPose p = race.Pose(i);
+                const int32_t carKey = sim::ApproxDistance(
+                    int32_t(uint32_t(p.worldPosition[0]) - uint32_t(cam.view.t[0])),
+                    int32_t(uint32_t(p.worldPosition[1]) - uint32_t(cam.view.t[1])),
+                    int32_t(uint32_t(p.worldPosition[2]) - uint32_t(cam.view.t[2])));
+                if (carKey > int64_t(graphics.drawDistance) * 65536 - 1) continue;
+            }
             bool ghostLook = false;
             if (i == 1 && race.HasGhost()) { // game mode 6: 0x800140A4's rule for the ghost (hidden / its glass look / normal)
                 const sim::CarDrawMode m = sim::CarDrawRule(ghostDrawInputs(cam, false));
@@ -1936,13 +1946,26 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 if (clip[3] > 1e-6f) horizonY = (clip[1] / clip[3] + 1.0f) * 0.5f;
             }
             const float border[2] = {1.0f / (240.0f * hudAspect), 1.0f / 240.0f};
+            // The mirror has its own Draw Distance: Original keeps the PS1's ~100 m key cap, Entire course adds every
+            // chunk, a metre setting uses the same original chunk distance key as the main view.
+            const float mirrorDistance = graphics.mirrorDrawDistance < 0 ? 1e30f : graphics.mirrorDrawDistance > 0 ? float(graphics.mirrorDrawDistance) : 100.0f;
             std::vector<DrawItem> mirrorFrame, mirrorBlended;
             assets.AppendMirrorFrameItems(items, mirrorFrame, rect, horizonY, border);
-            assets.AppendMirrorTrackItems(items, mirrorBlended, mirrorVp, {mp.eye[0], mp.eye[1], mp.eye[2]}, mirrorCam.chunk, 100.0f, rect);
+            assets.AppendMirrorTrackItems(items, mirrorBlended, mirrorVp, {mp.eye[0], mp.eye[1], mp.eye[2]}, mirrorCam.chunk,
+                                          mirrorDistance, float(graphics.mirrorDrawDistance), rect);
             const size_t firstCar = items.size();
             for (size_t i = 0; i < race.CarCount() && i < data.carIds.size(); i++) {
                 if (int(i) == hiddenCar) continue;
                 if (i == 1 && race.HasGhost() && !sim::CarDrawRule(ghostDrawInputs(mirrorCam, true)).drawn) continue; // 0x800140A4 in the mirror's pass
+                // 0x800140A4 skips cars beyond 0x63FFFF with ApproxDistance; the same key now follows Mirror Distance.
+                const sim::CarPose carPose = race.Pose(i);
+                const int32_t carKey = sim::ApproxDistance(
+                    int32_t(uint32_t(carPose.worldPosition[0]) - uint32_t(mirrorCam.view.t[0])),
+                    int32_t(uint32_t(carPose.worldPosition[1]) - uint32_t(mirrorCam.view.t[1])),
+                    int32_t(uint32_t(carPose.worldPosition[2]) - uint32_t(mirrorCam.view.t[2])));
+                const int64_t carLimit = graphics.mirrorDrawDistance < 0 ? 0x7FFFFFFF
+                                       : int64_t(graphics.mirrorDrawDistance > 0 ? graphics.mirrorDrawDistance : 100) * 65536 - 1;
+                if (carKey > carLimit) continue;
                 const int slot = i == localCar ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
                 if (slot < 0) continue;
                 float mirrorModel[16], carMirrorMvp[16];
@@ -1952,7 +1975,10 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
                 const auto shadow = shadowClip(i, slot, mirrorVp);
                 assets.AppendCarItems(items, slot, carMirrorMvp, i < data.paints.size() ? data.paints[i] : 0u, race.CarAt(i).body.brake ? 1u : 0u, true, &mirrorWheels, shadow.data());
             }
-            for (size_t k = firstCar; k < items.size(); k++) std::copy(rect, rect + 4, items[k].scissor);
+            for (size_t k = firstCar; k < items.size(); k++) {
+                std::copy(rect, rect + 4, items[k].scissor);
+                items[k].mirrorView = 1;
+            }
             items.insert(items.end(), mirrorBlended.begin(), mirrorBlended.end());
             if (inCockpit) {
                 for (size_t k = mirrorFirst; k < items.size(); ++k) {
