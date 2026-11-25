@@ -61,6 +61,7 @@ void shadeScene() {
         // Same coverage rule as the general and imported-model shader paths.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
+        if (pc.mirrorView == 2u) c.a = 1.0;
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;

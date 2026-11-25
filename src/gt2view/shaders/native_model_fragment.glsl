@@ -35,7 +35,8 @@ vec4 nativeModelColor(vec4 textureColor) {
 #endif
     if((inFlags & (1u|4194304u))==0u && type!=2 && type!=4)c.rgb*=128.0/255.0;
     float a=c.a*128.0,ref=info.w;int f=int(info.z);bool pass=true;
-    if(f==0)pass=false;else if(f==2)pass=a<ref;else if(f==3)pass=a<=ref;
+    if(pc.mirrorView==2u){a=128.0;c.a=1.0;pass=true;}
+    else if(f==0)pass=false;else if(f==2)pass=a<ref;else if(f==3)pass=a<=ref;
     else if(f==4)pass=abs(a-ref)<.5;else if(f==5)pass=a>=ref;
     else if(f==6)pass=a>ref;else if(f==7)pass=abs(a-ref)>=.5;
     if(!pass && (state.x<.5 || abs(state.x-2.0)<.5))discard;

@@ -377,6 +377,7 @@ void shadeScene() {
         // Keep binary native cabin aperture coverage independent of smoothing.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
+        if (pc.mirrorView == 2u) c.a = 1.0; // mirror cars are solid, not coverage cards
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;
@@ -485,8 +486,10 @@ void shadeScene() {
         // PS1 STP class, which deliberately keeps nearest source alpha.
         c=(!generatedFiltered || (inFlags&1024u)!=0u)
             ? externalTexel(ivec2(floor(texelCoord)), size) : vec4(0);
+        if (pc.mirrorView == 2u) c.a = 1.0;
 #else
         c=externalTexel(ivec2(floor(texelCoord)), size);
+        if (pc.mirrorView == 2u) c.a = 1.0;
 #endif
 #ifndef GT2_WEBGL
         if(generatedFiltered) {
