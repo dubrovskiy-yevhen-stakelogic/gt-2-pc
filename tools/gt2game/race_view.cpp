@@ -1977,7 +1977,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             }
             for (size_t k = firstCar; k < items.size(); k++) {
                 std::copy(rect, rect + 4, items[k].scissor);
-                items[k].mirrorView = 1;
+                items[k].mirrorView = 2; // cars draw both sides in the reflected view
             }
             items.insert(items.end(), mirrorBlended.begin(), mirrorBlended.end());
             if (inCockpit) {

@@ -208,7 +208,7 @@ void WebGlSceneRenderer::DrawItems(const std::vector<DrawItem>& items,size_t fir
         if(d.clearDepth) { glDepthMask(GL_TRUE); glClear(GL_DEPTH_BUFFER_BIT); }
         glUniformMatrix4fv(mvp_,1,GL_FALSE,d.mvp); glUniform1ui(paint_,d.paint); glUniform1ui(brake_,d.brakeLit); glUniform1ui(stp_,d.stpPass);
         glUniform1ui(optionsUniform_,i<sceneItems ? (options_.smoothTextures?1u:0u)|(options_.affine?2u:0u)|(options_.mipmaps?8u:0u) : 0u);
-        glUniform1ui(mirrorView_, (mirror || d.mirrorView) ? 1u : 0u);
+        glUniform1ui(mirrorView_, d.mirrorView ? d.mirrorView : (mirror ? 1u : 0u));
         glUniform1f(farClip_, i<sceneItems && d.space!=kSpaceSky ? (mirror || d.mirrorView ? options_.mirrorFarClip : options_.farClip) : 0.0f);
         glEnable(GL_BLEND); glBlendEquationSeparate(d.blend==2 ? GL_FUNC_REVERSE_SUBTRACT : GL_FUNC_ADD,GL_FUNC_ADD);
         glDepthFunc(d.blend==kBlendStockSurfaceEnvironment ? GL_EQUAL : GL_GEQUAL);

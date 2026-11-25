@@ -424,7 +424,10 @@ void shadeScene() {
         color = inColorAffine;
 #endif
     }
-    if ((inFlags & 2048u) != 0u && ((pc.mirrorView != 0u) == gl_FrontFacing)) discard; // kCullBack: the original's NCLIP test
+    if ((inFlags & 2048u) != 0u) {
+        if (pc.mirrorView == 1u) { if (gl_FrontFacing) discard; }
+        else if (pc.mirrorView == 0u) { if (!gl_FrontFacing) discard; }
+    } // kCullBack: the original's NCLIP test
     if ((inFlags & 1u) == 0u) {
         if (pc.stpPass == 1u) discard; // untextured semi-transparent: blended pass only
         outColor = vec4(cabinColor(color), 1.0);
