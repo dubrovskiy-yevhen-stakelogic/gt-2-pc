@@ -68,6 +68,7 @@ void shadeModel() {
 }
 void main() {
     shadeModel();
+    if (pc.mirrorView == 2u) outColor.a = 1.0;
     // Match the source-provenance diagnostic in the general/cached paths,
     // after native alpha tests and culling have established real coverage.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);

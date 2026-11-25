@@ -615,6 +615,9 @@ void main() {
     // kSpaceMenuCarTexture: the glued menu/showroom car target, alpha preserved for compositing over 2D.
     if (pc.space == 5u) { outColor = texture(rearView, inTexel); return; }
     shadeScene();
+    // The mirror is a reflected camera, not a translucent material. Car coverage
+    // alpha would otherwise make the body see-through in the mirror target.
+    if (pc.mirrorView == 2u) outColor.a = 1.0;
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }
