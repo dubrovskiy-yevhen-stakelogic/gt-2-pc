@@ -357,12 +357,12 @@ void shadeScene() {
     if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
-    if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;
+    if (pc.mirrorView != 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
 #ifndef GT2_WEBGL
     if((inFlags & 64u)!=0u && (inFlags & (16u|4194304u))==0u){outColor=nativeModelColor(vec4(1));return;}
 #endif
     if ((inFlags & 268435456u)!=0u && (inFlags & (16u|4194304u))==0u) {
-        if (!gl_FrontFacing) discard;
+        if (!gl_FrontFacing && pc.mirrorView == 0u) discard;
 #ifndef GT2_WEBGL
         outColor=vec4(stockPaintClearcoat(inColor,inPaintView,pc.space==0u || (pc.options & 16u)!=0u),1);return;
 #endif
@@ -391,7 +391,7 @@ void shadeScene() {
         if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
         if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-        if(authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
     }
 #endif
@@ -544,7 +544,7 @@ void shadeScene() {
             if (wsum > 0.0) c.rgb = sum / wsum;
         }
         if((inFlags & 32768u)!=0u) c.rgb=asphaltAlbedo(c.rgb);
-        if(authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         vec3 shaded=modelColor(c.rgb,inColor);
         if((inFlags & 832u)==768u) shaded=windowRoom(shaded,texelCoord,vec2(size));
         outColor = vec4(shaded, (inFlags & 32u)!=0u?c.a:1.0);

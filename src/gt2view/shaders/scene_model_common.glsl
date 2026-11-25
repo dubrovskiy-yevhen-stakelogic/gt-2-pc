@@ -56,7 +56,7 @@ void shadeModel() {
     if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
     if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-    if(authoredGlazing()){outColor=authoredGlass(c);return;}
+    if(pc.mirrorView != 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
 #ifdef GT2_MODEL_GLASS_ONLY
     outColor=vec4(cabinColor(c.rgb*inColor),c.a);
 #else

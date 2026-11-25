@@ -1268,7 +1268,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             }
             generatedWorld=found->second;
         }
-        const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0;
+        const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0 && !(recordMirror_ && item.firstVertex >= kModelSetVertexBase);
         const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (generatedWorld && !cached ? 96 : uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);
         if (pipelineKey != boundPipeline) {
             vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, generatedWorld && !cached ? stereoWorldPipelines_[which] : uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : recordStereo2D_ ? (hud ? stereo2dCachedHudPipelines_[which] : stereo2dPipelines_[which]) : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
