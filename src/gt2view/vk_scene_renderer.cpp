@@ -629,7 +629,8 @@ void VkSceneRenderer::CreatePipeline() {
     for (auto& write : writes) write.dstSet = mirrorSourceSet_;
     writes[6].pImageInfo = &handInfo;
     writes[9].pImageInfo = &studioInfo;
-    writes[12].pImageInfo = &decodedInfo;
+    // Mirror cars keep their native GT4 materials, including the car environment cube.
+    writes[12].pImageInfo = &nativeEnvInfo;
     vkUpdateDescriptorSets(device_, 15, writes, 0, nullptr);
 
     VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FrameParams)};
@@ -1218,7 +1219,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
             (static_cast<const SceneVertex*>(vertexBuffer_.mapped)[item.firstVertex].flags & kCarPaint);
         bool modelOnly=false;
-        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
+        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kPaintProbeVertexBase && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
             const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
             auto [found,added]=modelRanges_.try_emplace(range,true);
