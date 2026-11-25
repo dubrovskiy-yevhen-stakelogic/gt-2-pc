@@ -26,6 +26,9 @@ vec3 cabinColor(vec3 color) {
 void shadeModel() {
     // Draw Distance: imported cars obey the same far clip as the course.
     if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
+    // Mirror-mask car glass samples the rear-view target. The mirror source pass
+    // cannot sample itself, so draw those surfaces dark instead of the HUD image.
+    if (pc.mirrorView >= 2u && (inFlags & 2097152u) != 0u) { outColor = vec4(.02, .025, .03, 1); return; }
     // Stereo HUD mirrors clip in their own plane; framebuffer scissors cannot
     // follow its per-eye projection. Match the general and cached car shaders.
     if(pc.hudClip.z>pc.hudClip.x && (any(lessThan(inScreen.xy/inScreen.z,pc.hudClip.xy)) ||

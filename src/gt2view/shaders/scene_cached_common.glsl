@@ -43,6 +43,9 @@ vec3 modelColor(vec3 base,vec3 color) {
 void shadeScene() {
     // Draw Distance: the same far clip in the main views, split screen and the rear-view mirror.
     if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
+    // Mirror-mask car glass samples the rear-view target. The mirror source pass
+    // cannot sample itself, so draw those surfaces dark instead of the HUD image.
+    if (pc.mirrorView >= 2u && (inFlags & 2097152u) != 0u) { outColor = vec4(.02, .025, .03, 1); return; }
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
     if (pc.mirrorView < 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;

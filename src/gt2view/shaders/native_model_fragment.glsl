@@ -6,6 +6,7 @@ layout(location=15) flat in vec4 inNativeState;
 layout(location=16) flat in mat3 inNativeEnvironmentBasis;
 vec4 nativeModelColor(vec4 textureColor) {
     vec4 info=inNativeInfo,state=inNativeState;
+    if (pc.mirrorView >= 2u && (inFlags & 2097152u) != 0u) return vec4(.02, .025, .03, 1);
     // Exterior environment coats never acquire an inner-side lining.
     if(int(info.x)==2 && pc.mirrorView < 2u && ((inFlags & 536870912u)!=0u || (!gl_FrontFacing && (inFlags & 134217728u)!=0u)))discard;
     if(state.z>.5 && !gl_FrontFacing && (inFlags & 134217728u)==0u && pc.mirrorView < 2u)discard;
