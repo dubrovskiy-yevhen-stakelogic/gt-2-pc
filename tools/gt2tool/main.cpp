@@ -950,7 +950,7 @@ int CmdEvents(const GtfsVolume& vol, int argc, char** argv) {
 int CmdCarPrices(const GtfsVolume& vol) {
     const CarParamTables tables = CarParamTables::Load(vol);
     const CarInfoDirectory cars = CarInfoDirectory::Load(vol);
-    const std::vector<std::u16string> strings = ParseUniStrDb(vol.Read("carparam/usa_unistrdb.dat"));
+    const std::vector<std::u16string> strings = ParseUniStrDb(vol.Read(RegionalDataPath(vol, "carparam/usa_unistrdb.dat", "carparam/eng_unistrdb.dat")));
     size_t same = 0, stockFailed = 0;
     for (size_t i = 0; i < CarCatalogueCount(tables); i++) {
         const CarCatalogueRow c = CarCatalogueAt(tables, i);
@@ -991,7 +991,7 @@ int CmdCarPrices(const GtfsVolume& vol) {
 
 // menu-data: parses every container of the GT-mode menus and reports the counts.
 int CmdMenuData(const GtfsVolume& vol) {
-    const std::vector<std::u16string> strings = ParseUniStrDb(vol.Read("carparam/usa_unistrdb.dat"));
+    const std::vector<std::u16string> strings = ParseUniStrDb(vol.Read(RegionalDataPath(vol, "carparam/usa_unistrdb.dat", "carparam/eng_unistrdb.dat")));
     std::printf("unistrdb: %zu strings\n", strings.size());
     const CarInfoDirectory cars = CarInfoDirectory::Load(vol);
     const CarColorNames colours = CarColorNames::Load(vol);

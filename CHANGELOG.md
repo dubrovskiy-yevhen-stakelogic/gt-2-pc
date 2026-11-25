@@ -35,6 +35,7 @@
 ### Disc mods, saves and gameplay
 
 - Load A-Spec Simulation/Combined and GT2+ Complete NTSC-U Simulation/Arcade images directly, including US Arcade v1.1. Handle modified volume layouts, menu tables and sparse car-colour data. ([#115])
+- Read the European GT-mode car data (`.carinfoe`, `carparam/eng_*`, `.usedcar`) on PAL discs instead of the US set, so PAL car names, region masks and spec tables match the disc (e.g. Daihatsu Cuore/Sirion and the European Nissan Primera '98). ([#135])
 - Keep retail and mod datasets as separate picker entries with separate saves and settings; compatible standalone and Combined images of the same mod share their memory card. Read save/replay filenames from the disc executable so GT2+ saves can coexist with retail saves. ([#119])
 - Install all prepared retail and mod datasets on Quest without replacing existing saves. Preserve the selected Combined dataset and its cards when switching Arcade/Simulation.
 - Add a Simulation car-damage switch. Record its event-time value with replays so later preference changes do not change replay behaviour. ([#70])

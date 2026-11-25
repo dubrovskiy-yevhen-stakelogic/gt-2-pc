@@ -385,7 +385,7 @@ public:
     // `gtdt` = the decompressed carparam/usa_gtmode_data.dat (the file the record builder used in the attract
     // race: file index 103 of language 1 in the EXE's file table 0x800925A4).
     explicit CarParamTables(std::vector<uint8_t> gtdt);
-    static CarParamTables Load(const GtfsVolume& vol, const std::string& path = "carparam/usa_gtmode_data.dat");
+    static CarParamTables Load(const GtfsVolume& vol, const std::string& path = {});
 
     size_t RowCount(size_t table) const;
     std::span<const uint8_t> Row(size_t table, size_t index) const; // throws std::out_of_range
