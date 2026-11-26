@@ -1312,6 +1312,9 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.stpPass = (mirrorCar && item.blend == kBlendAlpha) ? 0u : item.stpPass;
         const bool sceneLike = i < sceneItems || item.space == kSpaceMenuCar;
         params.options = sceneLike ? sceneOptions : 0u;
+        // The stock reflection pass reads the game's blue chrome env map. In the
+        // mirror that hue repaints car bodies (red reads as pink), so flag it.
+        if (item.blend == kBlendStockSurfaceEnvironment) params.options |= 32u;
         if(sceneLike && nativeCameraActive_)params.options|=16u;
         if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only

@@ -614,6 +614,12 @@ void shadeScene() {
         vec3 c8 = floor(color * 255.0 + 0.5);
         rgb = min(floor(t5 * c8 / 128.0), vec3(31.0)) / 31.0;
     } else if ((inFlags & 2u) == 0u) rgb = min(rgb * color * (255.0 / 128.0), vec3(1.0)); // 0x80 = neutral
+    if (pc.mirrorView >= 2u && (pc.options & 32u) != 0u) {
+        // Stock car reflection (blue chrome env map): keep the light, drop most
+        // of the hue so a red body does not read as pink in the mirror.
+        float l = dot(rgb, vec3(.2126, .7152, .0722));
+        rgb = mix(vec3(l), rgb, .30);
+    }
     outColor = vec4(rgb, 1.0);
 }
 
