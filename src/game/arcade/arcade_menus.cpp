@@ -279,7 +279,9 @@ std::string ArcadeMenuAssets::AnyText(uint32_t address) const {
     if (std::string s = data.Text(address); !s.empty()) return s;
     std::string s;
     if (address >= kGlobalTextAt && address - kGlobalTextAt < globalText.size()) {
-        for (size_t at = address - kGlobalTextAt; at < globalText.size() && globalText[at] != 0; at++) s.push_back(char(globalText[at]));
+        size_t at = address - kGlobalTextAt;
+        while (at > 0 && globalText[at] != 0 && globalText[at - 1] != 0) at--; // back up to the string start
+        for (; at < globalText.size() && globalText[at] != 0; at++) s.push_back(char(globalText[at]));
         return s;
     }
     for (uint32_t at = address; data.ovl2.Contains(at, 1) && data.ovl2.Get<uint8_t>(at) != 0; at++) s.push_back(char(data.ovl2.Get<uint8_t>(at)));

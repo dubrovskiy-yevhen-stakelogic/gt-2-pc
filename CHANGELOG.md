@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add a separate **Mirror Distance** setting. A metre camera/mirror Draw Distance is a hard far clip in that view, with submission culling to the nearest chunk/scenery extent; the PS1 setting keeps the authored camera list and the PS1's ~100 m mirror key. Scenery keeps its authored LOD ladder, the rear-view mirror draws the detailed road (cars no longer clip through the coarse PS1 copy), and imported cars in the mirror use the native model materials. ([#133](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/issues/133))
+- Keep the US Arcade v1.1 menus readable when a mapped label points a few bytes into its string: the text readers back up to the string start. ([#131](https://github.com/dubrovskiy-yevhen-stakelogic/gt-2-pc/issues/131))
 
 ## 1.0.0
 

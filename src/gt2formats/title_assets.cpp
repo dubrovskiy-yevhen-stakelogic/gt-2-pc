@@ -240,10 +240,14 @@ const std::vector<uint8_t>* TitleAssets::Locate(uint32_t address, size_t& at) co
     }
     if (a >= titleTextAt && a - titleTextAt < titleText.size()) {
         at = a - titleTextAt;
+        // A mapped address can point a few bytes into its string when the build re-spaced the block (the v1.1
+        // arcade title showed "ELETE" for "DELETE"): a string starts after a NUL, so back up to that start.
+        while (at > 0 && titleText[at] != 0 && titleText[at - 1] != 0) at--;
         return &titleText;
     }
     if (a >= globalTextAt && a - globalTextAt < globalText.size()) {
         at = a - globalTextAt;
+        while (at > 0 && globalText[at] != 0 && globalText[at - 1] != 0) at--;
         return &globalText;
     }
     return nullptr;
