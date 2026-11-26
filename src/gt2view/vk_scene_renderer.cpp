@@ -1579,6 +1579,25 @@ std::vector<uint8_t> VkSceneRenderer::NativeEnvironmentForAudit() {
     Check(vkQueueSubmit(queue_,1,&submit,fence_),"native environment audit submit");WaitFrame();
     const auto* p=static_cast<const uint8_t*>(readback_.mapped);return {p,p+bytes};
 }
+std::vector<uint8_t> VkSceneRenderer::MirrorForAudit() {
+    WaitFrame();if(!mirrorInitialized_)throw std::runtime_error("mirror not rendered");
+    const size_t bytes=size_t(kMirrorExtent.width)*kMirrorExtent.height*4;
+    if(readback_.size<bytes){DestroyBuffer(readback_);readback_=CreateBuffer(bytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT);}
+    Check(vkResetFences(device_,1,&fence_),"mirror audit fence");
+    Check(vkResetCommandBuffer(cmd_,0),"mirror audit command");
+    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};Check(vkBeginCommandBuffer(cmd_,&begin),"mirror audit begin");
+    Transition(cmd_,mirrorColor_.image,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_ACCESS_SHADER_READ_BIT,VK_ACCESS_TRANSFER_READ_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,1);
+    VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};copy.imageExtent={kMirrorExtent.width,kMirrorExtent.height,1};
+    vkCmdCopyImageToBuffer(cmd_,mirrorColor_.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,readback_.buffer,1,&copy);
+    Transition(cmd_,mirrorColor_.image,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_TRANSFER_READ_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,1);
+    VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;
+    vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
+    Check(vkEndCommandBuffer(cmd_),"mirror audit end");VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&cmd_;
+    Check(vkQueueSubmit(queue_,1,&submit,fence_),"mirror audit submit");WaitFrame();
+    const auto* p=static_cast<const uint8_t*>(readback_.mapped);return {p,p+bytes};
+}
 void VkSceneRenderer::SetNativeSceneLighting(const NativeSceneLighting& light) {
     WriteBuffer(nativeEnvironmentViews_,3*64+16,&light,sizeof(light));
 }

@@ -65,6 +65,9 @@ public:
     void SetNativeSceneLighting(const NativeSceneLighting& light) override;
     const std::vector<uint8_t>& PaintProbeForAudit(int key) const {return paintProbes_.at(key);}
     std::vector<uint8_t> NativeEnvironmentForAudit();
+    // The mirror target of the last Draw/DrawStereo (the VR mirror pass uses the
+    // same one), for hue and coverage audits.
+    std::vector<uint8_t> MirrorForAudit();
     const auto& NativeEnvironmentItemsForAudit() const {return nativeEnvironmentFaces_;}
 
     // If screenshotPath is not empty the presented image is also saved as PNG. items[0, sceneItems) are the scene

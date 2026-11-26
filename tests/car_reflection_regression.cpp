@@ -158,6 +158,42 @@ int main(int argc,char** argv){try{
                 if (!(normalBlue > 0 && mirroredBlue * 2 < normalBlue))
                     throw std::runtime_error("mirror stock reflection keeps its blue hue: " + id);
                 ++cases;
+
+                // The same check through the VR path: DrawStereo records the
+                // kSpaceMirrorSource items into the shared mirror target.
+                auto mirrorPixels = [&](bool reflection, uint32_t reflectionView) {
+                    gt2::carReflections = reflection;
+                    assets.UpdateCarReflection(slot, identity, axes);
+                    std::vector<DrawItem> items;
+                    assets.AppendCarItems(items, slot, vp.data(), 0u, 0u);
+                    for (auto& item : items) {
+                        item.space = kSpaceMirrorSource;
+                        item.mirrorView = 3u;
+                        if (reflection && item.blend == kBlendStockSurfaceEnvironment)
+                            item.mirrorView = reflectionView;
+                    }
+                    renderer.DrawStereo(items, {}, items.size());
+                    return renderer.MirrorForAudit();
+                };
+                const auto mirrorBody = mirrorPixels(false, 3u);
+                const auto mirrorNoTint = mirrorPixels(true, 1u);
+                const auto mirrorTint = mirrorPixels(true, 3u);
+                gt2::carReflections = true;
+                long mirrorNoTintBlue = 0, mirrorTintBlue = 0;
+                size_t mirrorLit = 0;
+                for (size_t pixel = 0; pixel < mirrorBody.size(); pixel += 4) {
+                    const int dr = int(mirrorNoTint[pixel]) - int(mirrorBody[pixel]);
+                    const int db = int(mirrorNoTint[pixel + 2]) - int(mirrorBody[pixel + 2]);
+                    if (dr <= 2 && db <= 2) continue;
+                    ++mirrorLit;
+                    mirrorNoTintBlue += db - dr;
+                    mirrorTintBlue += (int(mirrorTint[pixel + 2]) - int(mirrorBody[pixel + 2])) -
+                                      (int(mirrorTint[pixel]) - int(mirrorBody[pixel]));
+                }
+                if (mirrorLit < 16) throw std::runtime_error("VR mirror check found no reflection pixels: " + id);
+                if (!(mirrorNoTintBlue > 0 && mirrorTintBlue * 2 < mirrorNoTintBlue))
+                    throw std::runtime_error("VR mirror stock reflection keeps its blue hue: " + id);
+                ++cases;
             }
             if(pack.Has(id)) {
                 // Reproduce the reported transition on one loaded slot: a
