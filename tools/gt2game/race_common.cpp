@@ -20,6 +20,7 @@
 #include "gt2formats/car_params.h"
 #include "gt2formats/car_texture.h"
 #include "gt2formats/course_data.h"
+#include "gt2formats/dataset.h"
 #include "gt2formats/exe_profile.h"
 #include "gt2formats/gtmode_tables.h"
 #include "gt2formats/overlay_data.h"
@@ -591,6 +592,9 @@ std::array<uint16_t, 16> PedalTable(const DiscImage& disc) {
 }
 
 std::optional<ReplayFile> ReadDirtGhostFile(const GtfsVolume& vol, char region, char letter, const std::string& course) {
+    // A-Spec 1.2.1 retains the retail input recordings but changes the physics tables: those ghosts leave the
+    // recorded line and do not finish. Keep its previous solo races until compatible recordings are available.
+    if (IdentifyDataset(vol).suffix == "aspec") return std::nullopt;
     const GtfsEntry* entry = vol.Find(std::string("dirt/") + region + letter + "_" + course);
     if (!entry) return std::nullopt;
     return ParseDirtGhostFile(vol.Read(*entry));
@@ -665,7 +669,10 @@ void LoadReplayRace(const DiscImage& disc, const GtfsVolume& vol, const ReplayFi
             const char last = event.empty() ? 0 : event.back();
             if (last >= '1' && last <= '3')
                 try {
-                    if (const std::optional<ReplayFile> ghost = ReadDirtGhostFile(vol, region, char('a' + (last - '1')), course)) {
+                    if (const std::optional<ReplayFile> ghost = ReadDirtGhostFile(vol, region, char('a' + (last - '1')), course);
+                        ghost && ghost->GameMode() == 11 && ghost->cars.size() == 1 && replay.cars.size() > 1 &&
+                        ghost->cars[0].carId == replay.cars[1].carId &&
+                        ghost->cars[0].gridSlot() == replay.cars[1].gridSlot()) {
                         data.ghostStream = ghost->stream;
                         data.shell.pedalTable = PedalTable(disc); // the recorded frames' pedals
                     }

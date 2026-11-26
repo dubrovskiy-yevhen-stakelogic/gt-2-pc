@@ -29,7 +29,6 @@ uint32_t Grey(uint32_t v) { return v | v << 8 | v << 16; }
 
 // ---- the PC SETTINGS page (ours): its rows as choice lists over PcSettings (speed units, graphics).
 constexpr int kPcCaps[] = {0, 30, 60, 120, 144, 165, 240};
-constexpr int kPcScales[] = {50, 75, 100, 125, 150, 200};
 constexpr int kPcOutputs[] = {720, 900, 1080, 0}; // output height; 0 = the display
 constexpr int kPcMsaa[] = {1, 2, 4, 8};
 constexpr int kPcDistances[] = {0, 500, 1000, 2000, -1};

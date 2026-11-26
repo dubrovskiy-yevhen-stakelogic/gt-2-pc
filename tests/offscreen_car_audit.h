@@ -15,6 +15,10 @@ struct Device {
     Device() {
         VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
         app.pApplicationName = "GT2 cockpit corpus"; app.apiVersion = VK_API_VERSION_1_3;
+        if (const char* api = std::getenv("GT2_TEST_VK_API")) {
+            if (std::strcmp(api, "1.1") == 0) app.apiVersion = VK_API_VERSION_1_1;
+            if (std::strcmp(api, "1.2") == 0) app.apiVersion = VK_API_VERSION_1_2;
+        }
         uint32_t instanceExtensionCount = 0;
         Check(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr));
         std::vector<VkExtensionProperties> instanceExtensions(instanceExtensionCount);
@@ -33,7 +37,7 @@ struct Device {
         Check(vkEnumeratePhysicalDevices(existing.instance, &count, devices.data()));
         for (auto device : devices) {
             VkPhysicalDeviceProperties properties; vkGetPhysicalDeviceProperties(device, &properties);
-            if (properties.apiVersion < VK_API_VERSION_1_3) continue;
+            if (properties.apiVersion < app.apiVersion) continue;
             existing.physical = device;
             if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) break;
         }
@@ -50,9 +54,10 @@ struct Device {
         queue.queueFamilyIndex = existing.queueFamily; queue.queueCount = 1; queue.pQueuePriorities = &priority;
         VkPhysicalDeviceVulkan13Features v13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES}; v13.dynamicRendering = VK_TRUE;
         VkPhysicalDeviceMultiviewFeatures multiview{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES};
-        multiview.multiview = VK_TRUE; multiview.pNext = &v13;
+        multiview.multiview = VK_TRUE;
+        if (app.apiVersion >= VK_API_VERSION_1_3) multiview.pNext = &v13;
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR rate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
-        existing.shadingRate = gt2view::ShadingRateFeatures(existing.physical, rate);
+        existing.shadingRate = app.apiVersion >= VK_API_VERSION_1_3 && gt2view::ShadingRateFeatures(existing.physical, rate);
         if (existing.shadingRate) v13.pNext = &rate;
         VkPhysicalDeviceFeatures supported{},features{};
         vkGetPhysicalDeviceFeatures(existing.physical,&supported);
@@ -75,7 +80,7 @@ struct Device {
         if (existing.shadingRate) v13.pNext = &rate;
         Check(vkCreateDevice(existing.physical, &device, nullptr, &existing.device));
         vkGetDeviceQueue(existing.device, existing.queueFamily, 0, &existing.queue);
-        existing.dynamicRendering = true; // this device asks for both features below, unconditionally
+        existing.dynamicRendering = app.apiVersion >= VK_API_VERSION_1_3;
         existing.multiview = true;
     }
     ~Device() {

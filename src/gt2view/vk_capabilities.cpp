@@ -9,6 +9,9 @@
 #include <utility>
 
 #if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #else
 #include <dlfcn.h>
@@ -202,6 +205,7 @@ VulkanCapabilities ProbeVulkan() {
                 VkPhysicalDeviceMemoryProperties2 memory2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2};
                 memory2.pNext = &budget;
                 getMemory2(device, &memory2);
+                gpu.memoryBudgetKnown = true;
                 for (uint32_t i = 0; i < memory2.memoryProperties.memoryHeapCount; i++)
                     if (memory2.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && budget.heapBudget[i] > budget.heapUsage[i])
                         gpu.availableBytes += budget.heapBudget[i] - budget.heapUsage[i];
@@ -214,6 +218,7 @@ VulkanCapabilities ProbeVulkan() {
         if (const char* fake = std::getenv("GT2_FAKE_VIDEO_MIB")) {
             const unsigned long long mib = std::strtoull(fake, nullptr, 10);
             gpu.availableBytes = mib << 20;
+            gpu.memoryBudgetKnown = true;
             gpu.deviceLocalBytes = std::max<uint64_t>(gpu.deviceLocalBytes, mib << 20);
         }
         out.gpus.push_back(std::move(gpu));

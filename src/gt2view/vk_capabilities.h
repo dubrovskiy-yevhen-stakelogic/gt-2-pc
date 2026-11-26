@@ -32,7 +32,8 @@ struct GpuCapability {
     VkPhysicalDeviceType type = VK_PHYSICAL_DEVICE_TYPE_OTHER;
     uint32_t apiVersion = 0, driverVersion = 0;
     uint64_t deviceLocalBytes = 0; // size of the device-local heaps
-    uint64_t availableBytes = 0;   // device-local budget left (VK_EXT_memory_budget); 0 when the driver does not say
+    uint64_t availableBytes = 0;   // device-local budget left (VK_EXT_memory_budget)
+    bool memoryBudgetKnown = false;
     uint32_t maxImageDimension2D = 0;
     bool dynamicRendering = false, multiview = false, swapchain = false;
     GraphicsProfile profile = GraphicsProfile::Unsupported;
@@ -61,7 +62,9 @@ inline uint64_t GraphicsMemoryFloor(uint32_t outputHeight) {
 
 // What the GPU can actually hand out: the budget the driver reports, else the heaps' total (0 = unknown).
 inline uint64_t UsableMemory(const GpuCapability& gpu) {
-    return gpu.availableBytes ? gpu.availableBytes : gpu.deviceLocalBytes;
+    // Policy helpers reserve zero for unknown memory; an exhausted known budget must stay below every floor.
+    return gpu.memoryBudgetKnown ? std::max<uint64_t>(1, gpu.availableBytes)
+                                 : gpu.availableBytes ? gpu.availableBytes : gpu.deviceLocalBytes;
 }
 
 // A decoded cache layer is a 256x256 RGBA page plus its sampled image with 9 mips: ~600 KiB of GPU memory (rounded

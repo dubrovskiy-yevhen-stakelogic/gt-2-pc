@@ -112,6 +112,12 @@ int main() {
     unknown.gpus[0].deviceLocalBytes = 0;
     if (gt2view::GraphicsMemoryTooLow(unknown, 0)) return 30;
 
+    auto exhausted = plenty;
+    exhausted.gpus[0].availableBytes = 0;
+    exhausted.gpus[0].memoryBudgetKnown = true;
+    if (!gt2view::GraphicsMemoryTooLow(exhausted, 720)) return 56;
+    if (gt2view::RecommendedDecodedCacheLayers(gt2view::UsableMemory(exhausted.gpus[0]), 720) != 0) return 57;
+
     // The foveation render pass needs vkCreateRenderPass2: core in 1.2, VK_KHR_create_renderpass2 on 1.1 (the session
     // enables that extension for exactly this, and turns foveation off when the device has neither).
     if (!gt2view::RenderPass2Available(VK_API_VERSION_1_1, true)) return 40;

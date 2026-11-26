@@ -331,9 +331,7 @@ vec3 cabinColor(vec3 color) {
     return color;
 }
 
-#ifndef GT2_WEBGL
 #include "paint_clearcoat.glsl"
-#endif
 vec3 modelColor(vec3 base,vec3 color) {
     if ((inFlags & 268435456u)==0u) return cabinColor(base*color);
     if (!gl_FrontFacing) discard;

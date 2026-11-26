@@ -361,7 +361,7 @@ uint32_t VkSceneRenderer::AdaptiveDecodedLayers() const {
     uint64_t used = 0, budget = 0;
     if (!DeviceMemory(used, budget) || !budget) return DecodedTextureCache::kLayers; // no budget: keep the full cache
     const uint64_t available = budget > used ? budget - used : 0;
-    return gt2view::RecommendedDecodedCacheLayers(available, extent_.height);
+    return available ? gt2view::RecommendedDecodedCacheLayers(available, extent_.height) : 0;
 }
 
 void VkSceneRenderer::SampleDeviceMemory() {
@@ -1046,6 +1046,9 @@ uint32_t VkSceneRenderer::ResolveVertex(uint32_t first, uint32_t count) {
             // The newest block can grow where it is, so chunked uploads stay O(1) instead of copying the run.
             if (run->second.physical + run->second.capacity == vertexUsed_) {
                 uint32_t capacity = (std::max(need, run->second.capacity * 2) + granularity - 1) / granularity * granularity;
+                const uint32_t room = kMaxVertices - (vertexUsed_ - run->second.capacity);
+                capacity = std::min(capacity, room);
+                if (capacity < need) throw std::runtime_error("SetVertices: vertex buffer is full");
                 if (vertexUsed_ - run->second.capacity + capacity > vertexCapacity_)
                     GrowVertexArena(vertexUsed_ - run->second.capacity + capacity);
                 vertexUsed_ += capacity - run->second.capacity;
@@ -1123,6 +1126,7 @@ uint32_t VkSceneRenderer::ResolveVertex(uint32_t first, uint32_t count) {
 
 void VkSceneRenderer::GrowVertexArena(uint32_t vertices) {
     if (vertices <= vertexCapacity_) return;
+    if (vertices > kMaxVertices) throw std::runtime_error("SetVertices: vertex buffer is full");
     const uint32_t capacity = std::min(std::max(vertices, 32768u), kMaxVertices); // content, not slack
     vkDeviceWaitIdle(device_);
     Buffer grownVertex = CreateBuffer(size_t(capacity) * sizeof(SceneVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -1527,7 +1531,7 @@ VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountF
         attachments[count].format = kShadingRateFormat;
         attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
         attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // uploaded once, then read as it is
-        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_STORE; // preserve the map for later frames
         attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;

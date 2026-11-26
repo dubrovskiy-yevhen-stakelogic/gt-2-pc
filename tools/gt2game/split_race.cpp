@@ -812,11 +812,11 @@ SplitRaceResult RunSplitRace(GameWindow& window, Panels* panels, const DiscImage
                 for (size_t car = 0; car < carCount; car++) {
                     if (cam.hideTarget && car == cam.target) continue; // the driver view (0x800140A4: camera + 0x108)
                     if (graphics.drawDistance > 0 && int(car) != cam.target) {
-                        const sim::CarPose p = race.Pose(car);
+                        const sim::CarPose carPose = race.Pose(car);
                         const int32_t carKey = sim::ApproxDistance(
-                            int32_t(uint32_t(p.worldPosition[0]) - uint32_t(cam.view.t[0])),
-                            int32_t(uint32_t(p.worldPosition[1]) - uint32_t(cam.view.t[1])),
-                            int32_t(uint32_t(p.worldPosition[2]) - uint32_t(cam.view.t[2])));
+                            int32_t(uint32_t(carPose.worldPosition[0]) - uint32_t(cam.view.t[0])),
+                            int32_t(uint32_t(carPose.worldPosition[1]) - uint32_t(cam.view.t[1])),
+                            int32_t(uint32_t(carPose.worldPosition[2]) - uint32_t(cam.view.t[2])));
                         if (carKey > int64_t(graphics.drawDistance) * 65536 - 1) continue;
                     }
                     const int slot = slots[size_t(view)][car];

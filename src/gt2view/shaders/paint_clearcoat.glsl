@@ -1,14 +1,15 @@
-// Shared by cached and uncached models; colour contains the authored smooth normal.
-layout(set=0,binding=8) uniform samplerCube paintStudio;
-layout(set=0,binding=9) uniform samplerCube paintCourse;
-layout(set=0,binding=12) uniform sampler2DArray nativeEnvironment;
-layout(set=0,binding=13) uniform NativeEnvironmentViews {mat4 camera[3];vec4 enabled;vec4 lightDirection;vec4 lightAmbient;vec4 lightDiffuse;vec4 lightSpecular;vec4 stockSky;} nativeViews;
 vec3 neutralReflection(vec3 c) {
     // Additive blue light on red paint reads as pink. Keep the light, drop most
     // of the hue so the reflection can brighten a body without repainting it.
     float l=dot(c,vec3(.2126,.7152,.0722));
     return mix(vec3(l),c,.30);
 }
+#ifndef GT2_WEBGL
+// Shared by cached and uncached models; colour contains the authored smooth normal.
+layout(set=0,binding=8) uniform samplerCube paintStudio;
+layout(set=0,binding=9) uniform samplerCube paintCourse;
+layout(set=0,binding=12) uniform sampler2DArray nativeEnvironment;
+layout(set=0,binding=13) uniform NativeEnvironmentViews {mat4 camera[3];vec4 enabled;vec4 lightDirection;vec4 lightAmbient;vec4 lightDiffuse;vec4 lightSpecular;vec4 stockSky;} nativeViews;
 vec3 mirrorSafeEnvironment(vec3 c) {
     if(((pc.options >> 6u) & 3u)<2u)return c;
     // The mirror pass samples the main camera's capture, so its colours are
@@ -64,3 +65,5 @@ vec3 paintClearcoat(vec3 base,vec3 normal,vec3 incident,bool course) {
     vec3 radiance=course?sampleColor:sampleColor*sampleColor*3.0;
     return .125*radiance*(1.0+.75*min(dot(n,v),0.0));
 }
+
+#endif
