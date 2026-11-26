@@ -598,7 +598,9 @@ std::optional<ReplayFile> ReadDirtGhostFile(const GtfsVolume& vol, char region, 
 
 char DirtGhostRegion(const DiscImage& disc) {
     const ExeProfile& profile = ProfileOf(LoadExeImage(disc));
-    return profile.build == ExeBuild::kSimEu || profile.build == ExeBuild::kArcadeEu ? 'e' : 'a';
+    // A European disc's dirt recordings are 25 fps (PAL); the port steps every build at 30 Hz, so they cannot be
+    // played back (the car leaves its recorded line). 0 = no ghost playback on this build.
+    return profile.build == ExeBuild::kSimEu || profile.build == ExeBuild::kArcadeEu ? 0 : 'a';
 }
 
 void LoadReplayRace(const DiscImage& disc, const GtfsVolume& vol, const ReplayFile& replay, RaceData& data, RaceOptions& options) {
@@ -655,17 +657,22 @@ void LoadReplayRace(const DiscImage& disc, const GtfsVolume& vol, const ReplayFi
         data.transmissions.push_back(e.transmission());
     }
     if (replay.GameMode() == 11) { // a rally race: the opponent's input is the disc's ghost recording, not in the replay
-        const std::string event = replay.EventName();
-        const char last = event.empty() ? 0 : event.back();
-        if (last >= '1' && last <= '3')
-            try {
-                if (const std::optional<ReplayFile> ghost = ReadDirtGhostFile(vol, DirtGhostRegion(disc), char('a' + (last - '1')), course)) {
-                    data.ghostStream = ghost->stream;
-                    data.shell.pedalTable = PedalTable(disc); // the recorded frames' pedals
+        const char region = DirtGhostRegion(disc);
+        if (region == 0) {
+            std::printf("replay: dirt ghost: a European build's 25 Hz recording is not played by the 30 Hz simulation; the replay runs without the ghost\n");
+        } else {
+            const std::string event = replay.EventName();
+            const char last = event.empty() ? 0 : event.back();
+            if (last >= '1' && last <= '3')
+                try {
+                    if (const std::optional<ReplayFile> ghost = ReadDirtGhostFile(vol, region, char('a' + (last - '1')), course)) {
+                        data.ghostStream = ghost->stream;
+                        data.shell.pedalTable = PedalTable(disc); // the recorded frames' pedals
+                    }
+                } catch (const std::exception& e) {
+                    std::printf("replay: dirt ghost: %s\n", e.what());
                 }
-            } catch (const std::exception& e) {
-                std::printf("replay: dirt ghost: %s\n", e.what());
-            }
+        }
     }
     options.laps = replay.Laps();
     options.countdown = replay.Countdown() != 0;

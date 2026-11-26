@@ -456,6 +456,16 @@ int main(int argc, char** argv) {
             noCar[0x5A] = 0;
             Check(rejected(noCar), "dirt ghost: no car rejected");
             Check(rejected(std::vector<uint8_t>(bytes.begin(), bytes.begin() + 0x200)), "dirt ghost: short file rejected");
+            std::vector<uint8_t> badSlot = bytes;
+            badSlot[0x5C + 0x8D] = 6; // outside the six-slot grid
+            Check(rejected(badSlot), "dirt ghost: grid slot 6 rejected");
+            std::vector<uint8_t> openStream = bytes;
+            openStream[gt2::kDirtGhostStreamOffset + 0x0C] = 0; // the recording was not ended
+            Check(rejected(openStream), "dirt ghost: an unended stream rejected");
+            std::vector<uint8_t> cutStream = bytes;
+            cutStream[gt2::kDirtGhostStreamOffset + 0x10] = 0x00; // 0x1000 used bytes, past the file's stream data
+            cutStream[gt2::kDirtGhostStreamOffset + 0x11] = 0x10;
+            Check(rejected(cutStream), "dirt ghost: used data outside the file rejected");
         }
         { // a dirt event's ghost (mode 11, pad slot 1): 0x800140A4's look - see-through once the start hold is over, a
           // normal car during it (the recording's own start), per the career's ghost option + 0xB5

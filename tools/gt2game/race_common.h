@@ -88,10 +88,12 @@ struct RaceData {
     std::vector<std::shared_ptr<const gt2::ResolvedCar>> opponentMods;
 };
 
-// A dirt event's ghost recording: GT2.VOL dirt/<region><letter>_<course> (region 'a' on the US builds, 'e' on the EU
-// ones; the letter from the event code's last digit, DO30003 -> 'c'). Null when the disc has no such file; throws when
-// the file is not a readable dirt ghost file.
+// A dirt event's ghost recording: GT2.VOL dirt/<region><letter>_<course> (region 'a' on the builds whose recordings the
+// 30 Hz simulation plays; the letter from the event code's last digit, DO30003 -> 'c'). Null when the disc has no such
+// file; throws when the file is not a readable dirt ghost file.
 std::optional<gt2::ReplayFile> ReadDirtGhostFile(const gt2::GtfsVolume& vol, char region, char letter, const std::string& course);
+// The region of the ghost recordings this build can play ('a'), or 0: a European disc's dirt recordings are 25 fps (PAL)
+// and every build of the port steps at 30 Hz, so they are not played.
 char DirtGhostRegion(const gt2::DiscImage& disc);
 
 // The course-side inputs of the disc-derived race data: the course's .crsinfo entry (index; flags: dirt, point to point)

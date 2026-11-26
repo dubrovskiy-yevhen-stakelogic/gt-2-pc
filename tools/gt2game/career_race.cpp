@@ -106,7 +106,13 @@ struct RallyGhost {
 
 std::optional<RallyGhost> RallyGhostOf(const GtfsVolume& vol, const career::CareerData& data, const RaceEvent& event, uint32_t opponentCarId) {
     if (event.course.empty() || event.course == "none" || event.name.empty()) return std::nullopt;
-    const char region = data.exe.profile && (data.exe.profile->build == ExeBuild::kSimEu || data.exe.profile->build == ExeBuild::kArcadeEu) ? 'e' : 'a';
+    // The European dirt recordings are 25 fps (PAL); every build of the port steps at 30 Hz, so the ghost would be
+    // played 20% fast with the wrong start hold and leave its recorded line. European rally events stay solo.
+    if (data.exe.profile && (data.exe.profile->build == ExeBuild::kSimEu || data.exe.profile->build == ExeBuild::kArcadeEu)) {
+        std::printf("rally ghost: European build (25 Hz recording on a 30 Hz simulation); racing alone\n");
+        return std::nullopt;
+    }
+    const char region = 'a'; // the NTSC recordings the 30 Hz simulation plays
     auto read = [&](char letter) -> std::optional<RallyGhost> {
         try {
             const std::optional<ReplayFile> replay = ReadDirtGhostFile(vol, region, letter, event.course);
@@ -120,6 +126,12 @@ std::optional<RallyGhost> RallyGhostOf(const GtfsVolume& vol, const career::Care
             ghost.gridSlot = replay->cars[0].gridSlot();
             ghost.transmission = replay->cars[0].transmission();
             ghost.stream = replay->stream;
+            // The player starts on grid slot 0: a recording on the same box (or outside the six-slot grid) is not a
+            // start this race can place.
+            if (ghost.gridSlot == 0 || ghost.gridSlot >= kReplayCars) {
+                std::printf("rally ghost: %c_%s grid slot %u (the player starts at 0); racing alone\n", letter, event.course.c_str(), ghost.gridSlot);
+                return std::nullopt;
+            }
             std::printf("rally ghost: %c_%s (car %s, %d frames)\n", letter, event.course.c_str(), UnpackCarId(ghost.carId).c_str(), ReplayStream::FromBytes(ghost.stream).Frames());
             return ghost;
         } catch (const std::exception& e) {
@@ -128,8 +140,18 @@ std::optional<RallyGhost> RallyGhostOf(const GtfsVolume& vol, const career::Care
         }
     };
     const char last = event.name.back();
-    if (last >= '1' && last <= '3') // the event code's last digit names the ghost file's letter
-        if (auto ghost = read(char('a' + (last - '1')))) return ghost;
+    if (last >= '1' && last <= '3') { // the event code's last digit names the ghost file's letter
+        const char letter = char('a' + (last - '1'));
+        if (auto ghost = read(letter)) {
+            // The race builds the ghost from the event row, so the recording must be of that car.
+            if (ghost->carId != opponentCarId) {
+                std::printf("rally ghost: %c_%s records %s, the event opponent is %s; racing alone\n", letter, event.course.c_str(),
+                            UnpackCarId(ghost->carId).c_str(), UnpackCarId(opponentCarId).c_str());
+                return std::nullopt;
+            }
+            return ghost;
+        }
+    }
     // A renamed event / a modded row: only a recording of this event's opponent on the course.
     for (char letter : {'a', 'b', 'c'})
         if (auto ghost = read(letter); ghost && ghost->carId == opponentCarId) return ghost;
@@ -179,7 +201,7 @@ std::unique_ptr<EventPlan> PrepareEvent(const DiscImage& disc, const GtfsVolume&
             plan->ghostGridSlot = ghost->gridSlot;
             plan->ghostTransmission = ghost->transmission;
         } else {
-            std::printf("rally: no ghost file for %s on %s; racing alone\n", event.name.c_str(), event.course.c_str());
+            std::printf("rally: no playable ghost for %s on %s; racing alone\n", event.name.c_str(), event.course.c_str());
         }
     }
     plan->firstCourse = EventCourse(menu, event, seed);

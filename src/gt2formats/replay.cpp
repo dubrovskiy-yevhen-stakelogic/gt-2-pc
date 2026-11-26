@@ -336,15 +336,21 @@ ReplayFile ParseDirtGhostFile(std::span<const uint8_t> bytes) {
     if (bytes.size() < kReplayRaceBlockSize + size_t(r.CarCount()) * kReplayCarStride) throw std::runtime_error("dirt ghost: car slots outside the file");
     const size_t streamStart = kDirtGhostStreamOffset;
     if (bytes.size() < streamStart + ReplayStream::kHeaderSize) throw std::runtime_error("dirt ghost: no stream");
-    uint16_t capacity;
+    uint16_t capacity, used;
     std::memcpy(&capacity, bytes.data() + streamStart + 0x12, 2);
+    std::memcpy(&used, bytes.data() + streamStart + 0x10, 2);
     int32_t frames;
     std::memcpy(&frames, bytes.data() + streamStart, 4);
+    const int16_t ended = int16_t(bytes[streamStart + 0x0C] | bytes[streamStart + 0x0D] << 8);
     if (capacity == 0 || frames <= 0) throw std::runtime_error("dirt ghost: the stream has no frames");
+    if (ended == 0) throw std::runtime_error("dirt ghost: the stream was not ended");
+    if (used > capacity) throw std::runtime_error("dirt ghost: stream length " + std::to_string(used) + " over its capacity");
+    if (bytes.size() < streamStart + ReplayStream::kHeaderSize + used) throw std::runtime_error("dirt ghost: the stream data is outside the file");
     for (size_t i = 0; i < r.CarCount(); i++) {
         ReplayEntry e;
         std::memcpy(e.slot.data(), bytes.data() + kReplayRaceBlockSize + i * kReplayCarStride, kReplayCarStride);
         std::memcpy(&e.carId, e.slot.data(), 4);
+        if (e.gridSlot() >= kReplayCars) throw std::runtime_error("dirt ghost: grid slot " + std::to_string(e.gridSlot()));
         r.cars.push_back(e);
     }
     // The stream object as the ram image holds it (header + data area, capacity 0x4400 for player 1's stream).
