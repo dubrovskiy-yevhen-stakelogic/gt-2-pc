@@ -702,6 +702,16 @@ int main(int argc, char** argv) {
             std::memcpy(revisionMenu.text.data() + 0x162, "Max Speed", 10); // v1.1 address of the reference 0x800F8334
             Check(revisionMenu.LegacyText(0x800F8334u) == "Max Speed", "v1.1 arcade text map");
             Check(revisionMenu.Text(0x800F83F2u) == "Max Speed", "v1.1 arcade text base");
+            std::memcpy(revisionMenu.text.data() + 0x100, "Weight Reduction", 17);
+            Check(revisionMenu.Text(0x800F8290u + 0x103u) == "Weight Reduction", "v1.1 text inside a string backs up to its start");
+            Check(revisionMenu.Text(0x800F8290u + 0x100u) == "Weight Reduction", "v1.1 text at a string start is unchanged");
+        }
+        { // the arcade title's blocks drift the same way (reference addresses land a few bytes into the string)
+            gt2::TitleAssets title;
+            title.titleTextAt = 0x801B9330u;
+            title.titleText = {'D', 'E', 'L', 'E', 'T', 'E', 0, 'O', 'P', 'T', 'I', 'O', 'N', 'S', 0};
+            Check(title.Text(0x801B9333u) == "DELETE", "title text inside a string backs up to its start");
+            Check(title.Text(0x801B9337u) == "OPTIONS", "title text at a string start is unchanged");
         }
         { // 0x8005F7C8: retail reads the upgrade slots only; GT2+'s fix also counts the stock kit (stage 0, not the
           // NA dummy row 0), and belongs to the GT2+ executable alone.

@@ -85,8 +85,15 @@ std::string ArcadeMenuData::LegacyText(uint32_t address) const {
 
 std::string ArcadeMenuData::Text(uint32_t address) const {
     if (address < textBase || address - textBase >= text.size()) return {};
+    size_t at = address - textBase;
+    // Another build's block keeps the same labels but re-spaces some of them, so a mapped reference address can
+    // point a few bytes into its string (the reported v1.1 menus showed "eight Reduction" for "Weight Reduction").
+    // A string starts after a NUL: back up over the characters of the one the address landed in.
+    // shortcut: a drift longer than the label lands in another string; verifying the facts of
+    // db/arcade_us11_rev1_symbols.yaml against a real disc retires this.
+    while (at > 0 && text[at] != 0 && text[at - 1] != 0) at--;
     std::string s;
-    for (size_t at = address - textBase; at < text.size() && text[at] != 0; at++) s.push_back(char(text[at]));
+    for (; at < text.size() && text[at] != 0; at++) s.push_back(char(text[at]));
     return s;
 }
 
