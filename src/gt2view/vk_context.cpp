@@ -4,6 +4,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -44,7 +45,8 @@ VkContext::VkContext(void* instanceHandle, void* window) : window_(window) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(pd, &props);
         if (props.apiVersion < VK_API_VERSION_1_1) continue;
-        const VkDeviceFeatures features = QueryDeviceFeatures(pd, props.apiVersion);
+        // The GPU may be newer than the instance (an old loader): only what the instance supports can be enabled.
+        const VkDeviceFeatures features = QueryDeviceFeatures(pd, std::min(props.apiVersion, app.apiVersion));
         uint32_t qn = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(pd, &qn, nullptr);
         std::vector<VkQueueFamilyProperties> qs(qn);

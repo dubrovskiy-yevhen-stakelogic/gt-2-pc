@@ -184,25 +184,28 @@ private:
     // The swapchain image `imageIndex` with the window's depth buffer, as a target for BeginTargetRendering.
     RenderTarget WindowTarget(uint32_t imageIndex) const;
     // What a recorded pass needs beyond the target: resolve attachment, a colour-only MSAA pass, clear value,
-    // stereo foveation. The 1.3 path maps this to VkRenderingAttachmentInfo, the fallback to a render pass.
+    // stereo foveation, and the single-sample stereo depth OpenXR copies to the compositor.
+    // The 1.3 path maps this to VkRenderingAttachmentInfo, the fallback to a render pass.
     struct PassOptions {
         VkAttachmentLoadOp colorLoad = VK_ATTACHMENT_LOAD_OP_CLEAR;
         VkImageView resolveView = VK_NULL_HANDLE;
         bool discardColor = false;    // the MSAA colour is only the resolve source
         bool transparentClear = false;
         bool shadingRate = false;     // stereo: per-eye foveation attachment
+        bool storeDepth = false;      // single-sample stereo depth is read after the pass (OpenXR depth layer)
     };
     // Begins dynamic rendering or, on Vulkan 1.1/1.2, an equivalent render pass into `target`.
     void BeginTargetRendering(const RenderTarget& target, const PassOptions& options);
     void EndTargetRendering();
     void BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options);
     VkRenderPass GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
-                               VkAttachmentLoadOp colorLoad, VkImageView rateView = VK_NULL_HANDLE);
+                               VkAttachmentLoadOp colorLoad, bool discardColor, bool storeDepth,
+                               VkImageView rateView = VK_NULL_HANDLE);
     void DestroyFramebuffers();
     bool useDynamicRendering_ = false;
     // Render passes are shared by every pipeline/framebuffer of the same attachment set; framebuffers are rebuilt
     // whenever an image view is destroyed.
-    std::map<std::array<uint64_t, 6>, VkRenderPass> renderPasses_;
+    std::map<std::array<uint64_t, 8>, VkRenderPass> renderPasses_;
     std::map<std::array<uint64_t, 5>, VkFramebuffer> framebuffers_;
     void DrawScenePass(const std::vector<DrawItem>& items, size_t sceneItems, uint32_t imageIndex);
     void FinishFrame(uint32_t imageIndex, const std::string& screenshotPath); // capture, present

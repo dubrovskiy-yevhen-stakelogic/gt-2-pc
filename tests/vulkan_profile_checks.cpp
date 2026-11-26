@@ -28,11 +28,11 @@ int main() {
     // A 1.3 device without the dynamic-rendering feature still falls back to render passes.
     if (ChooseGraphicsProfile(VK_API_VERSION_1_3, false) != GraphicsProfile::Compatibility) return 4;
     if (ChooseGraphicsProfile(VK_API_VERSION_1_3, true) != GraphicsProfile::Standard) return 5;
-    if (ChooseGraphicsProfile(VK_API_VERSION_1_4, true) != GraphicsProfile::Standard) return 6;
+    if (ChooseGraphicsProfile(VK_MAKE_API_VERSION(0, 1, 4, 0), true) != GraphicsProfile::Standard) return 6;
     // The dynamic-rendering feature itself only exists from Vulkan 1.3.
     if (ChooseGraphicsProfile(VK_API_VERSION_1_1, true) != GraphicsProfile::Compatibility) return 7;
     if (ChooseGraphicsProfile(VK_API_VERSION_1_0, true) != GraphicsProfile::Unsupported) return 8;
-    if (ChooseGraphicsProfile(VK_API_VERSION_1_4, false) != GraphicsProfile::Compatibility) return 9;
+    if (ChooseGraphicsProfile(VK_MAKE_API_VERSION(0, 1, 4, 0), false) != GraphicsProfile::Compatibility) return 9;
 
     // GT2_VK_RENDERPASS=1 is what makes the fallback testable on a 1.3 GPU; only the exact value 1 opts in.
     SetEnv("GT2_VK_RENDERPASS", "1");

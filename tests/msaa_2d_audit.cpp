@@ -8,7 +8,13 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
+#include <string>
 #include <vector>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 using namespace gt2view;
 
@@ -69,6 +75,15 @@ size_t CountDifferences(const Frame& a, const Frame& b, int x0, int y0, int x1, 
             for (int c = 0; c < 3; ++c)
                 n += a.At(size_t(x), size_t(y), c) != b.At(size_t(x), size_t(y), c) ? 1 : 0;
     return n;
+}
+
+// The two ctest entries run the same executable: keep their screenshots apart.
+std::string ProcessSuffix() {
+#ifdef _WIN32
+    return std::to_string(_getpid());
+#else
+    return std::to_string(getpid());
+#endif
 }
 } // namespace
 
@@ -152,8 +167,9 @@ int main() {
         // The window path (one target, viewMask 0) - the fallback's most common pass, which the stereo-only frame
         // above does not reach. GT2_VK_RENDERPASS=1 records it through render passes, 1.3 through dynamic rendering.
         const auto dir = std::filesystem::temp_directory_path();
-        const Frame singleOne = RenderSingleTarget(renderer, items, 2, extent, 1, dir / "gt2-msaa-single-1x.png");
-        const Frame singleEight = RenderSingleTarget(renderer, items, 2, extent, 8, dir / "gt2-msaa-single-8x.png");
+        const auto prefix = dir / ("gt2-msaa-" + ProcessSuffix());
+        const Frame singleOne = RenderSingleTarget(renderer, items, 2, extent, 1, prefix.string() + "-single-1x.png");
+        const Frame singleEight = RenderSingleTarget(renderer, items, 2, extent, 8, prefix.string() + "-single-8x.png");
         const size_t singleHud = CountDifferences(singleOne, singleEight, hudX0, hudY0, hudX1, hudY1);
         const size_t singleScene = CountDifferences(singleOne, singleEight, sceneX0, sceneY0, sceneX1, sceneY1);
         std::printf("msaa_2d_audit: single-target HUD bbox changed %zu, scene bbox changed %zu\n", singleHud, singleScene);

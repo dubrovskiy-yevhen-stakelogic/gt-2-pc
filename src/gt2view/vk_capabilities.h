@@ -29,7 +29,7 @@ inline const char* GraphicsProfileName(GraphicsProfile profile) {
 struct GpuCapability {
     std::string name;
     VkPhysicalDeviceType type = VK_PHYSICAL_DEVICE_TYPE_OTHER;
-    uint32_t apiVersion = 0, driverVersion = 0, vendorID = 0, deviceID = 0;
+    uint32_t apiVersion = 0, driverVersion = 0;
     uint64_t deviceLocalBytes = 0;
     uint32_t maxImageDimension2D = 0;
     bool dynamicRendering = false, multiview = false, swapchain = false;

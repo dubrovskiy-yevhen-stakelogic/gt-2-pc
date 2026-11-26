@@ -2,6 +2,7 @@
 // machine where the game's own Vulkan imports cannot be resolved.
 #include "gt2view/vk_capabilities.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -165,8 +166,6 @@ VulkanCapabilities ProbeVulkan() {
         gpu.type = properties.deviceType;
         gpu.apiVersion = properties.apiVersion;
         gpu.driverVersion = properties.driverVersion;
-        gpu.vendorID = properties.vendorID;
-        gpu.deviceID = properties.deviceID;
         gpu.maxImageDimension2D = properties.limits.maxImageDimension2D;
         if (getMemory) {
             VkPhysicalDeviceMemoryProperties memory{};
@@ -191,7 +190,8 @@ VulkanCapabilities ProbeVulkan() {
             if (count) enumerateDeviceExtensions(device, nullptr, &count, deviceExtensions.data());
             gpu.swapchain = HasExtension(deviceExtensions.data(), count, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         }
-        gpu.profile = ChooseGraphicsProfile(gpu.apiVersion, gpu.dynamicRendering);
+        // The GPU version can exceed the instance's (an old loader); the renderer can only use the lower of the two.
+        gpu.profile = ChooseGraphicsProfile(std::min(gpu.apiVersion, app.apiVersion), gpu.dynamicRendering);
         out.gpus.push_back(std::move(gpu));
     }
     return out;

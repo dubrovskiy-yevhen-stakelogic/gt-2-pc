@@ -56,7 +56,8 @@ VkContext::VkContext(void*, void* window) : window_(window) {
             VkPhysicalDeviceProperties properties{};
             vkGetPhysicalDeviceProperties(pd, &properties);
             if (properties.apiVersion < VK_API_VERSION_1_1) continue;
-            const VkDeviceFeatures features = QueryDeviceFeatures(pd, properties.apiVersion);
+            // The GPU may be newer than the instance (an old loader): only what the instance supports can be enabled.
+            const VkDeviceFeatures features = QueryDeviceFeatures(pd, std::min(properties.apiVersion, app.apiVersion));
             uint32_t n = 0;
             Check(vkEnumerateDeviceExtensionProperties(pd, nullptr, &n, nullptr), "device extensions");
             std::vector<VkExtensionProperties> devExtensions(n);

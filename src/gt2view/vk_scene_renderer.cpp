@@ -782,7 +782,8 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
         // Vulkan 1.1/1.2: the pipeline names the render pass whose attachments it was built for. MSAA pipelines
         // always draw into the multisampled attachment that is resolved at the end of the pass.
         gpi.renderPass = GetRenderPass(stereo ? stereoFormat_ : colorFormat_, samples, samples != VK_SAMPLE_COUNT_1_BIT, viewMask,
-                                       VK_ATTACHMENT_LOAD_OP_CLEAR, stereo && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE);
+                                       VK_ATTACHMENT_LOAD_OP_CLEAR, samples != VK_SAMPLE_COUNT_1_BIT, false,
+                                       stereo && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE);
     } else if (stereo && context_.ShadingRate()) {
         rendering.pNext = &rateState;
         gpi.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
@@ -1114,7 +1115,7 @@ void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, const Pas
     depth.imageView = target.depthView;
     depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth.storeOp = options.storeDepth ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depth.clearValue.depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
     VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
     ri.renderArea = {{0, 0}, target.extent};
@@ -1147,8 +1148,9 @@ void VkSceneRenderer::DestroyFramebuffers() {
 // already transitions every image to its attachment layout, so the pass uses the attachment layouts as both its
 // initial and final layout - the same state dynamic rendering leaves behind and the next transition expects.
 VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
-                                            VkAttachmentLoadOp colorLoad, VkImageView rateView) {
-    const std::array<uint64_t, 6> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad), HandleBits(rateView)};
+                                            VkAttachmentLoadOp colorLoad, bool discardColor, bool storeDepth, VkImageView rateView) {
+    const std::array<uint64_t, 8> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad),
+                                      discardColor ? 1u : 0u, storeDepth ? 1u : 0u, HandleBits(rateView)};
     const auto found = renderPasses_.find(key);
     if (found != renderPasses_.end()) return found->second;
     // Attachment order everywhere in the renderer: colour, resolve (if any), depth, shading-rate map (if any).
@@ -1158,7 +1160,7 @@ VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountF
     attachments[count].format = colorFormat;
     attachments[count].samples = samples;
     attachments[count].loadOp = colorLoad;
-    attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[count].storeOp = discardColor ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
     attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1179,7 +1181,7 @@ VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountF
     attachments[count].format = kDepthFormat;
     attachments[count].samples = samples;
     attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].storeOp = storeDepth ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1274,7 +1276,8 @@ void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const Pa
     const bool resolve = options.resolveView != VK_NULL_HANDLE;
     // Foveation is an attachment here; the same 1-layer map is used by both eyes of a multiview pass.
     const VkImageView rateView = options.shadingRate && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE;
-    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad, rateView);
+    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad,
+                                      options.discardColor, options.storeDepth, rateView);
     const std::array<uint64_t, 5> fbKey{HandleBits(pass), HandleBits(target.colorView), HandleBits(target.depthView),
                                         HandleBits(options.resolveView), HandleBits(rateView)};
     VkFramebuffer framebuffer = framebuffers_[fbKey];
@@ -2063,7 +2066,7 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     target.viewMask = all ? 0x3u : 0u;
     const VkAttachmentLoadOp colorLoad = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     BeginTargetRendering(target, {colorLoad, msaa ? (all ? colorTarget.view : colorTarget.layer[eye]) : VK_NULL_HANDLE,
-                                  msaa, false, rateImage_.image != VK_NULL_HANDLE});
+                                  msaa, false, rateImage_.image != VK_NULL_HANDLE, !hudPass && !msaa});
     recordEye_ = uint32_t(eye);
     recordLayers_ = 1;
     recordStereo_ = true;
