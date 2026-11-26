@@ -11,6 +11,12 @@
 
 namespace gt2 {
 
+bool EuropeanData(const GtfsVolume& vol) { return vol.Find("gtmenu/eng/gtmenudat.idx") != nullptr; }
+
+std::string RegionalDataPath(const GtfsVolume& vol, std::string_view usa, std::string_view europe) {
+    return std::string(EuropeanData(vol) ? europe : usa);
+}
+
 namespace {
 
 uint16_t U16(std::span<const uint8_t> b, size_t o) {
@@ -77,7 +83,9 @@ CarInfoDirectory::CarInfoDirectory(std::vector<uint8_t> data) {
     }
 }
 
-CarInfoDirectory CarInfoDirectory::Load(const GtfsVolume& vol, const std::string& path) { return CarInfoDirectory(vol.Read(path)); }
+CarInfoDirectory CarInfoDirectory::Load(const GtfsVolume& vol, const std::string& path) {
+    return CarInfoDirectory(vol.Read(path.empty() ? RegionalDataPath(vol, ".carinfoa", ".carinfoe") : path));
+}
 
 const CarInfoRecord& CarInfoDirectory::At(size_t index) const {
     const auto& original=records_.at(index);
@@ -149,7 +157,9 @@ UsedCarLists::UsedCarLists(std::vector<uint8_t> data) : data_(std::move(data)) {
     }
 }
 
-UsedCarLists UsedCarLists::Load(const GtfsVolume& vol, const std::string& path) { return UsedCarLists(vol.Read(path)); }
+UsedCarLists UsedCarLists::Load(const GtfsVolume& vol, const std::string& path) {
+    return UsedCarLists(vol.Read(path.empty() ? RegionalDataPath(vol, ".usedcar_usa", ".usedcar") : path));
+}
 
 std::vector<UsedCarEntry> UsedCarLists::List(size_t period, size_t maker) const {
     if (period >= kUsedCarPeriodCount || maker >= kUsedCarMakerCount) throw std::out_of_range("usedcar: period / maker");
@@ -330,7 +340,9 @@ GtModeRaceData::GtModeRaceData(std::vector<uint8_t> gtdt) : file_(std::move(gtdt
     }
 }
 
-GtModeRaceData GtModeRaceData::Load(const GtfsVolume& vol, const std::string& path) { return GtModeRaceData(vol.Read(path)); }
+GtModeRaceData GtModeRaceData::Load(const GtfsVolume& vol, const std::string& path) {
+    return GtModeRaceData(vol.Read(path.empty() ? RegionalDataPath(vol, "carparam/usa_gtmode_race.dat", "carparam/eng_gtmode_race.dat") : path));
+}
 
 size_t GtModeRaceData::EventCount() const { return file_.Entry(kRaceEventTable).size / kRaceEventRowSize; }
 size_t GtModeRaceData::OpponentCount() const { return file_.Entry(kOpponentTable).size / kOpponentRowSize; }

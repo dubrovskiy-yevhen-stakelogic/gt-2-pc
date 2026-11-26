@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "gt2formats/course_data.h"
+#include "gt2formats/exe_profile.h"
 #include "gt2formats/overlay_data.h"
 #include "gt2formats/save_ids.h"
 #include "gt2vfs/disc_image.h"
@@ -36,6 +37,8 @@ NewGameDefaults ReadNewGameDefaults(const GuestImage& exe, uint16_t courseCount)
     for (size_t t = 0; t < 4; t++) std::memcpy(d.buttonTables[t].data(), exe.At(exe.Sim(kTables[t]), 11), 11);
     std::memcpy(d.padConfig.data(), exe.At(exe.Sim(0x800A6ED8u), 20), 20);
     d.courseCount = courseCount;
+    const ExeProfile& profile = ProfileOf(exe);
+    d.language = (profile.build == ExeBuild::kSimEu || profile.build == ExeBuild::kArcadeEu) ? uint8_t(2) : uint8_t(1);
     return d;
 }
 
@@ -93,7 +96,7 @@ void InitNewCareer(CareerState& s, GarageBlock* guestGarage, const NewGameDefaul
     b[0xB1] = 1;
     b[0xB2] = 1;
     b[0xB5] = 1;
-    b[0x00] = 1; // language: USA
+    b[0x00] = d.language; // language: USA on a US build, English on a European one
     b[0xAE] = 0;
     b[0xAF] = 0;
     b[0x02] = 0;

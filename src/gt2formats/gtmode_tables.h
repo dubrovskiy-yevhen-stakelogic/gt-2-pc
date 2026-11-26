@@ -14,6 +14,7 @@
 #include <map>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -22,6 +23,12 @@
 namespace gt2 {
 
 class GtfsVolume;
+
+// A European pressing ships the English GT-mode tables (gtmenu/eng, no gtmenu/usa); the US pressings ship the
+// "usa" ones. The table layouts are identical, only the car names / masks and the string pools differ.
+bool EuropeanData(const GtfsVolume& vol);
+// `usa` on a US pressing, `europe` on a European one.
+std::string RegionalDataPath(const GtfsVolume& vol, std::string_view usa, std::string_view europe);
 
 // The shell's language byte 0x801C98E0 (column index of the EXE file table 0x800925A4: 0 = jpn / unprefixed, 1 =
 // usa, 2 = eng, 3 = fra, 4 = ger, 5 = ita, 6 = spa). The US disc runs with 1.
@@ -53,7 +60,7 @@ class CarInfoDirectory {
 public:
     // `data` = .carinfoa (the US EXE loads file 1 = /.carinfoa: 0x800609F8).
     explicit CarInfoDirectory(std::vector<uint8_t> data);
-    static CarInfoDirectory Load(const GtfsVolume& vol, const std::string& path = ".carinfoa");
+    static CarInfoDirectory Load(const GtfsVolume& vol, const std::string& path = {});
     size_t Count() const { return records_.size(); }
     // Identity/region queries do not need native paint materials. In particular,
     // building a name list must not inflate every GT4 car's paint catalogue.
@@ -87,7 +94,7 @@ struct UsedCarEntry {
 class UsedCarLists {
 public:
     explicit UsedCarLists(std::vector<uint8_t> data);
-    static UsedCarLists Load(const GtfsVolume& vol, const std::string& path = ".usedcar_usa");
+    static UsedCarLists Load(const GtfsVolume& vol, const std::string& path = {});
     // The list as stored (sorted by price).
     std::vector<UsedCarEntry> List(size_t period, size_t maker) const;
     // The list as the lot shows it: List() without the cars hidden in `language` (0x800224E0's filter).
@@ -245,7 +252,7 @@ RaceEvent ParseRaceEvent(std::span<const uint8_t> row, const std::vector<std::st
 class GtModeRaceData {
 public:
     explicit GtModeRaceData(std::vector<uint8_t> gtdt);
-    static GtModeRaceData Load(const GtfsVolume& vol, const std::string& path = "carparam/usa_gtmode_race.dat");
+    static GtModeRaceData Load(const GtfsVolume& vol, const std::string& path = {});
 
     const std::vector<std::string>& Names() const { return names_; }
     size_t EventCount() const;

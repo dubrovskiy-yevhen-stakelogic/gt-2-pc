@@ -12,6 +12,13 @@ Additional regional differences handled by the loaders:
 - Embedded text members are located by their gzip member names.
 - European Arcade English menu/global text has different string offsets and block sizes. The offset-only maps in `arcade_eu_text.inc` and the UI profile contain no text payload. Course dimensions use the European metric format.
 - GT menu resources use `gtmenu/eng` when `gtmenu/usa` is absent.
+- GT-mode car data uses the English set (`.carinfoe`, `carparam/eng_gtmode_data.dat`, `eng_gtmode_race.dat`,
+  `eng_unistrdb.dat`, `.usedcar`) when the volume ships `gtmenu/eng`; the US set otherwise. Car names, region
+  masks and spec tables differ between the two (e.g. the European `Daihatsu Cuore` / `Sirion` are `Mira` /
+  `Storia` in the US tables, and the European `Nissan Primera '98` is not in `usa_gtmode_data.dat`).
+- Arcade and licence data use `carparam/eng_arcade_data.dat` / `eng_license_data.dat` on the same discs. A new
+  career stores language 2 (English), so the used-car and event region masks use the European bits; a US build
+  keeps language 1 (USA). Careers created before this change keep the saved byte.
 - The European music table has 21 entries. Its final marker extends two padding sectors beyond the ISO file length; playback is bounded by the actual file size.
 - Movie/preview VLC tables have explicit mapped bases, checked for equality and through actual frame decoding. Invalid zero-length VLC entries are rejected instead of looping indefinitely.
 - Attract playback loads the European demo resource by name.

@@ -38,7 +38,9 @@ ArcadeData::ArcadeData(std::vector<uint8_t> gtdt) : tables_(gtdt), file_(std::mo
             throw std::runtime_error("arcade data: player car tables 32 / 33 list different cars");
 }
 
-ArcadeData ArcadeData::Load(const GtfsVolume& vol, const std::string& path) { return ArcadeData(vol.Read(path)); }
+ArcadeData ArcadeData::Load(const GtfsVolume& vol, const std::string& path) {
+    return ArcadeData(vol.Read(path.empty() ? RegionalDataPath(vol, "carparam/usa_arcade_data.dat", "carparam/eng_arcade_data.dat") : path));
+}
 
 size_t ArcadeData::EventCount() const { return file_.Entry(kArcadeEventTable).size / kRaceEventRowSize; }
 

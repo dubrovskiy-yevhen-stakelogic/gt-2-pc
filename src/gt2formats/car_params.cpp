@@ -5,6 +5,7 @@
 
 #include "gt2vfs/gtfs.h"
 #include "gt2formats/car_info.h"
+#include "gt2formats/gtmode_tables.h"
 
 // The original builder (0x80077214) runs a list of (part kind, row, mapping table) entries through a small
 // interpreter (0x80077634) whose entries are { dst offset, src offset, element size x count, op } with the ops
@@ -169,7 +170,9 @@ CarParamTables::CarParamTables(std::vector<uint8_t> gtdt) : file_(std::move(gtdt
     if (file_.EntryCount() / 2 < kCarParamTableCount) throw std::runtime_error("car params: not a car parameter file (too few tables)");
 }
 
-CarParamTables CarParamTables::Load(const GtfsVolume& vol, const std::string& path) { return CarParamTables(vol.Read(path)); }
+CarParamTables CarParamTables::Load(const GtfsVolume& vol, const std::string& path) {
+    return CarParamTables(vol.Read(path.empty() ? RegionalDataPath(vol, "carparam/usa_gtmode_data.dat", "carparam/eng_gtmode_data.dat") : path));
+}
 
 size_t CarParamTables::RowCount(size_t table) const {
     if (table >= kCarParamTableCount) throw std::out_of_range("car params: table index");

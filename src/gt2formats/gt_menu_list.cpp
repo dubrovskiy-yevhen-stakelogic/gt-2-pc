@@ -449,7 +449,7 @@ std::vector<MenuUsedCarRow> MenuUsedCarRows(const UsedCarLists& lots, const CarI
 }
 
 MenuListNames MenuListNames::Load(const GtfsVolume& vol, const GuestImage& ovl4) {
-    MenuListNames n{CarInfoDirectory::Load(vol), CarParamTables::Load(vol), ParseUniStrDb(vol.Read("carparam/usa_unistrdb.dat")), {}, {}};
+    MenuListNames n{CarInfoDirectory::Load(vol), CarParamTables::Load(vol), ParseUniStrDb(vol.Read(RegionalDataPath(vol, "carparam/usa_unistrdb.dat", "carparam/eng_unistrdb.dat"))), {}, {}};
     n.noName = WideAt(ovl4, kNoName);
     n.racingPrefix = WideAt(ovl4, kRacingPrefix);
     return n;

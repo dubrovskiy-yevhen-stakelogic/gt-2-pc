@@ -111,7 +111,7 @@ MenuData MenuData::Load(const DiscImage& disc, const GtfsVolume& vol) {
     d.career.strict = false; // the game takes the native approximations the career model names (garage.h)
     d.events = career::EventMenuData::Load(d.career.ovl4);
     d.eventInfos = career::BuildEventInfos(d.career, d.events);
-    d.strings = ParseUniStrDb(vol.Read("carparam/usa_unistrdb.dat"));
+    d.strings = ParseUniStrDb(vol.Read(RegionalDataPath(vol, "carparam/usa_unistrdb.dat", "carparam/eng_unistrdb.dat")));
     d.colours = std::make_unique<CarColorNames>(CarColorNames::Load(vol));
     const GuestImage& o4 = d.career.ovl4;
     for (uint32_t a = kUnqualifiedList;; a += 4) {
