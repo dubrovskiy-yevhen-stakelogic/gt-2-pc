@@ -50,7 +50,8 @@ layout(push_constant) uniform Push {
     uint paint;
     uint brakeLit;
     uint stpPass; // DrawItem::stpPass
-    uint options; // 1 smooth textures, 2 affine mapping (scene items only; 0 = the PS1's nearest texel, perspective-correct)
+    uint options; // 1 smooth textures, 2 affine mapping; 32 stock reflection hue limit (mirror cars only)
+                  // (0 = the PS1's nearest texel, perspective-correct)
     uint space;
     uint eye;
     float farClip;
@@ -561,7 +562,11 @@ void shadeScene() {
         outColor = vec4(vec3(float(px & 31u), float((px >> 5) & 31u), float((px >> 10) & 31u)) / 31.0, 1.0);
         return;
     }
-    if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) return;
+    if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) {
+        // The decoded smooth path returns before the per-texel tint below.
+        if ((pc.options & 32u) != 0u) outColor.rgb = mirrorSafeEnvironment(outColor.rgb);
+        return;
+    }
     uvec2 t = uvec2(clamp(ivec2(floor(texelCoord)), ivec2(0), ivec2(255)));
     if ((inFlags & 32768u) != 0u) t = uvec2(clamp(ivec2(t), ivec2(floor(inRect.xy)), ivec2(max(ceil(inRect.zw) - 1.0, floor(inRect.xy)))));
     uint clutX = inClut & 0xFFFFu, clutY = inClut >> 16;
@@ -614,12 +619,9 @@ void shadeScene() {
         vec3 c8 = floor(color * 255.0 + 0.5);
         rgb = min(floor(t5 * c8 / 128.0), vec3(31.0)) / 31.0;
     } else if ((inFlags & 2u) == 0u) rgb = min(rgb * color * (255.0 / 128.0), vec3(1.0)); // 0x80 = neutral
-    if (pc.mirrorView >= 2u && (pc.options & 32u) != 0u) {
-        // Stock car reflection (blue chrome env map): keep the light, drop most
-        // of the hue so a red body does not read as pink in the mirror.
-        float l = dot(rgb, vec3(.2126, .7152, .0722));
-        rgb = mix(vec3(l), rgb, .30);
-    }
+    // Stock car reflection (blue chrome env map): keep the light, drop most of
+    // the hue so a red body does not read as pink in the mirror.
+    if ((pc.options & 32u) != 0u) rgb = mirrorSafeEnvironment(rgb);
     outColor = vec4(rgb, 1.0);
 }
 

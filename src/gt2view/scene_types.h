@@ -189,6 +189,8 @@ struct FrameParams {
 };
 static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 128);
 constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2, kOptionMipmaps = 8;
+// Mirror cars keep the stock reflection's light but only part of its hue (scene.frag).
+constexpr uint32_t kOptionMirrorStockReflection = 32;
 
 // The two eyes of one stereo frame (docs/research/vr_port_plan.md, M2; src/platform/xr/vr_rig.h builds them). The
 // renderer uploads them into a uniform buffer the stereo vertex shader indexes by gl_ViewIndex (multiview) or by the

@@ -124,6 +124,41 @@ int main(int argc,char** argv){try{
                     gt2::WritePngRgba((out/(stem+"-full.png")).string(),size,size*2,full);
                 }
             }
+            if (!cockpit) {
+                // The mirror pass must keep the stock reflection's light but
+                // only part of its hue: the blue chrome map must not turn red
+                // paint pink. Compare the added colour with and without
+                // DrawItem::mirrorView.
+                gt2::modernCarReflections = false;
+                gt2::carReflections = true;
+                assets.UpdateCarReflection(slot, identity, axes);
+                auto reflected = draws();
+                for (auto& item : reflected)
+                    if (item.blend == kBlendStockSurfaceEnvironment) item.mirrorView = 3u;
+                renderer.EnableDecodedTextures(false); // the mirror uses the general shader
+                const auto normal = capture(draws(), vp);
+                const auto mirrored = capture(reflected, vp);
+                gt2::carReflections = false;
+                assets.UpdateCarReflection(slot, identity, axes);
+                const auto plain = capture(draws(), vp);
+                renderer.EnableDecodedTextures(true);
+                gt2::carReflections = true;
+                long normalBlue = 0, mirroredBlue = 0;
+                size_t lit = 0;
+                for (size_t pixel = 0; pixel < normal.size(); pixel += 4) {
+                    const int dr = int(normal[pixel]) - int(plain[pixel]);
+                    const int db = int(normal[pixel + 2]) - int(plain[pixel + 2]);
+                    if (dr <= 2 && db <= 2) continue;
+                    ++lit;
+                    normalBlue += db - dr;
+                    mirroredBlue += (int(mirrored[pixel + 2]) - int(plain[pixel + 2])) -
+                                    (int(mirrored[pixel]) - int(plain[pixel]));
+                }
+                if (lit < 64) throw std::runtime_error("mirror reflection check found no reflection pixels: " + id);
+                if (!(normalBlue > 0 && mirroredBlue * 2 < normalBlue))
+                    throw std::runtime_error("mirror stock reflection keeps its blue hue: " + id);
+                ++cases;
+            }
             if(pack.Has(id)) {
                 // Reproduce the reported transition on one loaded slot: a
                 // GT4-only colour survives returning to the original model.
