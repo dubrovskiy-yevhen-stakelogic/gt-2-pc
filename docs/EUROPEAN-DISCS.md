@@ -19,6 +19,9 @@ Additional regional differences handled by the loaders:
 - Arcade and licence data use `carparam/eng_arcade_data.dat` / `eng_license_data.dat` on the same discs. A new
   career stores language 2 (English), so the used-car and event region masks use the European bits; a US build
   keeps language 1 (USA). Careers created before this change keep the saved byte.
+- The dirt ghost recordings behind the GT-mode rally events (`dirt/e<letter>_<course>`) are 25 fps in the PAL layout; the
+  fixed 30 Hz simulation cannot play them back (the car leaves its recorded line), so European rally events race solo.
+  The NTSC `dirt/a<letter>_<course>` recordings are played against the recorded opponent.
 - The European music table has 21 entries. Its final marker extends two padding sectors beyond the ISO file length; playback is bounded by the actual file size.
 - Movie/preview VLC tables have explicit mapped bases, checked for equality and through actual frame decoding. Invalid zero-length VLC entries are rejected instead of looping indefinitely.
 - Attract playback loads the European demo resource by name.

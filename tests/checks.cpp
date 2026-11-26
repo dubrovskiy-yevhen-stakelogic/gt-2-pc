@@ -1,4 +1,5 @@
 #include "gt2formats/replay.h"
+#include "gt2formats/car_info.h"
 #include "gt2formats/track.h"
 #include "gt2formats/boot_images.h"
 #include "gt2formats/overlay_data.h"
@@ -12,6 +13,7 @@
 #include "game/menu/menu_runtime.h"
 #include "game/shell/title_attract.h"
 #include "game/sim/ground.h"
+#include "game/sim/race_shell.h"
 #include "game/sim/disc_data.h"
 #include "game/arcade/arcade_setup.h"
 #include "game/pc_features.h"
@@ -464,6 +466,69 @@ int main(int argc, char** argv) {
             Check(!replay.SimulationDamage(), "licence replay ignores Simulation damage marker");
             replay.raceBlock[0xA] = 2; replay.raceBlock[9] = 0;
             Check(!replay.SimulationDamage(), "Arcade replay keeps original damage rules");
+        }
+        { // a dirt event's ghost file (gt2formats/replay.h ParseDirtGhostFile): a RAM image of the race overlay from 0x801D585C
+            std::vector<uint8_t> bytes(0x1200, 0);
+            const uint32_t carId = gt2::PackCarId("goasr");
+            bytes[0xA] = 11;   // game mode
+            bytes[0xD] = 1;    // countdown
+            bytes[0xF] = 1;    // laps
+            bytes[0x5A] = 1;   // one car
+            std::memcpy(bytes.data() + 0x5C, &carId, 4);
+            bytes[0x5C + 0x8D] = 1; // grid slot
+            bytes[0x5C + 0x8E] = 3; // the recorded driver's entry kind
+            gt2::ReplayStream stream;
+            stream.Init(false, gt2::ReplayStream::kPlayerCapacity);
+            gt2::ReplayFrame frame{};
+            frame.buttons = 4; // throttle
+            for (int i = 0; i < 5; i++) stream.Record(frame);
+            stream.End(false);
+            std::memcpy(bytes.data() + gt2::kDirtGhostStreamOffset, stream.Bytes().data(),
+                        std::min(stream.Bytes().size(), bytes.size() - gt2::kDirtGhostStreamOffset));
+            const gt2::ReplayFile ghost = gt2::ParseDirtGhostFile(bytes);
+            Check(ghost.GameMode() == 11 && ghost.Laps() == 1 && ghost.Countdown() == 1, "dirt ghost: race block");
+            Check(ghost.cars.size() == 1 && ghost.cars[0].carId == carId, "dirt ghost: the recorded car slot");
+            Check(ghost.cars[0].gridSlot() == 1 && ghost.cars[0].kind() == 3, "dirt ghost: the recorded grid slot and entry");
+            Check(gt2::ReplayStream::FromBytes(ghost.stream).Frames() == 5, "dirt ghost: the recorded stream");
+            auto rejected = [](std::vector<uint8_t> b) {
+                try { gt2::ParseDirtGhostFile(b); } catch (const std::exception&) { return true; }
+                return false;
+            };
+            std::vector<uint8_t> noCar = bytes;
+            noCar[0x5A] = 0;
+            Check(rejected(noCar), "dirt ghost: no car rejected");
+            Check(rejected(std::vector<uint8_t>(bytes.begin(), bytes.begin() + 0x200)), "dirt ghost: short file rejected");
+            std::vector<uint8_t> badSlot = bytes;
+            badSlot[0x5C + 0x8D] = 6; // outside the six-slot grid
+            Check(rejected(badSlot), "dirt ghost: grid slot 6 rejected");
+            std::vector<uint8_t> openStream = bytes;
+            openStream[gt2::kDirtGhostStreamOffset + 0x0C] = 0; // the recording was not ended
+            Check(rejected(openStream), "dirt ghost: an unended stream rejected");
+            std::vector<uint8_t> cutStream = bytes;
+            cutStream[gt2::kDirtGhostStreamOffset + 0x10] = 0x00; // 0x1000 used bytes, past the file's stream data
+            cutStream[gt2::kDirtGhostStreamOffset + 0x11] = 0x10;
+            Check(rejected(cutStream), "dirt ghost: used data outside the file rejected");
+        }
+        { // a dirt event's ghost (mode 11, pad slot 1): 0x800140A4's look - see-through once the start hold is over, a
+          // normal car during it (the recording's own start), per the career's ghost option + 0xB5
+            gt2::sim::CarDrawInputs in;
+            in.padSlot = 1;
+            in.gameMode = 11;
+            in.ghostOption = 1; // Type1
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: see-through after the start");
+            in.hold = 180;
+            Check(gt2::sim::CarDrawRule(in).group != gt2::sim::kCarDrawGhostLook, "rally ghost: normal car during the start hold");
+            in.hold = 0;
+            in.ghostOption = 2; // Type2: the ghost look only within 3 m
+            in.dx = 0x40000;
+            Check(gt2::sim::CarDrawRule(in).group != gt2::sim::kCarDrawGhostLook, "rally ghost: Type2 normal when far");
+            in.dx = 0;
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: Type2 see-through up close");
+            in.dx = 0x40000;
+            in.ghostOption = 0; // "No Ghost": not drawn in mode 6, the ghost look in another mode
+            Check(gt2::sim::CarDrawRule(in).group == gt2::sim::kCarDrawGhostLook, "rally ghost: No Ghost in mode 11");
+            in.ghostToggle = 0; // Select
+            Check(!gt2::sim::CarDrawRule(in).drawn, "rally ghost: Select hides it");
         }
         for (uint8_t speed : std::array<uint8_t, 3>{0, 80, 100}) {
             const auto shell = gt2::sim::EventRaceShell(speed);

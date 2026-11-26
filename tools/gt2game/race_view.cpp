@@ -1620,16 +1620,15 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             frozen = false;
         }
         const camera::RaceCamera& cam = frozen ? frozenCam : camLive;
-
-        // Game mode 6: what 0x800140A4 reads for the ghost (car 1) in this frame, `c` = the pass's camera (race_shell.h CarDrawRule).
+        // What 0x800140A4 reads for the ghost (car 1) in this frame, `c` = the pass's camera (race_shell.h CarDrawRule): the
+        // Time Trial's lap ring (mode 6) or a dirt event's recorded opponent (mode 11).
         auto ghostDrawInputs = [&](const camera::RaceCamera& c, bool mirror) {
             sim::CarDrawInputs in;
             const sim::Car& ghostCar = race.CarAt(1);
-            const sim::GhostSession& g = race.Ghost();
             in.mirror = mirror;
             in.viewCar = c.target == 1;
             in.viewCarHidden = c.hideTarget != 0;
-            in.noLap = g.ghostPresent ? 0 : g.ghostStreamOwned; // car + 0x0F: 0x800133F0 clears it while car + 0x0E (a lap) is set
+            if (race.HasGhost()) in.noLap = race.Ghost().ghostPresent ? 0 : race.Ghost().ghostStreamOwned; // car + 0x0F
             in.padSlot = ghostCar.padSlot;
             const sim::CarPose p = race.Pose(1); // car + 0x830: the blended display pose (0x8003F2F0)
             in.dx = int32_t(uint32_t(p.worldPosition[0]) - uint32_t(c.view.t[0]));
@@ -1835,7 +1834,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             if (i == localCar) continue;
             if (int(i) == hiddenCar) continue;
             bool ghostLook = false;
-            if (i == 1 && race.HasGhost()) { // game mode 6: 0x800140A4's rule for the ghost (hidden / its glass look / normal)
+            if (i == 1 && (race.HasGhost() || race.HasRallyGhost())) { // 0x800140A4: hidden / the ghost look / a normal car
                 const sim::CarDrawMode m = sim::CarDrawRule(ghostDrawInputs(cam, false));
                 if (!m.drawn) continue;
                 ghostLook = m.group == sim::kCarDrawGhostLook;
@@ -1942,7 +1941,7 @@ RaceViewResult RunRaceView(GameWindow& window, Panels* panels, const DiscImage& 
             const size_t firstCar = items.size();
             for (size_t i = 0; i < race.CarCount() && i < data.carIds.size(); i++) {
                 if (int(i) == hiddenCar) continue;
-                if (i == 1 && race.HasGhost() && !sim::CarDrawRule(ghostDrawInputs(mirrorCam, true)).drawn) continue; // 0x800140A4 in the mirror's pass
+                if (i == 1 && (race.HasGhost() || race.HasRallyGhost()) && !sim::CarDrawRule(ghostDrawInputs(mirrorCam, true)).drawn) continue; // 0x800140A4 in the mirror's pass
                 const int slot = i == localCar ? carSlot : assets.UseCar(data.carIds[i], "race:"+std::to_string(i)+":"+data.carIds[i]);
                 if (slot < 0) continue;
                 float mirrorModel[16], carMirrorMvp[16];

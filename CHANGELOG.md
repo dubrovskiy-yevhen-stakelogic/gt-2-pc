@@ -47,6 +47,7 @@
 - Add replay input-display front-wheel indicators and preserve their original pixel-aligned, nearest-filtered graphics. ([#72], [#92])
 - Prevent P from skipping an event race's finish and result handling. ([#82])
 - Add disc-aware GT2+ turbo-section and power-unit behaviour: Auto follows the loaded disc, with Turbo Auto/On/Off and Power Auto/hp/PS overrides. Retail and A-Spec keep stock defaults; physics and saves keep their native units. ([#116], [#127])
+- Race GT-mode rally events against their opponent instead of alone: each event's recorded ghost lap from the disc's `dirt/` files drives the opponent car from its recorded grid slot, and the event is ranked against it. Rally races run in the original's game mode 11 with the RALLY post-race menu, the opponent uses the original's see-through ghost look once the race starts, and it reproduces its recorded lap time exactly. A European disc's dirt recordings are 25 fps (PAL) and are not played by the fixed 30 Hz simulation, so its rally events stay solo.
 
 ### Menus, graphics, audio and controls
 

@@ -67,6 +67,9 @@ struct RaceData {
     uint16_t dirtLevel = 0; // race block + 0x58 (0x801D58B4): player 1's dirt at the start (sim::RaceSlot::dirtLevel; a replay's)
     int8_t handicap = 0;    // race block + 6 (0x801D5862): the 2 player Battle's Handicap Start (sim::HandicapGridOffset)
     std::vector<gt2::CarConfig> configs;     // each slot's configuration (a saved replay's car slots)
+    // A dirt event's ghost opponent (game mode 11): the recorded lap of the event's first opponent, as the dirt ghost
+    // file holds it (gt2formats/replay.h ParseDirtGhostFile). Car 1 is driven by this stream; empty = no ghost.
+    std::vector<uint8_t> ghostStream;
     std::shared_ptr<const gt2::LicenseTest> replayLicense; // a licence replay's test (RaceOptions::license points here)
     int courseIndex = -1;                    // .crsinfo entry of the track
     std::string trackName;                   // crsobj/<name>.tro
@@ -84,6 +87,14 @@ struct RaceData {
     // --mods with --ai-cars: the mod car of each AI slot (index = race slot; null / missing = a disc car). Slot 0 is `mod`.
     std::vector<std::shared_ptr<const gt2::ResolvedCar>> opponentMods;
 };
+
+// A dirt event's ghost recording: GT2.VOL dirt/<region><letter>_<course> (region 'a' on the builds whose recordings the
+// 30 Hz simulation plays; the letter from the event code's last digit, DO30003 -> 'c'). Null when the disc has no such
+// file; throws when the file is not a readable dirt ghost file.
+std::optional<gt2::ReplayFile> ReadDirtGhostFile(const gt2::GtfsVolume& vol, char region, char letter, const std::string& course);
+// The region of the ghost recordings this build can play ('a'), or 0: a European disc's dirt recordings are 25 fps (PAL)
+// and every build of the port steps at 30 Hz, so they are not played.
+char DirtGhostRegion(const gt2::DiscImage& disc);
 
 // The course-side inputs of the disc-derived race data: the course's .crsinfo entry (index; flags: dirt, point to point)
 // and its race data (start lines, race lists). A disc course: from .crsinfo and the .tro; a mod course: from its file.

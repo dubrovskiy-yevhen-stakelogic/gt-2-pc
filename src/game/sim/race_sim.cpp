@@ -278,6 +278,7 @@ void RaceSim::Setup(const Track& track, const CourseExtras& extras, const SimCon
     const bool mode6 = constants_.gameMode == 6;
     const bool demo = constants_.flag800A951C != 0;
     ghost_ = nullptr;
+    rallyGhostPlay_ = false;
     ghostDisplayValid_ = false;
     playerFrameNoted_ = false;
     pedalTable_ = shellOptions.pedalTable;
@@ -746,10 +747,16 @@ void RaceSim::Step(const PadRecord* pads, const uint32_t* buttons) {
     const int count = int(cars_.size());
     PadRecord padCopy[kMaxCars] = {};
     const bool ghost = HasGhost();
-    if (padSource_ || ghost) { // 0x8003C250 per car inside the physics core (see SetPadSource)
+    const bool rallyGhost = HasRallyGhost() && count > 1;
+    if (padSource_ || ghost || rallyGhost) { // 0x8003C250 per car inside the physics core (see SetPadSource)
         for (int car = 0; car < count && pads; car++) padCopy[car] = pads[car];
         playerFrameNoted_ = false;
         if (padSource_) padSource_(padSourceUser_, *this, padCopy);
+        if (rallyGhost) { // car 1: the recorded dirt-event opponent, one frame per step from the race start
+            ReplayFrame frame;
+            rallyGhost_.Read(frame);
+            padCopy[1] = rallyGhost_.Ended() ? PadRecord{} : PadOfFrame(frame, pedalTable_);
+        }
         pads = padCopy;
     }
     if (ghost) {
@@ -852,6 +859,14 @@ CarPose VisualPoseOf(const CarBody& body) {
 CarPose RaceSim::Pose(size_t car) const {
     if (car == 1 && ghostDisplayValid_ && HasGhost()) return PhysicsPoseOf(ghostDisplay_.body); // the ghost's blended pose (0x8003F2F0)
     return PhysicsPoseOf(cars_[car].body);
+}
+
+void RaceSim::SetRallyGhost(std::span<const uint8_t> stream) {
+    // The recording starts at its race's first step, like a saved replay: one frame per step from here, the start hold's
+    // frames included (they set the car's launch state in the physics core even while the cars are held).
+    rallyGhost_ = ReplayStream::FromBytes(stream);
+    rallyGhost_.Init(true, ReplayStream::kPlayerCapacity); // playback from the first recorded frame (0x800163B8)
+    rallyGhostPlay_ = true;
 }
 
 void RaceSim::NotePlayerFrame(const ReplayFrame& frame) {
