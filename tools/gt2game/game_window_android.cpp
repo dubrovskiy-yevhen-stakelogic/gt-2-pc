@@ -284,7 +284,7 @@ AndroidWindow::AndroidWindow(const std::string& title, bool deterministic) : det
     std::printf("xr: cinema quad %dx%d (%s)\n", kCinemaWidth, kCinemaHeight, title.c_str());
 
     const gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
-                                                session_->Queue(), session_->Info().shadingRate, session_->Info().astcTextures};
+                                                session_->Queue(), info.shadingRate, info.dynamicRendering, info.multiview, info.astcTextures};
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(session_->PhysicalDevice(), &props);

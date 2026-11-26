@@ -3,9 +3,18 @@
 // the 2D triangle's edge must stay byte-identical.
 #include "offscreen_car_audit.h"
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2formats/png_reader.h"
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <memory>
+#include <string>
 #include <vector>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 using namespace gt2view;
 
@@ -42,6 +51,23 @@ Frame Render(VkSceneRenderer& renderer, const std::vector<DrawItem>& items, size
     return f;
 }
 
+Frame RenderSingleTarget(VkSceneRenderer& renderer, const std::vector<DrawItem>& items, size_t sceneItems,
+                         const VkExtent2D extent, uint32_t samples, const std::filesystem::path& path) {
+    RenderOptions options;
+    options.msaa = samples;
+    renderer.SetOptions(options);
+    renderer.Draw(items, path.string(), sceneItems);
+    renderer.WaitFrame();
+    const auto png = gt2::ReadPngFile(path.string());
+    if (png.width != int(extent.width) || png.height != int(extent.height))
+        throw std::runtime_error("single-target capture has an unexpected size");
+    Frame f;
+    f.width = size_t(png.width);
+    f.height = size_t(png.height);
+    f.eye = png.rgba;
+    return f;
+}
+
 size_t CountDifferences(const Frame& a, const Frame& b, int x0, int y0, int x1, int y1) {
     size_t n = 0;
     for (int y = y0; y < y1; ++y)
@@ -50,12 +76,27 @@ size_t CountDifferences(const Frame& a, const Frame& b, int x0, int y0, int x1, 
                 n += a.At(size_t(x), size_t(y), c) != b.At(size_t(x), size_t(y), c) ? 1 : 0;
     return n;
 }
+
+// The two ctest entries run the same executable: keep their screenshots apart.
+std::string ProcessSuffix() {
+#ifdef _WIN32
+    return std::to_string(_getpid());
+#else
+    return std::to_string(getpid());
+#endif
+}
 } // namespace
 
 int main() {
+    std::unique_ptr<Device> device;
     try {
-        Device device;
-        VkContext context(device.existing);
+        device = std::make_unique<Device>();
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "msaa_2d_audit skipped: %s\n", e.what());
+        return 0; // no Vulkan 1.3 device on this machine
+    }
+    try {
+        VkContext context(device->existing);
         const VkExtent2D extent{320, 240};
         VkSceneRenderer renderer(context, extent, VK_FORMAT_R8G8B8A8_UNORM);
         renderer.EnableDecodedTextures(false);
@@ -122,6 +163,37 @@ int main() {
         if (sceneDiff == 0) {
             std::fprintf(stderr, "FAIL: 3D scene did not change between MSAA 1x and 8x\n");
             return 1;
+        }
+        // The window path (one target, viewMask 0) - the fallback's most common pass, which the stereo-only frame
+        // above does not reach. GT2_VK_RENDERPASS=1 records it through render passes, 1.3 through dynamic rendering.
+        const auto dir = std::filesystem::temp_directory_path();
+        const auto prefix = dir / ("gt2-msaa-" + ProcessSuffix());
+        const Frame singleOne = RenderSingleTarget(renderer, items, 2, extent, 1, prefix.string() + "-single-1x.png");
+        const Frame singleEight = RenderSingleTarget(renderer, items, 2, extent, 8, prefix.string() + "-single-8x.png");
+        const size_t singleHud = CountDifferences(singleOne, singleEight, hudX0, hudY0, hudX1, hudY1);
+        const size_t singleScene = CountDifferences(singleOne, singleEight, sceneX0, sceneY0, sceneX1, sceneY1);
+        std::printf("msaa_2d_audit: single-target HUD bbox changed %zu, scene bbox changed %zu\n", singleHud, singleScene);
+        if (singleHud != 0) {
+            std::fprintf(stderr, "FAIL: 2D HUD changed between MSAA 1x and 8x on the single target (%zu channels)\n", singleHud);
+            return 2;
+        }
+        if (singleScene == 0) {
+            std::fprintf(stderr, "FAIL: 3D scene did not change between MSAA 1x and 8x on the single target\n");
+            return 3;
+        }
+        // Foveation on the fallback path: the rate map is a render-pass attachment declared in a VkSubpassDescription2,
+        // so this needs VK_KHR_fragment_shading_rate on the GPU. GT2_VK_RENDERPASS=1 forces the render passes on a 1.3
+        // GPU, which is how this is testable without a 1.1 one; the frame must record without a pass/pipeline mismatch.
+        if (device->existing.shadingRate) {
+            // Set the intended 4x configuration first: the preceding render left the renderer at 8x, where some GPUs
+            // do not support the 2x2 rate tile, and SetFoveation creates the map against the current sample count.
+            Render(renderer, items, 2, extent, 4);
+            renderer.SetFoveation(2);
+            if (renderer.Foveation() != 2) throw std::runtime_error("foveation did not create the shading-rate map");
+            Render(renderer, items, 2, extent, 4);
+            std::printf("msaa_2d_audit: foveated stereo frame rendered (%s)\n",
+                        context.DynamicRendering() ? "dynamic rendering" : "render passes");
+            renderer.SetFoveation(0); // Back to the default so the pipeline-reuse check below starts from a known state.
         }
         // A menu car uses the same HUD plane as screen items, including the clip rectangle.
         // Shift that plane like a moving head: a framebuffer scissor must not cut the car.

@@ -35,6 +35,8 @@
 
 #include "platform/xr/xr_session.h"
 #include "gt2view/shading_rate.h"
+#include "gt2view/vk_capabilities.h"
+#include "gt2view/vk_context.h"
 #include "platform/xr/xr_actions.h"
 
 #include <algorithm>
@@ -393,7 +395,19 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     appInfo.pApplicationName = options_.appName.c_str();
     appInfo.pEngineName = "gt2pc";
-    appInfo.apiVersion = VK_API_VERSION_1_3; // the renderer needs dynamic rendering
+    // The runtime names the Vulkan versions it accepts: take the newest that it and the loader both offer. 1.3 gives
+    // the renderer dynamic rendering, 1.1/1.2 the render-pass fallback (multiview is core in 1.1, so stereo works).
+    // XrVersion and VkVersion encode differently (major<<48 vs major<<22), so convert before comparing.
+    const auto vulkanVersionOf = [](XrVersion version) {
+        return VK_MAKE_API_VERSION(0, XR_VERSION_MAJOR(version), XR_VERSION_MINOR(version), 0);
+    };
+    const uint32_t maxApiVersion = vulkanVersionOf(requirements.maxApiVersionSupported);
+    if (maxApiVersion < VK_API_VERSION_1_1)
+        throw std::runtime_error("OpenXR: the runtime accepts no Vulkan newer than " + std::to_string(VK_API_VERSION_MAJOR(maxApiVersion)) + "." +
+                                 std::to_string(VK_API_VERSION_MINOR(maxApiVersion)) + ", but the renderer needs 1.1 or newer");
+    const uint32_t minVersion = std::max(vulkanVersionOf(requirements.minApiVersionSupported), uint32_t(VK_API_VERSION_1_1));
+    const uint32_t vulkanVersion = std::min(std::max(gt2view::RequestedInstanceApiVersion(), minVersion), maxApiVersion);
+    appInfo.apiVersion = vulkanVersion;
     VkInstanceCreateInfo vici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     vici.pApplicationInfo = &appInfo;
     vici.enabledLayerCount = uint32_t(layers.size());
@@ -439,11 +453,25 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     qci.queueFamilyIndex = vkQueueFamily_;
     qci.queueCount = 1;
     qci.pQueuePriorities = &priority;
+    // The path comes from what this device can actually do, by the same rule as the window path: 1.3 with dynamic
+    // rendering, otherwise render passes. A runtime may offer no more than the version above, so the lower of the two.
+    VkPhysicalDeviceProperties vkProps{};
+    vkGetPhysicalDeviceProperties(vkPhysical_, &vkProps);
+    const uint32_t deviceVersion = std::min(vulkanVersion, vkProps.apiVersion);
+    const gt2view::VkDeviceFeatures deviceFeatures = gt2view::QueryDeviceFeatures(vkPhysical_, deviceVersion);
+    const bool dynamicRendering =
+        gt2view::ChooseGraphicsProfile(deviceVersion, deviceFeatures.dynamicRendering) == gt2view::GraphicsProfile::Standard;
+    info_.vulkanApiVersion = deviceVersion;
+    info_.dynamicRendering = dynamicRendering;
+    info_.multiview = deviceFeatures.multiview;
+    std::printf("xr: Vulkan %u.%u %s, multiview %s\n", VK_API_VERSION_MAJOR(deviceVersion), VK_API_VERSION_MINOR(deviceVersion),
+                dynamicRendering ? "dynamic rendering" : "render passes", deviceFeatures.multiview ? "yes" : "no");
+    if (!deviceFeatures.multiview) throw std::runtime_error("OpenXR: the runtime's GPU has no multiview, which the stereo view needs");
+
     VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    f13.dynamicRendering = VK_TRUE;
+    f13.dynamicRendering = dynamicRendering ? VK_TRUE : VK_FALSE;
     VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    f11.multiview = VK_TRUE; // stereo array target
-    f11.pNext = &f13;
+    f11.multiview = deviceFeatures.multiview ? VK_TRUE : VK_FALSE; // stereo array target
     VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     features.pNext = &f11;
     VkPhysicalDeviceFeatures supportedFeatures{};
@@ -454,11 +482,24 @@ Session::Session(const SessionOptions& options) : impl_(std::make_unique<Impl>()
     if (options_.mirrorWindow) deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRate{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR};
 #ifdef __ANDROID__
+    // Foveation is a shading-rate attachment: the dynamic-rendering path takes it as a struct member, the render-pass
+    // path declares it on a 1.2+ device or with VK_KHR_create_renderpass2 on a 1.1 device.
     info_.shadingRate = gt2view::ShadingRateFeatures(vkPhysical_, shadingRate);
+    if (info_.shadingRate && !gt2view::RenderPass2Available(deviceVersion, gt2view::HasDeviceExtension(vkPhysical_, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME))) {
+        info_.shadingRate = false;
+        std::printf("xr: foveation off: no vkCreateRenderPass2 on this Vulkan %u.%u device\n", VK_API_VERSION_MAJOR(deviceVersion),
+                    VK_API_VERSION_MINOR(deviceVersion));
+    }
 #endif
-    if (info_.shadingRate) {
-        deviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-        f13.pNext = &shadingRate;
+    if (info_.shadingRate) deviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+    if (info_.shadingRate && deviceVersion < VK_API_VERSION_1_2) deviceExtensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+    // VkPhysicalDeviceVulkan13Features may only be chained on a 1.3 instance and device; the shading-rate struct can
+    // sit anywhere in the chain.
+    if (dynamicRendering) {
+        f11.pNext = &f13;
+        if (info_.shadingRate) f13.pNext = &shadingRate;
+    } else if (info_.shadingRate) {
+        f11.pNext = &shadingRate;
     }
     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     dci.pNext = &features;

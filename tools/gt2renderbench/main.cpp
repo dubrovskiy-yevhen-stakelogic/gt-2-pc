@@ -64,6 +64,7 @@ struct Device {
         VkDeviceCreateInfo dc{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
         if (e.shadingRate) { dc.enabledExtensionCount = 1; dc.ppEnabledExtensionNames = &rateExtension; } dc.pNext = &mv; dc.queueCreateInfoCount = 1; dc.pQueueCreateInfos = &qi;
         Check(vkCreateDevice(e.physical, &dc, nullptr, &e.device)); vkGetDeviceQueue(e.device, e.queueFamily, 0, &e.queue);
+        e.dynamicRendering = true; e.multiview = true; // the device above asks for both features
     }
 };
 int main(int argc, char** argv) {

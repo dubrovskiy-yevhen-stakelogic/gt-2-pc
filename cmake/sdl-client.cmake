@@ -18,7 +18,7 @@ foreach(shader scene.vert scene_environment.vert scene.frag scene_cached.frag sc
 endforeach()
 include(cmake/stereo-shaders.cmake)
 add_library(gt2vk STATIC
-  src/gt2view/vk_context_sdl.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp
+  src/gt2view/vk_context_sdl.cpp src/gt2view/vk_capabilities.cpp src/gt2view/vk_scene_renderer.cpp src/gt2view/render_capture.cpp
   src/gt2view/decoded_textures.cpp src/gt2view/hd_ui.cpp src/gt2view/stereo_foveation.cpp
   src/gt2view/hud.cpp src/gt2view/particles.cpp src/gt2view/procedural_cockpit.cpp
   src/gt2view/glow.cpp src/gt2view/menu_view.cpp src/gt2view/title_view.cpp
@@ -56,4 +56,6 @@ if(BUILD_TESTING)
   if(NOT APPLE)
     add_test(NAME msaa_2d_audit COMMAND gt2msaa2daudit)
   endif()
+  add_test(NAME msaa_2d_audit_compatibility COMMAND gt2msaa2daudit)
+  set_tests_properties(msaa_2d_audit_compatibility PROPERTIES ENVIRONMENT "GT2_VK_RENDERPASS=1")
 endif()

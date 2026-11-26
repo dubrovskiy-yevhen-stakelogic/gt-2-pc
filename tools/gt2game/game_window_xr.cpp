@@ -392,7 +392,7 @@ XrWindow::XrWindow(const std::string& title, int clientWidth, int clientHeight, 
                 double(options.quadDistance), deterministic_ ? ", deterministic (one field per compositor frame)" : "");
 
     const gt2view::VkContext::Existing existing{session_->VulkanInstance(), session_->PhysicalDevice(), session_->Device(), session_->QueueFamily(),
-                                                session_->Queue(), session_->Info().shadingRate, session_->Info().astcTextures};
+                                                session_->Queue(), info.shadingRate, info.dynamicRendering, info.multiview, info.astcTextures};
     vulkan_ = std::make_unique<gt2view::VkContext>(existing);
     renderer_ = std::make_unique<gt2view::VkSceneRenderer>(*vulkan_, VkExtent2D{uint32_t(kCinemaWidth), uint32_t(kCinemaHeight)}, session_->RenderFormat());
     hands_ = std::make_unique<gt2view::VrDrivingVisuals>(*renderer_);

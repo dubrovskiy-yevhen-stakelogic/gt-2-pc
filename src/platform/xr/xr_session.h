@@ -57,6 +57,9 @@ struct SessionInfo {
     bool shadingRate = false;
     bool astcTextures = false;
     bool depthLayer = false; // XR_KHR_composition_layer_depth (the stereo layer carries its depth image)
+    // The Vulkan the device was created at and what it got: 1.3 dynamic rendering, otherwise render passes.
+    uint32_t vulkanApiVersion = 0;
+    bool dynamicRendering = false, multiview = false;
 };
 
 class Session {

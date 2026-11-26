@@ -75,6 +75,8 @@ struct Device {
         if (existing.shadingRate) v13.pNext = &rate;
         Check(vkCreateDevice(existing.physical, &device, nullptr, &existing.device));
         vkGetDeviceQueue(existing.device, existing.queueFamily, 0, &existing.queue);
+        existing.dynamicRendering = true; // this device asks for both features below, unconditionally
+        existing.multiview = true;
     }
     ~Device() {
         if (existing.device) vkDestroyDevice(existing.device, nullptr);

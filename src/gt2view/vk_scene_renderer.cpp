@@ -1,4 +1,5 @@
 #include "gt2view/vk_scene_renderer.h"
+#include "gt2view/vk_render_pass.h"
 #include "gt2view/shading_rate.h"
 #include "gt2view/surface_format.h"
 #include "gt2view/paint_environment.h"
@@ -79,6 +80,9 @@ void Transition(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, V
     vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
 
+uint64_t HandleBits(VkImageView view) { return uint64_t(reinterpret_cast<uintptr_t>(view)); }
+uint64_t HandleBits(VkRenderPass pass) { return uint64_t(reinterpret_cast<uintptr_t>(pass)); }
+
 } // namespace
 
 VkSceneRenderer::VkSceneRenderer(VkContext& context) : VkSceneRenderer(context, VkExtent2D{0, 0}, VK_FORMAT_UNDEFINED) {}
@@ -86,13 +90,20 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context) : VkSceneRenderer(context, 
 VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent, VkFormat offscreenFormat)
     : context_(context), surface_(context.Surface()), physical_(context.PhysicalDevice()), device_(context.Device()), queueFamily_(context.QueueFamily()),
       queue_(context.Queue()) {
-    cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRendering"));
-    cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRendering"));
-    if (!cmdBeginRendering_) cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRenderingKHR"));
-    if (!cmdEndRendering_) cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRenderingKHR"));
-    if (!cmdBeginRendering_ || !cmdEndRendering_) throw std::runtime_error("Vulkan dynamic rendering entry points unavailable");
+    useDynamicRendering_ = context_.DynamicRendering();
+    if (useDynamicRendering_) {
+        cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRendering"));
+        cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRendering"));
+        if (!cmdBeginRendering_) cmdBeginRendering_ = reinterpret_cast<PFN_vkCmdBeginRendering>(vkGetDeviceProcAddr(device_, "vkCmdBeginRenderingKHR"));
+        if (!cmdEndRendering_) cmdEndRendering_ = reinterpret_cast<PFN_vkCmdEndRendering>(vkGetDeviceProcAddr(device_, "vkCmdEndRenderingKHR"));
+        if (!cmdBeginRendering_ || !cmdEndRendering_) throw std::runtime_error("Vulkan dynamic rendering entry points unavailable");
+    }
     if (context_.ShadingRate()) {
         cmdSetShadingRate_ = reinterpret_cast<PFN_vkCmdSetFragmentShadingRateKHR>(vkGetDeviceProcAddr(device_, "vkCmdSetFragmentShadingRateKHR"));
+        // The render-pass path declares the rate map as an attachment, which needs VkSubpassDescription2. On a 1.1
+        // device that is the KHR entry point (the session enables the extension); on 1.2+ the core name.
+        createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2KHR"));
+        if (!createRenderPass2_) createRenderPass2_ = reinterpret_cast<PFN_vkCreateRenderPass2>(vkGetDeviceProcAddr(device_, "vkCreateRenderPass2"));
         const auto rates = reinterpret_cast<PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR>(vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
         if (rates) {
             uint32_t count = 0;
@@ -241,6 +252,9 @@ VkSceneRenderer::~VkSceneRenderer() {
     DestroyBuffer(viewBuffer_);
     DestroyBuffer(nativeVertexBuffer_);DestroyBuffer(nativeMaterialBuffer_);
     DestroyBuffer(readback_);
+    DestroyFramebuffers();
+    for (auto& entry : renderPasses_) vkDestroyRenderPass(device_, entry.second, nullptr);
+    renderPasses_.clear();
     vkDestroySemaphore(device_, acquired_, nullptr);
     vkDestroySemaphore(device_, rendered_, nullptr);
     if (gpuQueries_) vkDestroyQueryPool(device_, gpuQueries_, nullptr);
@@ -467,6 +481,7 @@ VkSceneRenderer::Image VkSceneRenderer::CreateImage(VkExtent2D extent, VkFormat 
 }
 
 void VkSceneRenderer::DestroyImage(Image& img) {
+    DestroyFramebuffers(); // a cached framebuffer keeps these views alive
     for (VkImageView& v : img.layer)
         if (v) vkDestroyImageView(device_, v, nullptr);
     if (img.view) vkDestroyImageView(device_, img.view, nullptr);
@@ -531,6 +546,7 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
 }
 
 void VkSceneRenderer::DestroySwapchain() {
+    DestroyFramebuffers(); // views_ / depthView_ are about to go away
     DestroySceneTargets();
     if (offscreen_) DestroyImage(offscreenTarget_); // views_[0] is its view
     else
@@ -762,11 +778,17 @@ void VkSceneRenderer::CreatePipelineSet(VkSampleCountFlagBits samples, VkPipelin
     rateState.fragmentSize = {1, 1};
     rateState.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
     rateState.combinerOps[1] = ((cachedOnly || modelOnly) && !cachedHud) ? VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR : VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
-    if (stereo && context_.ShadingRate()) {
+    if (!useDynamicRendering_) {
+        // Vulkan 1.1/1.2: the pipeline names the render pass whose attachments it was built for. MSAA pipelines
+        // always draw into the multisampled attachment that is resolved at the end of the pass.
+        gpi.renderPass = GetRenderPass(stereo ? stereoFormat_ : colorFormat_, samples, samples != VK_SAMPLE_COUNT_1_BIT, viewMask,
+                                       VK_ATTACHMENT_LOAD_OP_CLEAR, samples != VK_SAMPLE_COUNT_1_BIT, false,
+                                       stereo && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE);
+    } else if (stereo && context_.ShadingRate()) {
         rendering.pNext = &rateState;
         gpi.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
     }
-    gpi.pNext = &rendering;
+    if (useDynamicRendering_) gpi.pNext = &rendering;
     gpi.stageCount = 2;
     gpi.pStages = stages;
     gpi.pVertexInputState = &vin;
@@ -1051,9 +1073,9 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
         Transition(cmd_, depthImage_, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-        BeginTargetRendering(WindowTarget(imageIndex), VK_ATTACHMENT_LOAD_OP_CLEAR);
+        BeginTargetRendering(WindowTarget(imageIndex), {VK_ATTACHMENT_LOAD_OP_CLEAR});
         RecordItems(items, 0, items.size(), extent_, pipelines_, sceneItems);
-        cmdEndRendering_(cmd_);
+        EndTargetRendering();
     }
     FinishFrame(imageIndex, screenshotPath);
 }
@@ -1070,27 +1092,225 @@ RenderTarget VkSceneRenderer::WindowTarget(uint32_t imageIndex) const {
     return target;
 }
 
-// Dynamic rendering into `target` (depth cleared and not stored), colour cleared or kept.
-void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, VkAttachmentLoadOp colorLoad) {
+// Dynamic rendering into `target` (depth cleared and not stored), colour cleared or kept. On a Vulkan 1.1/1.2
+// device the same call records an equivalent render pass instead.
+void VkSceneRenderer::BeginTargetRendering(const RenderTarget& target, const PassOptions& options) {
+    if (!useDynamicRendering_) {
+        BeginRenderPassTarget(target, options);
+        return;
+    }
     VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     color.imageView = target.colorView;
     color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = colorLoad;
-    color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    color.loadOp = options.colorLoad;
+    color.storeOp = options.discardColor ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    if (options.transparentClear) color.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    else color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    if (options.resolveView) {
+        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+        color.resolveImageView = options.resolveView;
+        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
     VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     depth.imageView = target.depthView;
     depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth.storeOp = options.storeDepth ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depth.clearValue.depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
     VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
     ri.renderArea = {{0, 0}, target.extent};
     ri.layerCount = target.layers;
+    ri.viewMask = target.viewMask;
     ri.colorAttachmentCount = 1;
     ri.pColorAttachments = &color;
     ri.pDepthAttachment = target.depthView ? &depth : nullptr;
+    VkRenderingFragmentShadingRateAttachmentInfoKHR rateAttachment{VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+    if (options.shadingRate && rateImage_.image) {
+        rateAttachment.imageView = rateImage_.view; // one identical rate map is broadcast to both eyes
+        rateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateAttachment.shadingRateAttachmentTexelSize = rateTexel_;
+        ri.pNext = &rateAttachment;
+    }
     cmdBeginRendering_(cmd_, &ri);
+}
+
+void VkSceneRenderer::EndTargetRendering() {
+    if (useDynamicRendering_) cmdEndRendering_(cmd_);
+    else vkCmdEndRenderPass(cmd_);
+}
+
+void VkSceneRenderer::DestroyFramebuffers() {
+    for (auto& entry : framebuffers_) vkDestroyFramebuffer(device_, entry.second, nullptr);
+    framebuffers_.clear();
+}
+
+// The Vulkan 1.1/1.2 path: render passes and framebuffers cached by their attachment set. The surrounding code
+// already transitions every image to its attachment layout, so the pass uses the attachment layouts as both its
+// initial and final layout - the same state dynamic rendering leaves behind and the next transition expects.
+VkRenderPass VkSceneRenderer::GetRenderPass(VkFormat colorFormat, VkSampleCountFlagBits samples, bool resolve, uint32_t viewMask,
+                                            VkAttachmentLoadOp colorLoad, bool discardColor, bool storeDepth, VkImageView rateView) {
+    const std::array<uint64_t, 8> key{uint64_t(colorFormat), uint64_t(samples), resolve ? 1u : 0u, viewMask, uint64_t(colorLoad),
+                                      discardColor ? 1u : 0u, storeDepth ? 1u : 0u, HandleBits(rateView)};
+    const auto found = renderPasses_.find(key);
+    if (found != renderPasses_.end()) return found->second;
+    // Attachment order everywhere in the renderer: colour, resolve (if any), depth, shading-rate map (if any).
+    VkAttachmentDescription attachments[4]{};
+    VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    uint32_t count = 0;
+    attachments[count].format = colorFormat;
+    attachments[count].samples = samples;
+    attachments[count].loadOp = colorLoad;
+    attachments[count].storeOp = discardColor ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    count++;
+    VkAttachmentReference resolveRef{};
+    if (resolve) {
+        attachments[count].format = colorFormat;
+        attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        resolveRef = {count, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        count++;
+    }
+    VkAttachmentReference depthRef{};
+    attachments[count].format = kDepthFormat;
+    attachments[count].samples = samples;
+    attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[count].storeOp = storeDepth ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthRef = {count, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    count++;
+    VkAttachmentReference rateRef{};
+    if (rateView) {
+        attachments[count].format = kShadingRateFormat;
+        attachments[count].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[count].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // uploaded once, then read as it is
+        attachments[count].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[count].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[count].initialLayout = attachments[count].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateRef = {count, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR};
+        count++;
+    }
+    VkRenderPass pass = VK_NULL_HANDLE;
+    if (!rateView) {
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef;
+        subpass.pResolveAttachments = resolve ? &resolveRef : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef;
+        uint32_t mask = viewMask;
+        VkRenderPassMultiviewCreateInfo multiview{VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO};
+        multiview.subpassCount = 1;
+        multiview.pViewMasks = &mask;
+        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        if (viewMask) {
+            if (!context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+            rpci.pNext = &multiview;
+        }
+        rpci.attachmentCount = count;
+        rpci.pAttachments = attachments;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(vkCreateRenderPass(device_, &rpci, nullptr, &pass), "vkCreateRenderPass");
+    } else {
+        // Foveation in VR: a fragment shading rate attachment can only be declared in VkSubpassDescription2, so this
+        // pass is built with vkCreateRenderPass2 and multiview moves from VkRenderPassMultiviewCreateInfo into viewMask.
+        if (!createRenderPass2_) throw std::runtime_error("Vulkan: vkCreateRenderPass2 (core in 1.2, VK_KHR_create_renderpass2 on 1.1) is needed for foveation without dynamic rendering");
+        if (viewMask && !context_.Multiview()) throw std::runtime_error("Vulkan: multiview is not supported by this GPU");
+        VkAttachmentDescription2 descriptions[4]{};
+        for (uint32_t i = 0; i < count; ++i) {
+            descriptions[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+            descriptions[i].format = attachments[i].format;
+            descriptions[i].samples = attachments[i].samples;
+            descriptions[i].loadOp = attachments[i].loadOp;
+            descriptions[i].storeOp = attachments[i].storeOp;
+            descriptions[i].stencilLoadOp = attachments[i].stencilLoadOp;
+            descriptions[i].stencilStoreOp = attachments[i].stencilStoreOp;
+            descriptions[i].initialLayout = attachments[i].initialLayout;
+            descriptions[i].finalLayout = attachments[i].finalLayout;
+        }
+        VkAttachmentReference2 colorRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        colorRef2.attachment = colorRef.attachment;
+        colorRef2.layout = colorRef.layout;
+        VkAttachmentReference2 resolveRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        resolveRef2.attachment = resolveRef.attachment;
+        resolveRef2.layout = resolveRef.layout;
+        VkAttachmentReference2 depthRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        depthRef2.attachment = depthRef.attachment;
+        depthRef2.layout = depthRef.layout;
+        VkAttachmentReference2 rateRef2{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+        rateRef2.attachment = rateRef.attachment;
+        rateRef2.layout = rateRef.layout;
+        VkFragmentShadingRateAttachmentInfoKHR rateInfo{VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
+        rateInfo.pFragmentShadingRateAttachment = &rateRef2;
+        rateInfo.shadingRateAttachmentTexelSize = rateTexel_;
+        VkSubpassDescription2 subpass{VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2};
+        subpass.pNext = &rateInfo; // the rate map is declared on the subpass, not as a member
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.viewMask = viewMask;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorRef2;
+        subpass.pResolveAttachments = resolve ? &resolveRef2 : nullptr;
+        subpass.pDepthStencilAttachment = &depthRef2;
+        VkRenderPassCreateInfo2 rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2};
+        rpci.attachmentCount = count;
+        rpci.pAttachments = descriptions;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &subpass;
+        Check(createRenderPass2_(device_, &rpci, nullptr, &pass), "vkCreateRenderPass2");
+    }
+    renderPasses_[key] = pass;
+    return pass;
+}
+
+void VkSceneRenderer::BeginRenderPassTarget(const RenderTarget& target, const PassOptions& options) {
+    const bool resolve = options.resolveView != VK_NULL_HANDLE;
+    // Foveation is an attachment here; the same 1-layer map is used by both eyes of a multiview pass.
+    const VkImageView rateView = options.shadingRate && rateImage_.image ? rateImage_.view : VK_NULL_HANDLE;
+    VkRenderPass pass = GetRenderPass(target.colorFormat, target.samples, resolve, target.viewMask, options.colorLoad,
+                                      options.discardColor, options.storeDepth, rateView);
+    const std::array<uint64_t, 5> fbKey{HandleBits(pass), HandleBits(target.colorView), HandleBits(target.depthView),
+                                        HandleBits(options.resolveView), HandleBits(rateView)};
+    VkFramebuffer framebuffer = framebuffers_[fbKey];
+    if (!framebuffer) {
+        VkImageView views[4];
+        uint32_t count = 0;
+        views[count++] = target.colorView;
+        if (resolve) views[count++] = options.resolveView;
+        if (target.depthView) views[count++] = target.depthView;
+        if (rateView) views[count++] = rateView;
+        uint32_t layers = FramebufferLayers(target.viewMask, target.layers);
+        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fci.renderPass = pass;
+        fci.attachmentCount = count;
+        fci.pAttachments = views;
+        fci.width = target.extent.width;
+        fci.height = target.extent.height;
+        fci.layers = layers;
+        Check(vkCreateFramebuffer(device_, &fci, nullptr, &framebuffer), "vkCreateFramebuffer");
+        framebuffers_[fbKey] = framebuffer;
+    }
+    // One clear value per attachment, in attachment order: colour, resolve (ignored by its load op), depth.
+    VkClearValue color{};
+    if (options.transparentClear) color.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+    else color.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
+    const RenderPassClears clears = MakeRenderPassClears(color, resolve, target.depthView != VK_NULL_HANDLE);
+    VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    begin.renderPass = pass;
+    begin.framebuffer = framebuffer;
+    begin.renderArea = {{0, 0}, target.extent};
+    begin.clearValueCount = clears.count;
+    begin.pClearValues = clears.values;
+    vkCmdBeginRenderPass(cmd_, &begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t first, size_t last, VkExtent2D extent, const VkPipeline pipelines[9],
@@ -1338,34 +1558,18 @@ void VkSceneRenderer::RecordMirrorPass(const std::vector<DrawItem>& items, size_
         Transition(cmd_, mirrorMsaa_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? mirrorMsaa_.view : mirrorColor_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = mirrorColor_.view;
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = mirrorDepth.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, kMirrorExtent};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? mirrorMsaa_.view : mirrorColor_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = mirrorDepth.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = kMirrorExtent;
+    target.samples = msaa ? msaaSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, msaa ? mirrorColor_.view : VK_NULL_HANDLE, msaa});
     recordMirror_ = true;
     RecordItems(items, first, last, kMirrorExtent, msaa ? msaaPipelines_ : pipelines_, sceneItems);
     recordMirror_ = false;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
     Transition(cmd_, mirrorColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -1422,32 +1626,18 @@ void VkSceneRenderer::RecordMenuCarPass(const std::vector<DrawItem>& items) {
     Transition(cmd_, menuCarDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = menuCarMsaa_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color.clearValue.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
-    color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-    color.resolveImageView = menuCarColor_.view;
-    color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = menuCarDepth_.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, menuCarExtent_};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = menuCarMsaa_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = menuCarDepth_.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = menuCarExtent_;
+    target.samples = menuCarSamples_;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, menuCarColor_.view, true, true});
     recordMenuCar_ = true;
     RecordItems(items, 0, items.size(), menuCarExtent_, menuCarPipelines_, items.size());
     recordMenuCar_ = false;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
     Transition(cmd_, menuCarColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -1506,9 +1696,9 @@ void VkSceneRenderer::BakePaintEnvironment(const std::array<std::vector<DrawItem
     recordMirror_=true;
     for(size_t f=0;f<6;++f) {
         RenderTarget target;target.colorView=paintCourse_.layer[f];target.colorFormat=colorFormat_;target.depthView=depth.view;target.depthFormat=kDepthFormat;target.extent=size;
-        BeginTargetRendering(target,VK_ATTACHMENT_LOAD_OP_CLEAR);
+        BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR});
         auto items=faces[f];for(auto& item:items)item.space=kSpaceMirrorSource;
-        RecordItems(items,0,items.size(),size,pipelines_,items.size());cmdEndRendering_(cmd_);
+        RecordItems(items,0,items.size(),size,pipelines_,items.size());EndTargetRendering();
         VkMemoryBarrier sync{VK_STRUCTURE_TYPE_MEMORY_BARRIER};sync.srcAccessMask=sync.dstAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,0,1,&sync,0,nullptr,0,nullptr);
     }
@@ -1596,7 +1786,7 @@ void VkSceneRenderer::RecordNativeEnvironment() {
             RenderTarget target;target.colorView=nativeEnvironment_.layer[f];target.colorFormat=colorFormat_;
             target.depthView=nativeEnvironmentDepth_.view;target.depthFormat=kDepthFormat;
             target.extent={kNativeEnvironmentWidth,kNativeEnvironmentHeight};
-            BeginTargetRendering(target,VK_ATTACHMENT_LOAD_OP_CLEAR);
+            BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR});
             const auto& items=nativeEnvironmentFaces_[f];
             cachedDraws_=nativeEnvironmentCached_[f];
             if(std::getenv("GT2_DEBUG_NATIVE_ENV")) {
@@ -1610,7 +1800,7 @@ void VkSceneRenderer::RecordNativeEnvironment() {
                 std::printf("Env face %zu: %zu items %zu inside/%zu vertices\n",f,items.size(),inside,count);
             }
 
-            RecordItems(items,0,items.size(),target.extent,pipelines_,items.size());cmdEndRendering_(cmd_);
+            RecordItems(items,0,items.size(),target.extent,pipelines_,items.size());EndTargetRendering();
             VkMemoryBarrier sync{VK_STRUCTURE_TYPE_MEMORY_BARRIER};sync.srcAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             sync.dstAccessMask=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT|VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,0,1,&sync,0,nullptr,0,nullptr);
@@ -1672,32 +1862,16 @@ void VkSceneRenderer::DrawScenePass(const std::vector<DrawItem>& items, size_t s
                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     Transition(cmd_, sceneDepth_.image, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0,
                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? sceneMsaa_.view : sceneColor_.view;
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = sceneColor_.view;
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = sceneDepth_.view;
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depth.clearValue.depthStencil = {0.0f, 0};
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, sceneExtent_};
-    ri.layerCount = 1;
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? sceneMsaa_.view : sceneColor_.view;
+    target.colorFormat = colorFormat_;
+    target.depthView = sceneDepth_.view;
+    target.depthFormat = kDepthFormat;
+    target.extent = sceneExtent_;
+    target.samples = msaa ? msaaSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    BeginTargetRendering(target, {VK_ATTACHMENT_LOAD_OP_CLEAR, msaa ? sceneColor_.view : VK_NULL_HANDLE, msaa});
     RecordItems(items, 0, sceneItems, sceneExtent_, msaa ? msaaPipelines_ : pipelines_, sceneItems);
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 
     Transition(cmd_, sceneColor_.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -1716,9 +1890,9 @@ void VkSceneRenderer::DrawScenePass(const std::vector<DrawItem>& items, size_t s
                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     Transition(cmd_, depthImage_, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0,
                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
-    BeginTargetRendering(WindowTarget(imageIndex), VK_ATTACHMENT_LOAD_OP_LOAD);
+    BeginTargetRendering(WindowTarget(imageIndex), {VK_ATTACHMENT_LOAD_OP_LOAD});
     RecordItems(items, sceneItems, items.size(), extent_, pipelines_, sceneItems);
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 }
 
 void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screenshotPath) {
@@ -1822,6 +1996,8 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     // The HUD/menu pass is always single-sample, so it needs its own depth target.
     stereoDepth2D_ = CreateImage(stereoExtent_, kDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                  VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 2);
+    // The shading-rate map before the pipelines: in the render-pass path it is an attachment of the pass they name.
+    CreateRateImage();
     DestroyPipelineSet(stereoPipelines_);
     DestroyPipelineSet(cachedPipelines_);
     DestroyPipelineSet(cachedHudPipelines_);
@@ -1838,7 +2014,6 @@ void VkSceneRenderer::CreateStereoTarget(VkExtent2D extent, VkFormat format, boo
     CreatePipelineSet(stereoSamples_, cachedPipelines_, true, multiview ? 0x3u : 0u, true);
     CreatePipelineSet(stereoSamples_, cachedHudPipelines_, true, multiview ? 0x3u : 0u, true, true);
     stereoReady_ = true;
-    CreateRateImage();
 }
 
 void VkSceneRenderer::SetExternalStereoImage(VkImage image) {
@@ -1880,40 +2055,18 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     const size_t eye = all ? 0 : size_t(layer);
     const size_t first = hudPass ? sceneItems : 0;
     const size_t last = hudPass ? items.size() : sceneItems;
-    VkRenderingAttachmentInfo color{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color.imageView = msaa ? (all ? stereoMsaa_.view : stereoMsaa_.layer[eye]) : (all ? colorTarget.view : colorTarget.layer[eye]);
-    color.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    color.loadOp = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    color.storeOp = msaa ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    color.clearValue.color = {{clearColor[0], clearColor[1], clearColor[2], recordNativeEnvironment_ ? 0.0f : 1.0f}};
-    if (msaa) {
-        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-        color.resolveImageView = all ? colorTarget.view : colorTarget.layer[eye];
-        color.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    VkRenderingAttachmentInfo depth{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    depth.imageView = hudPass ? (all ? stereoDepth2D_.view : stereoDepth2D_.layer[eye])
-                              : (all ? stereoDepth_.view : stereoDepth_.layer[eye]);
-    depth.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    // Only single-sample depth is submitted to OpenXR. Multisample depth is tile-local scratch.
-    depth.storeOp = (hudPass || msaa) ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-    depth.clearValue.depthStencil = {0.0f, 0}; // reversed Z: 0 = infinitely far
-    VkRenderingInfo ri{VK_STRUCTURE_TYPE_RENDERING_INFO};
-    ri.renderArea = {{0, 0}, stereoExtent_};
-    ri.layerCount = 1; // with a view mask the layer count is ignored; a per-eye pass writes its own layer view
-    ri.viewMask = all ? 0x3u : 0u;
-    VkRenderingFragmentShadingRateAttachmentInfoKHR rateAttachment{VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR};
-    if (rateImage_.image) {
-        rateAttachment.imageView = rateImage_.view; // one identical rate map is broadcast to both eyes
-        rateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-        rateAttachment.shadingRateAttachmentTexelSize = rateTexel_;
-        ri.pNext = &rateAttachment;
-    }
-    ri.colorAttachmentCount = 1;
-    ri.pColorAttachments = &color;
-    ri.pDepthAttachment = &depth;
-    cmdBeginRendering_(cmd_, &ri);
+    RenderTarget target;
+    target.colorView = msaa ? (all ? stereoMsaa_.view : stereoMsaa_.layer[eye]) : (all ? colorTarget.view : colorTarget.layer[eye]);
+    target.colorFormat = stereoFormat_;
+    target.depthView = hudPass ? (all ? stereoDepth2D_.view : stereoDepth2D_.layer[eye])
+                               : (all ? stereoDepth_.view : stereoDepth_.layer[eye]);
+    target.depthFormat = kDepthFormat;
+    target.extent = stereoExtent_;
+    target.samples = msaa ? stereoSamples_ : VK_SAMPLE_COUNT_1_BIT;
+    target.viewMask = all ? 0x3u : 0u;
+    const VkAttachmentLoadOp colorLoad = (!hudPass || sceneItems == 0) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    BeginTargetRendering(target, {colorLoad, msaa ? (all ? colorTarget.view : colorTarget.layer[eye]) : VK_NULL_HANDLE,
+                                  msaa, false, rateImage_.image != VK_NULL_HANDLE, !hudPass && !msaa});
     recordEye_ = uint32_t(eye);
     recordLayers_ = 1;
     recordStereo_ = true;
@@ -1922,7 +2075,7 @@ void VkSceneRenderer::RecordStereoPass(const std::vector<DrawItem>& items, size_
     recordStereo2D_ = false;
     recordStereo_ = false;
     recordEye_ = 0;
-    cmdEndRendering_(cmd_);
+    EndTargetRendering();
 }
 
 std::vector<uint8_t> VkSceneRenderer::CaptureStereoForAudit(const std::vector<DrawItem>& items,size_t sceneItems) {
