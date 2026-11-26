@@ -1,4 +1,4 @@
-"""Build a separate GT2 render-only model set from an owned GT4 US 1.01 ISO.
+"""Build a separate GT2 render-only model set from an owned GT4 US 1.01 or Spec II ISO.
 
 Python 3.11+, .NET SDK 8, internet for the first source-only tool build.
 Existing game files and existing output directories are never overwritten.
@@ -17,6 +17,7 @@ import zlib
 
 from gt4_iso import inventory, read_at, u32
 from gt4_mesh import convert
+from gt4_sources import for_toc, names as disc_names
 from gt4_tool_patch import patch_source, REVISION as ADAPTER_REVISION
 
 TOOL_COMMIT = '8bceeceedea8244536eb6106c3fb9da54557ceec'
@@ -114,8 +115,9 @@ def main():
         parser.error('Unknown or repeated GT2 car id. Supported: ' + ', '.join(profiles['cars']))
     with args.iso.open('rb') as stream:
         catalog = inventory(stream)
-        if catalog['toc_fingerprint_sha256'] != profiles['discTocSha256']:
-            raise ValueError('This disc revision is not verified. Expected GT4 SCUS-97328 US 1.01; no output written.')
+        disc = for_toc(profiles, catalog['toc_fingerprint_sha256'])
+        if disc is None:
+            raise ValueError(f"This disc revision is not verified. Supported: {disc_names(profiles)}; no output written.")
         entries = {x['path']: x for x in catalog['entries'] if x['kind']}
         # Validate all required records before building tools or writing assets.
         for car in cars:
@@ -132,12 +134,15 @@ def main():
         staging.mkdir(parents=True)
         working = staging / '_source'; working.mkdir()
         provenance = {'iso': str(args.iso.resolve()), 'isoSize': args.iso.stat().st_size,
-                      'tocSha256': catalog['toc_fingerprint_sha256'],
+                      'source': disc['name'], 'tocSha256': catalog['toc_fingerprint_sha256'],
                       'toolCommit': TOOL_COMMIT, 'pdtoolsCommit': PDTOOLS_COMMIT,
                       'adapterRevision': ADAPTER_REVISION if not args.tool else 'external-tool',
                       'toolBinarySha256': digest(tool), 'models': [], 'files': {}}
         provenance['profilesSha256'] = digest(args.profiles)
-        manifest = {'format': 'gt2-model-set', 'version': 1, 'id': 'gt4', 'cars': {}}
+        manifest = {'format': 'gt2-model-set', 'version': 1, 'id': 'gt4',
+                    'source': {'name': disc['name'], 'tocSha256': catalog['toc_fingerprint_sha256'],
+                               'replacementCars': len(cars), 'catalogueCars': 0},
+                    'cars': {}}
         dumped = {}
         for car in cars:
             profile = profiles['cars'][car]; code = profile['code']

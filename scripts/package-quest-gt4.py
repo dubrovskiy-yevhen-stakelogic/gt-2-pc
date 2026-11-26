@@ -65,8 +65,16 @@ def validate_catalogue(names, read_bytes):
     if (manifest.get('format'), manifest.get('version'), manifest.get('id')) != ('gt2-model-set', 1, 'gt4'):
         raise ValueError('Unsupported model set')
     cars = manifest.get('cars', {})
-    if len(cars) != 1110 or any(not re.fullmatch('[a-z0-9-]{5}', car) for car in cars):
-        raise ValueError('Full GT4 bundle requires 1110 model mappings; diagnostic subsets cannot be installed')
+    source = manifest.get('source') or {}
+    replacements = source.get('replacementCars', 388)
+    catalogue = source.get('catalogueCars', 722)
+    if not isinstance(replacements, int) or not isinstance(catalogue, int) or replacements < 1 or catalogue < 1:
+        raise ValueError('Invalid GT4 model counts')
+    if len(cars) != replacements + catalogue:
+        raise ValueError(f'Full GT4 bundle requires {replacements + catalogue} model mappings; '
+                         'diagnostic subsets cannot be installed')
+    if any(not re.fullmatch('[a-z0-9-]{5}', car) for car in cars):
+        raise ValueError('Invalid GT4 car id')
     if (overlay.get('format'), overlay.get('version')) != ('gt4-native-overlay', 1) or set(overlay.get('cars', {})) != set(cars):
         raise ValueError('Native overlay must cover the complete model catalogue')
     if (cabins.get('format'), cabins.get('version')) != ('gt4-native-interiors', 1):
@@ -76,18 +84,19 @@ def validate_catalogue(names, read_bytes):
             raise ValueError('Interior source differs from selected model: ' + car)
     authored = sum(bool({**entry, **cabins.get('cars', {}).get(car, {})}.get('nativeInterior'))
                    for car, entry in cars.items())
-    if authored != 89:
-        raise ValueError('Full GT4 bundle requires 89 authored-interior mappings')
+    expected_authored = source.get('authoredInteriorMappings', 89)
+    if not isinstance(expected_authored, int) or authored != expected_authored:
+        raise ValueError(f'Full GT4 bundle requires {expected_authored} authored-interior mappings')
     if (wheels.get('format'), wheels.get('version')) != ('gt4-wheel-geometry', 2):
         raise ValueError('Unsupported wheel geometry')
-    if not wheels.get('cars') or not set(wheels['cars']) <= set(cars):
+    if not isinstance(wheels.get('cars'), dict) or not set(wheels['cars']) <= set(cars):
         raise ValueError('Wheel geometry differs from the model catalogue')
     missing = set(wheels.get('missing', []))
     if any(entry.get('gt4Model') not in missing for car, entry in cars.items() if car not in wheels['cars']):
         raise ValueError('Wheel geometry has undeclared missing models')
     required = {car for car, entry in cars.items() if entry.get('required')}
-    if len(required) != 722:
-        raise ValueError('Full GT4 bundle requires 722 added catalogue models')
+    if len(required) != catalogue:
+        raise ValueError(f'Full GT4 bundle requires {catalogue} added catalogue models')
     for mode in ('arcade', 'simulation'):
         prefix = mode + '/expansions/gt4/'
         if not any(name.startswith(prefix) for name in names):
@@ -98,7 +107,7 @@ def validate_catalogue(names, read_bytes):
         entries = expansion.get('cars', [])
         ids = [entry['id'] for entry in entries]
         if ((expansion.get('format'), expansion.get('version')) != ('gt2-car-expansion', 1)
-                or len(ids) != 722 or len(set(ids)) != len(ids) or set(ids) != required):
+                or len(ids) != catalogue or len(set(ids)) != len(ids) or set(ids) != required):
             raise ValueError('Catalogue expansion does not match the required GT4 models: ' + mode)
     for mesh in set(overlay['cars'].values()):
         mesh_name = reference(native_root, mesh)

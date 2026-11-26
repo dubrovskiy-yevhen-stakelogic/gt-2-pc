@@ -84,8 +84,8 @@ if (!$PrepareToolsOnly) {
     }
 }
 if (!$PrepareToolsOnly -and !$Bundle) {
-    Write-Host 'GT4 import: first select the GT4 USA v1.01 ISO, then the GT2 USA Simulation v1.2 disc.'
-    if (!$Iso) { $Iso = Select-Gt4Disc 'Select Gran Turismo 4 USA v1.01 (SCUS-97328) ISO' 'GT4 ISO (*.iso)|*.iso' }
+    Write-Host 'GT4 import: first select the GT4 USA v1.01 or Spec II v1.10 ISO, then the GT2 USA Simulation v1.2 disc.'
+    if (!$Iso) { $Iso = Select-Gt4Disc 'Select Gran Turismo 4 USA v1.01 or Spec II v1.10 ISO' 'GT4 ISO (*.iso)|*.iso' }
     $runtimeCandidates = @((Join-Path $gt4Repo 'runtime'), (Join-Path $gt4Repo 'data'), (Join-Path $env:LOCALAPPDATA 'GT2-VR/runtime'))
     foreach ($location in @('install-location.txt','native/install-location.txt')) {
         $path = Join-Path $gt4Repo $location

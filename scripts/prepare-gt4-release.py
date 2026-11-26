@@ -16,6 +16,7 @@ import sys
 from authored_cockpit_pack import attach as attach_cockpits
 from gt4_iso import inventory, read_at
 from gt4_mesh import convert
+from gt4_sources import for_toc, names as disc_names
 from import_gt4_models import extract, build_tool, TOOL_COMMIT
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,8 +59,11 @@ def finalize_evidence(output, previous):
     relocate_evidence(output, previous)
     # Wheel audit hashes bind the alignment JSON, including its source paths.
     # Re-run its generator after relocation rather than editing those hashes.
-    script('build_gt4_wheels.py', ['--specdb',output/'specdb-json','--alignment',output/'native/report.json',
-        '--showroom',output/'showroom.json','--output',output/'native/native-v16/wheels.json'],output/'logs/wheels-published.log')
+    wheels = ['--specdb',output/'specdb-json','--alignment',output/'native/report.json',
+              '--output',output/'native/native-v16/wheels.json']
+    if (output/'showroom.json').is_file():
+        wheels += ['--showroom',output/'showroom.json']
+    script('build_gt4_wheels.py', wheels, output/'logs/wheels-published.log')
     shutil.copyfile(output/'native/native-v16/wheels.json',output/'modelsets/gt4/native-v16/wheels.json')
 
 
@@ -94,19 +98,24 @@ def model_command(tool):
 def extract_gt4(iso, vol, profiles, needed_codes=None):
     with iso.open('rb') as stream:
         index = inventory(stream)
-        if index['toc_fingerprint_sha256'] != profiles['discTocSha256']:
-            raise ValueError('Expected Gran Turismo 4 USA v1.01 (SCUS-97328)')
-        from gt4_core import unpack, build_elf, KNOWN_CORE_SHA1
-        core_entry = next(e for e in index['iso_root'] if e['name'] == 'CORE.GT4')
-        core = read_at(stream, core_entry['lba']*2048, core_entry['size'])
-        if hashlib.sha1(core).hexdigest() != KNOWN_CORE_SHA1:
-            raise ValueError('Unverified GT4 CORE image')
-        decoded = unpack(core)
-        vol.mkdir(parents=True, exist_ok=True)
-        (vol/'CORE.elf').write_bytes(build_elf(decoded['entry'], decoded['segments']))
+        disc = for_toc(profiles, index['toc_fingerprint_sha256'])
+        if disc is None:
+            raise ValueError('Unsupported GT4 source disc. Expected ' + disc_names(profiles))
+        if disc.get('core', True):
+            from gt4_core import unpack, build_elf, KNOWN_CORE_SHA1
+            core_entry = next(e for e in index['iso_root'] if e['name'] == 'CORE.GT4')
+            core = read_at(stream, core_entry['lba']*2048, core_entry['size'])
+            if hashlib.sha1(core).hexdigest() != KNOWN_CORE_SHA1:
+                raise ValueError('Unverified GT4 CORE image')
+            decoded = unpack(core)
+            vol.mkdir(parents=True, exist_ok=True)
+            (vol/'CORE.elf').write_bytes(build_elf(decoded['entry'], decoded['segments']))
+        else:
+            vol.mkdir(parents=True, exist_ok=True)
         entries = {e['path']: e for e in index['entries'] if e['kind']}
+        specdb = f"specdb/{disc['specdb']}/"
         for path, entry in entries.items():
-            if not path.startswith(('car/lod/', 'car/open/', 'car/menu/', 'specdb/GT4_US2560/')):
+            if not path.startswith(('car/lod/', 'car/open/', 'car/menu/', specdb)):
                 continue
             if needed_codes is not None and path.startswith('car/') and Path(path).name.removesuffix('.pat') not in needed_codes:
                 continue
@@ -115,13 +124,16 @@ def extract_gt4(iso, vol, profiles, needed_codes=None):
                 raise ValueError('Unsafe source archive path')
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(extract(stream, entry))
-    return dict(iso=iso.name, isoBytes=iso.stat().st_size, tocSha256=index['toc_fingerprint_sha256'])
+    source = dict(iso=iso.name, isoBytes=iso.stat().st_size, tocSha256=index['toc_fingerprint_sha256'],
+                  name=disc['name'], catalogueCars=disc['catalogueCars'], core=disc.get('core', True))
+    return source, disc
 
 
-def build_models(pack, vol, profiles, added, policies, tool, selected=None):
+def build_models(pack, vol, profiles, added, policies, tool, selected=None, source=None):
     """Reproduce replacement profiles, then add each named GT4 catalogue record."""
     rows = profiles['cars']
-    manifest = dict(format='gt2-model-set', version=1, id='gt4', cars={})
+    manifest = dict(format='gt2-model-set', version=1, id='gt4',
+                    source=dict(source or {}, replacementCars=len(rows), catalogueCars=len(added)), cars={})
     jobs = {}
     by_code = {}
     for car, profile in rows.items():
@@ -149,8 +161,8 @@ def build_models(pack, vol, profiles, added, policies, tool, selected=None):
         entry.update(name=car['name'], required=True)
         entry.update({k: v for k, v in policy.items() if k not in ('directory', 'parent')})
         manifest['cars'][car_id] = entry
-    if len(manifest['cars']) != 1110:
-        raise ValueError('Expected 388 replacement mappings and 722 added cars')
+    if len(manifest['cars']) != len(rows) + len(added):
+        raise ValueError(f"Expected {len(rows)} replacement mappings and {len(added)} added cars")
     if selected:
         unknown = set(selected)-set(manifest['cars'])
         if unknown:
@@ -182,6 +194,10 @@ def build_models(pack, vol, profiles, added, policies, tool, selected=None):
         write(pack/parent/'conversion.json', stats)
         provenance.append(dict(mesh=parent+'/body.gltf', dump=str(dump), sourceSha256=sha(raw)))
         print(f'Converted {number}/{len(active)}: {parent}', flush=True)
+    reviewed = read(ROOT/'db/gt4-native-interiors.json')['cars'] if manifest['source'].get('core', True) else {}
+    manifest['source']['authoredInteriorMappings'] = sum(
+        bool(entry.get('nativeInterior')) or entry.get('gt4Model') in reviewed
+        for entry in manifest['cars'].values())
     write(pack/'manifest.json', manifest)
     write(pack/'provenance.json', dict(format='gt4-source-conversion', models=provenance,
                                      profilesSha256=sha(ROOT/'scripts/gt4_profiles.json')))
@@ -266,12 +282,12 @@ def main():
                  '-p:PDToolsRoot='+str(pdtools),'-p:NuGetAudit=false'], logs/'build-catalog.log')
         catalog_tool = target/'gt4catalog.dll'
     profiles = read(ROOT/'scripts/gt4_profiles.json')
-    source = extract_gt4(args.iso, stage/'vol', profiles)
-    specdb = stage/'vol/specdb/GT4_US2560'
+    source, source_disc = extract_gt4(args.iso, stage/'vol', profiles)
+    specdb = stage/'vol/specdb'/source_disc['specdb']
     command([*model_command(catalog_tool),specdb,stage/'catalog.json','american','--physics'], logs/'catalog.log')
     added_catalog = read(stage/'catalog.json')
-    if len(added_catalog) != 722:
-        raise ValueError('Expected 722 named GT4 catalogue records')
+    if len(added_catalog) != source_disc['catalogueCars']:
+        raise ValueError(f"Expected {source_disc['catalogueCars']} named GT4 catalogue records")
     for mode, disc in [('simulation',args.simulation),('arcade',args.arcade)]:
         if disc is None:
             continue
@@ -281,7 +297,8 @@ def main():
             '--maker-names',ROOT/'db/gt4-maker-map.json','--output',stage/'expansions'/mode],logs/f'expansion-{mode}.log')
     added = read(stage/'expansions/simulation/assets/carparam/gt4_expansion.json')['cars']
     pack = stage/'modelsets/gt4'
-    manifest = build_models(pack,stage/'vol',profiles,added,read(ROOT/'db/gt4-expansion-models.json')['cars'],model_tool,args.models)
+    manifest = build_models(pack,stage/'vol',profiles,added,read(ROOT/'db/gt4-expansion-models.json')['cars'],
+                            model_tool,args.models,source)
     script('build_gt4_materials.py',['--pack',pack,'--output',stage/'alignment','--tool',tools['gt4materialmetadata'],
                                   '--workers',args.workers],logs/'alignment.log')
     alignment = read(stage/'alignment/report.json')
@@ -296,18 +313,24 @@ def main():
         '--workers',args.workers]
     catalogs=[stage/'gt2-catalog'/mode for mode in ('simulation','arcade') if (stage/'gt2-catalog'/mode).is_dir()]
     if catalogs:native_args+=['--gt2-catalog',*catalogs]
+    if not source_disc.get('core', True):
+        native_args.append('--skip-reviewed-cabins')
     script('build_gt4_native.py',native_args,logs/'native.log')
     command([tools['gt4specdbexport'],specdb,stage/'specdb-json'],logs/'specdb-json.log')
-    script('build_gt4_showroom.py',['--tool',tools['gt4showroomexport'],'--core',stage/'vol/CORE.elf',
-        '--specdb',specdb,'--specdb-json',stage/'specdb-json','--alignment',stage/'native/report.json',
-        '--output',stage/'showroom.json'],logs/'showroom.log')
-    script('build_gt4_wheels.py',['--specdb',stage/'specdb-json','--alignment',stage/'native/report.json',
-        '--showroom',stage/'showroom.json','--output',stage/'native/native-v16/wheels.json'],logs/'wheels.log')
+    wheels = ['--specdb',stage/'specdb-json','--alignment',stage/'native/report.json',
+              '--output',stage/'native/native-v16/wheels.json']
+    if source_disc.get('core', True):
+        script('build_gt4_showroom.py',['--tool',tools['gt4showroomexport'],'--core',stage/'vol/CORE.elf',
+            '--specdb',specdb,'--specdb-json',stage/'specdb-json','--alignment',stage/'native/report.json',
+            '--output',stage/'showroom.json'],logs/'showroom.log')
+        wheels += ['--showroom',stage/'showroom.json']
+    script('build_gt4_wheels.py',wheels,logs/'wheels.log')
     shutil.copytree(stage/'native/native-v16',pack/'native-v16')
     attach_cockpits(pack)
     interiors = read(pack/'native-v16/interiors.json')['cars']
     authored = sum(bool({**entry,**interiors.get(car,{})}.get('nativeInterior')) for car,entry in manifest['cars'].items())
-    if not args.models and (len(manifest['cars']) != 1110 or authored != 89):
+    if (not args.models and (len(manifest['cars']) != len(profiles['cars']) + len(added) or
+                             authored != manifest['source']['authoredInteriorMappings'])):
         raise ValueError('Final GT4 model/interior catalogue count differs')
     # A diagnostic subset must never activate a catalogue whose required meshes
     # are absent. Keep its data for inspection, but remove activation markers.
@@ -316,7 +339,7 @@ def main():
             marker.unlink()
     ready = dict(version='0.9.0',source=source,complete=not bool(args.models),
         modelMappings=len(manifest['cars']),authoredInteriorMappings=authored,
-        expansionCars=722 if not args.models else 0,discs=['simulation']+(['arcade'] if args.arcade else []))
+        expansionCars=len(added) if not args.models else 0,discs=['simulation']+(['arcade'] if args.arcade else []))
     stage.rename(args.output)
     finalize_evidence(args.output, stage)
     write(args.output/'READY.json', ready)
