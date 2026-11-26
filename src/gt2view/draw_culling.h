@@ -14,14 +14,14 @@ struct DrawBounds {
 class DrawBoundsCache {
 public:
     template<class Vertex> const DrawBounds& Get(const Vertex* vertices, uint32_t first, uint32_t count) {
-        const uint64_t key = (uint64_t(first) << 32) | count;
+        const uint64_t key = (uint64_t(first) << 32) | count; // virtual first: Invalidate speaks virtual indices
         auto [it, added] = bounds_.try_emplace(key);
         if (!added || !count) return it->second;
         auto& b = it->second;
-        for (int k = 0; k < 3; ++k) b.lo[k] = b.hi[k] = vertices[first].pos[k];
+        for (int k = 0; k < 3; ++k) b.lo[k] = b.hi[k] = vertices[0].pos[k];
         b.valid = true;
         for (uint32_t i = 0; i < count; ++i) for (int k = 0; k < 3; ++k) {
-            const float v = vertices[first + i].pos[k];
+            const float v = vertices[i].pos[k];
             if (!std::isfinite(v)) b.valid = false;
             b.lo[k] = std::min(b.lo[k], v); b.hi[k] = std::max(b.hi[k], v);
         }

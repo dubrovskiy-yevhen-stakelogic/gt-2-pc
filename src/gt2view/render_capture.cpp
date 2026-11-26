@@ -22,10 +22,17 @@ void VkSceneRenderer::SaveCapture(const std::string& path, const std::vector<Dra
     write(header, sizeof(header)); write(clearColor, sizeof(clearColor));
     // Captures store portable external-texture addresses, never atlas offsets
     // belonging to this renderer instance. Replay can promote them again.
+    // The arena itself is packed; a capture keeps the dense virtual range, so fill the gaps with zeros.
+    std::vector<SceneVertex> dense(vertices);
+    for (const auto& [first, run] : vertexRuns_)
+        if (first < vertices) {
+            const uint32_t end = std::min(run.end, vertices);
+            std::copy_n(static_cast<const SceneVertex*>(vertexBuffer_.mapped) + run.physical,
+                        size_t(end - first), dense.data() + first);
+        }
     const uint32_t prefix=std::min(vertices,kModelSetVertexBase);
-    write(vertexBuffer_.mapped, size_t(prefix) * sizeof(SceneVertex));
-    const auto* mapped=static_cast<const SceneVertex*>(vertexBuffer_.mapped);
-    std::vector<SceneVertex> models(mapped+prefix,mapped+vertices);
+    write(dense.data(), size_t(prefix) * sizeof(SceneVertex));
+    std::vector<SceneVertex> models(dense.begin() + prefix, dense.end());
     for (auto& vertex:models) if (vertex.flags & kModelAtlasTexture) {
         uint32_t source=0;
         if (!modelAtlas_.Source(vertex.page,source)) throw std::runtime_error("capture: missing model atlas source");
@@ -74,9 +81,8 @@ void VkSceneRenderer::LoadCapture(const std::string& path, std::vector<DrawItem>
         if (uint64_t(item.firstVertex) + item.vertexCount > vertices.size()) throw std::runtime_error("invalid capture draw range");
     decoded_.Invalidate(0, kVramRows);
     vramKnown_.clear(); // capture loading bypasses the ordinary VRAM upload API
-    SetVertices(0, vertices);
-    // Dynamic ranges can start at any vertex offset. Rebuild triangle UV bounds
-    // with each draw's original alignment, rather than the capture buffer's zero.
+    // Upload only the ranges the draws use: the arena then holds the capture's content, not its virtual span.
+    // Dynamic ranges can start at any vertex offset; each draw's own `first` keeps its original triangle alignment.
     for (const auto& item : items) {
         std::vector<SceneVertex> range(vertices.begin() + item.firstVertex,
                                        vertices.begin() + item.firstVertex + item.vertexCount);

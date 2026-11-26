@@ -142,16 +142,17 @@ void VkSceneRenderer::PrepareFrameTextures(const std::vector<DrawItem>& items,si
         const size_t end=offset+nativeEnvironmentFaces_[face].size();
         nativeEnvironmentCached_[face].assign(cachedDraws_.begin()+ptrdiff_t(offset),cachedDraws_.begin()+ptrdiff_t(end));offset=end;
     }
-    const auto* vertices=static_cast<const SceneVertex*>(vertexBuffer_.mapped);
     for(size_t face=0;face<3;++face)for(size_t draw=0;draw<nativeEnvironmentFaces_[face].size();++draw) {
         if(!nativeEnvironmentCached_[face][draw])continue;
         const auto& item=nativeEnvironmentFaces_[face][draw];
+        const auto* vertices=VertexAt(item.firstVertex);
+        if(!vertices){nativeEnvironmentCached_[face][draw]=0;continue;}
         const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
         auto [found,added]=environmentCodedRanges_.try_emplace(range,true);
         if(added) {
             std::vector<uint32_t> codes(item.vertexCount,0);
             for(uint32_t v=0;v<item.vertexCount;++v) {
-                const auto& vertex=vertices[item.firstVertex+v];
+                const auto& vertex=vertices[v];
                 // Car palette/mirror/normal-bearing vertices need the general
                 // shader. Track geometry has none of these dynamic attributes.
                 if(vertex.flags & (kCarPaint|kModelNative|kModelReflection)) {found->second=false;break;}
@@ -165,7 +166,7 @@ void VkSceneRenderer::PrepareFrameTextures(const std::vector<DrawItem>& items,si
                 }
                 if(!codes[v]) {found->second=false;break;}
             }
-            if(found->second)WriteBuffer(environmentCodes_,size_t(item.firstVertex)*sizeof(uint32_t),codes.data(),codes.size()*sizeof(uint32_t));
+            if(found->second)WriteVertices(environmentCodes_,item.firstVertex,item.vertexCount,sizeof(uint32_t),codes.data());
         }
         if(!found->second)nativeEnvironmentCached_[face][draw]=0;
     }
@@ -193,7 +194,6 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
         write.dstBinding=12;vkUpdateDescriptorSets(device_,1,&write,0,nullptr);
         decodedInitialized_ = false;
     }
-    const auto* vertices = static_cast<const SceneVertex*>(vertexBuffer_.mapped);
     // Pin all materials, admit soft particles first, then prepare ordinary draws.
     // A busy scene can exceed capacity; smoke must not fall back to dependent
     // VRAM reads for every overlapping translucent fragment.
@@ -206,18 +206,21 @@ void VkSceneRenderer::PrepareDecodedTextures(const std::vector<DrawItem>& items,
                 uint64_t(item.firstVertex) + item.vertexCount <= uint64_t(kVrDrivingVertexBase) + kVrDrivingVertexLimit) {
                 // Interactive geometry can include the imported wheel's external
                 // RGBA texture. Only the hand/untextured path fits the cached shader.
-                bool supported = true;
-                for (uint32_t i = 0; i < item.vertexCount; i += 3)
-                    if (vertices[item.firstVertex + i].flags & kExternalTexture) supported = false;
+                const auto* driving = VertexAt(item.firstVertex);
+                bool supported = driving != nullptr;
+                for (uint32_t i = 0; supported && i < item.vertexCount; i += 3)
+                    if (driving[i].flags & kExternalTexture) supported = false;
                 cachedDraws_[draw] = supported;
                 continue;
             }
+            const auto* vertices = VertexAt(item.firstVertex);
+            if (!vertices) continue; // never uploaded: RecordItems skips the draw
             const uint64_t range = (uint64_t(item.firstVertex) << 32) | item.vertexCount;
             auto [it, added] = materialRanges_.try_emplace(range);
             if (added) {
                 auto& materials = it->second;
                 for (uint32_t i = 0; i < item.vertexCount; i += 3) {
-                    const auto& v = vertices[item.firstVertex + i];
+                    const auto& v = vertices[i];
                     if (v.flags & kModelAtlasTexture) continue;
                     if (v.flags & (kOverlay | kExternalTexture | kHdUi)) { materials.push_back(~uint64_t(0)); continue; }
                     if (!(v.flags & kTextured)) continue;
@@ -307,7 +310,9 @@ void VkSceneRenderer::UploadDecodedTextures() {
 namespace gt2view {
 void VkSceneRenderer::SetHandVertices(uint32_t offset, const std::vector<SceneVertex>& vertices) {
     if (uint64_t(offset) + vertices.size() > kVrDrivingVertexLimit) throw std::runtime_error("hand vertices exceed reserved range");
-    SetVerticesRaw(kVrDrivingVertexBase + offset, vertices);
+    boundsCache_.Invalidate(kVrDrivingVertexBase+offset, uint32_t(vertices.size()));
+    WriteVertices(vertexBuffer_, kVrDrivingVertexBase + offset, uint32_t(vertices.size()), sizeof(SceneVertex),
+                  vertices.data());
 }
 void VkSceneRenderer::UploadHandTexture(uint32_t width, uint32_t height, const uint32_t* rgba) {
     if (!width || !height || width > 2048 || height > 2048) throw std::runtime_error("invalid hand texture size");

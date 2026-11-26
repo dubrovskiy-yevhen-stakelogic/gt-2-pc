@@ -2,7 +2,7 @@
 layout(constant_id = 0) const bool cachedHud = false;
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; uvec2 reserved; vec4 hudClip;
+    uint space; uint eye; int vertexBias; uint reserved; vec4 hudClip;
 } pc;
 layout(location = 0) in vec2 inTexel;
 layout(location = 1) in vec3 inColor;

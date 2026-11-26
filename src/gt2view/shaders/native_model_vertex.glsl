@@ -34,7 +34,7 @@ mat3 nativeModelBasis() {
     return mat3(1)+2.0*q.w*crossX+2.0*crossX*crossX;
 }
 void nativeVertex(vec3 normal,vec3 incident,vec3 reflectionIncident,mat3 sphereBasis,mat3 environmentBasis) {
-    vec4 a=nativeVertices.entries[gl_VertexIndex-GT2_NATIVE_MODEL_VERTEX_BASE];
+    vec4 a=nativeVertices.entries[gl_VertexIndex + pc.vertexBias - 1228800];
     uint packed=floatBitsToUint(a.w),m=packed & 65535u;
     outNativeEnvironmentBasis=environmentBasis;
     outNativeMaterial=m;outNativeAlpha=float(packed>>16)*(2.0/65535.0);
