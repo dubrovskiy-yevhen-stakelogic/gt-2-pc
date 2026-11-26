@@ -650,6 +650,13 @@ int GameMain(int argc, char** argv) {
             BuildLicenseCar(vol, *licenseData, licenseTest, data);
             carId = data.carIds[0];
         } else {
+            // The self-test's player car is arbitrary: without --car, take the disc's first chassis row. The retail
+            // attract car (us36n, the duplicate Shelby) is not in every dataset: A-Spec 1.2.1 removes it.
+            if (selfTest && !carGiven) {
+                const CarParamTables tables = CarParamTables::Load(vol);
+                carId = UnpackCarId(tables.RowAs<ChassisRow>(kTableChassis, 0).carId);
+                std::printf("selftest: car %s (the disc's first chassis row)\n", carId.c_str());
+            }
             BuildCarRecords(vol, carId, carCount, modsDir, data, aiCars);
         }
         if (!data.paints.empty() && !replayFile && !ghostRecord && !captureRace && (!licenseData || paint != 0)) data.paints[0] = paint; // a replay / capture / licence keeps its slots' paints (--paint overrides a licence car)
