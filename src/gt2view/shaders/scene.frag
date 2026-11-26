@@ -564,7 +564,7 @@ void shadeScene() {
     }
     if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) {
         // The decoded smooth path returns before the per-texel tint below.
-        if ((pc.options & 32u) != 0u) outColor.rgb = mirrorSafeEnvironment(outColor.rgb);
+        if ((pc.options & 32u) != 0u) outColor.rgb = neutralReflection(outColor.rgb);
         return;
     }
     uvec2 t = uvec2(clamp(ivec2(floor(texelCoord)), ivec2(0), ivec2(255)));
@@ -620,8 +620,8 @@ void shadeScene() {
         rgb = min(floor(t5 * c8 / 128.0), vec3(31.0)) / 31.0;
     } else if ((inFlags & 2u) == 0u) rgb = min(rgb * color * (255.0 / 128.0), vec3(1.0)); // 0x80 = neutral
     // Stock car reflection (blue chrome env map): keep the light, drop most of
-    // the hue so a red body does not read as pink in the mirror.
-    if ((pc.options & 32u) != 0u) rgb = mirrorSafeEnvironment(rgb);
+    // the hue so a red body does not read as pink.
+    if ((pc.options & 32u) != 0u) rgb = neutralReflection(rgb);
     outColor = vec4(rgb, 1.0);
 }
 

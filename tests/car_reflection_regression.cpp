@@ -125,43 +125,43 @@ int main(int argc,char** argv){try{
                 }
             }
             if (!cockpit) {
-                // The mirror pass must keep the stock reflection's light but
-                // only part of its hue: the blue chrome map must not turn red
-                // paint pink. Compare the added colour with and without
-                // DrawItem::mirrorView.
+                // Stock car reflections are additive light. A blue chrome map
+                // on red paint reads as pink, so the renderer keeps the light
+                // and only part of the hue in every view. Compare it with the
+                // same range drawn without that option (blend 1).
                 gt2::modernCarReflections = false;
                 gt2::carReflections = true;
                 assets.UpdateCarReflection(slot, identity, axes);
-                auto reflected = draws();
-                for (auto& item : reflected)
-                    if (item.blend == kBlendStockSurfaceEnvironment) item.mirrorView = 3u;
-                renderer.EnableDecodedTextures(false); // the mirror uses the general shader
-                const auto normal = capture(draws(), vp);
-                const auto mirrored = capture(reflected, vp);
+                auto untintedDraws = draws();
+                for (auto& item : untintedDraws)
+                    if (item.blend == kBlendStockSurfaceEnvironment) item.blend = 1;
+                renderer.EnableDecodedTextures(false); // the general shader path
+                const auto tinted = capture(draws(), vp);
+                const auto untinted = capture(untintedDraws, vp);
                 gt2::carReflections = false;
                 assets.UpdateCarReflection(slot, identity, axes);
                 const auto plain = capture(draws(), vp);
                 renderer.EnableDecodedTextures(true);
                 gt2::carReflections = true;
-                long normalBlue = 0, mirroredBlue = 0;
+                long untintedBlue = 0, tintedBlue = 0;
                 size_t lit = 0;
-                for (size_t pixel = 0; pixel < normal.size(); pixel += 4) {
-                    const int dr = int(normal[pixel]) - int(plain[pixel]);
-                    const int db = int(normal[pixel + 2]) - int(plain[pixel + 2]);
+                for (size_t pixel = 0; pixel < tinted.size(); pixel += 4) {
+                    const int dr = int(untinted[pixel]) - int(plain[pixel]);
+                    const int db = int(untinted[pixel + 2]) - int(plain[pixel + 2]);
                     if (dr <= 2 && db <= 2) continue;
                     ++lit;
-                    normalBlue += db - dr;
-                    mirroredBlue += (int(mirrored[pixel + 2]) - int(plain[pixel + 2])) -
-                                    (int(mirrored[pixel]) - int(plain[pixel]));
+                    untintedBlue += db - dr;
+                    tintedBlue += (int(tinted[pixel + 2]) - int(plain[pixel + 2])) -
+                                  (int(tinted[pixel]) - int(plain[pixel]));
                 }
-                if (lit < 64) throw std::runtime_error("mirror reflection check found no reflection pixels: " + id);
-                if (!(normalBlue > 0 && mirroredBlue * 2 < normalBlue))
-                    throw std::runtime_error("mirror stock reflection keeps its blue hue: " + id);
+                if (lit < 64) throw std::runtime_error("stock reflection check found no reflection pixels: " + id);
+                if (!(untintedBlue > 0 && tintedBlue * 2 < untintedBlue))
+                    throw std::runtime_error("stock reflection keeps its blue hue: " + id);
                 ++cases;
 
                 // The same check through the VR path: DrawStereo records the
                 // kSpaceMirrorSource items into the shared mirror target.
-                auto mirrorPixels = [&](bool reflection, uint32_t reflectionView) {
+                auto mirrorPixels = [&](bool reflection, uint32_t reflectionBlend) {
                     gt2::carReflections = reflection;
                     assets.UpdateCarReflection(slot, identity, axes);
                     std::vector<DrawItem> items;
@@ -170,28 +170,28 @@ int main(int argc,char** argv){try{
                         item.space = kSpaceMirrorSource;
                         item.mirrorView = 3u;
                         if (reflection && item.blend == kBlendStockSurfaceEnvironment)
-                            item.mirrorView = reflectionView;
+                            item.blend = reflectionBlend;
                     }
                     renderer.DrawStereo(items, {}, items.size());
                     return renderer.MirrorForAudit();
                 };
-                const auto mirrorBody = mirrorPixels(false, 3u);
-                const auto mirrorNoTint = mirrorPixels(true, 1u);
-                const auto mirrorTint = mirrorPixels(true, 3u);
+                const auto mirrorBody = mirrorPixels(false, 0u);
+                const auto mirrorUntinted = mirrorPixels(true, 1u);
+                const auto mirrorTinted = mirrorPixels(true, kBlendStockSurfaceEnvironment);
                 gt2::carReflections = true;
-                long mirrorNoTintBlue = 0, mirrorTintBlue = 0;
+                long mirrorUntintedBlue = 0, mirrorTintedBlue = 0;
                 size_t mirrorLit = 0;
                 for (size_t pixel = 0; pixel < mirrorBody.size(); pixel += 4) {
-                    const int dr = int(mirrorNoTint[pixel]) - int(mirrorBody[pixel]);
-                    const int db = int(mirrorNoTint[pixel + 2]) - int(mirrorBody[pixel + 2]);
+                    const int dr = int(mirrorUntinted[pixel]) - int(mirrorBody[pixel]);
+                    const int db = int(mirrorUntinted[pixel + 2]) - int(mirrorBody[pixel + 2]);
                     if (dr <= 2 && db <= 2) continue;
                     ++mirrorLit;
-                    mirrorNoTintBlue += db - dr;
-                    mirrorTintBlue += (int(mirrorTint[pixel + 2]) - int(mirrorBody[pixel + 2])) -
-                                      (int(mirrorTint[pixel]) - int(mirrorBody[pixel]));
+                    mirrorUntintedBlue += db - dr;
+                    mirrorTintedBlue += (int(mirrorTinted[pixel + 2]) - int(mirrorBody[pixel + 2])) -
+                                        (int(mirrorTinted[pixel]) - int(mirrorBody[pixel]));
                 }
                 if (mirrorLit < 16) throw std::runtime_error("VR mirror check found no reflection pixels: " + id);
-                if (!(mirrorNoTintBlue > 0 && mirrorTintBlue * 2 < mirrorNoTintBlue))
+                if (!(mirrorUntintedBlue > 0 && mirrorTintedBlue * 2 < mirrorUntintedBlue))
                     throw std::runtime_error("VR mirror stock reflection keeps its blue hue: " + id);
                 ++cases;
             }
