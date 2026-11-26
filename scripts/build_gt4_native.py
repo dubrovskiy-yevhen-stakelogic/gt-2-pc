@@ -273,8 +273,9 @@ def main():
     p.add_argument('--cars',nargs='+');p.add_argument('--workers',type=int,default=4)
     p.add_argument('--gt2-catalog',nargs='+',type=Path,default=[],help='export-cars directories whose paint lists limit each model')
     p.add_argument('--cabin-sources',type=Path,default=Path(__file__).resolve().parents[1]/'db/gt4-native-interiors.json',help='Hash-bound reviewed source decisions keyed by GT4 code')
+    p.add_argument('--skip-reviewed-cabins',action='store_true',help='Disc revision whose open-car sources are not hash-bound to the reviewed retail decisions')
     a=p.parse_args()
-    a.cabin_sources=json.loads(a.cabin_sources.read_text())['cars'] if a.cabin_sources else {}
+    a.cabin_sources=json.loads(a.cabin_sources.read_text())['cars'] if a.cabin_sources and not a.skip_reviewed_cabins else {}
     for name in ('pack','paints','output','tool','alignment','vol'):setattr(a,name,getattr(a,name).resolve())
     a.gt2_catalog=[path.resolve() for path in a.gt2_catalog]
     a.tool_sha256=hashlib.sha256(a.tool.read_bytes()).hexdigest()
@@ -288,7 +289,8 @@ def main():
     for id,e in manifest.items():
         if a.cars and id not in a.cars:continue
         code=e.get('gt4Model','')
-        if (a.vol/'car/open'/code).is_file() and not e.get('nativeInterior') and code not in a.cabin_sources:
+        if (not a.skip_reviewed_cabins and (a.vol/'car/open'/code).is_file() and
+                not e.get('nativeInterior') and code not in a.cabin_sources):
             raise ValueError('Authored open source has no reviewed interior decision: '+code)
         if code in a.cabin_sources and not all(k in a.cabin_sources[code] for k in ('eye','mirror','openTop')):
             raise ValueError('Incomplete reviewed cabin profile: '+code)

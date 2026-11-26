@@ -10,6 +10,7 @@
     'scripts/gt4_tool_patch.py',
     'scripts/gt4_vif_positions.cs',
     'scripts/gt4_core.py',
+    'scripts/gt4_sources.py',
     'scripts/gt4_profiles.json',
     'scripts/gt4_native_instances.py',
     'scripts/gt4_native_cabins.py',

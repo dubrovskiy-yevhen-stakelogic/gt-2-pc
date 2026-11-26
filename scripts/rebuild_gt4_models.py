@@ -50,11 +50,12 @@ def main():
         jobs.setdefault(parent,job)['ids'].append(id)
     if missing:
         from gt4_iso import inventory
+        from gt4_sources import for_toc
         from import_gt4_models import extract
         with a.iso.open('rb') as source:
             inv=inventory(source)
-            expected=json.loads(a.profiles.read_text())['discTocSha256']
-            if inv['toc_fingerprint_sha256']!=expected:raise ValueError('Unverified source disc revision')
+            if not for_toc(json.loads(a.profiles.read_text()),inv['toc_fingerprint_sha256']):
+                raise ValueError('Unverified source disc revision')
             entries={e['path']:e for e in inv['entries'] if e['kind']}
             for index,(resource,dump) in enumerate(missing.items()):
                 if (dump/'model0.obj').exists() or (dump/'model0.lod0.obj').exists():continue

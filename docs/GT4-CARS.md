@@ -1,14 +1,16 @@
 # GT4 cars
 
-The optional pack adds 722 cars to the GT2 catalogue and provides 388 replacement
-models for existing GT2 entries. GT2 and GT4 cars can participate in the same race.
+The optional pack adds 722 cars from retail GT4 or 744 from Spec II to the GT2
+catalogue and provides 388 replacement models for existing GT2 entries. GT2 and
+GT4 cars can participate in the same race.
 The [README](../README.md#gt4-cars) has the tested image revision, a gameplay
 screenshot and the full list of 66 models with restored original interiors.
 
 ## Required data and tools
 
-- Your **Gran Turismo 4 USA v1.01 (SCUS-97328)** ISO. The importer verifies its
-  table-of-contents fingerprint before conversion. Other revisions are rejected.
+- Your **Gran Turismo 4 USA v1.01 (SCUS-97328)** or **Gran Turismo 4 Spec II
+  v1.10 (SCUS-97436)** ISO. The importer verifies its table-of-contents
+  fingerprint before conversion. Other revisions are rejected.
 - Your prepared **GT2 USA Simulation v1.2** disc directory, and optionally
   **USA Arcade v1.1** for a second catalogue overlay. A complete BIN is also accepted.
 - On Windows, the launcher automatically prepares Python, Pillow, NumPy and
@@ -79,8 +81,10 @@ The final directory contains:
   authored interior choices and recovered wheel poses.
 - `expansions/simulation` and, when requested, `expansions/arcade`: separate
   catalogue overlays for the two discs.
-- `READY.json`: counts and source identity. A complete result has 1,110 model
-  mappings, 722 added catalogue entries and 89 authored-interior mappings.
+- `READY.json`: counts and source identity. A complete retail 1.01 result has
+  1,110 model mappings, 722 added catalogue entries and 89 authored-interior
+  mappings; Spec II 1.10 has 1,132 mappings, 744 entries and 40 profile-based
+  authored interiors.
 
 `--models` is a developer diagnostic option. A subset does not produce an
 activation-ready catalogue and must not be installed as the complete expansion.
@@ -128,6 +132,13 @@ every source-car feature are not reproduced. Generated cabins can have fitting
 or clipping errors; the full catalogue has not been checked manually. Saved cars
 from the expansion require its catalogue and mandatory models to remain installed.
 The browser version does not load the native GT4 pack.
+
+Spec II has no separate verified CORE image, so its pack has no recovered
+showroom wheel poses. The runtime fits GT2 donor wheels to the imported arches
+instead; retail 1.01 keeps the recovered native wheel geometry. Spec II's
+open-car models also differ from the hash-bound retail sources, so the 49
+reviewed open-top cabin decisions are not applied; those cars use generated
+cockpits. The 40 profile-based authored interiors are retained.
 
 The pack exports only the paint colours the matching GT2 car can select, and
 never more than 32. GT2 stores a car's paint count in five bits, so further GT4

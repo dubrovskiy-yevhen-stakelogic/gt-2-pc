@@ -19,24 +19,31 @@ spec.loader.exec_module(packager)
 
 
 def bundle(path, corrupt=False, escape=False, subset=False, missing_interior=False,
-           missing_native=False, missing_mesh=False, missing_expansion_model=False):
+           missing_native=False, missing_mesh=False, missing_expansion_model=False,
+           cars=1110, required=722, source=None, showroom=True, authored=89):
     def encode(value):
         return json.dumps(value,separators=(',',':')).encode('utf-8')
-    ids = [f'z{i:04d}' for i in range(1 if subset else 1110)]
+    ids = [f'z{i:04d}' for i in range(1 if subset else cars)]
     mesh = 'fixture/body.gltf.gz'
-    cars = {car: dict(gt4Model='fixture',required=index<722) for index,car in enumerate(ids)}
+    entries = {car: dict(gt4Model='fixture',required=index<required) for index,car in enumerate(ids)}
     native = {car:mesh for car in ids}
     if missing_native:
         native.pop(ids[-1])
-    cabins = {car:dict(mesh=mesh,nativeInterior=True) for car in ids[:89]}
-    expansion = [dict(id=car) for car in ids[:722]]
+    cabins = {car:dict(mesh=mesh,nativeInterior=True) for car in ids[:authored]}
+    expansion = [dict(id=car) for car in ids[:required]]
     if missing_expansion_model:
         expansion[-1]['id']='x0000'
+    manifest = dict(format='gt2-model-set',version=1,id='gt4',cars=entries)
+    if source:
+        manifest['source']=source
+    wheels = dict(format='gt4-wheel-geometry',version=2,cars={car:{} for car in ids},missing=[])
+    if not showroom:
+        wheels = dict(format='gt4-wheel-geometry',version=2,cars={},missing=['fixture'])
     files = {
-        'modelsets/gt4/manifest.json':encode(dict(format='gt2-model-set',version=1,id='gt4',cars=cars)),
+        'modelsets/gt4/manifest.json':encode(manifest),
         'modelsets/gt4/native-v16/manifest.json':encode(dict(format='gt4-native-overlay',version=1,cars=native)),
         'modelsets/gt4/native-v16/interiors.json':encode(dict(format='gt4-native-interiors',version=1,cars=cabins)),
-        'modelsets/gt4/native-v16/wheels.json':encode(dict(format='gt4-wheel-geometry',version=2,cars={car:{} for car in ids},missing=[])),
+        'modelsets/gt4/native-v16/wheels.json':encode(wheels),
         'modelsets/gt4/native-v16/'+mesh:gzip.compress(encode(dict(buffers=[dict(uri='body.bin.gz')],images=[]))),
         'modelsets/gt4/native-v16/fixture/body.bin.gz':gzip.compress(b'mesh fixture'),
         'modelsets/gt4/native-v16/fixture/paints.json.gz':gzip.compress(encode(dict(format='gt4-native-paints',version=1,colors=[dict(images={})]))),
@@ -75,6 +82,14 @@ class InstallChecks(unittest.TestCase):
     def unchanged(self):
         self.assertEqual((self.runtime/'saves/card.mcd').read_bytes(),b'keep saved game')
         self.assertEqual((self.runtime/'arcade/disc.raw2352').read_bytes(),b'disc fixture')
+
+    def test_spec2_counts_and_missing_wheels_are_accepted(self):
+        bundle(self.archive, cars=1132, required=744, showroom=False, authored=40,
+               source={'replacementCars':388,'catalogueCars':744,'authoredInteriorMappings':40})
+        packager.verify(self.archive)
+        installer.install(self.archive,self.runtime)
+        self.unchanged()
+        self.assertTrue((self.runtime/'modelsets/gt4/native-v16/wheels.json').is_file())
 
     def test_update_keeps_saves_and_previous_models(self):
         bundle(self.archive)

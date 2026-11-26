@@ -2,6 +2,20 @@
   "format": "gt2-gt4-import-profiles",
   "version": 1,
   "discTocSha256": "9ea0707b27466488fe14f68ebace3af31759efb13559d13584a3c714ef35a43c",
+  "discs": {
+    "9ea0707b27466488fe14f68ebace3af31759efb13559d13584a3c714ef35a43c": {
+      "name": "Gran Turismo 4 USA v1.01 (SCUS-97328)",
+      "specdb": "GT4_US2560",
+      "catalogueCars": 722,
+      "core": true
+    },
+    "6138da7dd967a5d48177b3b71c6ae8b53248f302b539ec4c0031df667bcbbf0a": {
+      "name": "Gran Turismo 4 Spec II v1.10 (SCUS-97436)",
+      "specdb": "GT4_PREMIUM_US2560",
+      "catalogueCars": 744,
+      "core": false
+    }
+  },
   "cars": {
     "dvpgn": {
       "name": "Dodge Viper GTS '99",

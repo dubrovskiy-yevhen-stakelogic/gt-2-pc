@@ -84,7 +84,9 @@ def inventory(stream):
         index_page, count = struct.unpack_from('<HH', page)
         if index_page:
             continue
-        if count % 2 or count * 4 > page_size - 12:
+        # GT4 US 1.01 stores an even count; GT4 Online-derived images such as
+        # Spec II include one extra slot. Both lay out count // 2 records.
+        if count * 4 > page_size - 12:
             raise ValueError('Invalid entry count')
         for index in range(count // 2):
             no, nl, mo, ml = struct.unpack_from('<HHHH', page, page_size - 8 * (index + 1))

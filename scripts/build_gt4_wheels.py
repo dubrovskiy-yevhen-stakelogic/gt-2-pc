@@ -98,7 +98,7 @@ def aligned_pose(record, native):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ['specdb', 'alignment', 'output']: p.add_argument('--'+name, required=True, type=Path)
-    p.add_argument('--showroom', required=True, type=Path)
+    p.add_argument('--showroom', type=Path, help='Hash-bound showroom export; omit when the source disc has no verified CORE image')
     p.add_argument('--audit', type=Path)
     a = p.parse_args()
     rows = {}; hashes = {}
@@ -109,29 +109,39 @@ def main():
         records = json.loads(data)['rows']
         if name == 'VARIATIONamerican': rows['labels'] = {r['id']: r['label'] for r in records}
         else: rows[name] = {r['id']: bytes.fromhex(r['hex']) for r in records}
-    native=json.loads(a.showroom.read_text(encoding='utf-8-sig'))
-    if native.get('format')!='gt4-showroom-geometry' or native.get('version')!=1:
-        raise ValueError('Unsupported native showroom geometry')
-    if native.get('specdbSources')!=hashes: raise ValueError('Showroom/SpecDB source hash mismatch')
-    declared_missing=set(native['missingModels']);cars={};missing={};pitch_cases={}
+    cars={};missing={};pitch_cases={};showroom_sha=None
     records=json.loads(a.alignment.read_text())
-    for record in records:
-        source=Path(record['source']);code=source.name
-        if code not in native['models']:
-            if code not in declared_missing: raise ValueError('Unreviewed missing showroom model: '+code)
-            missing.setdefault(code,[]).extend(record['ids']);continue
-        row=aligned_pose(record,native['models'][code])
-        digest=hashlib.sha256(source.read_bytes()).hexdigest()
-        if digest!=record['rawSha256']: raise ValueError('Alignment/source hash mismatch: '+code)
-        row.update(model=code,sourceSha256=digest)
-        for id in record['ids']: cars[id] = row
-        if abs(row['bodyPitchDegrees'])>1e-5:pitch_cases[code]=dict(degrees=row['bodyPitchDegrees'],ids=record['ids'])
+    if a.showroom:
+        native=json.loads(a.showroom.read_text(encoding='utf-8-sig'))
+        if native.get('format')!='gt4-showroom-geometry' or native.get('version')!=1:
+            raise ValueError('Unsupported native showroom geometry')
+        if native.get('specdbSources')!=hashes: raise ValueError('Showroom/SpecDB source hash mismatch')
+        declared_missing=set(native['missingModels'])
+        for record in records:
+            source=Path(record['source']);code=source.name
+            if code not in native['models']:
+                if code not in declared_missing: raise ValueError('Unreviewed missing showroom model: '+code)
+                missing.setdefault(code,[]).extend(record['ids']);continue
+            row=aligned_pose(record,native['models'][code])
+            digest=hashlib.sha256(source.read_bytes()).hexdigest()
+            if digest!=record['rawSha256']: raise ValueError('Alignment/source hash mismatch: '+code)
+            row.update(model=code,sourceSha256=digest)
+            for id in record['ids']: cars[id] = row
+            if abs(row['bodyPitchDegrees'])>1e-5:pitch_cases[code]=dict(degrees=row['bodyPitchDegrees'],ids=record['ids'])
+        pose_source=native['provenance']
+        showroom_sha=hashlib.sha256(a.showroom.read_bytes()).hexdigest()
+    else:
+        # The runtime fits GT2 donor wheels to the imported arches when a model
+        # has no verified showroom pose. Declare every model so that fallback is
+        # explicit instead of pretending the disc supplied anchors.
+        for record in records:
+            missing.setdefault(Path(record['source']).name,[]).extend(record['ids'])
+        pose_source=dict(kind='unavailable',reason='source disc has no verified CORE showroom image')
     audit=dict(alignmentModels=len(records),catalogueMappings=sum(len(r['ids']) for r in records),
                exportedMappings=len(cars),missingMappings=missing,pitchModels=pitch_cases,
-               showroomSha256=hashlib.sha256(a.showroom.read_bytes()).hexdigest(),
-               alignmentSha256=hashlib.sha256(a.alignment.read_bytes()).hexdigest())
+               showroomSha256=showroom_sha,alignmentSha256=hashlib.sha256(a.alignment.read_bytes()).hexdigest())
     result = dict(format='gt4-wheel-geometry', version=2, sources=hashes, cars=cars,
-                  missing=sorted(missing),poseSource=native['provenance'],audit=audit)
+                  missing=sorted(missing),poseSource=pose_source,audit=audit)
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(json.dumps(result, separators=(',', ':'))+'\n')
     if a.audit:a.audit.write_text(json.dumps(audit,indent=2)+'\n')
