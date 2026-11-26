@@ -132,6 +132,18 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     Check(vkCreateFence(device_, &fci, nullptr, &fence_), "vkCreateFence");
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physical_, &properties);
+    // The budget query is only valid when the driver has the extension; without it the log keeps the renderer's own
+    // peak and says nothing about the device.
+    uint32_t extensionCount = 0;
+    if (vkEnumerateDeviceExtensionProperties(physical_, nullptr, &extensionCount, nullptr) == VK_SUCCESS && extensionCount) {
+        std::vector<VkExtensionProperties> extensions(extensionCount);
+        if (vkEnumerateDeviceExtensionProperties(physical_, nullptr, &extensionCount, extensions.data()) == VK_SUCCESS) {
+            memoryBudget_ = std::any_of(extensions.begin(), extensions.end(), [](const VkExtensionProperties& e) {
+                return std::strcmp(e.extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0; });
+        }
+    }
+    getMemoryProperties2_ = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2>(
+        vkGetInstanceProcAddr(context_.Instance(), "vkGetPhysicalDeviceMemoryProperties2"));
     cacheMenuTextures_ = properties.vendorID == 0x106bu; // Apple: avoid dependent VRAM-buffer reads in menu fragments.
     if (const char* cache = std::getenv("GT2_CACHE_MENU_TEXTURES")) cacheMenuTextures_ = std::strcmp(cache, "1") == 0;
     if (cacheMenuTextures_) std::printf("graphics: hardware palette textures enabled for menus\n");
@@ -183,7 +195,8 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
     *static_cast<uint32_t*>(generatedUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(modelUpload_.mapped)=0xffffffffu;
     *static_cast<uint32_t*>(handUpload_.mapped) = 0xffffffffu; handPending_ = true;
-    externalBuffer_ = CreateBuffer(sizeof(uint32_t) * kExternalTexels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    externalBuffer_ = CreateBuffer(sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT); // grows to the used texels
+    externalCapacity_ = 1;
     std::memset(externalBuffer_.mapped, 0, static_cast<size_t>(externalBuffer_.size));
     viewBuffer_ = CreateBuffer(sizeof(StereoViews), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT); // the stereo eyes
     std::memset(viewBuffer_.mapped, 0, static_cast<size_t>(viewBuffer_.size));
@@ -213,6 +226,13 @@ VkSceneRenderer::VkSceneRenderer(VkContext& context, VkExtent2D offscreenExtent,
 
 VkSceneRenderer::~VkSceneRenderer() {
     if (!device_) return;
+    // What the frames this renderer drew really needed: our buffers and images, and the device-local usage the
+    // driver reports (swapchain, driver internals and the compositor included). Low-memory reports get both.
+    SampleDeviceMemory();
+    std::printf("graphics: memory peak: %.1f MiB renderer buffers, %.1f MiB device-local used",
+                double(peakAllocatedBytes_) / (1024 * 1024), double(peakDeviceBytes_) / (1024 * 1024));
+    if (deviceBudgetBytes_) std::printf(" (budget %.0f MiB)", double(deviceBudgetBytes_) / (1024 * 1024));
+    std::printf("\n");
     vkDeviceWaitIdle(device_);
     DestroyPipelineSet(pipelines_);
     DestroyPipelineSet(modelPipelines_);
@@ -302,19 +322,107 @@ void VkSceneRenderer::DestroyBuffer(Buffer& b) {
 }
 
 void VkSceneRenderer::ReportAllocation() {
+    peakAllocatedBytes_ = std::max<uint64_t>(peakAllocatedBytes_, uint64_t(allocatedBytes_));
     constexpr VkDeviceSize step = 64ull << 20;
     if (allocatedBytes_ / step <= reportedBytes_ / step) return;
     reportedBytes_ = allocatedBytes_;
     std::printf("graphics: %llu MiB GPU memory allocated\n", static_cast<unsigned long long>(allocatedBytes_ / (1024 * 1024)));
 }
 
+bool VkSceneRenderer::DeviceMemory(uint64_t& used, uint64_t& budget) const {
+    // The same dev/support switch as the probe (GT2_FAKE_VIDEO_MIB): pretend an empty device with that much free, so
+    // the adaptive cache can be tried on a big machine.
+    if (const char* fake = std::getenv("GT2_FAKE_VIDEO_MIB")) {
+        used = 0;
+        budget = std::strtoull(fake, nullptr, 10) << 20;
+        return budget != 0;
+    }
+    if (!memoryBudget_ || !getMemoryProperties2_) return false;
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT heap{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT};
+    VkPhysicalDeviceMemoryProperties2 memory{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2};
+    memory.pNext = &heap;
+    getMemoryProperties2_(physical_, &memory);
+    used = budget = 0;
+    for (uint32_t i = 0; i < memory.memoryProperties.memoryHeapCount; ++i)
+        if (memory.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+            used += heap.heapUsage[i];
+            budget += heap.heapBudget[i];
+        }
+    return true;
+}
+
+uint32_t VkSceneRenderer::AdaptiveDecodedLayers() const {
+    // Dev/support override, like GT2_VK_RENDERPASS: try a smaller cache (MiB) on real hardware without changing the
+    // settings; 0 keeps the cache off.
+    if (const char* forced = std::getenv("GT2_DECODED_CACHE_MIB")) {
+        const int mib = std::max(0, std::atoi(forced));
+        return std::min<uint32_t>(uint32_t(mib) * 8 / 5, DecodedTextureCache::kLayers); // 0.625 MiB per layer
+    }
+    uint64_t used = 0, budget = 0;
+    if (!DeviceMemory(used, budget) || !budget) return DecodedTextureCache::kLayers; // no budget: keep the full cache
+    const uint64_t available = budget > used ? budget - used : 0;
+    return gt2view::RecommendedDecodedCacheLayers(available, extent_.height);
+}
+
+void VkSceneRenderer::SampleDeviceMemory() {
+    uint64_t used = 0, budget = 0;
+    if (!DeviceMemory(used, budget)) return;
+    peakDeviceBytes_ = std::max(peakDeviceBytes_, used);
+    deviceBudgetBytes_ = budget ? budget : deviceBudgetBytes_;
+    // A device can start above the floor and still be pushed past its budget by MSAA, resolution, HD media or GT4
+    // models. Say so in the log before the allocation fails, with the settings that move the number.
+    if (deviceBudgetBytes_ && !memoryPressure_ && peakDeviceBytes_ * 4 > deviceBudgetBytes_ * 3) {
+        memoryPressure_ = true;
+        std::printf("graphics: memory pressure: %.0f MiB of %.0f MiB budget used at peak; lower MSAA, Resolution, "
+                    "HD media or GT4 models if it stutters or fails\n",
+                    double(peakDeviceBytes_) / (1024 * 1024), double(deviceBudgetBytes_) / (1024 * 1024));
+    }
+}
+
+// Grows the external RGBA8 store to cover `texels`. The store's addresses are absolute, so the first GT4/native model
+// upload reaches its range's base and the buffer grows to there; a PS1-only install never allocates the full size.
+void VkSceneRenderer::EnsureExternalCapacity(uint32_t texels) {
+    if (texels <= externalCapacity_) return;
+    constexpr uint32_t chunk = 1u << 20; // 1 M texels = 4 MiB
+    uint32_t capacity = (texels + chunk - 1) & ~(chunk - 1);
+    if (capacity > kExternalTexels) capacity = kExternalTexels;
+    vkDeviceWaitIdle(device_);
+    Buffer grown = CreateBuffer(size_t(capacity) * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    if (externalBuffer_.mapped && externalBuffer_.size)
+        std::memcpy(grown.mapped, externalBuffer_.mapped, static_cast<size_t>(externalBuffer_.size));
+    const VkDescriptorBufferInfo info{grown.buffer, 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstBinding = 1;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    write.pBufferInfo = &info;
+    for (VkDescriptorSet set : {descSet_, mirrorSourceSet_}) {
+        write.dstSet = set;
+        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+    }
+    DestroyBuffer(externalBuffer_);
+    externalBuffer_ = grown;
+    externalCapacity_ = capacity;
+    std::printf("graphics: external texture store %u MiB\n", capacity * 4 / (1024 * 1024));
+}
+
 void VkSceneRenderer::CreateSwapchain() {
     VkSurfaceCapabilitiesKHR caps;
     Check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_, surface_, &caps), "surface capabilities");
-    extent_ = caps.currentExtent;
-    extentFromWindow_ = extent_.width == 0xFFFFFFFFu;
-    if (extentFromWindow_) context_.WindowExtent(extent_);
-    if (extent_.width == 0 || extent_.height == 0) return; // minimized
+    surfaceExtent_ = caps.currentExtent;
+    extentFromWindow_ = surfaceExtent_.width == 0xFFFFFFFFu;
+    if (extentFromWindow_) context_.WindowExtent(surfaceExtent_);
+    if (surfaceExtent_.width == 0 || surfaceExtent_.height == 0) return; // minimized
+    // A fixed output renders the swapchain (and so the whole frame) below the window; Vulkan 1.1 scales it up in the
+    // presentation engine, like a TV compositor scaling a 720p buffer to the panel. No display-mode switch.
+    extent_ = surfaceExtent_;
+    if (options_.outputHeight && options_.outputHeight < surfaceExtent_.height) {
+        uint32_t height = std::clamp(options_.outputHeight, caps.minImageExtent.height, caps.maxImageExtent.height);
+        height = std::min(height, surfaceExtent_.height);
+        uint32_t width = uint32_t((uint64_t(surfaceExtent_.width) * height + surfaceExtent_.height / 2) / surfaceExtent_.height);
+        width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
+        extent_ = {width, height};
+    }
 
     uint32_t fn = 0;
     Check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, &fn, nullptr), "surface formats");
@@ -361,9 +469,18 @@ void VkSceneRenderer::CreateSwapchain() {
         blitLinear_ = (fp.optimalTilingFeatures & need) == need;
     }
     sci.clipped = VK_TRUE;
-    Check(vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_), "vkCreateSwapchainKHR");
-    std::printf("graphics: swapchain %ux%u, format %d, colorspace %d, present %d, requested images %u\n",
-        extent_.width, extent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
+    VkResult created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    if (created != VK_SUCCESS && (extent_.width != surfaceExtent_.width || extent_.height != surfaceExtent_.height)) {
+        // Some WSI implementations refuse an extent different from the surface: keep the game running at full size.
+        std::printf("graphics: the driver rejected a %ux%u output, using the surface %ux%u\n",
+                    extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height);
+        extent_ = surfaceExtent_;
+        sci.imageExtent = extent_;
+        created = vkCreateSwapchainKHR(device_, &sci, nullptr, &swapchain_);
+    }
+    Check(created, "vkCreateSwapchainKHR");
+    std::printf("graphics: swapchain %ux%u (surface %ux%u), format %d, colorspace %d, present %d, requested images %u\n",
+        extent_.width, extent_.height, surfaceExtent_.width, surfaceExtent_.height, int(chosen.format), int(chosen.colorSpace), int(presentMode_), sci.minImageCount);
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(device_, swapchain_, &n, nullptr);
@@ -550,10 +667,11 @@ void VkSceneRenderer::SetOptions(const RenderOptions& options) {
     const bool targetsChanged = options.sceneWidth != options_.sceneWidth || options.sceneHeight != options_.sceneHeight ||
         options.sceneScale != options_.sceneScale || ClampSamples(options.msaa) != ClampSamples(options_.msaa);
     const bool presentChanged = options.vsync != options_.vsync && !offscreen_; // no presentation of our own in the XR path
-    if (targetsChanged || presentChanged) vkDeviceWaitIdle(device_);
+    const bool outputChanged = options.outputHeight != options_.outputHeight && !offscreen_;
+    if (targetsChanged || presentChanged || outputChanged) vkDeviceWaitIdle(device_);
     options_ = options;
-    if (presentChanged) {
-        DestroySwapchain(); // recreated with the new present mode by the next Draw
+    if (presentChanged || outputChanged) {
+        DestroySwapchain(); // recreated with the new present mode / output size by the next Draw
         return;
     }
     if (targetsChanged && (swapchain_ || offscreen_)) CreateSceneTargets();
@@ -1197,6 +1315,8 @@ void VkSceneRenderer::UploadVram(uint32_t firstRow, uint32_t rowCount, const uin
 
 void VkSceneRenderer::UploadExternalTexture(uint32_t firstTexel, uint32_t count, const uint32_t* rgba) {
     if (uint64_t(firstTexel) + count > kExternalTexels) throw std::runtime_error("UploadExternalTexture: texels out of range");
+    if (!count) return;
+    EnsureExternalCapacity(firstTexel + count);
     WriteBuffer(externalBuffer_, size_t(firstTexel) * sizeof(uint32_t), rgba, size_t(count) * sizeof(uint32_t));
     if (firstTexel>=kModelSetTexelBase && firstTexel<kGeneratedWorldTexelBase) {
         modelSourcePixels_[firstTexel].assign(rgba,rgba+count);
@@ -1214,7 +1334,7 @@ void VkSceneRenderer::Draw(const std::vector<DrawItem>& items, const std::string
     // Wayland's WSI never reports OUT_OF_DATE/SUBOPTIMAL on resize, so compare the window ourselves.
     VkExtent2D drawable{};
     if (swapchain_ && extentFromWindow_ && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-        (drawable.width != extent_.width || drawable.height != extent_.height)) {
+        (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height)) {
         vkDeviceWaitIdle(device_);
         DestroySwapchain();
     }
@@ -2126,6 +2246,7 @@ void VkSceneRenderer::DrawScenePass(const std::vector<DrawItem>& items, size_t s
 }
 
 void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screenshotPath) {
+    if ((++frames_ & 63) == 0) SampleDeviceMemory();
     const bool capture = !screenshotPath.empty();
     VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     VkAccessFlags access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -2176,7 +2297,7 @@ void VkSceneRenderer::FinishFrame(uint32_t imageIndex, const std::string& screen
     VkResult pres = vkQueuePresentKHR(queue_, &pi);
     VkExtent2D drawable{};
     const bool resized = pres == VK_SUBOPTIMAL_KHR && context_.WindowExtent(drawable) && drawable.width && drawable.height &&
-                         (drawable.width != extent_.width || drawable.height != extent_.height);
+                         (drawable.width != surfaceExtent_.width || drawable.height != surfaceExtent_.height);
     // SUBOPTIMAL is still a successful presentation. Cocoa can report it while
     // entering fullscreen without changing the drawable; avoid rebuilding every frame.
     if (pres == VK_ERROR_OUT_OF_DATE_KHR || resized) {

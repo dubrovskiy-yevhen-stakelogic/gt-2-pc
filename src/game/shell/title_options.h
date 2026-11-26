@@ -97,8 +97,12 @@ struct GraphicsSettings {
                                            // interpolated between the last two 30 Hz states
     int frameCap = 0;                      // frames per second (Display), 0 = none (the display's refresh)
     bool vsync = true;                     // false: MAILBOX / IMMEDIATE presentation (with a cap: paced by the cap)
-    int renderHeight = 0;                  // fixed 16:9 scene: 720/1080/1440/2160; 0 uses window scale
-    int renderScale = 100;                 // internal resolution of the 3D scene, percent of the window (50..200)
+    // The output resolution: 0 = the window/surface (the display's size), otherwise the swapchain height, scaled to
+    // the surface by the presentation engine. It is the memory lever: 720p costs ~14 MiB of swapchain + depth where
+    // 4K costs ~130 MiB. The PC SETTINGS / port menu "Resolution" row sets it; the probe caps it on low video memory.
+    int outputHeight = 0;
+    int renderHeight = 0;                  // advanced: fixed 16:9 scene height, independent of the output
+    int renderScale = 100;                 // advanced: internal resolution of the 3D scene, percent of the output
     int msaa = 1;                          // multisampling of the 3D scene: 1 (off), 2, 4, 8
     bool smoothTextures = false;           // false: the PS1's nearest texel; true: CLUT-aware bilinear
     bool affine = false;                   // true: the PS1's screen-linear texture mapping; false: perspective-correct
@@ -107,6 +111,8 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: nothing beyond N m draws;
                                            // -1: every chunk of the course
+    // Video memory is handled automatically: the decoded texture cache sizes itself from the free video memory, and the
+    // probe only caps the output and MSAA when a machine is small (graphics_options.h). There is no stored mode.
     static GraphicsSettings Vanilla() {
         GraphicsSettings g;
         g.frameRate = kFrameRateOriginal;
@@ -116,8 +122,26 @@ struct GraphicsSettings {
         GraphicsSettings g;
         g.msaa = 4;
         g.smoothTextures = true;
+        g.modernCarReflections = true;
+        g.carReflections = true;
         g.maxDetail = true;
         g.drawDistance = 1000;
+        return g;
+    }
+    // Discussion #77, phase 3: the preset for GPUs without much usable video memory. 720p output, no MSAA, no car
+    // reflection pass and no HD extras. The render-pass path for Vulkan 1.1/1.2 is chosen from the API version, not
+    // from this preset: an old API on a big GPU keeps the standard look.
+    static GraphicsSettings LowSpec() {
+        GraphicsSettings g;
+        g.outputHeight = 720;
+        g.renderScale = 100;
+        g.msaa = 1;
+        g.smoothTextures = false;
+        g.affine = false;
+        g.modernCarReflections = false;
+        g.carReflections = false;
+        g.maxDetail = false;
+        g.drawDistance = 0;
         return g;
     }
     bool operator==(const GraphicsSettings&) const = default;

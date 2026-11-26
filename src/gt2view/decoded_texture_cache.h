@@ -13,6 +13,9 @@ namespace gt2view {
 class DecodedTextureCache {
 public:
     static constexpr uint32_t kLayers = 512, kTableSize = 4096, kTexels = 256 * 256;
+    // The real cache size: layers of 256x256 texels, sized from the video memory the frame left over (the full
+    // kLayers is for a GPU with room to spare; the renderer decides before the first frame that uses the cache).
+    uint32_t layers = kLayers;
     struct Entry { uint32_t page = 0, clutDepth = 0, slot = 0; bool dirty = true, prepared = false; };
     std::array<std::array<uint32_t, 4>, kTableSize> table{};
     std::vector<uint32_t> pixels;
@@ -59,14 +62,14 @@ public:
     }
     template<class Word>
     void Prepare(uint32_t page, uint32_t clutDepth, const Word* vram, uint32_t rows, bool priority = false, bool softenLines = false) {
-        if (pixels.empty()) pixels.resize(size_t(kLayers) * kTexels);
+        if (pixels.empty()) pixels.resize(size_t(layers) * kTexels);
         clutDepth = Soften(clutDepth, softenLines);
         const uint64_t key = Key(page, clutDepth);
         protected_.insert(key);
         auto it = entries_.find(key);
         if (it == entries_.end()) {
             uint32_t slot = uint32_t(entries_.size()) * 2;
-            if (entries_.size() >= kLayers / 2) {
+            if (entries_.size() >= layers / 2) {
                 auto victim = entries_.begin();
                 // Priority admission happens before ordinary draws are prepared.
                 // Never invalidate a slot already referenced by this submission.

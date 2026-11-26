@@ -306,7 +306,7 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
     auto storeSettings = [&] {
         gt2::powerUnits = settings.powerUnits;
         gt2::ApplyPowerUnits();
-        gt2game::SetGraphicsFromSettings(settings.graphics); // the PC SETTINGS page's graphics for the next race (unless the command line pinned them)
+        gt2game::SetGraphicsFromPage(settings.graphics); // the PC SETTINGS page's graphics for the next race (unless the command line pinned them)
         if (options.settingsPath.empty()) return;
         settings.options = shell::ReadGameOptions(save.state);
         settings.haveCareerOptions = true;
@@ -701,8 +701,13 @@ int RunTitleMode(const DiscImage& disc, const GtfsVolume& vol, const TitleModeOp
             // acts as a digital pad), port 2 = none.
             optionsScreen->SetPadTypes(window.Pad().type != input::kTypeNone ? window.Pad().type : uint8_t(input::kTypeDigital), input::kTypeNone);
             optionsScreen->SetAnalogRaw(0, window.Pad().analog); // the ANALOG pages' live bytes (a neGcon-type controller)
+            const shell::GraphicsSettings beforeGraphics = settings.graphics;
             const bool optionsRunning = optionsScreen->Update(&pad, nullptr);
             playSounds(optionsScreen->sounds);
+            if (!(settings.graphics == beforeGraphics)) { // the preset and the rows it changes apply live
+                gt2game::SetGraphicsFromPage(settings.graphics);
+                window.Renderer().SetOptions(gt2game::RenderOptionsOf(gt2game::CurrentGraphics()));
+            }
             if (!optionsRunning) {
                 music->Stop();
                 storeSettings(); // ours: the options also go to the PC settings file for races without a career

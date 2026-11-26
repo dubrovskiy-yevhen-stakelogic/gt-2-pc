@@ -203,6 +203,7 @@ struct StereoViews {
 // rear-view mirror); the 2D layers after them (HUD, panels) and every screen that passes no scene count (menus, title)
 // keep the native window resolution and the PS1's nearest texels.
 struct RenderOptions {
+    uint32_t outputHeight = 0;   // 0: the surface's size; N: the swapchain height (the WSI scales it to the surface)
     uint32_t sceneWidth = 0, sceneHeight = 0;
     float sceneScale = 1.0f;     // internal resolution of the scene, times the window (0.5 .. 2)
     uint32_t msaa = 1;           // multisampling of the scene: 1 (off), 2, 4, 8 (clamped to the GPU's limit)

@@ -65,6 +65,53 @@ int main() {
     clears = MakeRenderPassClears(color, true, true);
     if (clears.count != 3 || clears.values[2].depthStencil.depth != 0.0f) return 23;
 
+    // The memory plan follows usable memory, not the API version: a Vulkan 1.1/1.2 card with plenty of memory is a
+    // powerful GPU and keeps the full cache and MSAA; the render-pass path is chosen separately from the API version.
+    gt2view::GpuCapability gpu;
+    gpu.apiVersion = VK_API_VERSION_1_2;
+    gpu.profile = GraphicsProfile::Compatibility;
+    gpu.deviceLocalBytes = 8ull << 30;
+    gpu.availableBytes = 7ull << 30;
+    gt2view::VulkanCapabilities plenty;
+    plenty.gpus.push_back(gpu);
+    gt2view::VulkanCapabilities weak = plenty;
+    weak.gpus[0].availableBytes = 900ull << 20;
+    if (gt2view::GraphicsMemoryTooLow(plenty, 0)) return 25;
+    if (gt2view::GraphicsMemoryTooLow(weak, 1080)) return 27;
+    gt2view::VulkanCapabilities tiny = weak;
+    tiny.gpus[0].availableBytes = 180ull << 20;
+    // 180 MiB is below the 192 MiB floor for a display/1080p output, but a 720p output fits in 128 MiB.
+    if (!gt2view::GraphicsMemoryTooLow(tiny, 1080)) return 28;
+    if (gt2view::GraphicsMemoryTooLow(tiny, 720)) return 31;
+    gt2view::VulkanCapabilities critical = tiny;
+    critical.gpus[0].availableBytes = 120ull << 20;
+    if (!gt2view::GraphicsMemoryTooLow(critical, 720)) return 32;
+    if (gt2view::GraphicsMemoryFloor(720) != 128ull << 20 || gt2view::GraphicsMemoryFloor(0) != 192ull << 20) return 33;
+    if (gt2view::RecommendedOutputHeight(180ull << 20, 0) != 720) return 34;
+    if (gt2view::RecommendedOutputHeight(300ull << 20, 0) != 1080) return 44;
+    if (gt2view::RecommendedOutputHeight(700ull << 20, 0) != 1080) return 35;
+    if (gt2view::RecommendedOutputHeight(1500ull << 20, 0) != 0) return 36;
+    if (gt2view::RecommendedOutputHeight(300ull << 20, 720) != 720) return 37;
+    // The decoded cache scales with a third of the memory left over the floor, in ~0.6 MiB layers; the full 512 from
+    // ~1.2 GiB up at 1080p (0.85 GiB at 720p). Layers, not "upload MiB": the sampled image with mips is the larger half.
+    if (gt2view::RecommendedDecodedCacheLayers(7ull << 30, 0) != 512) return 45;
+    if (gt2view::RecommendedDecodedCacheLayers(128ull << 20, 720) != 0) return 46;
+    if (gt2view::RecommendedDecodedCacheLayers(300ull << 20, 720) != 91) return 47;   // (300 - 128) / 3 / 0.625
+    if (gt2view::RecommendedDecodedCacheLayers(300ull << 20, 1080) != 57) return 48;  // (300 - 192) / 3 / 0.625
+    if (gt2view::RecommendedDecodedCacheLayers(0, 720) != 512) return 49;             // unknown memory: full
+    // MSAA only when the memory covers twice the measured 4x peak for that output.
+    if (gt2view::RecommendedMsaa(128ull << 20, 720, 4) != 1) return 50;
+    if (gt2view::RecommendedMsaa(200ull << 20, 720, 4) != 4) return 51;
+    if (gt2view::RecommendedMsaa(300ull << 20, 1080, 4) != 1) return 52;
+    if (gt2view::RecommendedMsaa(400ull << 20, 1080, 4) != 4) return 53;
+    if (gt2view::RecommendedMsaa(400ull << 20, 1080, 1) != 1) return 54;
+    if (gt2view::RecommendedMsaa(0, 1080, 4) != 4) return 55;                      // unknown memory: keep
+    // Unknown memory (0) is not treated as low: some drivers do not report a budget, and old APIs are not old cards.
+    gt2view::VulkanCapabilities unknown = plenty;
+    unknown.gpus[0].availableBytes = 0;
+    unknown.gpus[0].deviceLocalBytes = 0;
+    if (gt2view::GraphicsMemoryTooLow(unknown, 0)) return 30;
+
     // The foveation render pass needs vkCreateRenderPass2: core in 1.2, VK_KHR_create_renderpass2 on 1.1 (the session
     // enables that extension for exactly this, and turns foveation off when the device has neither).
     if (!gt2view::RenderPass2Available(VK_API_VERSION_1_1, true)) return 40;
