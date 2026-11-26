@@ -43,7 +43,7 @@ struct PcRow {
     std::vector<std::string> values;
     int index = 0;
 };
-constexpr int kPcRowCount = 12;
+constexpr int kPcRowCount = 13;
 PcRow PcRowOf(const PcSettings& pc, int row);
 bool StepPcRow(PcSettings& pc, int row, int step); // -1 / +1; true when a setting changed
 

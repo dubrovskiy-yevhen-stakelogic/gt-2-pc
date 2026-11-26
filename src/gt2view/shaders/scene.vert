@@ -33,7 +33,7 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
     uint space;
     uint eye;
-    int vertexBias; uint reserved;
+    int vertexBias; float farClip;
     vec4 hudClip;
     vec4 nativeModelRotation;
 #ifdef GT2_WEBGL

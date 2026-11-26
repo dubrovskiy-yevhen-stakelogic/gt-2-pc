@@ -38,7 +38,7 @@ struct VkDeviceFeatures {
 inline VkDeviceFeatures QueryDeviceFeatures(VkPhysicalDevice physical, uint32_t apiVersion) {
     VkDeviceFeatures out;
     if (apiVersion < VK_API_VERSION_1_1) return out;
-    VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceMultiviewFeatures f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES};
     VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     if (apiVersion >= VK_API_VERSION_1_3) f11.pNext = &f13;
     VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};

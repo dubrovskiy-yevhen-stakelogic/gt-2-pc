@@ -3,15 +3,27 @@ layout(set=0,binding=8) uniform samplerCube paintStudio;
 layout(set=0,binding=9) uniform samplerCube paintCourse;
 layout(set=0,binding=12) uniform sampler2DArray nativeEnvironment;
 layout(set=0,binding=13) uniform NativeEnvironmentViews {mat4 camera[3];vec4 enabled;vec4 lightDirection;vec4 lightAmbient;vec4 lightDiffuse;vec4 lightSpecular;vec4 stockSky;} nativeViews;
+vec3 neutralReflection(vec3 c) {
+    // Additive blue light on red paint reads as pink. Keep the light, drop most
+    // of the hue so the reflection can brighten a body without repainting it.
+    float l=dot(c,vec3(.2126,.7152,.0722));
+    return mix(vec3(l),c,.30);
+}
+vec3 mirrorSafeEnvironment(vec3 c) {
+    if(((pc.options >> 6u) & 3u)<2u)return c;
+    // The mirror pass samples the main camera's capture, so its colours are
+    // not the mirrored surroundings.
+    return neutralReflection(c);
+}
 vec3 nativeCourseEnvironment(vec3 direction) {
-    if(nativeViews.enabled.x<.5)return textureLod(paintCourse,direction,0).rgb;
+    if(nativeViews.enabled.x<.5)return mirrorSafeEnvironment(textureLod(paintCourse,direction,0).rgb);
     float best=-1e30;vec2 uv=vec2(0);int face=-1;
     for(int i=0;i<3;++i) {
         vec4 p=nativeViews.camera[i]*vec4(direction,0);
         if(p.w>best){best=p.w;uv=.5+.5*p.xy/max(p.w,1e-12);face=i;}
     }
     if(best<=0.0 || any(lessThan(uv,vec2(0))) || any(greaterThan(uv,vec2(1))))return vec3(0);
-    return textureLod(nativeEnvironment,vec3(uv,float(face)),0).rgb;
+    return mirrorSafeEnvironment(textureLod(nativeEnvironment,vec3(uv,float(face)),0).rgb);
 }
 // GT4 captures nearby scenery on black. GT2's baked diffuse body needs the
 // distant sky too. Coverage alpha distinguishes a real black roof/wall from
@@ -32,7 +44,7 @@ vec3 stockCourseEnvironment(vec3 direction) {
     vec3 skyColor=nativeViews.stockSky.rgb;
     float luminance=dot(skyColor,vec3(.2126,.7152,.0722));
     vec3 sky=mix(vec3(luminance),skyColor,.12)*.28*nativeViews.stockSky.a*horizon;
-    return local.rgb+sky*(1.0-local.a);
+    return mirrorSafeEnvironment(local.rgb+sky*(1.0-local.a));
 }
 // GT2's original body already contains baked diffuse shading. Its separate
 // additive environment pass needs visible coverage even at normal incidence;

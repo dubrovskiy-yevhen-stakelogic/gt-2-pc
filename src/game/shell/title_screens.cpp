@@ -72,7 +72,11 @@ PcRow PcRowOf(const PcSettings& pc, int row) {
         r = {"Draw Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
         r.index = IndexOf(kPcDistances, g.drawDistance, r.values, "%d m");
         break;
-    case 10: r = {"Power Units", {"Auto", "hp", "PS"}, int(pc.powerUnits)}; break;
+    case 10:
+        r = {"Mirror Distance", {"Original", "500 m", "1000 m", "2000 m", "All"}, 0};
+        r.index = IndexOf(kPcDistances, g.mirrorDrawDistance, r.values, "%d m");
+        break;
+    case 11: r = {"Power Units", {"Auto", "hp", "PS"}, int(pc.powerUnits)}; break;
     default: {
         const bool lowSpec = g == GraphicsSettings::LowSpec();
         const bool vanilla = g == GraphicsSettings::Vanilla(), modern = g == GraphicsSettings::Modern();
@@ -89,14 +93,14 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     GraphicsSettings& g = pc.graphics;
     const PcSettings before = pc;
     int index = r.index;
-    if (row == 11) { // presets are Low spec / Vanilla / Modern; Custom is derived, never stepped onto
+    if (row == 12) { // presets are Low spec / Vanilla / Modern; Custom is derived, never stepped onto
         static constexpr int kPresets[] = {0, 1, 3};
         if (index == 2) index = step < 0 ? 1 : 3; // Custom -> the preset in that direction
         else index = kPresets[std::clamp((index == 0 ? 0 : index == 1 ? 1 : 2) + step, 0, 2)];
         g = index == 0 ? GraphicsSettings::LowSpec() : index == 1 ? GraphicsSettings::Vanilla() : GraphicsSettings::Modern();
     } else {
         const int count = std::min(int(r.values.size()), row == 2 ? int(std::size(kPcCaps)) : row == 4 ? int(std::size(kPcOutputs))
-                                                         : row == 5 ? int(std::size(kPcMsaa)) : row == 9 ? int(std::size(kPcDistances)) : int(r.values.size()));
+                                                         : row == 5 ? int(std::size(kPcMsaa)) : (row == 9 || row == 10) ? int(std::size(kPcDistances)) : int(r.values.size()));
         if (index >= count) index = step > 0 ? count - 1 : 0; // a custom value: the first step lands on the table
         else index = std::clamp(index + step, 0, count - 1);
     }
@@ -111,7 +115,8 @@ bool StepPcRow(PcSettings& pc, int row, int step) {
     case 7: g.affine = index == 1; break;
     case 8: g.maxDetail = index == 1; break;
     case 9: g.drawDistance = kPcDistances[index]; break;
-    case 10: pc.powerUnits = gt2::PowerUnits(index); break;
+    case 10: g.mirrorDrawDistance = kPcDistances[index]; break;
+    case 11: pc.powerUnits = gt2::PowerUnits(index); break;
     default: break;
     }
     return !(before.metric == pc.metric && before.powerUnits == pc.powerUnits && before.graphics == pc.graphics);

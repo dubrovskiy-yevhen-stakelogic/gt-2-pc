@@ -1115,7 +1115,7 @@ gt2::shell::GraphicsSettings CycleGraphicsPreset(gt2::shell::GraphicsSettings g,
 
 // The port menu's graphics page, top to bottom: the preset first, so one row changes everything. The panel paginates
 // the list, so every option fits on the page instead of a "More graphics" sub-page.
-enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxFilter, kGfxReflections,
+enum : int { kGfxPreset = 0, kGfxResolution, kGfxFrameLimit, kGfxMsaa, kGfxDistance, kGfxMirrorDistance, kGfxFilter, kGfxReflections,
              kGfxProfiler, kGfxVsync, kGfxPresentation, kGfxScenery, kGfxMapping, kGfxSceneScale, kGfxBack };
 
 void ShowSettingsMenu(GameWindow& window) {
@@ -1184,6 +1184,7 @@ void ShowSettingsMenu(GameWindow& window) {
                 (vr && window.Renderer().EffectiveMsaa() != uint32_t(graphics.msaa) ?
                  " (active " + std::to_string(window.Renderer().EffectiveMsaa()) + "x)" : ""));
             rows.push_back("Draw distance: " + (graphics.drawDistance < 0 ? std::string("Entire course") : graphics.drawDistance == 0 ? std::string("Original") : std::to_string(graphics.drawDistance) + " m"));
+            rows.push_back("Mirror distance: " + (graphics.mirrorDrawDistance < 0 ? std::string("Entire course") : graphics.mirrorDrawDistance == 0 ? std::string("Original") : std::to_string(graphics.mirrorDrawDistance) + " m"));
             rows.push_back("Texture filtering: " + std::string(graphics.smoothTextures ? "Smooth + mipmaps" : "Original"));
             rows.push_back("GT2 car reflections: " + std::string(!graphics.carReflections ? "Off" : graphics.modernCarReflections ? "Modern" : "Original"));
             rows.push_back("FPS profiler: " + std::string(profiler ? (window.ProfilerLogFailed() ? "LOG ERROR" : "ON + CSV") : "OFF"));
@@ -1382,6 +1383,7 @@ void ShowSettingsMenu(GameWindow& window) {
                     }
                     if (selected == kGfxMsaa) graphics.msaa = Cycle(graphics.msaa, samples, direction);
                     if (selected == kGfxDistance) graphics.drawDistance = Cycle(graphics.drawDistance, distances, direction);
+                    if (selected == kGfxMirrorDistance) graphics.mirrorDrawDistance = Cycle(graphics.mirrorDrawDistance, distances, direction);
                     if (selected == kGfxFilter) graphics.smoothTextures = !graphics.smoothTextures;
                     if (selected == kGfxProfiler) profiler = !profiler;
                     if (selected == kGfxReflections && direction) {

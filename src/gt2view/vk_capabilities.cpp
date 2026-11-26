@@ -180,7 +180,7 @@ VulkanCapabilities ProbeVulkan() {
                 if (memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) gpu.deviceLocalBytes += memory.memoryHeaps[i].size;
         }
         if (getFeatures2 && gpu.apiVersion >= VK_API_VERSION_1_1) {
-            VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+            VkPhysicalDeviceMultiviewFeatures f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES};
             VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
             VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
             features.pNext = &f11;

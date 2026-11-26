@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
         if (!ValidDiscSelection(preferred))
             preferred = "arcade";
         gt2::shell::InitializeSharedVrSettings(saves,
-            "units=kmh\nframe_rate=display\ndraw_distance=all\ntexture_filter=smooth\n", "");
+            "units=kmh\nframe_rate=display\ndraw_distance=all\nmirror_draw_distance=all\ntexture_filter=smooth\n", "");
         const RecommendedMemory memory = ApplyRecommendedMemory((saves / "settings.txt").string()); // before the overlay
         if (memory.memoryTooLow) {
             std::fprintf(stderr, "GT2 cannot start: not enough video memory (%s).\n", memory.reason.c_str());

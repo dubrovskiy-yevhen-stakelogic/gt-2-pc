@@ -50,10 +50,11 @@ layout(push_constant) uniform Push {
     uint paint;
     uint brakeLit;
     uint stpPass; // DrawItem::stpPass
-    uint options; // 1 smooth textures, 2 affine mapping (scene items only; 0 = the PS1's nearest texel, perspective-correct)
+    uint options; // 1 smooth textures, 2 affine mapping; 32 stock reflection hue limit (mirror cars only)
+                  // (0 = the PS1's nearest texel, perspective-correct)
     uint space;
     uint eye;
-    int vertexBias; uint reserved;
+    int vertexBias; float farClip;
     vec4 hudClip;
 #ifdef GT2_WEBGL
     vec4 nativeModelRotation; // Match the vertex-stage uniform struct for WebGL linking.
@@ -352,14 +353,19 @@ vec3 modelColor(vec3 base,vec3 color) {
 #include "authored_glass.glsl"
 
 void shadeScene() {
+    // Draw Distance: the same far clip in the main views, split screen and the rear-view mirror.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
+    // Mirror-mask car glass samples the rear-view target. The mirror source pass
+    // cannot sample itself, so draw those surfaces dark instead of the HUD image.
+    if (((pc.options >> 6u) & 3u) >= 2u && (inFlags & 2097152u) != 0u) { outColor = vec4(.02, .025, .03, 1); return; }
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
-    if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;
+    if (((pc.options >> 6u) & 3u) < 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
 #ifndef GT2_WEBGL
     if((inFlags & 64u)!=0u && (inFlags & (16u|4194304u))==0u){outColor=nativeModelColor(vec4(1));return;}
 #endif
     if ((inFlags & 268435456u)!=0u && (inFlags & (16u|4194304u))==0u) {
-        if (!gl_FrontFacing) discard;
+        if (!gl_FrontFacing && ((pc.options >> 6u) & 3u) == 0u) discard;
 #ifndef GT2_WEBGL
         outColor=vec4(stockPaintClearcoat(inColor,inPaintView,pc.space==0u || (pc.options & 16u)!=0u),1);return;
 #endif
@@ -374,6 +380,7 @@ void shadeScene() {
         // Keep binary native cabin aperture coverage independent of smoothing.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
+        if (((pc.options >> 6u) & 3u) >= 2u) c.a = 1.0; // mirror cars are solid, not coverage cards
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;
@@ -387,7 +394,7 @@ void shadeScene() {
         if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
         if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-        if(authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(((pc.options >> 6u) & 3u) < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
     }
 #endif
@@ -421,7 +428,10 @@ void shadeScene() {
         color = inColorAffine;
 #endif
     }
-    if ((inFlags & 2048u) != 0u && !gl_FrontFacing) discard; // kCullBack: the original's NCLIP test
+    if ((inFlags & 2048u) != 0u) {
+        if (((pc.options >> 6u) & 3u) == 1u || ((pc.options >> 6u) & 3u) == 3u) { if (gl_FrontFacing) discard; }
+        else if (((pc.options >> 6u) & 3u) == 0u) { if (!gl_FrontFacing) discard; }
+    } // kCullBack: the original's NCLIP test
     if ((inFlags & 1u) == 0u) {
         if (pc.stpPass == 1u) discard; // untextured semi-transparent: blended pass only
         outColor = vec4(cabinColor(color), 1.0);
@@ -479,8 +489,10 @@ void shadeScene() {
         // PS1 STP class, which deliberately keeps nearest source alpha.
         c=(!generatedFiltered || (inFlags&1024u)!=0u)
             ? externalTexel(ivec2(floor(texelCoord)), size) : vec4(0);
+        if (((pc.options >> 6u) & 3u) >= 2u) c.a = 1.0;
 #else
         c=externalTexel(ivec2(floor(texelCoord)), size);
+        if (((pc.options >> 6u) & 3u) >= 2u) c.a = 1.0;
 #endif
 #ifndef GT2_WEBGL
         if(generatedFiltered) {
@@ -535,7 +547,7 @@ void shadeScene() {
             if (wsum > 0.0) c.rgb = sum / wsum;
         }
         if((inFlags & 32768u)!=0u) c.rgb=asphaltAlbedo(c.rgb);
-        if(authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(((pc.options >> 6u) & 3u) < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         vec3 shaded=modelColor(c.rgb,inColor);
         if((inFlags & 832u)==768u) shaded=windowRoom(shaded,texelCoord,vec2(size));
         outColor = vec4(shaded, (inFlags & 32u)!=0u?c.a:1.0);
@@ -549,7 +561,11 @@ void shadeScene() {
         outColor = vec4(vec3(float(px & 31u), float((px >> 5) & 31u), float((px >> 10) & 31u)) / 31.0, 1.0);
         return;
     }
-    if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) return;
+    if (smoothTextures && inCache != 0u && sampleMip(texelCoord, color, outColor)) {
+        // The decoded smooth path returns before the per-texel tint below.
+        if ((pc.options & 32u) != 0u) outColor.rgb = neutralReflection(outColor.rgb);
+        return;
+    }
     uvec2 t = uvec2(clamp(ivec2(floor(texelCoord)), ivec2(0), ivec2(255)));
     if ((inFlags & 32768u) != 0u) t = uvec2(clamp(ivec2(t), ivec2(floor(inRect.xy)), ivec2(max(ceil(inRect.zw) - 1.0, floor(inRect.xy)))));
     uint clutX = inClut & 0xFFFFu, clutY = inClut >> 16;
@@ -602,6 +618,9 @@ void shadeScene() {
         vec3 c8 = floor(color * 255.0 + 0.5);
         rgb = min(floor(t5 * c8 / 128.0), vec3(31.0)) / 31.0;
     } else if ((inFlags & 2u) == 0u) rgb = min(rgb * color * (255.0 / 128.0), vec3(1.0)); // 0x80 = neutral
+    // Stock car reflection (blue chrome env map): keep the light, drop most of
+    // the hue so a red body does not read as pink.
+    if ((pc.options & 32u) != 0u) rgb = neutralReflection(rgb);
     outColor = vec4(rgb, 1.0);
 }
 
@@ -609,6 +628,9 @@ void main() {
     // kSpaceMenuCarTexture: the glued menu/showroom car target, alpha preserved for compositing over 2D.
     if (pc.space == 5u) { outColor = texture(rearView, inTexel); return; }
     shadeScene();
+    // The mirror is a reflected camera, not a translucent material. Car coverage
+    // alpha would otherwise make the body see-through in the mirror target.
+    if (((pc.options >> 6u) & 3u) >= 2u) outColor.a = 1.0;
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }

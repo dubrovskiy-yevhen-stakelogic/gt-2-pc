@@ -779,7 +779,8 @@ void VkSceneRenderer::CreatePipeline() {
     for (auto& write : writes) write.dstSet = mirrorSourceSet_;
     writes[6].pImageInfo = &handInfo;
     writes[9].pImageInfo = &studioInfo;
-    writes[12].pImageInfo = &decodedInfo;
+    // Mirror cars keep their native GT4 materials, including the car environment cube.
+    writes[12].pImageInfo = &nativeEnvInfo;
     vkUpdateDescriptorSets(device_, 15, writes, 0, nullptr);
 
     VkPushConstantRange pcr{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FrameParams)};
@@ -1773,7 +1774,15 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             rect.layerCount = recordLayers_;
             if (rect.rect.extent.width && rect.rect.extent.height) vkCmdClearAttachments(cmd_, 1, &clear, 1, &rect);
         }
+        const bool mirrorCar = recordMirror_ && item.firstVertex >= kModelSetVertexBase;
+        // Car mirror-mask glass samples the HUD hand texture in the mirror source
+        // pass (the pass cannot sample its own target); that read shows up as
+        // pink reflections. The car body already carries the solid coverage.
+        if (mirrorCar && item.firstVertex < kMaxVertices && (vertexFlags_.at(size_t(item.firstVertex)) & kMirrorTexture)) continue;
         uint32_t which = item.blend==kBlendStockSurfaceEnvironment?8u:item.blend==kBlendNativeSurfaceEnvironment?7u:item.blend==kBlendNativeEnvironment?1u:item.blend < 4 ? item.blend : item.blend == kBlendAlpha ? 6u : (i >= sceneItems ? 5u : 4u);
+        // Imported car body ranges can be authored in the alpha pass. In the
+        // mirror that makes the whole car translucent; keep its coverage solid.
+        if (mirrorCar && item.blend == kBlendAlpha) which = 4u;
         const bool cached = ((recordStereo_ && !recordMirror_) || recordNativeEnvironment_) && i < cachedDraws_.size() && cachedDraws_[i];
         // Menu body/wheel ranges carry kCarPaint on their first vertex. They are
         // single-sample screen draws even when the race scene uses MSAA. Leave
@@ -1783,7 +1792,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             i < cachedDraws_.size() && cachedDraws_[i] && item.firstVertex < kMaxVertices &&
             (VertexAt(item.firstVertex)->flags & kCarPaint);
         bool modelOnly=false;
-        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && !recordMirror_ && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
+        if(!recordStereo2D_ && item.space != kSpaceMenuCarTexture && (recordStereo_ || pipelines==pipelines_ || pipelines==msaaPipelines_) && item.firstVertex>=kModelSetVertexBase &&
            uint64_t(item.firstVertex)+item.vertexCount<=kPaintProbeVertexBase && !std::getenv("GT2_AUDIT_GENERAL_MODEL_SHADER")) {
             const uint64_t range=(uint64_t(item.firstVertex)<<32)|item.vertexCount;
             auto [found,added]=modelRanges_.try_emplace(range,true);
@@ -1828,7 +1837,7 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
             }
             generatedWorld=found->second;
         }
-        const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0;
+        const bool hardwareCull=(item.brakeLit & 0x80000000u)!=0 && !(recordMirror_ && item.firstVertex >= kModelSetVertexBase);
         const uint32_t pipelineKey = (hardwareCull?128u:0u)+which + (generatedWorld && !cached ? 96 : uiOnly ? 80 : modelOnly ? 64 : cachedMenu ? 48 : cached ? (hud ? 32 : 16) : 0);
         if (pipelineKey != boundPipeline) {
             vkCmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_GRAPHICS, generatedWorld && !cached ? stereoWorldPipelines_[which] : uiOnly ? uiPipelines_[which] : modelOnly ? (recordStereo_ ? (hardwareCull?stereoModelCullPipelines_[which]:stereoModelPipelines_[which]) : pipelines==msaaPipelines_ ? (hardwareCull?msaaModelCullPipelines_[which]:msaaModelPipelines_[which]) : hardwareCull?modelCullPipelines_[which]:modelPipelines_[which]) : cachedMenu ? cachedMenuPipelines_[which] : cached ? (recordNativeEnvironment_ ? environmentPipelines_[which] : recordStereo2D_ ? (hud ? stereo2dCachedHudPipelines_[which] : stereo2dPipelines_[which]) : hud ? cachedHudPipelines_[which] : cachedPipelines_[which]) : pipelines[which]);
@@ -1866,13 +1875,22 @@ void VkSceneRenderer::RecordItems(const std::vector<DrawItem>& items, size_t fir
         params.vertexBias = vertexBias;
         params.paint = item.paint;
         params.brakeLit = item.brakeLit & 0x3fffffffu;
-        params.stpPass = item.stpPass;
+        params.stpPass = (mirrorCar && item.blend == kBlendAlpha) ? 0u : item.stpPass;
         const bool sceneLike = i < sceneItems || item.space == kSpaceMenuCar;
         params.options = sceneLike ? sceneOptions : 0u;
+        // The stock reflection pass reads the game's blue chrome env map. In the
+        // mirror that hue repaints car bodies (red reads as pink), so flag it.
+        if (item.blend == kBlendStockSurfaceEnvironment) params.options |= kOptionMirrorStockReflection;
         if(sceneLike && nativeCameraActive_)params.options|=16u;
         if (sceneLike && !recordMirror_ && (recordMenuCar_ || (recordStereo_ ? stereoSamples_ : msaaSamples_) != VK_SAMPLE_COUNT_1_BIT)) params.options |= 4u;
         params.space = item.space;   // read by the stereo shader only
         params.eye = recordEye_;
+        params.options |= (item.mirrorView ? item.mirrorView : (recordMirror_ ? 1u : 0u)) << kOptionMirrorViewShift;
+        // Camera and mirror Draw Distance are separate; the cockpit mirror pass is always the mirror's own range, and a
+        // mirror overlaid in the main pass carries DrawItem::mirrorView. The sky sits at infinity and the paint-probe
+        // environment capture keeps its own range.
+        const float distance = recordMirror_ || item.mirrorView ? options_.mirrorFarClip : options_.farClip;
+        params.farClip = sceneLike && !recordNativeEnvironment_ && item.space != kSpaceSky ? distance : 0.0f;
         if (hud) for (int k = 0; k < 4; ++k) params.hudClip[k] = hasClip ? item.scissor[k] * 2 - 1 : (k < 2 ? -1.0f : 1.0f);
         vkCmdPushConstants(cmd_, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(FrameParams), &params);
@@ -2095,6 +2113,25 @@ std::vector<uint8_t> VkSceneRenderer::NativeEnvironmentForAudit() {
     vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
     Check(vkEndCommandBuffer(cmd_),"native environment audit end");VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&cmd_;
     Check(vkQueueSubmit(queue_,1,&submit,fence_),"native environment audit submit");WaitFrame();
+    const auto* p=static_cast<const uint8_t*>(readback_.mapped);return {p,p+bytes};
+}
+std::vector<uint8_t> VkSceneRenderer::MirrorForAudit() {
+    WaitFrame();if(!mirrorInitialized_)throw std::runtime_error("mirror not rendered");
+    const size_t bytes=size_t(kMirrorExtent.width)*kMirrorExtent.height*4;
+    if(readback_.size<bytes){DestroyBuffer(readback_);readback_=CreateBuffer(bytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT);}
+    Check(vkResetFences(device_,1,&fence_),"mirror audit fence");
+    Check(vkResetCommandBuffer(cmd_,0),"mirror audit command");
+    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};Check(vkBeginCommandBuffer(cmd_,&begin),"mirror audit begin");
+    Transition(cmd_,mirrorColor_.image,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_ACCESS_SHADER_READ_BIT,VK_ACCESS_TRANSFER_READ_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,1);
+    VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};copy.imageExtent={kMirrorExtent.width,kMirrorExtent.height,1};
+    vkCmdCopyImageToBuffer(cmd_,mirrorColor_.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,readback_.buffer,1,&copy);
+    Transition(cmd_,mirrorColor_.image,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_TRANSFER_READ_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,1);
+    VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;
+    vkCmdPipelineBarrier(cmd_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
+    Check(vkEndCommandBuffer(cmd_),"mirror audit end");VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&cmd_;
+    Check(vkQueueSubmit(queue_,1,&submit,fence_),"mirror audit submit");WaitFrame();
     const auto* p=static_cast<const uint8_t*>(readback_.mapped);return {p,p+bytes};
 }
 void VkSceneRenderer::SetNativeSceneLighting(const NativeSceneLighting& light) {

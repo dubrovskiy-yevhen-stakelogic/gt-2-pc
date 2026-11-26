@@ -2,7 +2,7 @@
 // same atlas, alpha masks and clearcoat, without its dependent buffer reads.
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; int vertexBias; uint reserved; vec4 hudClip;
+    uint space; uint eye; int vertexBias; float farClip; vec4 hudClip;
 } pc;
 layout(location=0) in vec2 inTexel;
 layout(location=1) in vec3 inColor;
@@ -24,6 +24,11 @@ vec3 cabinColor(vec3 color) {
 }
 #include "native_model_fragment.glsl"
 void shadeModel() {
+    // Draw Distance: imported cars obey the same far clip as the course.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
+    // Mirror-mask car glass samples the rear-view target. The mirror source pass
+    // cannot sample itself, so draw those surfaces dark instead of the HUD image.
+    if (((pc.options >> 6u) & 3u) >= 2u && (inFlags & 2097152u) != 0u) { outColor = vec4(.02, .025, .03, 1); return; }
     // Stereo HUD mirrors clip in their own plane; framebuffer scissors cannot
     // follow its per-eye projection. Match the general and cached car shaders.
     if(pc.hudClip.z>pc.hudClip.x && (any(lessThan(inScreen.xy/inScreen.z,pc.hudClip.xy)) ||
@@ -54,18 +59,19 @@ void shadeModel() {
     if((inFlags & 64u)!=0u){outColor=nativeModelColor(c);return;}
     if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-    if(authoredGlazing()){outColor=authoredGlass(c);return;}
+    if(((pc.options >> 6u) & 3u) < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
 #ifdef GT2_MODEL_GLASS_ONLY
     outColor=vec4(cabinColor(c.rgb*inColor),c.a);
 #else
     if ((inFlags & 268435456u)!=0u) {
-        if (!gl_FrontFacing) discard;
+        if (!gl_FrontFacing && ((pc.options >> 6u) & 3u) == 0u) discard;
         outColor=vec4(paintClearcoat(c.rgb,inColor,inPaintView,pc.space==0u),1);
     } else outColor=vec4(cabinColor(c.rgb*inColor),(inFlags & 32u)!=0u?c.a:1.0);
 #endif
 }
 void main() {
     shadeModel();
+    if (((pc.options >> 6u) & 3u) >= 2u) outColor.a = 1.0;
     // Match the source-provenance diagnostic in the general/cached paths,
     // after native alpha tests and culling have established real coverage.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);

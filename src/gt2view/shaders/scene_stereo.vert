@@ -28,7 +28,7 @@ layout(push_constant) uniform Push {
     uint options; // 1 smooth textures, 2 affine mapping (scene items only; vk_scene_renderer.h RenderOptions)
     uint space;   // DrawItem::space
     uint eye;     // the two-pass path's array layer
-    int vertexBias; uint reserved;
+    int vertexBias; float farClip;
     vec4 hudClip;
     vec4 nativeModelRotation;
 } pc;
@@ -139,5 +139,7 @@ void main() {
     outColorAffine = inColor;
     outRect = inRect;
     vec4 screen = pc.mvp * vec4(inPos, 1.0);
-    outScreen = vec3(screen.xy, screen.w);
+    // World/sky items: the clip w of the eye's view-projection (the Draw Distance far clip). Screen items keep the
+    // HUD plane's own w, which the fragment shader's hudClip uses.
+    outScreen = vec3(screen.xy, pc.space < 2u ? gl_Position.w : screen.w);
 }

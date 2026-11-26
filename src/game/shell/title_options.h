@@ -111,6 +111,7 @@ struct GraphicsSettings {
     bool maxDetail = false;                // every scenery instance at LOD 0 without the distance cut-off
     int drawDistance = 0;                  // 0: the course's render lists (original); N > 0: nothing beyond N m draws;
                                            // -1: every chunk of the course
+    int mirrorDrawDistance = 0;            // the same for the central and side mirrors; 0 = the PS1's ~100 m list
     // Video memory is handled automatically: the decoded texture cache sizes itself from the free video memory, and the
     // probe only caps the output and MSAA when a machine is small (graphics_options.h). There is no stored mode.
     static GraphicsSettings Vanilla() {
@@ -125,7 +126,8 @@ struct GraphicsSettings {
         g.modernCarReflections = true;
         g.carReflections = true;
         g.maxDetail = true;
-        g.drawDistance = 1000;
+        g.drawDistance = -1;       // the maximum preset never shortens the authored view
+        g.mirrorDrawDistance = -1;
         return g;
     }
     // Discussion #77, phase 3: the preset for GPUs without much usable video memory. 720p output, no MSAA, no car

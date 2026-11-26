@@ -50,6 +50,7 @@ WebGlSceneRenderer::WebGlSceneRenderer() {
     mvp_ = glGetUniformLocation(program_, "pc.mvp"); paint_ = glGetUniformLocation(program_, "pc.paint");
     brake_ = glGetUniformLocation(program_, "pc.brakeLit"); stp_ = glGetUniformLocation(program_, "pc.stpPass");
     optionsUniform_ = glGetUniformLocation(program_, "pc.options");
+    farClip_ = glGetUniformLocation(program_, "pc.farClip");
     glUniform4f(glGetUniformLocation(program_, "pc.hudClip"), 0, 0, 0, 0);
     glGenVertexArrays(1, &vao_); glBindVertexArray(vao_);
     glGenBuffers(1, &vertices_); glBindBuffer(GL_ARRAY_BUFFER, vertices_);
@@ -205,7 +206,11 @@ void WebGlSceneRenderer::DrawItems(const std::vector<DrawItem>& items,size_t fir
         glScissor(x0,int(size.height)-y1,x1-x0,y1-y0);
         if(d.clearDepth) { glDepthMask(GL_TRUE); glClear(GL_DEPTH_BUFFER_BIT); }
         glUniformMatrix4fv(mvp_,1,GL_FALSE,d.mvp); glUniform1ui(paint_,d.paint); glUniform1ui(brake_,d.brakeLit); glUniform1ui(stp_,d.stpPass);
-        glUniform1ui(optionsUniform_,i<sceneItems ? (options_.smoothTextures?1u:0u)|(options_.affine?2u:0u)|(options_.mipmaps?8u:0u) : 0u);
+        uint32_t flags = i<sceneItems ? (options_.smoothTextures?1u:0u)|(options_.affine?2u:0u)|(options_.mipmaps?8u:0u) : 0u;
+        flags |= (d.mirrorView ? d.mirrorView : (mirror ? 1u : 0u)) << kOptionMirrorViewShift;
+        if (d.blend == kBlendStockSurfaceEnvironment) flags |= kOptionMirrorStockReflection;
+        glUniform1ui(optionsUniform_, flags);
+        glUniform1f(farClip_, i<sceneItems && d.space!=kSpaceSky ? (mirror || d.mirrorView ? options_.mirrorFarClip : options_.farClip) : 0.0f);
         glEnable(GL_BLEND); glBlendEquationSeparate(d.blend==2 ? GL_FUNC_REVERSE_SUBTRACT : GL_FUNC_ADD,GL_FUNC_ADD);
         glDepthFunc(d.blend==kBlendStockSurfaceEnvironment ? GL_EQUAL : GL_GEQUAL);
         if(d.blend==kBlendStockSurfaceEnvironment) {

@@ -45,7 +45,7 @@ private:
     void PrepareMaterials(const std::vector<DrawItem>& items);
     GLuint program_ = 0, vao_ = 0, vertices_ = 0, rects_ = 0;
     GLuint vram_ = 0, external_ = 0, materials_ = 0, pages_ = 0, black_ = 0;
-    GLint mvp_ = -1, paint_ = -1, brake_ = -1, stp_ = -1, optionsUniform_ = -1;
+    GLint mvp_ = -1, paint_ = -1, brake_ = -1, stp_ = -1, optionsUniform_ = -1, farClip_ = -1;
     Size extent_;
     Target scene_, resolve_, mirror_;
     uint32_t samples_ = 1;

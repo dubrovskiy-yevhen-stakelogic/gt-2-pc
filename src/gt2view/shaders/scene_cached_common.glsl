@@ -2,7 +2,7 @@
 layout(constant_id = 0) const bool cachedHud = false;
 layout(push_constant) uniform Push {
     mat4 mvp; uint paint; uint brakeLit; uint stpPass; uint options;
-    uint space; uint eye; int vertexBias; uint reserved; vec4 hudClip;
+    uint space; uint eye; int vertexBias; float farClip; vec4 hudClip;
 } pc;
 layout(location = 0) in vec2 inTexel;
 layout(location = 1) in vec3 inColor;
@@ -41,11 +41,16 @@ vec3 modelColor(vec3 base,vec3 color) {
 #include "authored_glass.glsl"
 
 void shadeScene() {
+    // Draw Distance: the same far clip in the main views, split screen and the rear-view mirror.
+    if (pc.farClip > 0.0 && inScreen.z > pc.farClip) discard;
+    // Mirror-mask car glass samples the rear-view target. The mirror source pass
+    // cannot sample itself, so draw those surfaces dark instead of the HUD image.
+    if (((pc.options >> 6u) & 3u) >= 2u && (inFlags & 2097152u) != 0u) { outColor = vec4(.02, .025, .03, 1); return; }
     // Opaque and transparent draws share immutable geometry. Select fragments
     // before doing any texture reads, keeping early cabin depth effective.
-    if ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u) discard;
+    if (((pc.options >> 6u) & 3u) < 2u && ((inFlags & 32u)!=0u ? pc.stpPass!=3u : pc.stpPass==3u)) discard;
     if ((inFlags & 268435456u)!=0u && (inFlags & (16u|4194304u))==0u) {
-        if (!gl_FrontFacing) discard;
+        if (!gl_FrontFacing && ((pc.options >> 6u) & 3u) == 0u) discard;
 #ifndef GT2_WEBGL
         outColor=vec4(stockPaintClearcoat(inColor,inPaintView,pc.space==0u || (pc.options & 16u)!=0u),1);return;
 #endif
@@ -59,6 +64,7 @@ void shadeScene() {
         // Same coverage rule as the general and imported-model shader paths.
         if ((pc.options & 1u)==0u || (inFlags & 1088u)==1088u) uv=floor(uv)+0.5;
         vec4 c=textureLod(modelAtlas,(origin+uv)/vec2(textureSize(modelAtlas,0)),0);
+        if (((pc.options >> 6u) & 3u) >= 2u) c.a = 1.0;
         if ((inFlags & 2147483648u)!=0u) {
             if (c.a<0.5 && distance(c.rgb,vec3(8,16,16)/255.0)>.025) discard;
             c.a=1.0;
@@ -71,7 +77,7 @@ void shadeScene() {
         }
         if ((inFlags & 32u)!=0u && c.a<.5/255.0) discard;
         if ((inFlags & (33554432u|32u))==0u && c.a<((inFlags & 1073741824u)!=0u ? .5/255.0 : .5)) discard;
-        if(authoredGlazing()){outColor=authoredGlass(c);return;}
+        if(((pc.options >> 6u) & 3u) < 2u && authoredGlazing()){outColor=authoredGlass(c);return;}
         outColor=vec4(modelColor(c.rgb,inColor),(inFlags & 32u)!=0u?c.a:1.0);return;
     }
     if ((inFlags & 2097152u) != 0u) {
@@ -83,7 +89,10 @@ void shadeScene() {
         return;
     }
     if (cachedHud && pc.hudClip.z > pc.hudClip.x && (any(lessThan(inScreen.xy / inScreen.z, pc.hudClip.xy)) || any(greaterThan(inScreen.xy / inScreen.z, pc.hudClip.zw)))) discard;
-    if ((inFlags & 2048u) != 0u && !gl_FrontFacing) discard;
+    if ((inFlags & 2048u) != 0u) {
+        if (((pc.options >> 6u) & 3u) == 1u || ((pc.options >> 6u) & 3u) == 3u) { if (gl_FrontFacing) discard; }
+        else if (((pc.options >> 6u) & 3u) == 0u) { if (!gl_FrontFacing) discard; }
+    }
     bool affine = (pc.options & 2u) != 0u;
     vec2 uv = affine ? inTexel + clamp(inTexelAffine - inTexel, vec2(-4), vec2(4)) : inTexel;
     vec3 color = affine ? inColorAffine : inColor;
@@ -118,6 +127,9 @@ void shadeScene() {
 
 void main() {
     shadeScene();
+    // The mirror is a reflected camera, not a translucent material. Car coverage
+    // alpha would otherwise make the body see-through in the mirror target.
+    if (((pc.options >> 6u) & 3u) >= 2u) outColor.a = 1.0;
     // Apply diagnostic colour after all coverage tests, including rim alpha.
     if ((inFlags & 128u) != 0u) outColor.rgb = vec3(1,0,1);
 }

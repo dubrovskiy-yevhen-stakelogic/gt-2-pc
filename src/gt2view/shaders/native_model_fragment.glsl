@@ -6,9 +6,10 @@ layout(location=15) flat in vec4 inNativeState;
 layout(location=16) flat in mat3 inNativeEnvironmentBasis;
 vec4 nativeModelColor(vec4 textureColor) {
     vec4 info=inNativeInfo,state=inNativeState;
+    if (((pc.options >> 6u) & 3u) >= 2u && (inFlags & 2097152u) != 0u) return vec4(.02, .025, .03, 1);
     // Exterior environment coats never acquire an inner-side lining.
-    if(int(info.x)==2 && ((inFlags & 536870912u)!=0u || (!gl_FrontFacing && (inFlags & 134217728u)!=0u)))discard;
-    if(state.z>.5 && !gl_FrontFacing && (inFlags & 134217728u)==0u)discard;
+    if(int(info.x)==2 && ((pc.options >> 6u) & 3u) < 2u && ((inFlags & 536870912u)!=0u || (!gl_FrontFacing && (inFlags & 134217728u)!=0u)))discard;
+    if(state.z>.5 && !gl_FrontFacing && (inFlags & 134217728u)==0u && ((pc.options >> 6u) & 3u) < 2u)discard;
     int type=int(info.x);vec4 c=vec4(textureColor.rgb*inColor,textureColor.a*inNativeAlpha);
     if((inFlags & (1u|4194304u))!=0u) {
         int regs=int(state.y),tfx=(regs>>8)&3;bool tcc=(regs&1024)!=0;
@@ -35,7 +36,8 @@ vec4 nativeModelColor(vec4 textureColor) {
 #endif
     if((inFlags & (1u|4194304u))==0u && type!=2 && type!=4)c.rgb*=128.0/255.0;
     float a=c.a*128.0,ref=info.w;int f=int(info.z);bool pass=true;
-    if(f==0)pass=false;else if(f==2)pass=a<ref;else if(f==3)pass=a<=ref;
+    if(((pc.options >> 6u) & 3u)==2u){a=128.0;c.a=1.0;pass=true;}
+    else if(f==0)pass=false;else if(f==2)pass=a<ref;else if(f==3)pass=a<=ref;
     else if(f==4)pass=abs(a-ref)<.5;else if(f==5)pass=a>=ref;
     else if(f==6)pass=a>ref;else if(f==7)pass=abs(a-ref)>=.5;
     if(!pass && (state.x<.5 || abs(state.x-2.0)<.5))discard;

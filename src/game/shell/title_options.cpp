@@ -129,6 +129,7 @@ bool GraphicsSettings::Parse(const std::string& key, const std::string& value) {
     else if (key == "texture_mapping") affine = value == "affine";
     else if (key == "scenery_detail") maxDetail = value == "max";
     else if (key == "draw_distance") drawDistance = value == "all" ? -1 : value == "original" ? 0 : clamp(v, 0, 100000);
+    else if (key == "mirror_draw_distance") mirrorDrawDistance = value == "all" ? -1 : value == "original" ? 0 : clamp(v, 0, 100000);
     else return false;
     return true;
 }
@@ -151,6 +152,11 @@ std::string GraphicsSettings::Serialize() const {
     if (drawDistance < 0) o << "all";
     else if (drawDistance == 0) o << "original";
     else o << drawDistance;
+    o << "\n";
+    o << "mirror_draw_distance=";
+    if (mirrorDrawDistance < 0) o << "all";
+    else if (mirrorDrawDistance == 0) o << "original";
+    else o << mirrorDrawDistance;
     o << "\n";
     return o.str();
 }

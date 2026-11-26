@@ -90,7 +90,7 @@ VkContext::VkContext(void*, void* window) : window_(window) {
         qci.queueFamilyIndex = queueFamily_;
         qci.queueCount = 1;
         qci.pQueuePriorities = &priority;
-        VkPhysicalDeviceVulkan11Features f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        VkPhysicalDeviceMultiviewFeatures f11{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES};
         f11.multiview = multiview_ ? VK_TRUE : VK_FALSE;
         VkPhysicalDeviceVulkan13Features f13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         f13.dynamicRendering = VK_TRUE;

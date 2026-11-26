@@ -248,27 +248,30 @@ static void CheckPcChanges(const char* discPath) {
 
     // The PC SETTINGS page derives every row from the settings: stepping the preset updates the rows it changes.
     shell::PcSettings preset;
-    Check(shell::PcRowOf(preset, 11).index == 2, "the preset row starts Custom");
-    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps left to Vanilla");
+    Check(shell::PcRowOf(preset, 12).index == 2, "the preset row starts Custom");
+    Check(shell::StepPcRow(preset, 12, -1) && preset.graphics == shell::GraphicsSettings::Vanilla(), "the preset steps left to Vanilla");
     Check(shell::PcRowOf(preset, 1).index == 0 && shell::PcRowOf(preset, 5).index == 0 && shell::PcRowOf(preset, 6).index == 0,
           "the Vanilla preset updates frame rate, anti-aliasing and textures immediately");
-    Check(shell::StepPcRow(preset, 11, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps left to Low spec");
+    Check(shell::StepPcRow(preset, 12, -1) && preset.graphics == shell::GraphicsSettings::LowSpec(), "the preset steps left to Low spec");
     Check(shell::PcRowOf(preset, 4).index == 0, "the Low spec preset sets Resolution to 720p immediately");
     Check(shell::PcRowOf(preset, 4).values.size() == 4 && shell::PcRowOf(preset, 4).values[3] == "Display",
           "the Resolution row offers Display as the sharpest option");
     Check(shell::StepPcRow(preset, 4, 1) && preset.graphics.outputHeight == 900, "the Resolution row steps up to 900p");
     shell::PcSettings stepping;
     stepping.graphics = shell::GraphicsSettings::Modern();
-    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
+    Check(shell::StepPcRow(stepping, 12, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "the preset row steps left from Modern");
+    Check(shell::StepPcRow(stepping, 12, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "the preset row steps right back to Modern");
     stepping.graphics = shell::GraphicsSettings{};
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
+    Check(shell::StepPcRow(stepping, 12, 1) && stepping.graphics == shell::GraphicsSettings::Modern(), "Custom steps right to Modern");
     stepping.graphics = shell::GraphicsSettings{};
-    Check(shell::StepPcRow(stepping, 11, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
+    Check(shell::StepPcRow(stepping, 12, -1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Custom steps left to Vanilla");
     stepping.graphics = shell::GraphicsSettings::LowSpec();
-    Check(shell::StepPcRow(stepping, 11, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
+    Check(shell::StepPcRow(stepping, 12, 1) && stepping.graphics == shell::GraphicsSettings::Vanilla(), "Low spec steps right to Vanilla");
     stepping.powerUnits = gt2::PowerUnits::kHp;
-    Check(shell::kPcRowCount == 12 && shell::PcRowOf(stepping, 10).label == std::string("Power Units") && shell::StepPcRow(stepping, 10, 1) && stepping.powerUnits == gt2::PowerUnits::kPs,
+    stepping.graphics.mirrorDrawDistance = 0;
+    Check(shell::StepPcRow(stepping, 10, 1) && stepping.graphics.mirrorDrawDistance == 500,
+          "mirror distance steps independently of the preset and power rows");
+    Check(shell::kPcRowCount == 13 && shell::PcRowOf(stepping, 11).label == std::string("Power Units") && shell::StepPcRow(stepping, 11, 1) && stepping.powerUnits == gt2::PowerUnits::kPs,
           "the Power Units row still steps to PS");
 
     struct CounterStream final : audio::StreamSource {

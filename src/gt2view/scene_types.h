@@ -128,6 +128,8 @@ struct DrawItem {
     // Soft additive particles may share one shader invocation across 2x2 pixels.
     uint32_t softParticle = 0;
     std::array<float,4> nativeModelRotation{0,0,0,1};
+    // A rear-view mirror item drawn inside the main pass: uses RenderOptions::mirrorFarClip instead of farClip.
+    uint32_t mirrorView = 0;
 };
 
 // Reversed-Z band of a draw. The top band belongs to the 2D layers (HUD,
@@ -181,12 +183,16 @@ struct FrameParams {
     uint32_t space = kSpaceScreen; // DrawItem::space (the stereo shader; the desktop shader does not declare it)
     uint32_t eye = 0;              // the two-pass stereo path's array layer
     int32_t vertexBias = 0;        // virtual vertex index - physical: gl_VertexIndex + vertexBias (vertex arena)
-    uint32_t reserved = 0;
+    float farClip = 0.0f; // world metres; 0 disables clipping
     float hudClip[4] = {};
     std::array<float,4> nativeModelRotation{0,0,0,1};
 };
 static_assert(offsetof(FrameParams, hudClip) == 96 && sizeof(FrameParams) == 128);
 constexpr uint32_t kOptionSmoothTextures = 1, kOptionAffine = 2, kOptionMipmaps = 8;
+// Mirror cars keep the stock reflection's light but only part of its hue (scene.frag).
+constexpr uint32_t kOptionMirrorStockReflection = 32;
+// Bits 6..7 carry the mirror winding/material mode without exceeding 128-byte push constants.
+constexpr uint32_t kOptionMirrorViewShift = 6;
 
 // The two eyes of one stereo frame (docs/research/vr_port_plan.md, M2; src/platform/xr/vr_rig.h builds them). The
 // renderer uploads them into a uniform buffer the stereo vertex shader indexes by gl_ViewIndex (multiview) or by the
@@ -212,6 +218,8 @@ struct RenderOptions {
                                  // rectangle, STP class kept); false = the PS1's nearest texel (exact)
     bool affine = false;         // screen-linear (PS1 GPU) texture / colour interpolation; false = perspective-correct
     bool vsync = true;           // FIFO presentation; false = MAILBOX (or IMMEDIATE when the surface has no MAILBOX)
+    float farClip = 0.0f;        // camera Draw Distance in metres; 0 = no clip (Original / Entire course)
+    float mirrorFarClip = 0.0f;  // the same for the central and side mirrors
     bool operator==(const RenderOptions&) const = default;
 };
 
