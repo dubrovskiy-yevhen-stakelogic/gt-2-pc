@@ -20,6 +20,7 @@ int main(int argc,char** argv){try {
     if(rel.empty() || *rel.begin()=="..")throw std::runtime_error("output must be under work");
     std::filesystem::create_directories(output);
     DiscImage disc(argv[1]);GtfsVolume vol(disc);SetActiveProfile(ProfileOf(disc));
+    if(!ArcadeFlow())SetCombinedArcadeFlow(true); // a Simulation disc: the arcade menus of its combined flow
     auto data=career::CareerData::Load(disc,vol); data.strict=false;
     auto initial=std::make_unique<career::GarageBlock>(); initial->currentCar=-1;
     career::TuneSheet sheet{};std::array<uint8_t,0x230> scratch{};
@@ -47,6 +48,34 @@ int main(int argc,char** argv){try {
     arcade::RebuildGarageEntry(setup,tuned,data);
     uint32_t racedCar;std::memcpy(&racedCar,setup.raceBlock.data()+0x5C,4);
     Check(racedCar==last.modelId,"last expanded car cannot enter race");
+    // A Rally garage car without the dirt compound keeps its tyres: the original writes the empty slot's 0xFFFF
+    // into the configuration and then reads a row outside the tyre table.
+    int withoutDirt=-1,withDirt=-1;
+    for(int i=0;i<arcade::ExpandedGarageCount(tuned);++i){
+        const bool has=career::PartRow(data.tables,0x2D,arcade::ExpandedGarageCar(tuned,i).carId)>=0;
+        if(has&&withDirt<0)withDirt=i;
+        if(!has&&withoutDirt<0)withoutDirt=i;
+    }
+    Check(withoutDirt>=0&&withDirt>=0,"rally tyre fixtures missing");
+    auto rallyEntry=[&](int which){
+        auto block=tuned;
+        const auto before=arcade::ExpandedGarageCar(block,which);
+        arcade::ArcadeRaceSetup rallySetup;
+        auto* s=rallySetup.menuRegion.data()+arcade::kSelectionAddress-arcade::kMenuRegionAddress;
+        s[arcade::Sel::kMode]=6;
+        const int16_t g=0,i=int16_t(which);const uint32_t flag=1,rally=1;
+        std::memcpy(s+arcade::Sel::kGarage,&g,2);std::memcpy(s+arcade::Sel::kGarageSlot,&i,2);
+        std::memcpy(s+arcade::Sel::kGarageFlag,&flag,4);std::memcpy(s+arcade::Sel::kWord2CC,&rally,4);
+        arcade::RebuildGarageEntry(rallySetup,block,data);
+        const auto& after=arcade::ExpandedGarageCar(block,which);
+        const int32_t dirt=career::PartRow(data.tables,0x2D,after.carId);
+        if(dirt>=0)Check(after.config.tyresFront==uint16_t(dirt)&&after.config.tyresRear==uint16_t(dirt),"rally car missed its dirt tyres");
+        else Check(after.config.tyresFront==before.config.tyresFront&&after.config.tyresRear==before.config.tyresRear,"car without dirt tyres changed tyres");
+        uint32_t raced;std::memcpy(&raced,rallySetup.raceBlock.data()+0x5C,4);
+        Check(raced==after.modelId,"rally garage car cannot enter race");
+    };
+    rallyEntry(withoutDirt);
+    rallyEntry(withDirt);
     const auto path=(output/"test.arcade-garage").string();arcade::SaveArcadeGarage(path,tuned);
     Check(arcade::ReadArcadeGarage(path)==tuned,"expanded garage reload lost tuning");
     auto corrupt=career::ReadFileBytes(path);corrupt.back()^=1;career::WriteFileBytes(path+".bad",corrupt);
