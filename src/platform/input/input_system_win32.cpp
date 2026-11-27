@@ -55,13 +55,46 @@ XInputApi& XInput() {
 uint8_t StickX(SHORT v) { return uint8_t((int32_t(v) + 32768) >> 8); }
 uint8_t StickY(SHORT v) { return uint8_t((32767 - int32_t(v)) >> 8); }
 
+// A pad XInput reads must not also be opened through DirectInput: that copy has no motors, its triggers share one axis
+// and its buttons arrive in HID order (Start would be R2, the accelerator). The interface path of most pads says so with
+// "IG_"; an Xbox pad whose path does not (the Xbox One driver stack does not always propagate it) is recognised by its
+// Microsoft product ID, as SDL does.
+bool IsXInputPad(uint16_t vendor, uint16_t product, const wchar_t* path) {
+    if (path && std::wcsstr(path, L"IG_")) return true;
+    if (vendor != 0x045Eu) return false;
+    switch (product) {
+    case 0x028E: case 0x028F: case 0x0719: // Xbox 360 wired / wireless / receiver
+    case 0x02D1: case 0x02DD: case 0x02E3: // Xbox One / One (2015 firmware) / Elite
+    case 0x02EA: case 0x02FD:              // Xbox One S / One S Bluetooth
+    case 0x02FF:                           // the Xbox One driver stack's "XINPUT compatible HID device"
+    case 0x0B00: case 0x0B05:              // Elite Series 2 / Elite Series 2 (Bluetooth)
+    case 0x0B0A: case 0x0B12: case 0x0B13: // Series X|S
+        return true;
+    default:
+        return false;
+    }
+}
+
 class XInputDevice : public Device {
 public:
     explicit XInputDevice(DWORD slot) : slot_(slot) {}
     ~XInputDevice() override { SetMotors(0, 0, 100); }
     bool Poll(int, Ps1PadFrame& out) override {
         XINPUT_STATE s{};
-        if (XInput().getState(slot_, &s) != ERROR_SUCCESS) return false;
+        if (XInput().getState(slot_, &s) != ERROR_SUCCESS) {
+            // A wireless pad loses its link for a moment now and then. Dropping the device on one failed read makes the
+            // next rescan re-enumerate it, sometimes as a DirectInput pad (see IsXInputPad), so keep the slot and report
+            // a released pad for as long as a lost link usually lasts.
+            if (++lost_ < kLostLinkFields) {
+                out = Ps1PadFrame{};
+                out.type = kTypeAnalog;
+                out.analog = {0x80, 0x80, 0x80, 0x80};
+                out.pressure = true;
+                return true;
+            }
+            return false;
+        }
+        lost_ = 0;
         const XINPUT_GAMEPAD& g = s.Gamepad;
         out = Ps1PadFrame{};
         out.type = kTypeAnalog;
@@ -101,7 +134,9 @@ public:
     DWORD Slot() const { return slot_; }
 
 private:
+    static constexpr int kLostLinkFields = 120; // the rescan interval: a shorter drop never re-enumerates the pad
     DWORD slot_;
+    int lost_ = 0;
 };
 
 // ---------------------------------------------------------------- fake pad (--fake-pad)
@@ -433,8 +468,11 @@ void InputSystem::Rescan(int field) {
         path.diph.dwSize = sizeof(path);
         path.diph.dwHeaderSize = sizeof(DIPROPHEADER);
         path.diph.dwHow = DIPH_DEVICE;
-        const bool xinput = SUCCEEDED(device->GetProperty(DIPROP_GUIDANDPATH, &path.diph)) && std::wcsstr(path.wszPath, L"IG_") != nullptr;
-        if (xinput) { // read through XInput instead (its motors, its trigger axes)
+        const uint16_t vid = LOWORD(inst.guidProduct.Data1);
+        const uint16_t pid = HIWORD(inst.guidProduct.Data1);
+        const bool havePath = SUCCEEDED(device->GetProperty(DIPROP_GUIDANDPATH, &path.diph));
+        if (IsXInputPad(vid, pid, havePath ? path.wszPath : nullptr)) { // read through XInput instead (its motors, its trigger axes)
+            log_.push_back(std::string("ignored DirectInput copy of ") + inst.tszProductName);
             device->Release();
             continue;
         }
@@ -450,13 +488,11 @@ void InputSystem::Rescan(int field) {
         }
         device->SetProperty(DIPROP_RANGE, &range.diph);
         device->Acquire();
-        const uint16_t vid = LOWORD(inst.guidProduct.Data1);
         const BYTE kind = GET_DIDEVICE_TYPE(inst.dwDevType);
         DirectInputDevice::Layout layout = kind == DI8DEVTYPE_DRIVING ? DirectInputDevice::Layout::kWheel
                                            : vid == 0x054C             ? DirectInputDevice::Layout::kSony
                                                                        : DirectInputDevice::Layout::kGeneric;
         auto d = std::make_unique<DirectInputDevice>(device, inst.guidInstance, layout, std::string(inst.tszProductName));
-        const uint16_t pid = HIWORD(inst.guidProduct.Data1);
         if (vid == 0x054C && (pid == 0x0CE6 || pid == 0x0DF2)) d->OpenEffects(path.wszPath);
         if (layout == DirectInputDevice::Layout::kWheel) d->SamplePedals();
         log_.push_back(std::string("connected: ") + inst.tszProductName + (layout == DirectInputDevice::Layout::kWheel ? " (DirectInput wheel as a neGcon)"
@@ -510,8 +546,13 @@ void InputSystem::Poll(int field, bool focused) {
         }
     int best = active_;
     if (best >= 0 && frames_[size_t(best)].type == kTypeNone) best = -1;
-    for (size_t i = 0; i < devices_.size(); i++)
-        if (frames_[i].type != kTypeNone && (best < 0 || lastActivity_[i] > lastActivity_[size_t(best)])) best = int(i);
+    for (size_t i = 0; i < devices_.size(); i++) {
+        if (frames_[i].type == kTypeNone) continue;
+        if (best < 0 || lastActivity_[i] > lastActivity_[size_t(best)]) { best = int(i); continue; }
+        // Equally recent: a pad with motors keeps port 1. A DirectInput copy of an XInput pad (no motors, Start on R2,
+        // the triggers on one axis) must never drive it in place of the pad's own XInput entry.
+        if (lastActivity_[i] == lastActivity_[size_t(best)] && devices_[i]->HasMotors() && !devices_[size_t(best)]->HasMotors()) best = int(i);
+    }
     for (size_t i = 0; i < devices_.size(); i++) // a scripted pad (--fake-pad) is port 1 whenever it exists: reproducible runs
         if (devices_[i]->Scripted() && static_cast<const FakePad*>(devices_[i].get())->Port() == 1) best = int(i);
     if (best >= 0 && devices_[size_t(best)]->Scripted() && static_cast<const FakePad*>(devices_[size_t(best)].get())->Port() != 1) best = -1;
