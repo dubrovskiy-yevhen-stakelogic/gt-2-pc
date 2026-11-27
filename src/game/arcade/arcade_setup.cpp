@@ -481,7 +481,9 @@ namespace {
 void TuneGarageCar(career::GarageCar& car, uint32_t word2cc, const career::CareerData& gt) {
     auto sheet = std::make_unique<career::TuneSheet>();
     career::LoadCarSheet(*sheet, car, gt.tables);
-    if (word2cc != 0) {
+    // A car without the dirt compound keeps its tyres: the original writes the empty slot's 0xFFFF into the
+    // configuration and then reads a row outside the tyre table.
+    if (word2cc != 0 && career::PartRow(gt.tables, 0x2D, car.carId) >= 0) {
         career::SetTuneStage(*sheet, career::kTuneTyresFront, 7, gt);
         career::SetTuneStage(*sheet, career::kTuneTyresRear, 7, gt);
     } else if (sheet->stage[career::kTuneTyresFront] == 7 || sheet->stage[career::kTuneTyresRear] == 7) {
@@ -556,17 +558,7 @@ void RebuildGarageEntry(ArcadeRaceSetup& setup, std::span<uint8_t> garageBlock, 
     if (index < 0 || index >= ExpandedGarageCount(garageBlock)) throw std::invalid_argument("arcade setup: garage block / index");
     career::GarageCar& car = *reinterpret_cast<career::GarageCar*>(garageBlock.data() + kGarageCarsAt + size_t(index) * kGarageCarBytes);
     // 0x80011BE8(garage, index, rally)
-    auto sheet = std::make_unique<career::TuneSheet>();
-    career::LoadCarSheet(*sheet, car, gt.tables);
-    if (Rd<uint32_t>(sel, Sel::kWord2CC) != 0) {
-        career::SetTuneStage(*sheet, career::kTuneTyresFront, 7, gt);
-        career::SetTuneStage(*sheet, career::kTuneTyresRear, 7, gt);
-    } else if (sheet->stage[career::kTuneTyresFront] == 7 || sheet->stage[career::kTuneTyresRear] == 7) {
-        career::SetTuneStage(*sheet, career::kTuneTyresFront, 0, gt);
-        career::SetTuneStage(*sheet, career::kTuneTyresRear, 0, gt);
-    }
-    std::array<uint8_t, 0x230> scratch{};
-    career::StoreCarSheet(car, *sheet, gt.tables, career::BuildScratch{scratch.data()}); // 0x80011B0C
+    TuneGarageCar(car, Rd<uint32_t>(sel, Sel::kWord2CC), gt);
     // 0x800127AC(block, 0, grid, 3, transmission, car, garage, index)
     const std::span<uint8_t> block(setup.raceBlock);
     const size_t slot = 0x5C;
